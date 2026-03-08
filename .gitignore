@@ -76,3 +76,17 @@ docs/features/_build/
 docs/development/_build/
 docs/installation/_build/
 \ndocs/archive/
+
+# Node.js / TypeScript
+node_modules/
+.pnpm-store/
+.turbo/
+*.tsbuildinfo
+packages/*/dist/
+packages/web/.vite/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*

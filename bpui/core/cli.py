@@ -132,6 +132,27 @@ def main():
     list_models_parser.add_argument("--format", choices=["text", "json", "csv"], default="text", help="Output format")
     list_models_parser.add_argument("--filter", help="Filter models by name/pattern (e.g., 'gpt-4' or 'claude')")
 
+    # Rehash command
+    rehash_parser = subparsers.add_parser("rehash", help="Rehash/regenerate an existing character with variations")
+    rehash_parser.add_argument("source", help="Source: draft directory name/path, JSON file, or text file with character info")
+    rehash_parser.add_argument(
+        "--variation",
+        choices=["remix", "twist", "evolve", "darken", "lighten", "invert", "intensify", "soften"],
+        default="remix",
+        help="Type of variation to apply (default: remix)"
+    )
+    rehash_parser.add_argument(
+        "--mode",
+        choices=["SFW", "NSFW", "Platform-Safe"],
+        help="Content mode (default: auto or preserve original)"
+    )
+    rehash_parser.add_argument("--template", help="Name of template to use for regeneration (default: Official Aksho)")
+    rehash_parser.add_argument("--out", help="Output directory (default: drafts/)")
+    rehash_parser.add_argument("--model", help="Model override")
+    rehash_parser.add_argument("--seed-only", action="store_true", help="Only output the new seed, don't regenerate")
+    rehash_parser.add_argument("--instructions", help="Custom instructions for rehashing")
+    rehash_parser.add_argument("--drafts-dir", type=Path, help="Drafts directory (default: ./drafts)")
+
     args = parser.parse_args()
     
     # Setup logging before any commands
@@ -182,7 +203,9 @@ def main():
         run_versions(args)
     elif args.command == "list-models":
         asyncio.run(run_list_models(args))
-    
+    elif args.command == "rehash":
+        asyncio.run(run_rehash(args))
+
     # Print profiling report if enabled
     if args.profile:
         from bpui.utils.profiler import get_profiler
@@ -1570,6 +1593,179 @@ def run_versions(args):
     elif args.prune:
         deleted = prune_old_versions(draft_dir, asset_name, args.prune)
         print(f"✓ Pruned {deleted} old versions (kept {args.prune} most recent)")
+
+
+async def run_rehash(args):
+    """Run character rehash from CLI."""
+    from .config import Config
+    from bpui.llm.factory import create_engine
+    from bpui.features.rehash import load_character_for_rehash, build_rehash_prompt, REHASH_VARIATIONS
+    from bpui.features.templates.templates import TemplateManager
+    from bpui.utils.topological_sort import topological_sort
+    from bpui.prompting import build_asset_prompt
+    from bpui.parse_blocks import extract_single_asset, extract_character_name
+    from bpui.utils.file_io.pack_io import create_draft_dir
+    from bpui.utils.metadata.metadata import DraftMetadata
+
+    logger = logging.getLogger(__name__)
+    config = Config()
+
+    # Determine source path
+    source = Path(args.source)
+    drafts_root = args.drafts_dir or (Path.cwd() / "drafts")
+
+    # If source doesn't exist as-is, try looking in drafts directory
+    if not source.exists():
+        # Try as draft name
+        draft_path = _find_draft(args.source, drafts_root)
+        if draft_path:
+            source = draft_path
+        else:
+            print(f"✗ Source not found: {args.source}")
+            sys.exit(1)
+
+    # Load character data
+    print(f"🔄 Rehashing character from: {source}")
+    try:
+        assets, source_type, metadata = load_character_for_rehash(source, drafts_root)
+    except (FileNotFoundError, ValueError) as e:
+        print(f"✗ Failed to load character: {e}")
+        sys.exit(1)
+
+    char_name = metadata.get("character_name", "Unknown") if metadata else "Unknown"
+    print(f"   Character: {char_name}")
+    print(f"   Source type: {source_type}")
+    print(f"   Variation: {args.variation}")
+    print(f"   Mode: {args.mode or 'Auto'}")
+
+    # Validate API key
+    model = args.model or config.model
+    config.validate_api_key(model)
+
+    # Create engine
+    try:
+        engine = create_engine(config, model_override=model if args.model else None)
+    except (ImportError, ValueError, RuntimeError) as e:
+        logger.error(f"Failed to create engine: {e}")
+        sys.exit(1)
+
+    # Build rehash prompt
+    system_prompt, user_prompt = build_rehash_prompt(
+        assets=assets,
+        variation=args.variation,
+        mode=args.mode,
+        metadata=metadata,
+        custom_instructions=args.instructions,
+    )
+
+    # Generate new seed
+    print("\n⏳ Generating rehashed seed...")
+    new_seed = await engine.generate(system_prompt, user_prompt)
+
+    # Clean up seed (remove any markdown formatting)
+    new_seed = new_seed.strip()
+    if new_seed.startswith("```"):
+        lines = new_seed.split("\n")
+        new_seed = "\n".join(lines[1:-1] if lines[-1] == "```" else lines[1:])
+
+    print(f"✓ New seed generated ({len(new_seed)} chars)")
+    print(f"   Preview: {new_seed[:150]}{'...' if len(new_seed) > 150 else ''}")
+
+    # If seed-only mode, just print and exit
+    if args.seed_only:
+        print(f"\n{'='*60}")
+        print("NEW SEED:")
+        print(f"{'='*60}")
+        print(new_seed)
+        return
+
+    # Otherwise, generate full character suite
+    print("\n⏳ Generating full character suite from rehashed seed...")
+
+    # Load template
+    manager = TemplateManager()
+    template_name = args.template or "Official Aksho"
+    template = manager.get_template(template_name)
+    if not template:
+        logger.error(f"Template '{template_name}' not found.")
+        sys.exit(1)
+    logger.info("Template: %s", template.name)
+
+    # Get asset order
+    try:
+        asset_order = topological_sort(template.assets)
+    except ValueError as e:
+        logger.error(f"Template error: {e}")
+        sys.exit(1)
+
+    # Generate assets
+    new_assets = {}
+    character_name = None
+
+    for asset_name in asset_order:
+        print(f"   → {asset_name}...", end=" ", flush=True)
+
+        # Get blueprint content from template
+        blueprint_content = manager.get_blueprint_content(template, asset_name)
+        if not blueprint_content:
+            logger.warning(f"Blueprint for '{asset_name}' not found. Skipping.")
+            continue
+
+        system_prompt, user_prompt = build_asset_prompt(
+            asset_name, new_seed, args.mode, new_assets, blueprint_content=blueprint_content
+        )
+
+        output = await engine.generate(system_prompt, user_prompt)
+        asset_content = extract_single_asset(output, asset_name)
+        new_assets[asset_name] = asset_content
+
+        print("✓")
+
+        if asset_name == "character_sheet" and not character_name:
+            character_name = extract_character_name(asset_content)
+
+    if not character_name:
+        character_name = f"rehashed_{char_name}".lower().replace(" ", "_")
+
+    # Save draft
+    print(f"\n⏳ Saving draft...")
+
+    # Determine output directory
+    if args.out:
+        draft_dir = Path(args.out)
+        draft_dir.mkdir(parents=True, exist_ok=True)
+        from bpui.core.parse_blocks import ASSET_FILENAMES
+        for asset_name, content in new_assets.items():
+            filename = ASSET_FILENAMES.get(asset_name)
+            if filename:
+                (draft_dir / filename).write_text(content, encoding='utf-8')
+        # Save metadata
+        meta = DraftMetadata(
+            seed=new_seed,
+            mode=args.mode,
+            model=model,
+            character_name=character_name,
+            template_name=template.name,
+        )
+        meta.save(draft_dir)
+    else:
+        draft_dir = create_draft_dir(
+            new_assets,
+            character_name,
+            seed=new_seed,
+            mode=args.mode,
+            model=model,
+            template=template
+        )
+
+    print(f"✓ Saved to: {draft_dir}")
+    print(f"\n{'='*60}")
+    print("REHASH COMPLETE")
+    print(f"{'='*60}")
+    print(f"Original: {char_name}")
+    print(f"New: {character_name}")
+    print(f"Variation: {args.variation}")
+    print(f"Seed: {new_seed[:100]}...")
 
 
 if __name__ == "__main__":
