@@ -196,13 +196,6 @@ class TemplateManager:
                 description="Stable Diffusion image generation prompt",
                 blueprint_file="examples/a1111_sdxl_comfyui.md"
             ),
-            AssetDefinition(
-                name="suno",
-                required=True,
-                depends_on=["character_sheet"],
-                description="Suno music generation prompt",
-                blueprint_file="templates/example_music_only/suno.md"
-            ),
         ]
         
         return Template(

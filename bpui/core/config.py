@@ -358,3 +358,48 @@ class Config:
     def update_from_dict(self, data: Dict[str, Any]) -> None:
         """Update config from dict."""
         self._data.update(data)
+
+
+# Global config instance for singleton pattern
+_config_instance: Optional[Config] = None
+
+
+def load_config(config_path: Optional[Path] = None) -> Config:
+    """Load configuration from file.
+
+    Uses singleton pattern - returns existing instance if available.
+    Call with config_path to force reload from a specific path.
+
+    Args:
+        config_path: Optional path to config file. If None, uses default.
+
+    Returns:
+        Config instance
+    """
+    global _config_instance
+
+    if _config_instance is None or config_path is not None:
+        _config_instance = Config(config_path)
+
+    return _config_instance
+
+
+def save_config() -> None:
+    """Save current configuration to file."""
+    if _config_instance is None:
+        raise RuntimeError("No config loaded. Call load_config() first.")
+    _config_instance.save()
+
+
+def get_config_value(key: str, default: Any = None) -> Any:
+    """Get a config value by key.
+
+    Args:
+        key: Configuration key
+        default: Default value if key not found
+
+    Returns:
+        Config value or default
+    """
+    config = load_config()
+    return config.get(key, default)

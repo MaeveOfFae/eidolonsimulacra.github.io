@@ -1,53 +1,64 @@
 # Character Generator (Blueprint Pack)
 
-A comprehensive prompt blueprint system for compiling consistent character assets from a single **SEED**. Includes interactive terminal UI (TUI), graphical UI (GUI), and CLI with keyboard shortcuts, batch operations, and multi-provider LLM support.
+A comprehensive prompt blueprint system for compiling consistent character assets from a single **SEED**. Features modern web, mobile, and desktop UIs with full API backend.
 
 ## Quick Start
 
-### Option 1: Graphical UI (Qt6, Default)
+### Option 1: Web UI (Recommended)
 
-Launch the modern Qt6-based GUI:
+Modern React-based web interface with mobile support:
 
 ```bash
 # Install dependencies
-pip install PySide6
+pnpm install
 
-# Launch GUI (default)
-bpui
+# Start API server (terminal 1)
+python -m uvicorn bpui.api.main:app --reload
+
+# Start web dev server (terminal 2)
+pnpm dev:web
+
+# Open http://localhost:3000
+# API docs at http://localhost:8000/docs
 ```
 
-### Option 2: Terminal UI (TUI)
-
-Launch the interactive TUI with full keyboard navigation:
+### Option 2: Mobile App (React Native + Expo)
 
 ```bash
-# Using provided launcher (recommended - auto-creates venv)
+# Start Expo development server
+pnpm dev:mobile
+
+# Press 'w' for web, 'i' for iOS, 'a' for Android
+```
+
+### Option 3: Desktop App (Tauri)
+
+```bash
+# Requires Rust installation first
+pnpm tauri:dev
+```
+
+### Option 4: Terminal UI (TUI)
+
+Classic terminal interface with keyboard navigation:
+
+```bash
 ./run_bpui.sh
-
-# Or install manually
-source .venv/bin/activate
-pip install textual rich tomli-w httpx
-bpui
-
-# Explicit terminal UI mode
+# or
 bpui tui
 ```
 
-### Option 3: CLI Mode (Scriptable)
-
-Compile characters from command line for automation:
+### Option 5: CLI Mode (Scriptable)
 
 ```bash
 # Single character compilation
 bpui compile --seed "Noir detective with psychic abilities" --mode NSFW
 
-# Batch compilation from file
+# Batch compilation
 bpui batch --input seeds.txt --mode NSFW --continue-on-error
 
 # Generate seeds
 bpui seed-gen --input genres.txt --out "seed-output/noir.txt"
-
-# Validate a character pack
 bpui validate drafts/20240203_150000_character_name
 
 # Export to output directory
@@ -55,6 +66,54 @@ bpui export "Character Name" drafts/20240203_150000_character_name --model gpt4
 
 # Analyze character similarity
 bpui similarity "character1" "character2" --use-llm
+```
+
+## Architecture
+
+```
+character-generator/
+├── packages/
+│   ├── shared/          # Shared TypeScript (types, API client)
+│   ├── web/             # React + Vite web app
+│   ├── mobile/          # React Native + Expo mobile app
+│   └── desktop/         # Tauri desktop wrapper
+├── bpui/
+│   ├── api/             # FastAPI backend
+│   ├── core/            # Core logic (config, prompting, parsing)
+│   ├── llm/             # LLM engine integrations
+│   ├── features/        # Feature modules (templates, export, similarity)
+│   ├── tui/             # Terminal UI (Textual)
+│   └── gui/             # Qt6 GUI (PySide6)
+├── blueprints/          # Blueprint templates
+├── presets/             # Export presets
+└── drafts/              # Generated characters
+```
+
+## API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/config` | GET/POST | Configuration management |
+| `/api/config/test` | POST | Test API connection |
+| `/api/models/{provider}` | GET | List available models |
+| `/api/templates` | GET/POST | Template CRUD |
+| `/api/generate/single` | POST (SSE) | Generate character |
+| `/api/generate/batch` | POST (SSE) | Batch generation |
+| `/api/drafts` | GET | List drafts |
+| `/api/drafts/{id}` | GET/DELETE | Get/delete draft |
+| `/api/similarity` | POST | Compare characters |
+| `/api/offspring` | POST (SSE) | Generate offspring |
+| `/api/export` | POST | Export with preset |
+| `/api/chat` | POST (SSE) | Chat-based refinement |
+
+## Docker Deployment
+
+```bash
+# Build and run with Docker
+docker-compose up -d
+
+# Development mode with hot reload
+docker-compose --profile dev up
 ```
 
 ## Features
