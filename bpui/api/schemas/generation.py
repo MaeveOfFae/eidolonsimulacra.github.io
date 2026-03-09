@@ -1,6 +1,6 @@
 """Generation-related schemas."""
 
-from typing import Optional, List, Literal
+from typing import Optional, List, Literal, Dict
 from pydantic import BaseModel, Field
 from .config import ContentMode
 
@@ -22,6 +22,30 @@ class GenerateBatchRequest(BaseModel):
     max_concurrent: int = Field(default=3, ge=1, le=10)
 
 
+class GenerateAssetRequest(BaseModel):
+    """Request to generate a single asset within a template flow."""
+    seed: str = Field(..., min_length=1, max_length=2000)
+    template: Optional[str] = None
+    mode: ContentMode = "SFW"
+    asset_name: str = Field(..., min_length=1)
+    prior_assets: Dict[str, str] = Field(default_factory=dict)
+
+
+class GenerateAssetResponse(BaseModel):
+    """Response for a generated asset."""
+    asset_name: str
+    content: str
+    character_name: Optional[str] = None
+
+
+class FinalizeGenerationRequest(BaseModel):
+    """Request to persist a fully reviewed generated draft."""
+    seed: str = Field(..., min_length=1, max_length=2000)
+    template: Optional[str] = None
+    mode: ContentMode = "SFW"
+    assets: Dict[str, str] = Field(default_factory=dict)
+
+
 class OffspringRequest(BaseModel):
     """Request to generate an offspring character from two parents."""
     parent1_id: str = Field(..., min_length=1)
@@ -33,7 +57,7 @@ class OffspringRequest(BaseModel):
 
 class GenerationProgress(BaseModel):
     """Progress update during generation."""
-    stage: Literal["initializing", "orchestrator", "parsing", "saving", "complete", "error"]
+    stage: Literal["initializing", "asset_generation", "saving", "complete", "error"]
     status: Literal["started", "in_progress", "complete", "error"]
     asset: Optional[str] = None
     content: Optional[str] = None

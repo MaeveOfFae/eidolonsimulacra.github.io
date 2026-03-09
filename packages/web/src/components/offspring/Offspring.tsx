@@ -62,6 +62,7 @@ export default function Offspring() {
             draftId: data.draft_id || '',
             characterName: data.character_name || 'Unknown',
           });
+          setIsGenerating(false);
         }
       });
 
@@ -69,11 +70,6 @@ export default function Offspring() {
         console.error('Offspring generation error:', error);
         setIsGenerating(false);
       });
-
-      stream.onComplete_(() => {
-        setIsGenerating(false);
-      });
-
       await stream.start();
     } catch (err) {
       console.error(err);

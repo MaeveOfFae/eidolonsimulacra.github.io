@@ -20,6 +20,9 @@ import type {
   ValidatePathRequest,
   ValidationResponse,
   GenerateRequest,
+  GenerateAssetRequest,
+  GenerateAssetResponse,
+  FinalizeGenerationRequest,
   GenerationProgress,
   GenerationComplete,
   SimilarityRequest,
@@ -253,6 +256,22 @@ export class CharacterGeneratorAPI {
       `${this.baseUrl}/generate/single`,
       request
     );
+  }
+
+  async generateAsset(request: GenerateAssetRequest, signal?: AbortSignal): Promise<GenerateAssetResponse> {
+    return this.request<GenerateAssetResponse>('/generate/asset', {
+      method: 'POST',
+      body: JSON.stringify(request),
+      signal,
+    });
+  }
+
+  async finalizeGeneration(request: FinalizeGenerationRequest, signal?: AbortSignal): Promise<GenerationComplete> {
+    return this.request<GenerationComplete>('/generate/finalize', {
+      method: 'POST',
+      body: JSON.stringify(request),
+      signal,
+    });
   }
 
   generateBatch(seeds: string[], options: Omit<GenerateRequest, 'seed'> & { parallel?: boolean; max_concurrent?: number }): GenerationStream {
