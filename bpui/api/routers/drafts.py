@@ -5,8 +5,9 @@ from pathlib import Path
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Query
 
-from bpui.core.parse_blocks import get_asset_filename
+from bpui.core.parse_blocks import get_asset_filename, infer_character_display_name_from_assets
 from bpui.utils.file_io.pack_io import load_draft
+from bpui.utils.metadata.metadata import DraftMetadata
 from ..schemas.drafts import (
     DraftMetadataSchema,
     DraftDetailResponse,
@@ -68,6 +69,39 @@ def _resolve_asset_path(draft_path: Path, asset_name: str, metadata: Optional[di
     template = _load_template_for_draft(draft_path, metadata)
     filename = get_asset_filename(asset_name, template)
     return draft_path / filename
+
+
+def _refresh_metadata_for_assets(
+    draft_path: Path,
+    metadata: Optional[dict] = None,
+    *,
+    prefer_asset_name: bool = True,
+) -> dict:
+    """Refresh draft metadata after asset changes."""
+    current_metadata = dict(metadata if metadata is not None else (_load_metadata(draft_path) or {}))
+    assets = _load_assets(draft_path)
+    inferred_name = infer_character_display_name_from_assets(assets)
+    if inferred_name and (prefer_asset_name or not current_metadata.get("character_name")):
+        current_metadata["character_name"] = inferred_name
+
+    draft_metadata = DraftMetadata.from_dict({
+        "seed": current_metadata.get("seed", "unknown"),
+        "mode": current_metadata.get("mode"),
+        "model": current_metadata.get("model"),
+        "created": current_metadata.get("created"),
+        "modified": current_metadata.get("modified"),
+        "tags": current_metadata.get("tags"),
+        "genre": current_metadata.get("genre"),
+        "notes": current_metadata.get("notes"),
+        "favorite": current_metadata.get("favorite", False),
+        "character_name": current_metadata.get("character_name"),
+        "template_name": current_metadata.get("template_name"),
+        "parent_drafts": current_metadata.get("parent_drafts"),
+        "offspring_type": current_metadata.get("offspring_type"),
+    })
+    draft_metadata.update_modified()
+    draft_metadata.save(draft_path)
+    return draft_metadata.to_dict()
 
 
 def _draft_matches_id(draft_path: Path, draft_id: str, metadata: Optional[dict] = None) -> bool:
@@ -225,6 +259,12 @@ async def update_draft(draft_id: str, update: DraftUpdate):
             with open(asset_file, 'w') as f:
                 f.write(content)
 
+    current_metadata = _refresh_metadata_for_assets(
+        draft_path,
+        current_metadata,
+        prefer_asset_name=not (update.metadata and "character_name" in update.metadata),
+    )
+
     return await get_draft(draft_id)
 
 
@@ -232,10 +272,13 @@ async def update_draft(draft_id: str, update: DraftUpdate):
 async def update_asset(draft_id: str, asset_name: str, update: AssetUpdate):
     """Update a single asset in a draft."""
     draft_path = _find_draft_dir(draft_id)
-    asset_file = _resolve_asset_path(draft_path, asset_name)
+    current_metadata = _load_metadata(draft_path) or {}
+    asset_file = _resolve_asset_path(draft_path, asset_name, current_metadata)
 
     with open(asset_file, 'w') as f:
         f.write(update.content)
+
+    _refresh_metadata_for_assets(draft_path, current_metadata, prefer_asset_name=True)
 
     return {"status": "updated", "asset": asset_name}
 
@@ -248,9 +291,7 @@ async def update_metadata(draft_id: str, metadata: dict):
     # Load existing and update
     existing = _load_metadata(draft_path) or {}
     existing.update(metadata)
-
-    with open(draft_path / ".metadata.json", 'w') as f:
-        json.dump(existing, f, indent=2)
+    _refresh_metadata_for_assets(draft_path, existing, prefer_asset_name=False)
 
     return {"status": "updated"}
 

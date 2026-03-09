@@ -6,6 +6,8 @@ from bpui.core.parse_blocks import (
     parse_blueprint_output,
     extract_single_asset,
     extract_character_name,
+    extract_character_display_name,
+    infer_character_display_name_from_assets,
     ParseError,
     ASSET_ORDER,
 )
@@ -223,3 +225,22 @@ class TestExtractCharacterName:
         sheet = "name: _Test Name_\nage: 30"
         name = extract_character_name(sheet)
         assert name == "test_name"
+
+
+class TestExtractCharacterDisplayName:
+    """Tests for raw display-name extraction helpers."""
+
+    def test_extract_display_name_preserves_spacing(self):
+        content = "Name: Dr. Jane Smith-O'Connor\nAge: 35"
+        name = extract_character_display_name(content)
+        assert name == "Dr. Jane Smith-O'Connor"
+
+    def test_infer_display_name_prefers_char_basic_info(self):
+        assets = {
+            "system_prompt": "No name here",
+            "char_basic_info": "[Basic Info]\nName: Vera Hollow\nAge: 41",
+            "post_history": "Relationship text",
+        }
+
+        name = infer_character_display_name_from_assets(assets)
+        assert name == "Vera Hollow"

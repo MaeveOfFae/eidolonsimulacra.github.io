@@ -250,6 +250,49 @@ def test_generate_asset_requires_prior_assets_and_returns_content(monkeypatch):
     assert response.character_name == "Batch Character"
 
 
+def test_generate_asset_returns_name_from_char_basic_info(monkeypatch):
+    monkeypatch.setattr("bpui.core.config.load_config", lambda: SimpleNamespace(model="test/model"))
+
+    class FakeEngine:
+        async def generate(self, system_prompt: str, user_prompt: str) -> str:
+            return "```\n[Basic Info]\nName: Mara Voss\nAge: 37\n```"
+
+    monkeypatch.setattr("bpui.llm.factory.create_engine", lambda config: FakeEngine())
+
+    class FakeTemplateManager:
+        def get_template(self, name):
+            return SimpleNamespace(
+                name=name,
+                assets=[SimpleNamespace(name="system_prompt"), SimpleNamespace(name="char_basic_info")],
+            )
+
+        def get_blueprint_content(self, template, asset_name):
+            return f"blueprint::{asset_name}"
+
+    monkeypatch.setattr("bpui.features.templates.templates.TemplateManager", FakeTemplateManager)
+    monkeypatch.setattr(
+        "bpui.utils.topological_sort.topological_sort",
+        lambda assets: [asset.name for asset in assets],
+    )
+    monkeypatch.setattr("bpui.core.prompting.build_asset_prompt", lambda **kwargs: (f"system::{kwargs['asset_name']}", "user"))
+    monkeypatch.setattr("bpui.core.parse_blocks.extract_single_asset", lambda output, asset_name: output.replace("```", "").strip())
+
+    response = asyncio.run(
+        generate_asset(
+            GenerateAssetRequest(
+                seed="seed",
+                mode="SFW",
+                template="Official Aksho",
+                asset_name="char_basic_info",
+                prior_assets={"system_prompt": "SYSTEM"},
+            )
+        )
+    )
+
+    assert response.asset_name == "char_basic_info"
+    assert response.character_name == "Mara Voss"
+
+
 def test_finalize_generation_persists_reviewed_assets(tmp_path, monkeypatch):
     monkeypatch.setattr("bpui.core.config.load_config", lambda: SimpleNamespace(model="test/model"))
     monkeypatch.setattr("bpui.core.parse_blocks.extract_character_name", lambda content: "Batch Character")

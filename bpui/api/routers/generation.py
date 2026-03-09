@@ -33,7 +33,7 @@ async def _generate_assets_sequential(
 ) -> tuple[dict[str, str], str]:
     """Generate assets in dependency order, carrying prior assets forward as context."""
     from bpui.core.prompting import build_asset_prompt
-    from bpui.core.parse_blocks import extract_single_asset, extract_character_name
+    from bpui.core.parse_blocks import extract_single_asset, extract_character_display_name, infer_character_display_name_from_assets
     from bpui.features.templates.templates import TemplateManager
     from bpui.utils.topological_sort import topological_sort
 
@@ -93,8 +93,9 @@ async def _generate_assets_sequential(
         asset_content = extract_single_asset(raw_output, asset_name)
         assets[asset_name] = asset_content
 
-        if asset_name == "character_sheet":
-            character_name = extract_character_name(asset_content) or character_name
+        extracted_name = extract_character_display_name(asset_content)
+        if extracted_name:
+            character_name = extracted_name
 
         await emit(
             on_asset_complete,
@@ -105,7 +106,7 @@ async def _generate_assets_sequential(
             },
         )
 
-    return assets, character_name
+    return assets, infer_character_display_name_from_assets(assets) or character_name
 
 
 def _resolve_template(template_name: str | None):
@@ -227,7 +228,7 @@ async def generate_asset(request: GenerateAssetRequest):
     from bpui.api.schemas.generation import GenerateAssetResponse
     from bpui.core.config import load_config
     from bpui.core.prompting import build_asset_prompt
-    from bpui.core.parse_blocks import extract_single_asset, extract_character_name
+    from bpui.core.parse_blocks import extract_single_asset, extract_character_display_name
     from bpui.features.templates.templates import TemplateManager
     from bpui.llm.factory import create_engine
 
@@ -260,9 +261,7 @@ async def generate_asset(request: GenerateAssetRequest):
 
         raw_output = await engine.generate(system_prompt, user_prompt)
         content = extract_single_asset(raw_output, request.asset_name)
-        character_name = None
-        if request.asset_name == "character_sheet":
-            character_name = extract_character_name(content)
+        character_name = extract_character_display_name(content)
 
         return GenerateAssetResponse(
             asset_name=request.asset_name,
@@ -279,7 +278,7 @@ async def generate_asset(request: GenerateAssetRequest):
 async def finalize_generation(request: FinalizeGenerationRequest):
     """Persist a fully reviewed draft assembled through per-asset generation."""
     from bpui.api.schemas.generation import GenerationComplete
-    from bpui.core.parse_blocks import extract_character_name
+    from bpui.core.parse_blocks import infer_character_display_name_from_assets
     from bpui.core.config import load_config
     from bpui.utils.file_io.pack_io import create_draft_dir
 
@@ -296,7 +295,7 @@ async def finalize_generation(request: FinalizeGenerationRequest):
             )
 
         ordered_assets = {asset_name: request.assets[asset_name] for asset_name in asset_order}
-        character_name = extract_character_name(ordered_assets.get("character_sheet", "")) or "unnamed_character"
+        character_name = infer_character_display_name_from_assets(ordered_assets) or "unnamed_character"
         config = load_config()
         draft_path = create_draft_dir(
             ordered_assets,

@@ -26,7 +26,10 @@ def _create_aksho_draft(base_dir: Path, draft_name: str = "20260307_203638_test_
     draft_dir.mkdir(parents=True)
 
     for filename in AKSHO_FILES:
-        (draft_dir / filename).write_text(f"content for {filename}", encoding="utf-8")
+        content = f"content for {filename}"
+        if filename == "char_basic_info.md":
+            content = "[Basic Info]\nName: Vera Hollow\nAge: 41"
+        (draft_dir / filename).write_text(content, encoding="utf-8")
 
     DraftMetadata(
         seed="test seed",
@@ -69,6 +72,23 @@ def test_update_asset_writes_template_specific_filename(tmp_path, monkeypatch):
 
     assert (draft_dir / "system_prompt.md").read_text(encoding="utf-8") == "updated prompt"
     assert not (draft_dir / "system_prompt.txt").exists()
+
+
+def test_update_asset_syncs_metadata_name_from_char_basic_info(tmp_path, monkeypatch):
+    draft_dir = _create_aksho_draft(tmp_path)
+    monkeypatch.setattr(drafts_router, "DRAFTS_DIR", tmp_path)
+
+    asyncio.run(
+        update_asset(
+            draft_dir.name,
+            "char_basic_info",
+            AssetUpdate(content="[Basic Info]\nName: Mara Voss\nAge: 37"),
+        )
+    )
+
+    metadata = DraftMetadata.load(draft_dir)
+    assert metadata is not None
+    assert metadata.character_name == "Mara Voss"
 
 
 def test_apply_refinement_writes_template_specific_filename(tmp_path, monkeypatch):

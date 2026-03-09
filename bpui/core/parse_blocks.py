@@ -1,5 +1,6 @@
 """Strict codeblock parser for blueprint outputs."""
 
+from collections.abc import Iterable
 import re
 from pathlib import Path
 from typing import Optional, Dict, List, TYPE_CHECKING
@@ -221,14 +222,78 @@ def extract_character_name(character_sheet: str) -> Optional[str]:
     Returns:
         Sanitized character name or None
     """
-    # Look for "name: ..." line
-    match = re.search(r"^name:\s*(.+)$", character_sheet, re.MULTILINE | re.IGNORECASE)
+    display_name = extract_character_display_name(character_sheet)
+    if not display_name:
+        return None
+
+    return sanitize_character_name(display_name)
+
+
+def extract_character_display_name(content: str) -> Optional[str]:
+    """Extract a human-readable character name from asset content.
+
+    Args:
+        content: Asset content that may contain a top-level Name field
+
+    Returns:
+        The unsanitized character name, or None if no Name field is present
+    """
+    match = re.search(r"^name:\s*(.+)$", content, re.MULTILINE | re.IGNORECASE)
     if not match:
         return None
 
-    name = match.group(1).strip()
-    # Sanitize using same logic as export script
+    name = match.group(1).strip().strip('"').strip("'")
+    return name or None
+
+
+def sanitize_character_name(name: str) -> str:
+    """Sanitize a character name for filesystem-safe identifiers."""
     sanitized = re.sub(r"[^a-z0-9]+", "_", name.lower())
     sanitized = re.sub(r"_+", "_", sanitized)
     sanitized = sanitized.strip("_")
     return sanitized
+
+
+def infer_character_display_name_from_assets(
+    assets: Dict[str, str],
+    preferred_assets: Optional[Iterable[str]] = None,
+) -> Optional[str]:
+    """Infer a character's display name from generated asset contents.
+
+    Args:
+        assets: Mapping of asset name to content
+        preferred_assets: Optional asset priority order to check first
+
+    Returns:
+        Human-readable character name, or None if not found
+    """
+    ordered_asset_names: list[str] = []
+    seen: set[str] = set()
+
+    for asset_name in preferred_assets or ("character_sheet", "char_basic_info"):
+        if asset_name in assets and asset_name not in seen:
+            ordered_asset_names.append(asset_name)
+            seen.add(asset_name)
+
+    for asset_name in assets:
+        if asset_name not in seen:
+            ordered_asset_names.append(asset_name)
+            seen.add(asset_name)
+
+    for asset_name in ordered_asset_names:
+        display_name = extract_character_display_name(assets.get(asset_name, ""))
+        if display_name:
+            return display_name
+
+    return None
+
+
+def infer_character_name_from_assets(
+    assets: Dict[str, str],
+    preferred_assets: Optional[Iterable[str]] = None,
+) -> Optional[str]:
+    """Infer a sanitized filesystem-safe character name from asset contents."""
+    display_name = infer_character_display_name_from_assets(assets, preferred_assets=preferred_assets)
+    if not display_name:
+        return None
+    return sanitize_character_name(display_name)
