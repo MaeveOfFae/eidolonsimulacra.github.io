@@ -49,11 +49,25 @@ class ThemeTokenizerColors(BaseModel):
     at_sign: Optional[str] = None
 
 
+class ThemeTuiColors(BaseModel):
+    """Theme overrides for TUI design tokens."""
+
+    primary: Optional[str] = None
+    secondary: Optional[str] = None
+    surface: Optional[str] = None
+    panel: Optional[str] = None
+    warning: Optional[str] = None
+    error: Optional[str] = None
+    success: Optional[str] = None
+    accent: Optional[str] = None
+
+
 class ThemeOverride(BaseModel):
     """Persisted custom theme override payload."""
 
     app: ThemeAppColors = Field(default_factory=ThemeAppColors)
     tokenizer: ThemeTokenizerColors = Field(default_factory=ThemeTokenizerColors)
+    tui: ThemeTuiColors = Field(default_factory=ThemeTuiColors)
 
 
 class ThemeColorsResponse(BaseModel):
@@ -91,6 +105,38 @@ class ThemeColorsResponse(BaseModel):
     tui_error: str
     tui_success: str
     tui_accent: str
+
+
+class ThemePresetCreate(BaseModel):
+    """Create a custom theme preset."""
+
+    name: str
+    display_name: str
+    description: str = ""
+    colors: ThemeColorsResponse
+
+
+class ThemePresetUpdate(BaseModel):
+    """Update an existing custom theme preset."""
+
+    display_name: Optional[str] = None
+    description: Optional[str] = None
+    colors: Optional[ThemeColorsResponse] = None
+
+
+class ThemeDuplicateRequest(BaseModel):
+    """Duplicate a theme preset under a new name."""
+
+    new_name: str
+    display_name: Optional[str] = None
+    description: Optional[str] = None
+
+
+class ThemeRenameRequest(BaseModel):
+    """Rename a custom theme preset."""
+
+    new_name: str
+    display_name: Optional[str] = None
 
 
 class ThemePresetResponse(BaseModel):

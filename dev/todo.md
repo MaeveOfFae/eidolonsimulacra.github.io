@@ -6,7 +6,7 @@ It is intentionally scoped to new capabilities, UX improvements, and longer-term
 
 ## Generation Workflow
 
-- [x] Asset-by-asset approval workflow before downstream generation continues
+- [ ] Asset-by-asset approval workflow before downstream generation continues
 - [ ] Checkpointed generation sessions that let users pause, resume, or restart from any approved asset
 - [ ] Partial regeneration flow for replacing one asset without discarding the rest of the draft
 - [ ] Multi-model comparison runs for the same seed and template

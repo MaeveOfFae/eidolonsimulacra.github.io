@@ -56,9 +56,21 @@ export interface ThemeTokenizerColors {
   at_sign?: string;
 }
 
+export interface ThemeTuiColors {
+  primary?: string;
+  secondary?: string;
+  surface?: string;
+  panel?: string;
+  warning?: string;
+  error?: string;
+  success?: string;
+  accent?: string;
+}
+
 export interface ThemeOverride {
   app?: ThemeAppColors;
   tokenizer?: ThemeTokenizerColors;
+  tui?: ThemeTuiColors;
 }
 
 export interface ThemeColors {
@@ -102,6 +114,30 @@ export interface ThemePreset {
   description: string;
   is_builtin: boolean;
   colors: ThemeColors;
+}
+
+export interface ThemePresetCreate {
+  name: string;
+  display_name: string;
+  description?: string;
+  colors: ThemeColors;
+}
+
+export interface ThemePresetUpdate {
+  display_name?: string;
+  description?: string;
+  colors?: ThemeColors;
+}
+
+export interface ThemeDuplicateRequest {
+  new_name: string;
+  display_name?: string;
+  description?: string;
+}
+
+export interface ThemeRenameRequest {
+  new_name: string;
+  display_name?: string;
 }
 
 export interface Config {

@@ -14,10 +14,11 @@ import {
   Download,
   RotateCcw,
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { api, type Config, type ModelInfo, type ThemeOverride, type ThemePreset } from '@char-gen/shared';
 import { useThemePreview } from '../common/ThemeProvider';
 import {
-  EDITABLE_THEME_FIELDS,
+  EDITABLE_THEME_SECTIONS,
   resolveThemeColors,
 } from '../../theme/theme';
 
@@ -30,6 +31,10 @@ type ThemeImportPayload = {
   theme?: ThemeOverride;
   name?: string;
   colors?: ThemePreset['colors'];
+};
+
+type ThemeOverrideDraft = ThemeOverride & {
+  tui?: Record<string, string | undefined>;
 };
 
 function buildThemeOverrideFromColors(colors: ThemePreset['colors']): ThemeOverride {
@@ -53,7 +58,26 @@ function buildThemeOverrideFromColors(colors: ThemePreset['colors']): ThemeOverr
       accent_bg: colors.accent_bg,
       accent_title: colors.accent_title,
     },
-  };
+    tokenizer: {
+      brackets: colors.tok_brackets,
+      asterisk: colors.tok_asterisk,
+      parentheses: colors.tok_parentheses,
+      double_brackets: colors.tok_double_brackets,
+      curly_braces: colors.tok_curly_braces,
+      pipes: colors.tok_pipes,
+      at_sign: colors.tok_at_sign,
+    },
+    tui: {
+      primary: colors.tui_primary,
+      secondary: colors.tui_secondary,
+      surface: colors.tui_surface,
+      panel: colors.tui_panel,
+      warning: colors.tui_warning,
+      error: colors.tui_error,
+      success: colors.tui_success,
+      accent: colors.tui_accent,
+    },
+  } as ThemeOverride;
 }
 
 export default function Settings() {
@@ -176,19 +200,30 @@ export default function Settings() {
     setThemeError(null);
   };
 
-  const handleThemeFieldChange = (key: keyof NonNullable<ThemeOverride['app']>, value: string) => {
-    const nextTheme: ThemeOverride = {
+  const handleThemeFieldChange = (
+    section: 'app' | 'tokenizer' | 'tui',
+    key: string,
+    value: string
+  ) => {
+    const themeSections = (localConfig.theme ?? {}) as ThemeOverrideDraft & Record<string, Record<string, string | undefined> | undefined>;
+    const sectionValues = themeSections[section] ?? {};
+    const nextTheme = {
       ...localConfig.theme,
-      app: {
-        ...(localConfig.theme?.app ?? {}),
+      [section]: {
+        ...sectionValues,
         [key]: value || undefined,
       },
-      tokenizer: localConfig.theme?.tokenizer,
-    };
+    } as ThemeOverride;
 
     updateTheme(selectedThemeName, nextTheme);
     setThemeNotice('Preview updated. Save settings when you want to keep these overrides.');
     setThemeError(null);
+  };
+
+  const getThemeOverrideValue = (section: 'app' | 'tokenizer' | 'tui', key: string) => {
+    const themeSections = (localConfig.theme ?? {}) as ThemeOverrideDraft & Record<string, Record<string, string | undefined> | undefined>;
+    const sectionValues = themeSections[section] as Record<string, string | undefined> | undefined;
+    return sectionValues?.[key] || '';
   };
 
   const handleResetThemeOverrides = () => {
@@ -472,43 +507,62 @@ export default function Settings() {
 
           <div className="grid gap-6 xl:grid-cols-[1.4fr_0.9fr]">
             <div className="space-y-4 rounded-lg border border-border bg-background/60 p-4">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-3">
                 <div>
                   <h3 className="font-semibold">Custom Overrides</h3>
                   <p className="text-sm text-muted-foreground">
                     Overrides apply on top of the selected preset and preview live.
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleResetThemeOverrides}
-                  className="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-sm hover:bg-accent"
-                >
-                  <RotateCcw className="h-4 w-4" />
-                  Reset overrides
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  <Link
+                    to="/themes"
+                    className="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-sm hover:bg-accent"
+                  >
+                    <Palette className="h-4 w-4" />
+                    Manage presets
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={handleResetThemeOverrides}
+                    className="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-sm hover:bg-accent"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                    Reset overrides
+                  </button>
+                </div>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                {EDITABLE_THEME_FIELDS.map((field) => (
-                  <label key={field.key} className="space-y-2 text-sm">
-                    <span className="font-medium">{field.label}</span>
-                    <div className="flex gap-2">
-                      <input
-                        type="color"
-                        value={localConfig.theme?.app?.[field.key] || resolvedTheme?.[field.key === 'text' ? 'text' : field.key === 'muted_text' ? 'muted_text' : field.key === 'surface' ? 'surface' : field.key] || '#000000'}
-                        onChange={(e) => handleThemeFieldChange(field.key, e.target.value)}
-                        className="h-10 w-12 rounded border border-input bg-background p-1"
-                      />
-                      <input
-                        type="text"
-                        value={localConfig.theme?.app?.[field.key] || ''}
-                        onChange={(e) => handleThemeFieldChange(field.key, e.target.value)}
-                        placeholder={resolvedTheme?.[field.key === 'text' ? 'text' : field.key === 'muted_text' ? 'muted_text' : field.key === 'surface' ? 'surface' : field.key] || '#000000'}
-                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      />
+              <div className="space-y-5">
+                {EDITABLE_THEME_SECTIONS.map((section) => (
+                  <div key={section.title} className="space-y-3">
+                    <div>
+                      <h4 className="font-medium">{section.title}</h4>
+                      <p className="text-sm text-muted-foreground">{section.description}</p>
                     </div>
-                  </label>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {section.fields.map((field) => (
+                        <label key={`${section.title}-${field.key}`} className="space-y-2 text-sm">
+                          <span className="font-medium">{field.label}</span>
+                          <div className="flex gap-2">
+                            <input
+                              type="color"
+                              value={getThemeOverrideValue(field.section, field.key) || resolvedTheme?.[field.colorKey] || '#000000'}
+                              onChange={(e) => handleThemeFieldChange(field.section, field.key, e.target.value)}
+                              className="h-10 w-12 rounded border border-input bg-background p-1"
+                            />
+                            <input
+                              type="text"
+                              value={getThemeOverrideValue(field.section, field.key)}
+                              onChange={(e) => handleThemeFieldChange(field.section, field.key, e.target.value)}
+                              placeholder={resolvedTheme?.[field.colorKey] || '#000000'}
+                              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            />
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
