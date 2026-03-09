@@ -31,6 +31,14 @@ pnpm dev:web
 
 Open `http://localhost:3000`. Live API docs are available at `http://localhost:8000/docs`.
 
+To expose the web app on your local network, use the dedicated launcher instead:
+
+```bash
+./run_lan.sh
+```
+
+Then open `http://<your-machine-ip>:3000` from another device on the same network. The script also prints the detected LAN URLs and exposes API docs on port `8000`.
+
 ### Desktop App
 
 The desktop launcher starts the API and Tauri shell together.
@@ -58,6 +66,8 @@ Ubuntu/Debian packages:
 ```bash
 sudo apt install -y libgtk-3-dev libwebkit2gtk-4.1-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev librsvg2-dev pkg-config
 ```
+
+The Tauri desktop shell itself is local-only. For LAN access, use the browser-based launcher above.
 
 ### Python Interfaces
 

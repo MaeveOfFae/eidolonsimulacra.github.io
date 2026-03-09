@@ -27,6 +27,20 @@ pnpm dev:web
 
 Open `http://localhost:3000`.
 
+### LAN Access
+
+```bash
+./run_lan.sh
+```
+
+Open `http://<your-machine-ip>:3000` from another device on the same network. API docs stay available on `http://<your-machine-ip>:8000/docs`.
+
+If you need different ports, override them before launching:
+
+```bash
+CHAR_GEN_WEB_PORT=3001 CHAR_GEN_API_PORT=8001 ./run_lan.sh
+```
+
 ### Desktop App
 
 ```bash
@@ -34,6 +48,8 @@ Open `http://localhost:3000`.
 ```
 
 On Windows use `run_desktop.bat`.
+
+The desktop shell stays local to the machine running it. Use the LAN launcher if you want browser access from another device.
 
 ### Python Interfaces
 

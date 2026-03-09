@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "turbo run dev",
     "dev:web": "pnpm --filter @char-gen/web dev",
+    "dev:web:lan": "pnpm --filter @char-gen/web dev --host 0.0.0.0 --port 3000",
     "dev:mobile": "pnpm --filter @char-gen/mobile start",
     "build": "turbo run build",
     "build:web": "pnpm --filter @char-gen/web build",
