@@ -16,6 +16,7 @@ const Lineage = lazy(() => import('./components/lineage/Lineage'));
 const Similarity = lazy(() => import('./components/similarity/Similarity'));
 const Offspring = lazy(() => import('./components/offspring/Offspring'));
 const Settings = lazy(() => import('./components/settings/Settings'));
+const Themes = lazy(() => import('./components/settings/Themes'));
 const BatchGenerate = lazy(() => import('./components/batch/BatchGenerate'));
 
 function RouteFallback() {
@@ -47,6 +48,7 @@ export default function App() {
           <Route path="/lineage" element={<Lineage />} />
           <Route path="/similarity" element={<Similarity />} />
           <Route path="/offspring" element={<Offspring />} />
+          <Route path="/themes" element={<Themes />} />
           <Route path="/settings" element={<Settings />} />
         </Routes>
       </Suspense>

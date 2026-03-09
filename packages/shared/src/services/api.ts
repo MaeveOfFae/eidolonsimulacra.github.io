@@ -38,6 +38,10 @@ import type {
   BlueprintList,
   ExportPresetSummary,
   ThemePreset,
+  ThemePresetCreate,
+  ThemePresetUpdate,
+  ThemeDuplicateRequest,
+  ThemeRenameRequest,
 } from '../types';
 
 export interface DownloadResponse {
@@ -139,6 +143,40 @@ export class CharacterGeneratorAPI {
 
   async getThemes(): Promise<ThemePreset[]> {
     return this.request<ThemePreset[]>('/config/themes');
+  }
+
+  async createTheme(theme: ThemePresetCreate): Promise<ThemePreset> {
+    return this.request<ThemePreset>('/config/themes', {
+      method: 'POST',
+      body: JSON.stringify(theme),
+    });
+  }
+
+  async updateTheme(name: string, theme: ThemePresetUpdate): Promise<ThemePreset> {
+    return this.request<ThemePreset>(`/config/themes/${encodeURIComponent(name)}`, {
+      method: 'PUT',
+      body: JSON.stringify(theme),
+    });
+  }
+
+  async duplicateTheme(name: string, request: ThemeDuplicateRequest): Promise<ThemePreset> {
+    return this.request<ThemePreset>(`/config/themes/${encodeURIComponent(name)}/duplicate`, {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
+
+  async renameTheme(name: string, request: ThemeRenameRequest): Promise<ThemePreset> {
+    return this.request<ThemePreset>(`/config/themes/${encodeURIComponent(name)}/rename`, {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
+
+  async deleteTheme(name: string): Promise<{ status: string; name: string }> {
+    return this.request<{ status: string; name: string }>(`/config/themes/${encodeURIComponent(name)}`, {
+      method: 'DELETE',
+    });
   }
 
   // ===========================================================================

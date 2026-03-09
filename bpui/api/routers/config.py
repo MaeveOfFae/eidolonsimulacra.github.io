@@ -8,6 +8,10 @@ from ..schemas.config import (
     ConfigUpdate,
     ConnectionTestRequest,
     ConnectionTestResult,
+    ThemePresetCreate,
+    ThemePresetUpdate,
+    ThemeDuplicateRequest,
+    ThemeRenameRequest,
     ThemePresetResponse,
     ThemeColorsResponse,
 )
@@ -76,13 +80,106 @@ async def update_config(update: ConfigUpdate):
 @router.get("/themes", response_model=list[ThemePresetResponse])
 async def list_themes():
     """List available theme presets and resolved palettes."""
-    from bpui.core.theme import list_available_themes, get_theme
+    from bpui.core.theme import list_theme_presets
 
-    themes = []
-    for theme_name in list_available_themes():
-        themes.append(_theme_to_response(get_theme(theme_name)))
+    return [_theme_to_response(theme) for theme in list_theme_presets()]
 
-    return themes
+
+@router.post("/themes", response_model=ThemePresetResponse)
+async def create_theme(request: ThemePresetCreate):
+    """Create a reusable custom theme preset."""
+    from bpui.core.theme import create_custom_theme
+
+    try:
+        theme = create_custom_theme(
+            name=request.name,
+            display_name=request.display_name,
+            description=request.description,
+            colors=request.colors.model_dump(),
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+    return _theme_to_response(theme)
+
+
+@router.put("/themes/{theme_name}", response_model=ThemePresetResponse)
+async def update_theme(theme_name: str, request: ThemePresetUpdate):
+    """Update a reusable custom theme preset."""
+    from bpui.core.theme import update_custom_theme
+
+    try:
+        theme = update_custom_theme(
+            name=theme_name,
+            display_name=request.display_name,
+            description=request.description,
+            colors=request.colors.model_dump() if request.colors else None,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+    return _theme_to_response(theme)
+
+
+@router.post("/themes/{theme_name}/duplicate", response_model=ThemePresetResponse)
+async def duplicate_theme_preset(theme_name: str, request: ThemeDuplicateRequest):
+    """Duplicate any theme into a new reusable custom preset."""
+    from bpui.core.theme import duplicate_theme
+
+    try:
+        theme = duplicate_theme(
+            name=theme_name,
+            new_name=request.new_name,
+            display_name=request.display_name,
+            description=request.description,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+    return _theme_to_response(theme)
+
+
+@router.post("/themes/{theme_name}/rename", response_model=ThemePresetResponse)
+async def rename_theme_preset(theme_name: str, request: ThemeRenameRequest):
+    """Rename a reusable custom theme preset."""
+    from bpui.core.theme import rename_custom_theme
+    from bpui.core.config import load_config, save_config
+
+    try:
+        theme = rename_custom_theme(
+            name=theme_name,
+            new_name=request.new_name,
+            display_name=request.display_name,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+    config = load_config()
+    if config.get("theme_name") == theme_name:
+        config.set("theme_name", theme.name)
+        save_config()
+
+    return _theme_to_response(theme)
+
+
+@router.delete("/themes/{theme_name}")
+async def delete_theme_preset(theme_name: str):
+    """Delete a reusable custom theme preset."""
+    from bpui.core.theme import delete_custom_theme
+    from bpui.core.config import load_config, save_config
+
+    try:
+        delete_custom_theme(theme_name)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+    config = load_config()
+    if config.get("theme_name") == theme_name:
+        config.set("theme_name", "dark")
+        config.set("theme", {})
+        save_config()
+
+    return {"status": "deleted", "name": theme_name}
 
 
 @router.post("/test", response_model=ConnectionTestResult)

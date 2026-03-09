@@ -15,6 +15,7 @@ import {
   BookOpen,
   Dices,
   ShieldCheck,
+  Palette,
 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/utils/cn';
@@ -37,6 +38,7 @@ const navItems = [
   { path: '/similarity', label: 'Compare', icon: GitCompare },
   { path: '/offspring', label: 'Offspring', icon: Baby },
   { path: '/lineage', label: 'Lineage', icon: GitBranch },
+  { path: '/themes', label: 'Theme Studio', icon: Palette },
   { path: '/settings', label: 'Settings', icon: Settings },
 ];
 

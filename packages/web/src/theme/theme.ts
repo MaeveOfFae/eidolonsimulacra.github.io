@@ -20,24 +20,82 @@ const APP_OVERRIDE_MAP: Record<string, keyof ThemeColors> = {
   warning_text: 'warning_text',
 };
 
-export const EDITABLE_THEME_FIELDS = [
-  { key: 'background', label: 'Background' },
-  { key: 'surface', label: 'Surface' },
-  { key: 'window', label: 'Window' },
-  { key: 'text', label: 'Text' },
-  { key: 'muted_text', label: 'Muted Text' },
-  { key: 'accent', label: 'Primary Accent' },
-  { key: 'accent_bg', label: 'Accent Surface' },
-  { key: 'button', label: 'Button' },
-  { key: 'button_text', label: 'Button Text' },
-  { key: 'border', label: 'Border' },
-  { key: 'highlight', label: 'Ring / Highlight' },
-  { key: 'success_text', label: 'Success' },
-  { key: 'warning_text', label: 'Warning' },
-  { key: 'error_text', label: 'Error' },
-] as const;
+const TOKENIZER_OVERRIDE_MAP: Record<string, keyof ThemeColors> = {
+  brackets: 'tok_brackets',
+  asterisk: 'tok_asterisk',
+  parentheses: 'tok_parentheses',
+  double_brackets: 'tok_double_brackets',
+  curly_braces: 'tok_curly_braces',
+  pipes: 'tok_pipes',
+  at_sign: 'tok_at_sign',
+};
 
-export type EditableThemeField = typeof EDITABLE_THEME_FIELDS[number]['key'];
+const TUI_OVERRIDE_MAP: Record<string, keyof ThemeColors> = {
+  primary: 'tui_primary',
+  secondary: 'tui_secondary',
+  surface: 'tui_surface',
+  panel: 'tui_panel',
+  warning: 'tui_warning',
+  error: 'tui_error',
+  success: 'tui_success',
+  accent: 'tui_accent',
+};
+
+type ThemeFieldSection = 'app' | 'tokenizer' | 'tui';
+
+export interface ThemeFieldDefinition {
+  section: ThemeFieldSection;
+  key: string;
+  label: string;
+  colorKey: keyof ThemeColors;
+}
+
+export const APP_THEME_FIELDS: ThemeFieldDefinition[] = [
+  { section: 'app', key: 'background', label: 'Background', colorKey: 'background' },
+  { section: 'app', key: 'surface', label: 'Surface', colorKey: 'surface' },
+  { section: 'app', key: 'window', label: 'Window', colorKey: 'window' },
+  { section: 'app', key: 'text', label: 'Text', colorKey: 'text' },
+  { section: 'app', key: 'muted_text', label: 'Muted Text', colorKey: 'muted_text' },
+  { section: 'app', key: 'accent', label: 'Primary Accent', colorKey: 'accent' },
+  { section: 'app', key: 'accent_bg', label: 'Accent Surface', colorKey: 'accent_bg' },
+  { section: 'app', key: 'button', label: 'Button', colorKey: 'button' },
+  { section: 'app', key: 'button_text', label: 'Button Text', colorKey: 'button_text' },
+  { section: 'app', key: 'border', label: 'Border', colorKey: 'border' },
+  { section: 'app', key: 'highlight', label: 'Ring / Highlight', colorKey: 'highlight' },
+  { section: 'app', key: 'success_text', label: 'Success Text', colorKey: 'success_text' },
+  { section: 'app', key: 'warning_text', label: 'Warning Text', colorKey: 'warning_text' },
+  { section: 'app', key: 'error_text', label: 'Error Text', colorKey: 'error_text' },
+  { section: 'app', key: 'success_bg', label: 'Success Surface', colorKey: 'success_bg' },
+  { section: 'app', key: 'danger_bg', label: 'Danger Surface', colorKey: 'danger_bg' },
+  { section: 'app', key: 'accent_title', label: 'Accent Title', colorKey: 'accent_title' },
+];
+
+export const TOKENIZER_THEME_FIELDS: ThemeFieldDefinition[] = [
+  { section: 'tokenizer', key: 'brackets', label: 'Brackets', colorKey: 'tok_brackets' },
+  { section: 'tokenizer', key: 'asterisk', label: 'Asterisk', colorKey: 'tok_asterisk' },
+  { section: 'tokenizer', key: 'parentheses', label: 'Parentheses', colorKey: 'tok_parentheses' },
+  { section: 'tokenizer', key: 'double_brackets', label: 'Double Brackets', colorKey: 'tok_double_brackets' },
+  { section: 'tokenizer', key: 'curly_braces', label: 'Curly Braces', colorKey: 'tok_curly_braces' },
+  { section: 'tokenizer', key: 'pipes', label: 'Pipes', colorKey: 'tok_pipes' },
+  { section: 'tokenizer', key: 'at_sign', label: 'At Sign', colorKey: 'tok_at_sign' },
+];
+
+export const TUI_THEME_FIELDS: ThemeFieldDefinition[] = [
+  { section: 'tui', key: 'primary', label: 'Primary Token', colorKey: 'tui_primary' },
+  { section: 'tui', key: 'secondary', label: 'Secondary Token', colorKey: 'tui_secondary' },
+  { section: 'tui', key: 'surface', label: 'Surface Token', colorKey: 'tui_surface' },
+  { section: 'tui', key: 'panel', label: 'Panel Token', colorKey: 'tui_panel' },
+  { section: 'tui', key: 'warning', label: 'Warning Token', colorKey: 'tui_warning' },
+  { section: 'tui', key: 'error', label: 'Error Token', colorKey: 'tui_error' },
+  { section: 'tui', key: 'success', label: 'Success Token', colorKey: 'tui_success' },
+  { section: 'tui', key: 'accent', label: 'Accent Token', colorKey: 'tui_accent' },
+];
+
+export const EDITABLE_THEME_SECTIONS = [
+  { title: 'App Colors', description: 'Web and app-facing surfaces.', fields: APP_THEME_FIELDS },
+  { title: 'Tokenizer Colors', description: 'Syntax highlighting tokens used in review surfaces.', fields: TOKENIZER_THEME_FIELDS },
+  { title: 'TUI Tokens', description: 'Textual design tokens used by the terminal UI themes.', fields: TUI_THEME_FIELDS },
+] as const;
 
 export function resolveThemeColors(
   preset: ThemePreset | undefined,
@@ -62,26 +120,29 @@ export function resolveThemeColors(
     }
   }
 
-  return merged;
-}
+  for (const [overrideKey, value] of Object.entries(overrides?.tokenizer ?? {})) {
+    if (!value) {
+      continue;
+    }
 
-export function buildThemeOverride(colors: Partial<Record<EditableThemeField, string>>): ThemeOverride {
-  return {
-    app: { ...colors },
-  };
-}
-
-export function extractEditableThemeFields(overrides?: ThemeOverride): Partial<Record<EditableThemeField, string>> {
-  const result: Partial<Record<EditableThemeField, string>> = {};
-
-  for (const field of EDITABLE_THEME_FIELDS) {
-    const value = overrides?.app?.[field.key];
-    if (value) {
-      result[field.key] = value;
+    const mappedKey = TOKENIZER_OVERRIDE_MAP[overrideKey];
+    if (mappedKey) {
+      merged[mappedKey] = value;
     }
   }
 
-  return result;
+  for (const [overrideKey, value] of Object.entries(overrides?.tui ?? {})) {
+    if (!value) {
+      continue;
+    }
+
+    const mappedKey = TUI_OVERRIDE_MAP[overrideKey];
+    if (mappedKey) {
+      merged[mappedKey] = value;
+    }
+  }
+
+  return merged;
 }
 
 function hexToHsl(hex: string): string {

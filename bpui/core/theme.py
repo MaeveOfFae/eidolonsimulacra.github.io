@@ -12,16 +12,19 @@ theme picker automatically.
 
 from __future__ import annotations
 
-import importlib.resources
 from dataclasses import dataclass, field, asdict, fields
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+import re
+import shutil
 import sys
 
 if sys.version_info >= (3, 11):
     import tomllib
 else:
     import tomli as tomllib
+
+import tomli_w
 
 from bpui.utils.logging_config import get_logger
 
@@ -185,6 +188,63 @@ def _load_theme_from_file(path: Path) -> ThemeDefinition:
     )
 
 
+def _sanitize_theme_name(name: str) -> str:
+    """Normalize a theme name for use as a filename and theme id."""
+    normalized = re.sub(r"[^a-zA-Z0-9_-]+", "_", name.strip().lower()).strip("_")
+    if not normalized:
+        raise ValueError("Theme name cannot be empty")
+    return normalized
+
+
+def _theme_toml_path(name: str) -> Path:
+    return _get_themes_dir() / f"{name}.toml"
+
+
+def _theme_tcss_path(name: str) -> Path:
+    return _get_themes_dir() / f"{name}.tcss"
+
+
+def _theme_to_toml_payload(theme: ThemeDefinition) -> Dict[str, Any]:
+    return {
+        "name": theme.name,
+        "display_name": theme.display_name,
+        "description": theme.description,
+        "is_builtin": theme.is_builtin,
+        "colors": asdict(theme.colors),
+    }
+
+
+def _write_theme_files(theme: ThemeDefinition, source_style_name: Optional[str] = None) -> None:
+    """Write TOML and TCSS files for a theme.
+
+    The TCSS layout rules are copied from an existing source theme because the
+    Textual styles are layout-oriented and consume design tokens rather than
+    hard-coded palette values.
+    """
+    themes_dir = _get_themes_dir()
+    themes_dir.mkdir(parents=True, exist_ok=True)
+
+    toml_path = _theme_toml_path(theme.name)
+    tcss_path = _theme_tcss_path(theme.name)
+
+    with toml_path.open("wb") as file_obj:
+        tomli_w.dump(_theme_to_toml_payload(theme), file_obj)
+
+    source_name = source_style_name or (theme.name if _theme_tcss_path(theme.name).exists() else DEFAULT_THEME_NAME)
+    source_tcss_path = _theme_tcss_path(source_name)
+    if not source_tcss_path.exists():
+        source_tcss_path = _theme_tcss_path(DEFAULT_THEME_NAME)
+    if source_tcss_path.resolve() != tcss_path.resolve():
+        shutil.copyfile(source_tcss_path, tcss_path)
+
+
+def _ensure_custom_theme(name: str) -> None:
+    if name == "custom":
+        raise ValueError("The reserved 'custom' theme cannot be modified")
+    if name in BUILTIN_THEMES and BUILTIN_THEMES[name].is_builtin:
+        raise ValueError(f"Built-in theme '{name}' cannot be modified")
+
+
 def _load_themes_from_disk() -> Dict[str, ThemeDefinition]:
     """Load all themes from the resources/themes directory."""
     themes_dir = _get_themes_dir()
@@ -245,6 +305,16 @@ def list_available_themes() -> List[str]:
                 names.append(stem)
 
     return names
+
+
+def list_theme_presets(include_reserved: bool = False) -> List[ThemeDefinition]:
+    """Return theme presets sorted with built-ins first, then custom themes."""
+    names = list_available_themes()
+    if not include_reserved:
+        names = [name for name in names if name != "custom"]
+
+    themes = [get_theme(name) for name in names]
+    return sorted(themes, key=lambda theme: (not theme.is_builtin, theme.display_name.lower()))
 
 
 def get_theme(name: str) -> ThemeDefinition:
@@ -330,6 +400,114 @@ def save_theme_selection(config, theme_name: str) -> None:
     logger.info(f"Theme set to '{theme_name}'")
 
 
+def create_custom_theme(
+    name: str,
+    display_name: str,
+    colors: Dict[str, Any],
+    description: str = "",
+    source_style_name: Optional[str] = None,
+) -> ThemeDefinition:
+    """Create a new reusable custom theme preset."""
+    sanitized_name = _sanitize_theme_name(name)
+    if sanitized_name in BUILTIN_THEMES or _theme_toml_path(sanitized_name).exists():
+        raise ValueError(f"Theme '{sanitized_name}' already exists")
+
+    theme = ThemeDefinition(
+        name=sanitized_name,
+        display_name=display_name.strip() or sanitized_name.replace("_", " ").title(),
+        description=description,
+        is_builtin=False,
+        colors=ThemeColors(**colors),
+    )
+    _write_theme_files(theme, source_style_name=source_style_name)
+    reload_themes()
+    return get_theme(sanitized_name)
+
+
+def update_custom_theme(
+    name: str,
+    display_name: Optional[str] = None,
+    description: Optional[str] = None,
+    colors: Optional[Dict[str, Any]] = None,
+) -> ThemeDefinition:
+    """Update an existing custom theme preset."""
+    sanitized_name = _sanitize_theme_name(name)
+    _ensure_custom_theme(sanitized_name)
+
+    existing = get_theme(sanitized_name)
+    updated = ThemeDefinition(
+        name=existing.name,
+        display_name=display_name if display_name is not None else existing.display_name,
+        description=description if description is not None else existing.description,
+        is_builtin=False,
+        colors=ThemeColors(**(colors or asdict(existing.colors))),
+    )
+    _write_theme_files(updated, source_style_name=existing.name)
+    reload_themes()
+    return get_theme(sanitized_name)
+
+
+def duplicate_theme(
+    name: str,
+    new_name: str,
+    display_name: Optional[str] = None,
+    description: Optional[str] = None,
+) -> ThemeDefinition:
+    """Duplicate any theme into a new custom preset."""
+    source_theme = get_theme(name)
+    return create_custom_theme(
+        name=new_name,
+        display_name=display_name or f"{source_theme.display_name} Copy",
+        description=description if description is not None else source_theme.description,
+        colors=asdict(source_theme.colors),
+        source_style_name=source_theme.name if _theme_tcss_path(source_theme.name).exists() else DEFAULT_THEME_NAME,
+    )
+
+
+def rename_custom_theme(name: str, new_name: str, display_name: Optional[str] = None) -> ThemeDefinition:
+    """Rename a custom theme preset and its backing files."""
+    old_name = _sanitize_theme_name(name)
+    new_sanitized_name = _sanitize_theme_name(new_name)
+    _ensure_custom_theme(old_name)
+
+    if new_sanitized_name != old_name and (new_sanitized_name in BUILTIN_THEMES or _theme_toml_path(new_sanitized_name).exists()):
+        raise ValueError(f"Theme '{new_sanitized_name}' already exists")
+
+    existing = get_theme(old_name)
+    theme = ThemeDefinition(
+        name=new_sanitized_name,
+        display_name=display_name or existing.display_name,
+        description=existing.description,
+        is_builtin=False,
+        colors=existing.colors,
+    )
+
+    old_toml_path = _theme_toml_path(old_name)
+    old_tcss_path = _theme_tcss_path(old_name)
+    if old_toml_path.exists() and old_name != new_sanitized_name:
+        old_toml_path.unlink()
+    if old_tcss_path.exists() and old_name != new_sanitized_name:
+        old_tcss_path.unlink()
+
+    _write_theme_files(theme, source_style_name=old_name)
+    reload_themes()
+    return get_theme(new_sanitized_name)
+
+
+def delete_custom_theme(name: str) -> None:
+    """Delete a custom theme preset from disk."""
+    sanitized_name = _sanitize_theme_name(name)
+    _ensure_custom_theme(sanitized_name)
+
+    toml_path = _theme_toml_path(sanitized_name)
+    tcss_path = _theme_tcss_path(sanitized_name)
+    if toml_path.exists():
+        toml_path.unlink()
+    if tcss_path.exists():
+        tcss_path.unlink()
+    reload_themes()
+
+
 def _apply_custom_overrides(
     base: ThemeDefinition, overrides: Dict[str, Any]
 ) -> ThemeDefinition:
@@ -378,6 +556,17 @@ def _apply_custom_overrides(
         "at_sign": "tok_at_sign",
     }
 
+    tui_map = {
+        "primary": "tui_primary",
+        "secondary": "tui_secondary",
+        "surface": "tui_surface",
+        "panel": "tui_panel",
+        "warning": "tui_warning",
+        "error": "tui_error",
+        "success": "tui_success",
+        "accent": "tui_accent",
+    }
+
     app_overrides = overrides.get("app", {})
     if isinstance(app_overrides, dict):
         for legacy_key, field_name in app_map.items():
@@ -389,6 +578,12 @@ def _apply_custom_overrides(
         for legacy_key, field_name in tok_map.items():
             if legacy_key in tok_overrides:
                 setattr(colors, field_name, tok_overrides[legacy_key])
+
+    tui_overrides = overrides.get("tui", {})
+    if isinstance(tui_overrides, dict):
+        for legacy_key, field_name in tui_map.items():
+            if legacy_key in tui_overrides:
+                setattr(colors, field_name, tui_overrides[legacy_key])
 
     return theme
 
