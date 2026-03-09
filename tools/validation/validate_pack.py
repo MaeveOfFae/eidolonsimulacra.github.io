@@ -24,6 +24,9 @@ from pathlib import Path
 from typing import Iterable
 
 from bpui.core.content_validation import validate_file_content
+from bpui.core.parse_blocks import get_asset_filename
+from bpui.features.templates.templates import TemplateManager
+from bpui.utils.metadata.metadata import DraftMetadata
 
 
 REQUIRED_FILES = [
@@ -47,6 +50,13 @@ class Finding:
     message: str
 
 
+@dataclass
+class ValidationPlan:
+    required_files: list[Path]
+    optional_files: list[Path]
+    template_name: str | None = None
+
+
 def iter_files(base_dir: Path) -> Iterable[Path]:
     for rel in REQUIRED_FILES + OPTIONAL_FILES:
         p = base_dir / rel
@@ -54,18 +64,50 @@ def iter_files(base_dir: Path) -> Iterable[Path]:
             yield p
 
 
-def validate_required_files(base_dir: Path) -> list[Finding]:
+def build_validation_plan(base_dir: Path) -> ValidationPlan:
+    metadata = DraftMetadata.load(base_dir)
+    template_name = metadata.template_name if metadata else None
+
+    if not template_name or template_name == "V2/V3 Card":
+        return ValidationPlan(
+            required_files=[base_dir / rel for rel in REQUIRED_FILES],
+            optional_files=[base_dir / rel for rel in OPTIONAL_FILES],
+            template_name=template_name,
+        )
+
+    template = TemplateManager().get_template(template_name)
+    if not template:
+        raise ValueError(f"Template not found for validation: {template_name}")
+
+    required_files: list[Path] = []
+    optional_files: list[Path] = []
+    for asset in template.assets:
+        asset_path = base_dir / get_asset_filename(asset.name, template)
+        if asset.required:
+            required_files.append(asset_path)
+        else:
+            optional_files.append(asset_path)
+
+    return ValidationPlan(
+        required_files=required_files,
+        optional_files=optional_files,
+        template_name=template_name,
+    )
+
+
+def validate_required_files(required_files: Iterable[Path]) -> list[Finding]:
     findings: list[Finding] = []
-    for rel in REQUIRED_FILES:
-        p = base_dir / rel
+    for p in required_files:
         if not p.is_file():
-            findings.append(Finding(p, f"Missing required file: {rel}"))
+            findings.append(Finding(p, f"Missing required file: {p.name}"))
     return findings
 
 
-def validate_placeholders(base_dir: Path) -> list[Finding]:
+def validate_placeholders(files: Iterable[Path]) -> list[Finding]:
     findings: list[Finding] = []
-    for file_path in iter_files(base_dir):
+    for file_path in files:
+        if not file_path.is_file():
+            continue
         labels = validate_file_content(file_path)
         for label in sorted(set(labels)):
             findings.append(Finding(file_path, f"Found validation issue: {label}"))
@@ -83,11 +125,17 @@ def main(argv: list[str]) -> int:
         print(f"ERROR: Not a directory: {base_dir}")
         return 2
 
+    try:
+        plan = build_validation_plan(base_dir)
+    except ValueError as error:
+        print(f"ERROR: {error}")
+        return 1
+
     findings: list[Finding] = []
-    findings.extend(validate_required_files(base_dir))
+    findings.extend(validate_required_files(plan.required_files))
     # Only run content checks if the required set exists.
     if not any(f.message.startswith("Missing required file") for f in findings):
-        findings.extend(validate_placeholders(base_dir))
+        findings.extend(validate_placeholders([*plan.required_files, *plan.optional_files]))
         # Note: validate_a1111_mode removed - [Content: SFW|NSFW] is now optional
 
     if findings:

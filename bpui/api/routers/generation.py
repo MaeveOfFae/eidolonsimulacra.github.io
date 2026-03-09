@@ -280,7 +280,6 @@ async def finalize_generation(request: FinalizeGenerationRequest):
     """Persist a fully reviewed draft assembled through per-asset generation."""
     from bpui.api.schemas.generation import GenerationComplete
     from bpui.core.parse_blocks import extract_character_name
-    from bpui.core.content_validation import validate_assets_content
     from bpui.core.config import load_config
     from bpui.utils.file_io.pack_io import create_draft_dir
 
@@ -297,16 +296,6 @@ async def finalize_generation(request: FinalizeGenerationRequest):
             )
 
         ordered_assets = {asset_name: request.assets[asset_name] for asset_name in asset_order}
-        content_failures = validate_assets_content(ordered_assets)
-        if content_failures:
-            details = []
-            for asset_name, issues in content_failures.items():
-                details.append(f"{asset_name}: {', '.join(sorted(set(issues)))}")
-            raise HTTPException(
-                status_code=400,
-                detail="Generated content failed validation checks: " + "; ".join(details),
-            )
-
         character_name = extract_character_name(ordered_assets.get("character_sheet", "")) or "unnamed_character"
         config = load_config()
         draft_path = create_draft_dir(

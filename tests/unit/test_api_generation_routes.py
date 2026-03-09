@@ -253,7 +253,6 @@ def test_generate_asset_requires_prior_assets_and_returns_content(monkeypatch):
 def test_finalize_generation_persists_reviewed_assets(tmp_path, monkeypatch):
     monkeypatch.setattr("bpui.core.config.load_config", lambda: SimpleNamespace(model="test/model"))
     monkeypatch.setattr("bpui.core.parse_blocks.extract_character_name", lambda content: "Batch Character")
-    monkeypatch.setattr("bpui.core.content_validation.validate_assets_content", lambda assets: {})
 
     class FakeTemplateManager:
         def get_template(self, name):
@@ -285,3 +284,42 @@ def test_finalize_generation_persists_reviewed_assets(tmp_path, monkeypatch):
 
     assert response.draft_id == "finalized_draft"
     assert response.character_name == "Batch Character"
+
+
+def test_finalize_generation_does_not_block_on_heuristic_validation(tmp_path, monkeypatch):
+    monkeypatch.setattr("bpui.core.config.load_config", lambda: SimpleNamespace(model="test/model"))
+    monkeypatch.setattr("bpui.core.parse_blocks.extract_character_name", lambda content: "Batch Character")
+    monkeypatch.setattr(
+        "bpui.core.content_validation.validate_assets_content",
+        lambda assets: {"system_prompt": ["Narrates {{user}} action/thought/consent"]},
+    )
+
+    class FakeTemplateManager:
+        def get_template(self, name):
+            return SimpleNamespace(
+                name=name,
+                assets=[SimpleNamespace(name="system_prompt"), SimpleNamespace(name="character_sheet")],
+            )
+
+    monkeypatch.setattr("bpui.features.templates.templates.TemplateManager", FakeTemplateManager)
+    monkeypatch.setattr(
+        "bpui.utils.topological_sort.topological_sort",
+        lambda assets: [asset.name for asset in assets],
+    )
+    monkeypatch.setattr(
+        "bpui.utils.file_io.pack_io.create_draft_dir",
+        lambda *args, **kwargs: tmp_path / "finalized_despite_warning",
+    )
+
+    response = asyncio.run(
+        finalize_generation(
+            FinalizeGenerationRequest(
+                seed="seed",
+                mode="SFW",
+                template="V2/V3 Card",
+                assets={"system_prompt": "SYSTEM", "character_sheet": "name: Batch Character"},
+            )
+        )
+    )
+
+    assert response.draft_id == "finalized_despite_warning"
