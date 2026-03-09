@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Star, Download, Trash2, Edit3, Check, X, ShieldCheck } from 'lucide-react';
 import { api } from '@char-gen/shared';
@@ -9,7 +9,9 @@ import { useAssistantScreenContext } from '../common/AssistantContext';
 
 export default function Review() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [editingAsset, setEditingAsset] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
@@ -35,7 +37,7 @@ export default function Review() {
     mutationFn: () => api.deleteDraft(decodeURIComponent(id || '')),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['drafts'] });
-      window.location.href = '/drafts';
+      navigate('/drafts');
     },
   });
 
@@ -159,11 +161,7 @@ export default function Review() {
             Export
           </button>
           <button
-            onClick={() => {
-              if (confirm('Delete this character? This cannot be undone.')) {
-                deleteDraft.mutate();
-              }
-            }}
+            onClick={() => setShowDeleteModal(true)}
             className="inline-flex items-center gap-2 rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive hover:bg-destructive/20"
           >
             <Trash2 className="h-4 w-4" />
@@ -277,6 +275,36 @@ export default function Review() {
           characterName={draft.metadata.character_name || draft.metadata.seed}
           onClose={() => setShowExportModal(false)}
         />
+      )}
+
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-xl">
+            <h2 className="text-lg font-semibold">Delete Draft</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Delete this draft and all of its saved assets? This cannot be undone.
+            </p>
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                disabled={deleteDraft.isPending}
+                className="rounded-md border border-input bg-background px-4 py-2 text-sm hover:bg-accent disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  deleteDraft.mutate();
+                }}
+                disabled={deleteDraft.isPending}
+                className="rounded-md bg-destructive px-4 py-2 text-sm text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
+              >
+                {deleteDraft.isPending ? 'Deleting...' : 'Delete Draft'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Chat Panel for Refinement */}

@@ -47,24 +47,18 @@ export default function ChatPanel({ draftId, assetName, onAssetRefined }: ChatPa
         context_asset: selectedAsset,
       });
 
+      let fullContent = '';
       stream.subscribe((event) => {
         if (event.event === 'chunk' && 'content' in event.data) {
           const data = event.data as { content: string };
-          setStreamingContent(prev => prev + data.content);
+          fullContent += data.content;
+          setStreamingContent(fullContent);
         }
         if (event.event === 'complete') {
-          const fullContent = streamingContent + (event.data as { content?: string })?.content || '';
           setMessages(prev => [...prev, { role: 'assistant', content: fullContent }]);
           setStreamingContent('');
+          setIsStreaming(false);
         }
-        if (event.event === 'error') {
-          const data = event.data as { error: string };
-          setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${data.error}` }]);
-        }
-      });
-
-      stream.onComplete_(() => {
-        setIsStreaming(false);
       });
 
       stream.onError_((error) => {
@@ -107,11 +101,8 @@ export default function ChatPanel({ draftId, assetName, onAssetRefined }: ChatPa
             { role: 'user', content: `Refine ${selectedAsset}: ${userMessage}` },
             { role: 'assistant', content: `Here's the updated ${selectedAsset.replace(/_/g, ' ')}:` }
           ]);
+          setIsStreaming(false);
         }
-      });
-
-      stream.onComplete_(() => {
-        setIsStreaming(false);
       });
 
       stream.onError_((error) => {

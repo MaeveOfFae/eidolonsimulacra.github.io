@@ -91,14 +91,10 @@ export default function GlobalAssistant() {
         if (event.event === 'complete') {
           setMessages((previous) => [...previous, { role: 'assistant', content: fullContent }]);
           setStreamingContent('');
-        }
-        if (event.event === 'error') {
-          const data = event.data as { error: string };
-          setMessages((previous) => [...previous, { role: 'assistant', content: `Error: ${data.error}` }]);
+          setIsStreaming(false);
         }
       });
 
-      stream.onComplete_(() => setIsStreaming(false));
       stream.onError_((error) => {
         setIsStreaming(false);
         setMessages((previous) => [...previous, { role: 'assistant', content: `Error: ${error}` }]);

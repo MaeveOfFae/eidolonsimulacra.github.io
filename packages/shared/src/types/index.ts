@@ -193,8 +193,29 @@ export interface GenerateBatchRequest {
   max_concurrent?: number;
 }
 
+export interface GenerateAssetRequest {
+  seed: string;
+  template?: string;
+  mode: ContentMode;
+  asset_name: string;
+  prior_assets: Record<string, string>;
+}
+
+export interface GenerateAssetResponse {
+  asset_name: string;
+  content: string;
+  character_name?: string;
+}
+
+export interface FinalizeGenerationRequest {
+  seed: string;
+  template?: string;
+  mode: ContentMode;
+  assets: Record<string, string>;
+}
+
 export interface GenerationProgress {
-  stage: 'initializing' | 'orchestrator' | 'parsing' | 'saving' | 'complete' | 'error';
+  stage: 'initializing' | 'asset_generation' | 'saving' | 'complete' | 'error';
   status: 'started' | 'in_progress' | 'complete' | 'error';
   asset?: string;
   content?: string;

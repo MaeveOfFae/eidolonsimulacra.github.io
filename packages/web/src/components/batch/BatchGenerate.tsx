@@ -84,10 +84,6 @@ export default function BatchGenerate() {
             i === data.index ? { ...job, status: 'error', error: data.error } : job
           ));
         }
-        if (event.event === 'complete') {
-          setIsRunning(false);
-          setCurrentSeed('');
-        }
       });
 
       stream.onError_((error) => {

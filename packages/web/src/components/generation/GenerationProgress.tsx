@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
-import { CheckCircle2, Circle, Loader2, XCircle, FileText, Clock } from 'lucide-react';
-import { api, type GenerationProgress as ProgressData, type GenerationComplete, type Template } from '@char-gen/shared';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { CheckCircle2, Circle, Loader2, XCircle, FileText, Clock, RotateCcw, Save } from 'lucide-react';
+import { api, type GenerationComplete, type Template } from '@char-gen/shared';
 
 function hasName(value: unknown): value is { name: string } {
   return typeof value === 'object' && value !== null && 'name' in value && typeof (value as { name: unknown }).name === 'string';
@@ -18,8 +18,49 @@ interface GenerationProgressProps {
 
 interface AssetProgress {
   name: string;
-  status: 'pending' | 'generating' | 'complete' | 'error';
+  status: 'pending' | 'generating' | 'reviewing' | 'complete' | 'error';
   content?: string;
+}
+
+function sortTemplateAssets(template?: Template): string[] {
+  if (!template) {
+    return [];
+  }
+
+  const assets = template.assets;
+  const inDegree = new Map<string, number>();
+  const edges = new Map<string, string[]>();
+
+  for (const asset of assets) {
+    inDegree.set(asset.name, asset.depends_on.length);
+    edges.set(asset.name, []);
+  }
+
+  for (const asset of assets) {
+    for (const dependency of asset.depends_on) {
+      const dependents = edges.get(dependency);
+      if (dependents) {
+        dependents.push(asset.name);
+      }
+    }
+  }
+
+  const queue = assets.filter((asset) => asset.depends_on.length === 0).map((asset) => asset.name);
+  const ordered: string[] = [];
+
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    ordered.push(current);
+    for (const dependent of edges.get(current) || []) {
+      const nextDegree = (inDegree.get(dependent) || 0) - 1;
+      inDegree.set(dependent, nextDegree);
+      if (nextDegree === 0) {
+        queue.push(dependent);
+      }
+    }
+  }
+
+  return ordered.length === assets.length ? ordered : assets.map((asset) => asset.name);
 }
 
 export default function GenerationProgress({
@@ -31,20 +72,99 @@ export default function GenerationProgress({
   onError,
   onCancel,
 }: GenerationProgressProps) {
-  const [stage, setStage] = useState<ProgressData['stage']>('initializing');
-  const [status, setStatus] = useState<ProgressData['status']>('started');
+  const [status, setStatus] = useState<'initializing' | 'generating' | 'reviewing' | 'saving' | 'complete' | 'error'>('initializing');
   const [currentAsset, setCurrentAsset] = useState<string | null>(null);
   const [assets, setAssets] = useState<AssetProgress[]>([]);
-  const [streamingContent, setStreamingContent] = useState('');
+  const [assetDrafts, setAssetDrafts] = useState<Record<string, string>>({});
+  const [editorContent, setEditorContent] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [characterName, setCharacterName] = useState<string | null>(null);
   const [startTime] = useState(Date.now());
   const [elapsed, setElapsed] = useState(0);
-  const [streamController, setStreamController] = useState<ReturnType<typeof api.generate> | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const selectedTemplate = useMemo(
+    () => templates.find((candidate) => candidate.name === template),
+    [template, templates]
+  );
+  const assetOrder = useMemo(() => sortTemplateAssets(selectedTemplate), [selectedTemplate]);
+
+  const updateAssetStatus = useCallback((assetName: string, nextStatus: AssetProgress['status'], content?: string) => {
+    setAssets((previous) => previous.map((asset) => (
+      asset.name === assetName
+        ? { ...asset, status: nextStatus, content: content ?? asset.content }
+        : asset
+    )));
+  }, []);
+
+  const getApprovedAssets = useCallback((upToIndex: number, currentOverride?: { name: string; content: string }) => {
+    const approved: Record<string, string> = {};
+    for (let index = 0; index < upToIndex; index += 1) {
+      const assetName = assetOrder[index];
+      const content = assetDrafts[assetName];
+      if (content) {
+        approved[assetName] = content;
+      }
+    }
+    if (currentOverride) {
+      approved[currentOverride.name] = currentOverride.content;
+    }
+    return approved;
+  }, [assetDrafts, assetOrder]);
+
+  const generateAsset = useCallback(async (assetIndex: number, approvedAssets: Record<string, string>) => {
+    const assetName = assetOrder[assetIndex];
+    if (!assetName) {
+      return;
+    }
+
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    setStatus('generating');
+    setCurrentAsset(assetName);
+    setEditorContent('');
+    updateAssetStatus(assetName, 'generating');
+
+    try {
+      const response = await api.generateAsset(
+        {
+          seed,
+          mode,
+          template,
+          asset_name: assetName,
+          prior_assets: approvedAssets,
+        },
+        controller.signal,
+      );
+
+      if (controller.signal.aborted) {
+        return;
+      }
+
+      if (response.character_name) {
+        setCharacterName(response.character_name);
+      }
+      setEditorContent(response.content);
+      updateAssetStatus(assetName, 'reviewing', response.content);
+      setStatus('reviewing');
+    } catch (generationError) {
+      if (controller.signal.aborted) {
+        return;
+      }
+      const message = generationError instanceof Error ? generationError.message : 'Asset generation failed';
+      setError(message);
+      updateAssetStatus(assetName, 'error');
+      setStatus('error');
+      onError(message);
+    }
+  }, [assetOrder, mode, onError, seed, template, updateAssetStatus]);
 
   // Update elapsed time every second
   useEffect(() => {
     const interval = setInterval(() => {
-      if (status === 'in_progress') {
+      if (status === 'generating' || status === 'reviewing' || status === 'saving') {
         setElapsed(Math.floor((Date.now() - startTime) / 1000));
       }
     }, 1000);
@@ -53,117 +173,84 @@ export default function GenerationProgress({
 
   // Initialize assets from template
   useEffect(() => {
-    const selectedTemplate = templates.find(t => t.name === template);
-    if (selectedTemplate) {
-      setAssets(
-        selectedTemplate.assets.map(a => ({
-          name: a.name,
-          status: 'pending' as const,
-        }))
-      );
-    } else {
-      // Default assets if no template
-      setAssets([
-        { name: 'character_sheet', status: 'pending' },
-        { name: 'intro_page', status: 'pending' },
-        { name: 'character_traits', status: 'pending' },
-        { name: 'character_appearance', status: 'pending' },
-        { name: 'character_background', status: 'pending' },
-        { name: 'character_dialogue', status: 'pending' },
-      ]);
-    }
-  }, [template, templates]);
+    setAssets(assetOrder.map((name) => ({ name, status: 'pending' })));
+    setAssetDrafts({});
+    setCurrentAsset(null);
+    setEditorContent('');
+    setError(null);
+    setCharacterName(null);
+  }, [assetOrder]);
 
   // Start generation
   useEffect(() => {
-    let ignoreAbortError = false;
-    const stream = api.generate({ seed, mode, template, stream: true });
-    setStreamController(stream);
-
-    stream.subscribe((event) => {
-      if (event.event === 'status') {
-        const data = event.data as ProgressData;
-        setStage(data.stage);
-        setStatus(data.status);
-        if (data.asset) {
-          setCurrentAsset(data.asset);
-          setAssets(prev =>
-            prev.map(a =>
-              a.name === data.asset
-                ? { ...a, status: 'generating' }
-                : a
-            )
-          );
-        }
-      } else if (event.event === 'chunk' && 'content' in event.data) {
-        const data = event.data as { content: string };
-        setStreamingContent(prev => prev + data.content);
-      } else if (event.event === 'asset_complete') {
-        if (hasName(event.data)) {
-          const data = event.data;
-          setAssets(prev =>
-            prev.map(a =>
-              a.name === data.name
-                ? { ...a, status: 'complete' }
-                : a
-            )
-          );
-        }
-        setStreamingContent('');
-      } else if (event.event === 'asset') {
-        if (hasName(event.data)) {
-          const data = event.data;
-          setCurrentAsset(data.name);
-          setAssets(prev =>
-            prev.map(a =>
-              a.name === data.name
-                ? { ...a, status: 'generating' }
-                : a
-            )
-          );
-        }
-      } else if (event.event === 'complete') {
-        const data = event.data as GenerationComplete;
-        setStatus('complete');
-        onComplete(data);
-      } else if (event.event === 'error') {
-        const data = event.data as { error: string };
-        setError(data.error);
-        setStatus('error');
-        onError(data.error);
+    const timeoutId = window.setTimeout(() => {
+      if (assetOrder.length > 0) {
+        void generateAsset(0, {});
       }
-    });
-
-    stream.onError_((err) => {
-      if (ignoreAbortError || /abort/i.test(err)) {
-        return;
-      }
-      setError(err);
-      setStatus('error');
-      onError(err);
-    });
-
-    stream.onComplete_((data) => {
-      setStatus('complete');
-      onComplete(data);
-    });
-
-    stream.start();
+    }, 0);
 
     return () => {
-      ignoreAbortError = true;
-      stream.abort();
+      window.clearTimeout(timeoutId);
+      abortControllerRef.current?.abort();
     };
-  }, [seed, mode, template, onComplete, onError]);
+  }, [assetOrder, generateAsset]);
 
   const handleCancel = useCallback(() => {
-    if (streamController) {
-      streamController.abort();
-      setStatus('error');
-      setError('Cancelled by user');
-      onCancel();
+    abortControllerRef.current?.abort();
+    onCancel();
+  }, [onCancel]);
+
+  const handleContinue = useCallback(async () => {
+    if (!currentAsset) {
+      return;
     }
-  }, [streamController, onCancel]);
+
+    const assetIndex = assetOrder.indexOf(currentAsset);
+    const approved = getApprovedAssets(assetIndex, { name: currentAsset, content: editorContent });
+    setAssetDrafts(approved);
+    updateAssetStatus(currentAsset, 'complete', editorContent);
+
+    const nextIndex = assetIndex + 1;
+    if (nextIndex < assetOrder.length) {
+      await generateAsset(nextIndex, approved);
+      return;
+    }
+
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    setStatus('saving');
+    try {
+      const result = await api.finalizeGeneration(
+        {
+          seed,
+          mode,
+          template,
+          assets: approved,
+        },
+        controller.signal,
+      );
+      setStatus('complete');
+      onComplete(result);
+    } catch (saveError) {
+      if (controller.signal.aborted) {
+        return;
+      }
+      const message = saveError instanceof Error ? saveError.message : 'Failed to save draft';
+      setError(message);
+      setStatus('error');
+      onError(message);
+    }
+  }, [assetOrder, currentAsset, editorContent, generateAsset, getApprovedAssets, mode, onComplete, onError, seed, template, updateAssetStatus]);
+
+  const handleRegenerate = useCallback(async () => {
+    if (!currentAsset) {
+      return;
+    }
+    const assetIndex = assetOrder.indexOf(currentAsset);
+    const approved = getApprovedAssets(assetIndex);
+    await generateAsset(assetIndex, approved);
+  }, [assetOrder, currentAsset, generateAsset, getApprovedAssets]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -174,12 +261,12 @@ export default function GenerationProgress({
   const completedCount = assets.filter(a => a.status === 'complete').length;
   const progress = assets.length > 0 ? (completedCount / assets.length) * 100 : 0;
 
-  const getStageLabel = (s: ProgressData['stage']) => {
+  const getStageLabel = (s: typeof status) => {
     switch (s) {
-      case 'initializing': return 'Initializing...';
-      case 'orchestrator': return 'Starting generation...';
-      case 'parsing': return 'Parsing response...';
-      case 'saving': return 'Saving draft...';
+      case 'initializing': return 'Preparing generation...';
+      case 'generating': return 'Generating current asset...';
+      case 'reviewing': return 'Review and edit this asset';
+      case 'saving': return 'Saving reviewed draft...';
       case 'complete': return 'Complete!';
       case 'error': return 'Error';
       default: return s;
@@ -192,6 +279,8 @@ export default function GenerationProgress({
         return <CheckCircle2 className="h-4 w-4 text-green-500" />;
       case 'generating':
         return <Loader2 className="h-4 w-4 text-primary animate-spin" />;
+      case 'reviewing':
+        return <FileText className="h-4 w-4 text-amber-500" />;
       case 'error':
         return <XCircle className="h-4 w-4 text-destructive" />;
       default:
@@ -222,10 +311,13 @@ export default function GenerationProgress({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold">{getStageLabel(stage)}</h3>
+          <h3 className="text-lg font-semibold">{getStageLabel(status)}</h3>
           <p className="text-sm text-muted-foreground">
-            {currentAsset ? `Generating: ${currentAsset}` : 'Processing...'}
+            {currentAsset ? `Current asset: ${currentAsset}` : 'Processing...'}
           </p>
+          {characterName && (
+            <p className="text-sm text-muted-foreground">Character: {characterName}</p>
+          )}
         </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-1 text-sm text-muted-foreground">
@@ -263,6 +355,8 @@ export default function GenerationProgress({
             className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm ${
               asset.status === 'generating'
                 ? 'border-primary bg-primary/10'
+                : asset.status === 'reviewing'
+                ? 'border-amber-500/50 bg-amber-500/10'
                 : asset.status === 'complete'
                 ? 'border-green-500/50 bg-green-500/10'
                 : 'border-border'
@@ -274,15 +368,39 @@ export default function GenerationProgress({
         ))}
       </div>
 
-      {/* Streaming Content Preview */}
-      {streamingContent && (
+      {/* Current Asset Editor */}
+      {currentAsset && (status === 'reviewing' || status === 'generating' || status === 'saving') && (
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <FileText className="h-4 w-4" />
-            <span>Live Preview</span>
+            <span>{currentAsset.replace(/_/g, ' ')}</span>
           </div>
-          <div className="max-h-48 overflow-auto rounded-md border border-border bg-muted/50 p-3">
-            <pre className="whitespace-pre-wrap text-xs">{streamingContent}</pre>
+          <textarea
+            value={editorContent}
+            onChange={(event) => setEditorContent(event.target.value)}
+            disabled={status !== 'reviewing'}
+            className="min-h-[280px] w-full rounded-md border border-input bg-background p-3 text-sm font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-70"
+          />
+          <p className="text-xs text-muted-foreground">
+            Downstream assets will use this reviewed text as source context.
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => void handleRegenerate()}
+              disabled={status !== 'reviewing'}
+              className="inline-flex items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm hover:bg-accent disabled:opacity-50"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Regenerate Asset
+            </button>
+            <button
+              onClick={() => void handleContinue()}
+              disabled={status !== 'reviewing' || !editorContent.trim()}
+              className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            >
+              <Save className="h-4 w-4" />
+              {completedCount + 1 >= assets.length ? 'Save Draft' : 'Approve and Continue'}
+            </button>
           </div>
         </div>
       )}
