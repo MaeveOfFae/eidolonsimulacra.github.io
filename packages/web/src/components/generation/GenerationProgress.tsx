@@ -2,10 +2,6 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { CheckCircle2, Circle, Loader2, XCircle, FileText, Clock, RotateCcw, Save } from 'lucide-react';
 import { api, type GenerationComplete, type Template } from '@char-gen/shared';
 
-function hasName(value: unknown): value is { name: string } {
-  return typeof value === 'object' && value !== null && 'name' in value && typeof (value as { name: unknown }).name === 'string';
-}
-
 interface GenerationProgressProps {
   seed: string;
   mode: 'SFW' | 'NSFW' | 'Platform-Safe' | 'Auto';

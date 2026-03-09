@@ -12,6 +12,8 @@ export default function Review() {
   const navigate = useNavigate();
   const [showExportModal, setShowExportModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editName, setEditName] = useState('');
   const [editingAsset, setEditingAsset] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
@@ -38,6 +40,15 @@ export default function Review() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['drafts'] });
       navigate('/drafts');
+    },
+  });
+
+  const updateMetadata = useMutation({
+    mutationFn: (metadata: { character_name?: string }) => api.updateMetadata(decodeURIComponent(id || ''), metadata),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['draft', id] });
+      queryClient.invalidateQueries({ queryKey: ['drafts'] });
+      setIsEditingName(false);
     },
   });
 
@@ -77,6 +88,22 @@ export default function Review() {
       setEditingAsset(assetName);
       setEditContent(draft.assets[assetName]);
     }
+  };
+
+  const handleEditName = () => {
+    setEditName(draft?.metadata.character_name || '');
+    setIsEditingName(true);
+  };
+
+  const handleSaveName = () => {
+    updateMetadata.mutate({
+      character_name: editName.trim() || undefined,
+    });
+  };
+
+  const handleCancelNameEdit = () => {
+    setIsEditingName(false);
+    setEditName('');
   };
 
   const handleSaveAsset = () => {
@@ -133,9 +160,45 @@ export default function Review() {
             <ArrowLeft className="h-4 w-4" />
             Back to Drafts
           </Link>
-          <h1 className="text-3xl font-bold">
-            {draft.metadata.character_name || draft.metadata.seed}
-          </h1>
+          {isEditingName ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                value={editName}
+                onChange={(event) => setEditName(event.target.value)}
+                placeholder="Character name"
+                className="min-w-[18rem] rounded-md border border-input bg-background px-3 py-2 text-2xl font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+              <button
+                onClick={handleSaveName}
+                disabled={updateMetadata.isPending}
+                className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              >
+                <Check className="h-4 w-4" />
+                Save Name
+              </button>
+              <button
+                onClick={handleCancelNameEdit}
+                disabled={updateMetadata.isPending}
+                className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-3 py-2 text-sm hover:bg-accent disabled:opacity-50"
+              >
+                <X className="h-4 w-4" />
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <h1 className="text-3xl font-bold">
+                {draft.metadata.character_name || draft.metadata.seed}
+              </h1>
+              <button
+                onClick={handleEditName}
+                className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-2 py-1 text-xs hover:bg-accent"
+              >
+                <Edit3 className="h-3 w-3" />
+                Edit Name
+              </button>
+            </div>
+          )}
           <p className="text-muted-foreground">{draft.metadata.seed}</p>
         </div>
         <div className="flex items-center gap-2">

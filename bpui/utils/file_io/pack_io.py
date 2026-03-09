@@ -5,7 +5,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, TYPE_CHECKING
 
-from bpui.core.parse_blocks import ASSET_FILENAMES, get_asset_filename
+from bpui.core.parse_blocks import (
+    ASSET_FILENAMES,
+    get_asset_filename,
+    infer_character_display_name_from_assets,
+    infer_character_name_from_assets,
+    sanitize_character_name,
+)
 from bpui.utils.metadata.metadata import DraftMetadata
 from bpui.utils.metadata.draft_index import DraftIndex
 
@@ -41,9 +47,15 @@ def create_draft_dir(
 
     drafts_root.mkdir(exist_ok=True)
 
+    inferred_display_name = infer_character_display_name_from_assets(assets)
+    inferred_slug = infer_character_name_from_assets(assets)
+    fallback_slug = sanitize_character_name(character_name) if character_name else ""
+    directory_name = inferred_slug or fallback_slug or "unnamed_character"
+    metadata_name = inferred_display_name or character_name or "unnamed_character"
+
     # Create timestamped directory
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    draft_dir = drafts_root / f"{timestamp}_{character_name}"
+    draft_dir = drafts_root / f"{timestamp}_{directory_name}"
     draft_dir.mkdir(parents=True, exist_ok=True)
 
     # Write each asset
@@ -57,7 +69,7 @@ def create_draft_dir(
         seed=seed or "unknown",
         mode=mode,
         model=model,
-        character_name=character_name,
+        character_name=metadata_name,
         template_name=template.name if template else None
     )
     metadata.save(draft_dir)
@@ -140,17 +152,7 @@ def save_draft(
     Returns:
         Path to created draft directory
     """
-    # Extract character name from character_sheet
-    char_sheet = assets.get("character_sheet", "")
-    character_name = "character"
-    
-    for line in char_sheet.split("\n")[:10]:
-        if line.lower().startswith("name:"):
-            name = line.split(":", 1)[1].strip()
-            # Sanitize for filename
-            character_name = "".join(c if c.isalnum() or c in "_ " else "_" for c in name.lower())
-            character_name = "_".join(character_name.split())
-            break
+    character_name = infer_character_name_from_assets(assets) or "character"
     
     return create_draft_dir(assets, character_name, seed=seed, mode=mode, model=model, template=template)
 
