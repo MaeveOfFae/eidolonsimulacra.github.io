@@ -222,7 +222,7 @@ async def _generate_single(seed: str, mode: str, request_config, template: str |
 
 
 @router.post("/asset")
-async def generate_asset(request: GenerateAssetRequest, http_request: Request):
+async def generate_asset(request: GenerateAssetRequest, http_request: Request = None):
     """Generate a single asset using the currently approved prior assets as context."""
     from bpui.api.schemas.generation import GenerateAssetResponse
     from bpui.api.byok import build_request_config
@@ -318,7 +318,7 @@ async def finalize_generation(request: FinalizeGenerationRequest):
 
 
 @router.post("/single")
-async def generate_single(request: GenerateRequest, http_request: Request):
+async def generate_single(request: GenerateRequest, http_request: Request = None):
     """Generate a single character with SSE streaming."""
     from bpui.api.byok import build_request_config
 
@@ -331,7 +331,7 @@ async def generate_single(request: GenerateRequest, http_request: Request):
 
 
 @router.post("/batch")
-async def generate_batch(request: GenerateBatchRequest, http_request: Request):
+async def generate_batch(request: GenerateBatchRequest, http_request: Request = None):
     """Generate multiple characters with SSE streaming."""
     from bpui.api.byok import build_request_config
 

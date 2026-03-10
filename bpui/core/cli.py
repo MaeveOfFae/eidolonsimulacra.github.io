@@ -344,16 +344,17 @@ async def run_seedgen(args):
     from bpui.prompting import build_seedgen_prompt
 
     logger = logging.getLogger(__name__)
-    config = Config()
-
-    # Validate API key
-    config.validate_api_key(config.model)
 
     # Read input
     input_path = Path(args.input)
     if not input_path.exists():
         print(f"✗ Input file not found: {input_path}")
         sys.exit(1)
+
+    config = Config()
+
+    # Validate API key only after local input validation passes.
+    config.validate_api_key(config.model)
 
     genre_lines = input_path.read_text(encoding='utf-8')
 

@@ -1,9 +1,23 @@
 """Theme management for Qt6 GUI."""
 
-from PySide6.QtGui import QTextCharFormat, QColor, QFont, QPalette
-from PySide6.QtWidgets import QWidget, QApplication
-from PySide6.QtCore import QRegularExpression, Qt
 from typing import Dict, Any, TYPE_CHECKING
+
+try:
+    from PySide6.QtCore import QRegularExpression, Qt
+    from PySide6.QtGui import QColor, QFont, QPalette, QTextCharFormat
+    from PySide6.QtWidgets import QApplication, QWidget
+except ImportError as exc:
+    QRegularExpression = None
+    Qt = None
+    QColor = None
+    QFont = None
+    QPalette = None
+    QTextCharFormat = None
+    QApplication = None
+    QWidget = object
+    _QT_IMPORT_ERROR = exc
+else:
+    _QT_IMPORT_ERROR = None
 
 if TYPE_CHECKING:
     from bpui.core.config import Config
@@ -34,6 +48,8 @@ class SyntaxHighlighter:
     
     def __init__(self, theme_colors: Dict[str, Any]):
         """Initialize highlighter with theme colors."""
+        if _QT_IMPORT_ERROR is not None:
+            raise RuntimeError("PySide6 is required for SyntaxHighlighter") from _QT_IMPORT_ERROR
         self.theme_colors = theme_colors
         self.formats = self._create_formats()
     
@@ -215,6 +231,8 @@ QGroupBox::title {{
     
     def apply_theme(self, widget):
         """Apply theme to a widget and all its children."""
+        if _QT_IMPORT_ERROR is not None:
+            raise RuntimeError("PySide6 is required to apply GUI themes") from _QT_IMPORT_ERROR
         widget.setStyleSheet(self.get_app_stylesheet())
     
     def get_syntax_highlighter(self):

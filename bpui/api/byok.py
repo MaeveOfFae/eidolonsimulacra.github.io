@@ -37,13 +37,23 @@ def get_request_api_keys(request: Request | None) -> dict[str, str]:
     }
 
 
-def build_request_config(request: Request):
+def build_request_config(request: Request | None):
     """Build a config object for web requests using browser-provided keys only."""
     from bpui.core.config import Config, load_config
 
     base_config = load_config()
     config = Config()
-    config._data = base_config.to_dict().copy()
+
+    if hasattr(base_config, "to_dict") and callable(base_config.to_dict):
+        base_data = base_config.to_dict().copy()
+    else:
+        base_data = {
+            key: value
+            for key, value in vars(base_config).items()
+            if not key.startswith("_")
+        }
+
+    config._data.update(base_data)
     config.set("api_keys", get_request_api_keys(request))
     config.set("api_key", "")
     config.set("api_key_env", "")
