@@ -83,7 +83,6 @@ packages/*/dist/
 packages/web/.vite/
 packages/desktop/src-tauri/target/
 packages/desktop/src-tauri/gen/
-
 # Logs
 npm-debug.log*
 yarn-debug.log*

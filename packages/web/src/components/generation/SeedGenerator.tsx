@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
 import { Sparkles, Shuffle, Loader2, ArrowRight, Copy, Check } from 'lucide-react';
-import { api } from '@char-gen/shared';
 import { useAssistantScreenContext } from '../common/AssistantContext';
+import { GenerationService, type GenerateRequest } from '@char-gen/web';
 
 const defaultGenreLines = ['Noir detective', 'Cyberpunk mercenary', 'Fantasy sorceress'].join('\n');
 
@@ -13,7 +12,15 @@ export default function SeedGenerator() {
   const [copiedSeed, setCopiedSeed] = useState<string | null>(null);
 
   const seedMutation = useMutation({
-    mutationFn: (request: { genre_lines: string; surprise_mode?: boolean }) => api.generateSeeds(request),
+    mutationFn: async (request: { genre_lines: string; surprise_mode?: boolean }) => {
+      const seeds: string[] = [];
+      for await (const progress of GenerationService.generateSeeds(request)) {
+        if (progress.type === 'complete') {
+          seeds.push(...(progress.content || '').split('\n').filter(s => s.trim()));
+        }
+      }
+      return { seeds };
+    },
   });
 
   const seeds = seedMutation.data?.seeds ?? [];

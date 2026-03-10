@@ -17,6 +17,7 @@ const Similarity = lazy(() => import('./components/similarity/Similarity'));
 const Offspring = lazy(() => import('./components/offspring/Offspring'));
 const Settings = lazy(() => import('./components/settings/Settings'));
 const Themes = lazy(() => import('./components/settings/Themes'));
+const DataManager = lazy(() => import('./components/common/DataManager'));
 const BatchGenerate = lazy(() => import('./components/batch/BatchGenerate'));
 
 function RouteFallback() {
@@ -50,6 +51,7 @@ export default function App() {
           <Route path="/offspring" element={<Offspring />} />
           <Route path="/themes" element={<Themes />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/data" element={<DataManager />} />
         </Routes>
       </Suspense>
     </Layout>

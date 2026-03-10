@@ -2,22 +2,18 @@
   "name": "character-generator",
   "version": "2.0.0",
   "private": true,
-  "description": "Character Generator - Modern web/mobile UI for RPBotGenerator",
+  "description": "Character Generator - Modern web application for generating RPG characters",
   "scripts": {
     "dev": "turbo run dev",
     "dev:web": "pnpm --filter @char-gen/web dev",
     "dev:web:lan": "pnpm --filter @char-gen/web dev --host 0.0.0.0 --port 3000",
-    "dev:mobile": "pnpm --filter @char-gen/mobile start",
     "build": "turbo run build",
     "build:web": "pnpm build:shared && pnpm --filter @char-gen/web build",
     "build:shared": "pnpm --filter @char-gen/shared build",
     "lint": "turbo run lint",
     "test": "turbo run test",
     "clean": "turbo run clean",
-    "format": "prettier --write \"packages/**/*.{ts,tsx,js,jsx,json,css,md}\"",
-    "api": "cd packages/core && python -m bpui.api.main",
-    "tauri:dev": "pnpm --filter @char-gen/desktop tauri dev",
-    "tauri:build": "pnpm --filter @char-gen/desktop tauri build"
+    "format": "prettier --write \"packages/**/*.{ts,tsx,js,jsx,json,css,md}\""
   },
   "devDependencies": {
     "@eslint/js": "^9.16.0",
