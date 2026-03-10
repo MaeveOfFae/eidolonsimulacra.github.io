@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { CheckCircle2, Circle, Loader2, XCircle, FileText, Clock, RotateCcw, Save } from 'lucide-react';
 import { api, type GenerationComplete, type Template } from '@char-gen/shared';
+import { GenerationService, type GenerationProgress as GenProgress } from '../../lib/services/generation.js';
 
 interface GenerationProgressProps {
   seed: string;
@@ -124,26 +125,40 @@ export default function GenerationProgress({
     updateAssetStatus(assetName, 'generating');
 
     try {
-      const response = await api.generateAsset(
-        {
-          seed,
-          mode,
-          template,
-          asset_name: assetName,
-          prior_assets: approvedAssets,
-        },
-        controller.signal,
-      );
+      // Use client-side GenerationService for single asset generation
+      let fullContent = '';
 
-      if (controller.signal.aborted) {
-        return;
+      for await (const progress of GenerationService.generateAsset({
+        seed,
+        mode: mode as 'SFW' | 'NSFW' | 'Platform-Safe',
+        template,
+        asset_name: assetName,
+        prior_assets: approvedAssets,
+      })) {
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        if (progress.type === 'chunk' && progress.content) {
+          fullContent += progress.content;
+          setEditorContent(fullContent);
+          setStatus('generating');
+        } else if (progress.type === 'asset' && progress.content) {
+          fullContent = progress.content;
+          setEditorContent(fullContent);
+          updateAssetStatus(assetName, 'reviewing', fullContent);
+          setStatus('reviewing');
+          return;
+        } else if (progress.type === 'error') {
+          throw new Error(progress.error || 'Asset generation failed');
+        }
       }
 
-      if (response.character_name) {
-        setCharacterName(response.character_name);
+      if (!fullContent) {
+        throw new Error('No content generated');
       }
-      setEditorContent(response.content);
-      updateAssetStatus(assetName, 'reviewing', response.content);
+
+      updateAssetStatus(assetName, 'reviewing', fullContent);
       setStatus('reviewing');
     } catch (generationError) {
       if (controller.signal.aborted) {
@@ -216,28 +231,51 @@ export default function GenerationProgress({
     const controller = new AbortController();
     abortControllerRef.current = controller;
     setStatus('saving');
+
     try {
-      const result = await api.finalizeGeneration(
-        {
+      // Save draft using client-side DraftStorage
+      const { DraftStorage } = await import('../../lib/storage/draft-db.js');
+
+      // Generate review ID
+      const reviewId = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+      // Extract character name from character_sheet if available
+      const characterSheetContent = approved.character_sheet || '';
+      const nameMatch = characterSheetContent.match(/Name:\s*(.+)/i);
+      const characterName = nameMatch ? nameMatch[1].trim() : undefined;
+
+      const draft = {
+        path: reviewId,
+        metadata: {
+          review_id: reviewId,
           seed,
-          mode,
-          template,
-          assets: approved,
+          mode: mode as 'SFW' | 'NSFW' | 'Platform-Safe',
+          model: undefined, // Will use current config model
+          created: new Date().toISOString(),
+          modified: new Date().toISOString(),
+          favorite: false,
+          template_name: template,
+          character_name: characterName,
         },
-        controller.signal,
-      );
+        assets: approved,
+      };
+
+      await DraftStorage.saveDraft(draft);
+
       setStatus('complete');
-      onComplete(result);
+      onComplete({
+        draft_path: reviewId,
+        draft_id: reviewId,
+        character_name: characterName,
+        duration_ms: Date.now() - startTime,
+      });
     } catch (saveError) {
-      if (controller.signal.aborted) {
-        return;
-      }
       const message = saveError instanceof Error ? saveError.message : 'Failed to save draft';
       setError(message);
       setStatus('error');
       onError(message);
     }
-  }, [assetOrder, currentAsset, editorContent, generateAsset, getApprovedAssets, mode, onComplete, onError, seed, template, updateAssetStatus]);
+  }, [assetOrder, currentAsset, editorContent, generateAsset, getApprovedAssets, mode, onComplete, onError, seed, template, updateAssetStatus, startTime]);
 
   const handleRegenerate = useCallback(async () => {
     if (!currentAsset) {

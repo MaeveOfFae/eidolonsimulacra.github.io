@@ -13,6 +13,8 @@ import {
   Upload,
   Download,
   RotateCcw,
+  Shield,
+  ShieldAlert,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { api, type Config, type ModelInfo, type ThemeOverride, type ThemePreset } from '@char-gen/shared';
@@ -21,6 +23,8 @@ import {
   EDITABLE_THEME_SECTIONS,
   resolveThemeColors,
 } from '../../theme/theme';
+import { configManager } from '../../lib/config/manager.js';
+import { createEngine, MODEL_SUGGESTIONS } from '../../lib/llm/factory.js';
 
 const ALL_PROVIDERS = ['openai', 'google', 'openrouter', 'deepseek', 'zai', 'moonshot'] as const;
 type Provider = typeof ALL_PROVIDERS[number];
@@ -124,29 +128,15 @@ export default function Settings() {
   const [localConfig, setLocalConfig] = useState<Partial<Config>>({});
   const [themeNotice, setThemeNotice] = useState<string | null>(null);
   const [themeError, setThemeError] = useState<string | null>(null);
+  const [persistKeys, setPersistKeys] = useState(false);
+  const [useClientSide, setUseClientSide] = useState(true);
 
-  const { data: config, isLoading } = useQuery({
-    queryKey: ['config'],
-    queryFn: () => api.getConfig(),
-  });
-
-  const {
-    data: modelsData,
-    isLoading: modelsLoading,
-    refetch: refreshModels,
-    isRefetching: modelsRefreshing,
-  } = useQuery({
-    queryKey: ['models', selectedProvider],
-    queryFn: () => api.getModels(selectedProvider),
-    enabled: !!selectedProvider,
-  });
-
+  // Load config from client-side manager
   useEffect(() => {
-    if (!config) {
-      return;
-    }
-
-    setLocalConfig({ ...config, api_keys: loadBrowserApiKeys() });
+    const config = configManager.getConfig();
+    const apiKeys = configManager.getApiKeys();
+    setLocalConfig({ ...config, api_keys: apiKeys });
+    setPersistKeys(configManager.isPersistingApiKeys());
 
     const model = config.model || '';
     for (const provider of ALL_PROVIDERS) {
@@ -155,31 +145,29 @@ export default function Settings() {
         break;
       }
     }
-  }, [config]);
+  }, []);
 
-  const updateMutation = useMutation({
-    mutationFn: (updates: Partial<Config>) => api.updateConfig(updates),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['config'] });
-      setThemeNotice('Settings saved. Theme and generation config are now persisted.');
-      setThemeError(null);
-    },
-  });
+  // Models suggestions for selected provider
+  const modelSuggestions = useMemo(() => {
+    return MODEL_SUGGESTIONS[selectedProvider] || [];
+  }, [selectedProvider]);
 
-  const testMutation = useMutation({
-    mutationFn: (provider: string) => api.testConnection({ provider }),
-    onSuccess: (result, provider) => {
-      setTestResult({
-        provider,
-        success: result.success,
-        message: result.success
-          ? `Connected! Latency: ${result.latency_ms?.toFixed(0)}ms`
-          : result.error || 'Connection failed',
-      });
-    },
-  });
+  const updateConfig = () => {
+    const persistedConfig = { ...localConfig };
+    delete persistedConfig.api_keys;
+    configManager.updateConfig(persistedConfig);
+    configManager.setPersistApiKeys(persistKeys);
 
-  const selectedThemeName = localConfig.theme_name ?? config?.theme_name ?? 'dark';
+    // Save API keys to config manager
+    if (localConfig.api_keys) {
+      configManager.setApiKeys(localConfig.api_keys);
+    }
+
+    setThemeNotice('Settings saved. Theme and generation config are now persisted.');
+    setThemeError(null);
+  };
+
+  const selectedThemeName = localConfig.theme_name ?? 'dark';
   const selectedTheme = useMemo(
     () => themes.find((theme) => theme.name === selectedThemeName) ?? themes[0],
     [themes, selectedThemeName]
@@ -190,6 +178,54 @@ export default function Settings() {
     [selectedTheme, localConfig.theme]
   );
 
+  // Test connection with client-side engine
+  const testConnection = async (provider: string) => {
+    setTestResult(null);
+
+    try {
+      const apiKey = localConfig.api_keys?.[provider];
+      if (!apiKey) {
+        setTestResult({
+          provider,
+          success: false,
+          message: 'No API key configured',
+        });
+        return;
+      }
+
+      const model = modelSuggestions[0] || localConfig.model || 'test-model';
+      const engine = createEngine({
+        model,
+        apiKey,
+        provider: provider as Provider,
+      });
+
+      const startTime = performance.now();
+      const result = await engine.testConnection();
+      const latency = performance.now() - startTime;
+
+      if (result.success) {
+        setTestResult({
+          provider,
+          success: true,
+          message: `Connected! Latency: ${latency.toFixed(0)}ms`,
+        });
+      } else {
+        setTestResult({
+          provider,
+          success: false,
+          message: result.error || 'Connection failed',
+        });
+      }
+    } catch (error) {
+      setTestResult({
+        provider,
+        success: false,
+        message: error instanceof Error ? error.message : 'Connection failed',
+      });
+    }
+  };
+
   useEffect(() => {
     previewTheme(selectedThemeName, localConfig.theme);
 
@@ -199,14 +235,11 @@ export default function Settings() {
   }, [previewTheme, clearPreview, selectedThemeName, localConfig.theme]);
 
   const handleSave = () => {
-    const persistedConfig = { ...localConfig };
-    delete persistedConfig.api_keys;
-    updateMutation.mutate(persistedConfig);
+    updateConfig();
   };
 
   const handleTest = (provider: string) => {
-    setTestResult(null);
-    testMutation.mutate(provider);
+    testConnection(provider);
   };
 
   const toggleShowKey = (provider: string) => {
@@ -219,7 +252,8 @@ export default function Settings() {
         ...(previous.api_keys || {}),
         [provider]: value,
       };
-      saveBrowserApiKeys(nextApiKeys);
+      // Also update the config manager
+      configManager.setApiKey(provider, value);
       return {
         ...previous,
         api_keys: nextApiKeys,
@@ -231,8 +265,9 @@ export default function Settings() {
     setLocalConfig((previous) => ({ ...previous, model: modelId }));
   };
 
-  const handleRefreshModels = () => {
-    refreshModels();
+  const handlePersistKeysToggle = (checked: boolean) => {
+    setPersistKeys(checked);
+    configManager.setPersistApiKeys(checked);
   };
 
   const updateTheme = (themeName: string, nextTheme: ThemeOverride) => {
@@ -333,16 +368,9 @@ export default function Settings() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
+  // Removed loading check - we now use local config
 
-  const models = modelsData?.models || [];
-  const currentModel = localConfig.model || config?.model || '';
+  const currentModel = localConfig.model || '';
 
   return (
     <div className="max-w-5xl space-y-6">
@@ -361,6 +389,20 @@ export default function Settings() {
           </p>
         </div>
         <div className="space-y-4 p-4">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={persistKeys}
+              onChange={(e) => handlePersistKeysToggle(e.target.checked)}
+              className="h-4 w-4 rounded border-input"
+            />
+            <span>Save API keys to browser storage (requires encryption warning)</span>
+          </label>
+          {persistKeys && (
+            <p className="text-xs text-yellow-600">
+              Warning: API keys are stored in localStorage. Clearing browser data will remove them. Use with caution on shared devices.
+            </p>
+          )}
           {ALL_PROVIDERS.map((provider) => (
             <div key={provider} className="space-y-2">
               <label className="text-sm font-medium capitalize">{provider}</label>
@@ -383,14 +425,9 @@ export default function Settings() {
                 </div>
                 <button
                   onClick={() => handleTest(provider)}
-                  disabled={testMutation.isPending}
                   className="inline-flex items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm hover:bg-accent disabled:opacity-50"
                 >
-                  {testMutation.isPending && testMutation.variables === provider ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <TestTube className="h-4 w-4" />
-                  )}
+                  <TestTube className="h-4 w-4" />
                   Test
                 </button>
               </div>
@@ -432,7 +469,7 @@ export default function Settings() {
             <div className="space-y-2">
               <label className="text-sm font-medium">Engine</label>
               <select
-                value={localConfig.engine || config?.engine || 'auto'}
+                value={localConfig.engine || 'auto'}
                 onChange={(e) => setLocalConfig((previous) => ({ ...previous, engine: e.target.value as Config['engine'] }))}
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
@@ -444,37 +481,19 @@ export default function Settings() {
             </div>
 
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-medium">Model</label>
-                <button
-                  onClick={handleRefreshModels}
-                  disabled={modelsRefreshing || modelsLoading}
-                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-                >
-                  <RefreshCw className={`h-3 w-3 ${modelsRefreshing ? 'animate-spin' : ''}`} />
-                  Refresh
-                </button>
-              </div>
-              {modelsLoading ? (
-                <div className="flex items-center justify-center py-2">
-                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                </div>
-              ) : (
-                <select
-                  value={currentModel}
-                  onChange={(e) => handleModelSelect(e.target.value)}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  <option value="">Select a model...</option>
-                  {models.map((model: ModelInfo) => (
-                    <option key={model.id} value={model.id}>
-                      {model.name}
-                      {model.context_length ? ` (${Math.round(model.context_length / 1000)}k ctx)` : ''}
-                    </option>
-                  ))}
-                </select>
-              )}
-              {modelsData?.error && <p className="text-xs text-yellow-600">{modelsData.error}</p>}
+              <label className="text-sm font-medium">Model</label>
+              <select
+                value={currentModel}
+                onChange={(e) => handleModelSelect(e.target.value)}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="">Select a model...</option>
+                {modelSuggestions.map((model: string) => (
+                  <option key={model} value={model}>
+                    {model}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -789,10 +808,9 @@ export default function Settings() {
       <div className="flex justify-end">
         <button
           onClick={handleSave}
-          disabled={updateMutation.isPending}
-          className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
         >
-          {updateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+          <Save className="h-4 w-4" />
           Save Settings
         </button>
       </div>
