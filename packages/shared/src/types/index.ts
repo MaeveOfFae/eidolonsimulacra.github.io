@@ -282,7 +282,7 @@ export interface TemplateValidationResult {
   warnings: string[];
 }
 
-export interface UpdateTemplateRequest extends CreateTemplateRequest {}
+export type UpdateTemplateRequest = CreateTemplateRequest;
 
 export interface TemplateBlueprintContentsResponse {
   blueprint_contents: Record<string, string>;

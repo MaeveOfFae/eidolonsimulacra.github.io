@@ -111,7 +111,7 @@ export default function ChatPanel({ draftId, assetName, onAssetRefined }: ChatPa
       });
 
       await stream.start();
-    } catch (err) {
+    } catch {
       setIsStreaming(false);
     }
   };
