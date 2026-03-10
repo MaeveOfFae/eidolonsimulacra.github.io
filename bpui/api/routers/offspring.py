@@ -11,7 +11,7 @@ router = APIRouter()
 
 
 @router.post("")
-async def generate_offspring(request: OffspringRequest, http_request: Request):
+async def generate_offspring(request: OffspringRequest, http_request: Request = None):
     """Generate offspring character from two parents with SSE streaming."""
     async def event_generator():
         try:
