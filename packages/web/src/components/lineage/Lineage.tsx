@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { GitBranch, Loader2, RefreshCw, ArrowRight, Users } from 'lucide-react';
 import type { LineageNode } from '@char-gen/shared';
 import { api } from '@/lib/api';
-import { useAssistantScreenContext } from '../common/AssistantContext';
+import { useAssistantScreenContext } from '../common/useAssistantContext';
 
 function NodeCard({
   node,

@@ -3,7 +3,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { CheckCircle, FolderSearch, Loader2, ShieldAlert, ShieldCheck } from 'lucide-react';
 import type { ValidationResponse } from '@char-gen/shared';
 import { api } from '@/lib/api';
-import { useAssistantScreenContext } from '../common/AssistantContext';
+import { useAssistantScreenContext } from '../common/useAssistantContext';
 
 export default function Validation() {
   const [path, setPath] = useState('');

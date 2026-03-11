@@ -5,7 +5,7 @@ import { ArrowLeft, Star, Download, Trash2, Edit3, Check, X, ShieldCheck } from 
 import { api } from '@/lib/api';
 import ExportModal from '../common/ExportModal';
 import ChatPanel from '../common/ChatPanel';
-import { useAssistantScreenContext } from '../common/AssistantContext';
+import { useAssistantScreenContext } from '../common/useAssistantContext';
 
 export default function Review() {
   const { id } = useParams<{ id: string }>();

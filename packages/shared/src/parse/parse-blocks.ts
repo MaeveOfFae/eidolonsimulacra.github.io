@@ -262,11 +262,11 @@ const PLACEHOLDER_PATTERNS: ReadonlyArray<[string, RegExp]> = [
   ['A1111 slot ((...))', /\(\(\.\.\)\)/g],
   [
     'A1111 any slot ((...something...)) left',
-    /\(\([^\)]*\.\.\.[^\)]*\)/g,
+    /\(\([^)]*\.\.\.[^)]*\)/g,
   ],
   [
     'Character sheet bracket placeholders',
-    /\[(?!\")["'][A-Z][^\]]*\]/g,
+    /\[(?!")["'][A-Z][^\]]*\]/g,
   ],
 ] as const;
 

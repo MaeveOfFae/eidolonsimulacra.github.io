@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Play, Pause, Upload, X, CheckCircle, XCircle, Loader2, List } from 'lucide-react';
 import type { ContentMode } from '@char-gen/shared';
 import { api } from '@/lib/api';
-import { useAssistantScreenContext } from '../common/AssistantContext';
+import { useAssistantScreenContext } from '../common/useAssistantContext';
 
 interface BatchJob {
   seed: string;

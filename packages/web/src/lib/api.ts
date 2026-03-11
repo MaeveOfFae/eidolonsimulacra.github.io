@@ -11,7 +11,6 @@ import {
   type Config,
   type ConnectionTestRequest,
   type ConnectionTestResult,
-  type ContentMode,
   type CreateTemplateRequest,
   type Draft,
   type DraftFilters,
@@ -362,10 +361,6 @@ function getFallbackApiKey(apiKeys: ApiKeys): string | undefined {
   return Object.values(apiKeys).find(
     (value): value is string => typeof value === 'string' && value.trim().length > 0
   );
-}
-
-function getBuiltinTheme(name: string): ThemePreset | undefined {
-  return builtinThemes.find((theme) => theme.name === name);
 }
 
 function getCustomThemes(): ThemePreset[] {

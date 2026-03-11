@@ -5,7 +5,7 @@
  * It defines the contract, rules, and structure for character generation.
  */
 
-import type { Template, AssetDefinition } from '../types';
+import type { Template } from '../types';
 import type { ContentMode } from '../types';
 import { DEFAULT_ASSET_ORDER } from '../templates';
 

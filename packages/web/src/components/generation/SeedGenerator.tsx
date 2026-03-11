@@ -3,7 +3,7 @@ import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Sparkles, Loader2, ArrowRight, Copy, Check, RefreshCcw, Wand2, Star, History } from 'lucide-react';
 import type { SeedGenerationRequest } from '@char-gen/shared';
-import { useAssistantScreenContext } from '../common/AssistantContext';
+import { useAssistantScreenContext } from '../common/useAssistantContext';
 import { api } from '@/lib/api';
 import {
   DEFAULT_SEED_COUNT,

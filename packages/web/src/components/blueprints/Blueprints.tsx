@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { BookOpen, FileJson, Lightbulb, Package, Search, ArrowRight } from 'lucide-react';
 import type { Blueprint } from '@char-gen/shared';
 import { api } from '@/lib/api';
-import { useAssistantScreenContext } from '../common/AssistantContext';
+import { useAssistantScreenContext } from '../common/useAssistantContext';
 import BlueprintLintPlaceholder from './BlueprintLintPlaceholder';
 import BlueprintSandboxPlaceholder from './BlueprintSandboxPlaceholder';
 

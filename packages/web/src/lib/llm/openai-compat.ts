@@ -249,7 +249,7 @@ export class OpenAICompatEngine extends BaseLLMEngine {
       // Try to get model info
       try {
         const data: { data?: Array<{ id: string }>; object?: string } = await response.json();
-        const models = data.data || [];
+        void data.data;
 
         return {
           success: true,

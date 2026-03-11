@@ -9,7 +9,6 @@ import type {
 } from '@char-gen/shared';
 import { buildSeedGeneratorSystemPrompt } from '../seed-generator.js';
 import type {
-  Blueprint,
   TemplateAsset,
 } from './blueprint.js';
 import {
@@ -161,7 +160,7 @@ Your analysis should focus on:
 
 Provide your response as JSON with this structure:
 
-\`\`\`json
+${'```'}json
 {
   "narrative_dynamics": "2-3 paragraphs describing core dynamic",
   "story_opportunities": [
@@ -177,7 +176,7 @@ Provide your response as JSON with this structure:
   "dialogue_style": "Description of their conversational patterns",
   "relationship_arc": "Description of how their relationship would develop"
 }
-\`\`\`
+${'```'}
 
 Be specific, insightful, and focus on narrative potential. Consider:
 - Would they clash or complement each other?
@@ -269,33 +268,33 @@ export async function buildOffspringPrompt(
 
   // Add parent 1's assets
   userLines.push(`\n## PARENT 1: ${parent1Name}`);
-  userLines.push('### System Prompt:\n\`\`\`');
+  userLines.push('### System Prompt:\n```');
   userLines.push(parent1Assets.system_prompt || '');
-  userLines.push('\`\`\`');
-  userLines.push('### Post History:\n\`\`\`');
+  userLines.push('```');
+  userLines.push('### Post History:\n```');
   userLines.push(parent1Assets.post_history || '');
-  userLines.push('\`\`\`');
-  userLines.push('### Character Sheet:\n\`\`\`');
+  userLines.push('```');
+  userLines.push('### Character Sheet:\n```');
   userLines.push(parent1Assets.character_sheet || '');
-  userLines.push('\`\`\`');
-  userLines.push('### Intro Scene:\n\`\`\`');
+  userLines.push('```');
+  userLines.push('### Intro Scene:\n```');
   userLines.push(parent1Assets.intro_scene || '');
-  userLines.push('\`\`\`');
+  userLines.push('```');
 
   // Add parent 2's assets
   userLines.push(`\n## PARENT 2: ${parent2Name}`);
-  userLines.push('### System Prompt:\n\`\`\`');
+  userLines.push('### System Prompt:\n```');
   userLines.push(parent2Assets.system_prompt || '');
-  userLines.push('\`\`\`');
-  userLines.push('### Post History:\n\`\`\`');
+  userLines.push('```');
+  userLines.push('### Post History:\n```');
   userLines.push(parent2Assets.post_history || '');
-  userLines.push('\`\`\`');
-  userLines.push('### Character Sheet:\n\`\`\`');
+  userLines.push('```');
+  userLines.push('### Character Sheet:\n```');
   userLines.push(parent2Assets.character_sheet || '');
-  userLines.push('\`\`\`');
-  userLines.push('### Intro Scene:\n\`\`\`');
+  userLines.push('```');
+  userLines.push('### Intro Scene:\n```');
   userLines.push(parent2Assets.intro_scene || '');
-  userLines.push('\`\`\`');
+  userLines.push('```');
 
   // Instruction
   userLines.push('\n## INSTRUCTION:');

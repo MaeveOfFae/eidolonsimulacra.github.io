@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { GitCompare, Loader2, Users, AlertCircle, CheckCircle } from 'lucide-react';
 import type { SimilarityResult } from '@char-gen/shared';
 import { api } from '@/lib/api';
-import { useAssistantScreenContext } from '../common/AssistantContext';
+import { useAssistantScreenContext } from '../common/useAssistantContext';
 
 export default function Similarity() {
   const [searchParams] = useSearchParams();

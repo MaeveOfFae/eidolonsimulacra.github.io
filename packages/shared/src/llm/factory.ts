@@ -7,8 +7,6 @@ import type {
   LLMEngine,
   LLMConfig,
   LLMProvider,
-  GenerateOptions,
-  StreamGenerateOptions,
 } from './types';
 import type { OpenAICompatConfig } from './openai-compat';
 import { detectProviderFromModel, ProviderEndpoints } from './types';

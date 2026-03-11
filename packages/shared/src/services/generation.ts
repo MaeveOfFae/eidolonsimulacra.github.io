@@ -5,17 +5,13 @@
 
 import type {
   ChatMessage,
-  GenerateOptions,
   GenerateResult,
-  StreamChunk,
-  StreamGenerateOptions,
 } from '../llm/types';
-import type { CreateEngineOptions } from '../llm/factory';
 import type { Template } from '../templates';
 import type { ParseResult } from '../parse/parse-blocks';
 
 import { createEngine } from '../llm/factory';
-import { buildOrchestrator, getOfficialTemplate, getDefaultAssetOrder } from '../blueprint/orchestrator';
+import { buildOrchestrator, getOfficialTemplate } from '../blueprint/orchestrator';
 import { parseBlueprintOutput, extractCharacterName, inferCharacterNameFromAssets } from '../parse/parse-blocks';
 
 export type ContentMode = 'SFW' | 'NSFW' | 'Platform-Safe' | 'Auto';
@@ -53,7 +49,6 @@ export async function generateCharacter(request: GenerationOptions): Promise<Gen
     model,
     temperature = 0.7,
     maxTokens = 4096,
-    onChunk,
     signal,
   } = request;
 
@@ -78,7 +73,7 @@ export async function generateCharacter(request: GenerationOptions): Promise<Gen
     { role: 'user', content: userPrompt },
   ];
 
-  const result = await engine.generate(messages);
+  const result = await engine.generate(messages, { signal, temperature, maxTokens });
 
   return result;
 }
@@ -124,7 +119,7 @@ export async function* generateCharacterStream(
   yield { type: 'status', progress: 0 };
 
   let fullContent = '';
-  const assetOrder = getDefaultAssetOrder();
+  const assetOrder = template.assets.map((asset) => asset.name);
 
   try {
     for await (const chunk of engine.generateStream(messages, { signal })) {
@@ -139,7 +134,10 @@ export async function* generateCharacterStream(
         for (const [assetName, content] of Object.entries(parseResult.assets)) {
           yield { type: 'asset', asset: assetName, content };
         }
-        yield { type: 'asset_complete', progress: Math.min(100, (parseResult.assets.size / assetOrder.length) * 100) };
+        yield {
+          type: 'asset_complete',
+          progress: Math.min(100, (Object.keys(parseResult.assets).length / assetOrder.length) * 100),
+        };
       }
 
       // Emit raw chunk
