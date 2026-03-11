@@ -99,7 +99,7 @@ export class GoogleEngine extends BaseLLMEngine {
   private async callEndpoint(endpoint: string, body: unknown): Promise<Response> {
     const url = `${this.baseUrl}${endpoint}`;
 
-    return fetch(url, {
+    return this.performFetch(url, {
       ...this.getFetchOptions(),
       method: 'POST',
       headers: this.getHeaders(),

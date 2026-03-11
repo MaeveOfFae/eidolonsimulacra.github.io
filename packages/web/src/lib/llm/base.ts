@@ -21,9 +21,17 @@ export abstract class BaseLLMEngine {
     this.config = {
       temperature: 0.7,
       maxTokens: 4096,
-      timeout: 60000,
+      timeout: 180000,
       ...config,
     };
+  }
+
+  protected async performFetch(input: string, init: RequestInit): Promise<Response> {
+    try {
+      return await fetch(input, init);
+    } catch (error) {
+      throw this.normalizeRequestError(error);
+    }
   }
 
   /**
@@ -109,6 +117,18 @@ export abstract class BaseLLMEngine {
     return {
       signal: combinedSignal as AbortSignal,
     };
+  }
+
+  protected normalizeRequestError(error: unknown): Error {
+    if (error instanceof Error && error.name === 'AbortError') {
+      return new Error('The request timed out or was cancelled. Try again, reduce the request size, or choose a faster model/provider.');
+    }
+
+    if (error instanceof Error && /operation was aborted/i.test(error.message)) {
+      return new Error('The request timed out or was cancelled. Try again, reduce the request size, or choose a faster model/provider.');
+    }
+
+    return error instanceof Error ? error : new Error('Request failed');
   }
 }
 

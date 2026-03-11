@@ -121,7 +121,7 @@ export class AnthropicEngine extends BaseLLMEngine {
       body.top_p = opts.topP;
     }
 
-    const response = await fetch(`${this.baseUrl}/v1/messages`, {
+    const response = await this.performFetch(`${this.baseUrl}/v1/messages`, {
       ...this.getFetchOptions(options?.signal),
       method: 'POST',
       headers: this.getHeaders(),
@@ -176,7 +176,7 @@ export class AnthropicEngine extends BaseLLMEngine {
       body.top_p = opts.topP;
     }
 
-    const response = await fetch(`${this.baseUrl}/v1/messages`, {
+    const response = await this.performFetch(`${this.baseUrl}/v1/messages`, {
       ...this.getFetchOptions(options?.signal),
       method: 'POST',
       headers: buildProviderHeaders('anthropic', this.config.apiKey, {
@@ -251,7 +251,7 @@ export class AnthropicEngine extends BaseLLMEngine {
     const startTime = performance.now();
 
     try {
-      const response = await fetch(`${this.baseUrl}/v1/messages`, {
+      const response = await this.performFetch(`${this.baseUrl}/v1/messages`, {
         ...this.getFetchOptions(),
         method: 'POST',
         headers: this.getHeaders(),

@@ -114,7 +114,7 @@ export class OpenAICompatEngine extends BaseLLMEngine {
     this.assertBrowserSupported();
     const opts = this.mergeOptions(options);
 
-    const response = await fetch(`${this.baseUrl}/chat/completions`, {
+    const response = await this.performFetch(`${this.baseUrl}/chat/completions`, {
       ...this.getFetchOptions(options?.signal),
       method: 'POST',
       headers: this.getHeaders(),
@@ -159,7 +159,7 @@ export class OpenAICompatEngine extends BaseLLMEngine {
     this.assertBrowserSupported();
     const opts = this.mergeOptions(options);
 
-    const response = await fetch(`${this.baseUrl}/chat/completions`, {
+    const response = await this.performFetch(`${this.baseUrl}/chat/completions`, {
       ...this.getFetchOptions(options?.signal),
       method: 'POST',
       headers: buildProviderHeaders(this.config.provider, this.config.apiKey, {
@@ -250,7 +250,7 @@ export class OpenAICompatEngine extends BaseLLMEngine {
     const startTime = performance.now();
 
     try {
-      const response = await fetch(`${this.baseUrl}/models`, {
+      const response = await this.performFetch(`${this.baseUrl}/models`, {
         ...this.getFetchOptions(),
         method: 'GET',
         headers: this.getHeaders(),
