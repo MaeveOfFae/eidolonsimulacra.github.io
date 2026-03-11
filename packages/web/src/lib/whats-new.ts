@@ -1,0 +1,66 @@
+export interface ReleaseNoteLink {
+  label: string;
+  to: string;
+}
+
+export interface ReleaseNoteEntry {
+  version: string;
+  releasedOn: string;
+  badge: string;
+  headline: string;
+  summary: string;
+  highlights: string[];
+  links: ReleaseNoteLink[];
+}
+
+// Generated and maintained by tools/generation/generate-release-notes.mjs.
+export const releaseNotes: ReleaseNoteEntry[] = [
+  {
+    version: '2.0.0',
+    releasedOn: '2026-03-11',
+    badge: 'Current release',
+    headline: 'Browser-first workspace upgrade',
+    summary: 'The app now centers the browser runtime with tighter template tooling, local draft workflows, and clearer in-app boundaries around browser-only storage.',
+    highlights: [
+      'Home, drafts, and generation flows now reflect the active browser-only product surface instead of older local-server assumptions.',
+      'Template, blueprint, and validation tools are wired for the current web workflow with stricter contract visibility.',
+      'Theme and export management continue to run client-side with built-in presets and browser-stored customization.',
+    ],
+    links: [
+      { label: 'Open generation', to: '/generate' },
+      { label: 'Review templates', to: '/templates' },
+    ],
+  },
+  {
+    version: '1.9.0',
+    releasedOn: '2026-02-24',
+    badge: 'Stability',
+    headline: 'Draft review and validation pass',
+    summary: 'Recent work tightened draft browsing and review workflows so saved outputs are easier to inspect before export.',
+    highlights: [
+      'Recent draft metadata and favorites are surfaced more clearly in the browser workspace.',
+      'Validation and comparison surfaces were expanded to make format problems easier to catch before export.',
+      'Library and review placeholders were aligned with the current roadmap so staged features stay visible without implying they already ship.',
+    ],
+    links: [
+      { label: 'Browse drafts', to: '/drafts' },
+      { label: 'Run validation', to: '/validation' },
+    ],
+  },
+  {
+    version: '1.8.0',
+    releasedOn: '2026-02-03',
+    badge: 'Workflow',
+    headline: 'Template-aware generation baseline',
+    summary: 'Generation, shared parsing, and export helpers were stabilized around the current official template families.',
+    highlights: [
+      'The web flow stays aligned with official V2/V3 and Aksho template realities instead of flattening them into one asset graph.',
+      'Shared parsing and export helpers were tightened around stricter asset expectations and template metadata.',
+      'Blueprint-focused tooling was organized around contract safety and lower-diff maintenance.',
+    ],
+    links: [
+      { label: 'Inspect blueprints', to: '/blueprints' },
+      { label: 'View templates', to: '/templates' },
+    ],
+  },
+];

@@ -4,6 +4,12 @@ import DocumentPage from './DocumentPage';
 
 const infoCards = [
   {
+    to: '/whats-new',
+    title: 'What\'s New',
+    description: 'Release notes, current version line, and upcoming staged updates.',
+    icon: Sparkles,
+  },
+  {
     to: '/terms',
     title: 'Terms of Use',
     description: 'Ground rules for using the web app, exports, and generated content responsibly.',
@@ -80,7 +86,7 @@ export default function About() {
             </div>
             <div>
               <p className="font-medium text-foreground">Version line</p>
-              <p>v2.x browser generation stack.</p>
+              <p>v{__APP_VERSION__} browser generation stack.</p>
             </div>
           </div>
         </div>

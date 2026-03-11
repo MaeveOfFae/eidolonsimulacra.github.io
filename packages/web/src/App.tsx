@@ -20,6 +20,7 @@ const Themes = lazy(() => import('./components/settings/Themes'));
 const DataManager = lazy(() => import('./components/common/DataManager'));
 const BatchGenerate = lazy(() => import('./components/batch/BatchGenerate'));
 const About = lazy(() => import('./components/info/About'));
+const WhatsNewPage = lazy(() => import('./components/info/WhatsNewPage'));
 const LicensePage = lazy(() => import('./components/info/LicensePage'));
 const TermsPage = lazy(() => import('./components/info/TermsPage'));
 const PrivacyPage = lazy(() => import('./components/info/PrivacyPage'));
@@ -59,6 +60,7 @@ export default function App() {
           <Route path="/settings" element={<Settings />} />
           <Route path="/data" element={<DataManager />} />
           <Route path="/about" element={<About />} />
+          <Route path="/whats-new" element={<WhatsNewPage />} />
           <Route path="/license" element={<LicensePage />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />

@@ -46,6 +46,7 @@ const navItems = [
 
 const footerLinks = [
   { path: '/about', label: 'About', icon: Info },
+  { path: '/whats-new', label: 'What\'s New', icon: Info },
   { path: '/terms', label: 'Terms', icon: Scale },
   { path: '/privacy', label: 'Privacy', icon: ShieldCheck },
   { path: '/license', label: 'License', icon: FileText },
@@ -113,7 +114,7 @@ export default function Layout({ children }: LayoutProps) {
                 </div>
                 <div className="flex flex-col">
                   <span className="font-bold text-lg">Eidolon</span>
-                  <span className="text-xs text-muted-foreground">Simulacra v2.0</span>
+                  <span className="text-xs text-muted-foreground">Simulacra v{__APP_VERSION__}</span>
                 </div>
               </Link>
               <button

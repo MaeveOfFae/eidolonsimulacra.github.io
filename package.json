@@ -10,6 +10,8 @@
     "build": "turbo run build",
     "build:web": "pnpm build:shared && pnpm --filter @char-gen/web build",
     "deploy:porkbun": "./tools/deploy/push-porkbun-dist.sh",
+    "release:notes": "node ./tools/generation/generate-release-notes.mjs",
+    "release:notes:check": "node ./tools/generation/check-release-notes-version.mjs",
     "build:shared": "pnpm --filter @char-gen/shared build",
     "lint": "turbo run lint",
     "test": "turbo run test",

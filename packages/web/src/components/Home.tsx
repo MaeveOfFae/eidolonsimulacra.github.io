@@ -3,6 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { Sparkles, FolderOpen, GitCompare, Baby, ArrowRight, Dice1, GitBranch, ShieldCheck, Zap, FileText, Layers } from 'lucide-react';
 import type { DraftMetadata } from '@char-gen/shared';
 import { api } from '@/lib/api';
+import { roadmapGroups } from '@/lib/roadmap';
+import { releaseNotes } from '@/lib/whats-new';
 import { useAssistantScreenContext } from './common/useAssistantContext';
 import AutomationPlaceholder from './common/AutomationPlaceholder';
 import OnboardingPlaceholder from './common/OnboardingPlaceholder';
@@ -105,6 +107,14 @@ function RecentDraftCard({ id, to, name, meta }: RecentDraftCardProps) {
   );
 }
 
+function formatReleaseDate(value: string) {
+  return new Date(`${value}T00:00:00`).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
 export default function Home() {
   const { data: statsData } = useQuery({
     queryKey: ['drafts', 'stats'],
@@ -122,6 +132,16 @@ export default function Home() {
     template_count: templatesData?.length ?? 0,
     recent_drafts: (statsData?.drafts ?? []).slice(0, 5).map((draft: DraftMetadata) => draft.character_name || draft.seed),
   });
+
+  const upcomingUpdates = roadmapGroups
+    .filter((group) => group.status !== 'implemented')
+    .slice(0, 4)
+    .map((group) => ({
+      id: group.id,
+      title: group.title,
+      summary: group.items[0],
+      ownerFile: group.ownerFiles[0],
+    }));
 
   return (
     <div className="mx-auto max-w-7xl space-y-12 pb-12">
@@ -166,6 +186,118 @@ export default function Home() {
               This workspace runs fully client-side. Drafts, templates, theme presets, and blueprint edits stay in the browser instead of syncing through a local API server.
             </p>
           </div>
+        </div>
+      </section>
+
+      <section>
+        <div className="mb-6 flex items-end justify-between gap-4">
+          <div>
+            <div className="mb-3 flex items-center gap-3">
+              <div className="h-8 w-1 rounded-full bg-gradient-to-r from-primary to-accent" />
+              <h2 className="text-2xl font-bold text-foreground">What's New</h2>
+            </div>
+            <p className="max-w-3xl text-sm text-muted-foreground">
+              Recent release notes and the next visible updates for the browser workspace.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <span className="rounded-full border border-border/60 bg-card/70 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              Release line {__APP_VERSION__}
+            </span>
+            <Link
+              to="/whats-new"
+              className="text-sm font-medium text-primary hover:text-primary/80 hover:underline"
+            >
+              Full history →
+            </Link>
+          </div>
+        </div>
+
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(300px,1fr)]">
+          <div className="grid gap-4 lg:grid-cols-2">
+            {releaseNotes.slice(0, 2).map((entry) => (
+              <article
+                key={entry.version}
+                className="relative overflow-hidden rounded-2xl border border-border/50 bg-gradient-to-br from-slate-900/95 via-slate-900/90 to-slate-800/90 p-6"
+              >
+                <div className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-primary/10 blur-3xl" />
+                <div className="relative space-y-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-full bg-primary/15 px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+                      {entry.badge}
+                    </span>
+                    <span className="rounded-full border border-border/60 px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                      v{entry.version}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {formatReleaseDate(entry.releasedOn)}
+                    </span>
+                  </div>
+
+                  <div>
+                    <h3 className="text-xl font-semibold text-foreground">{entry.headline}</h3>
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">{entry.summary}</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    {entry.highlights.map((highlight) => (
+                      <div key={highlight} className="flex items-start gap-3 text-sm text-foreground/90">
+                        <div className="mt-2 h-1.5 w-1.5 rounded-full bg-primary" />
+                        <p className="leading-6 text-muted-foreground">{highlight}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex flex-wrap gap-3 pt-1">
+                    {entry.links.map((link) => (
+                      <Link
+                        key={`${entry.version}-${link.to}`}
+                        to={link.to}
+                        className="inline-flex items-center gap-2 rounded-lg border border-border/60 bg-card/70 px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:text-primary"
+                      >
+                        {link.label}
+                        <ArrowRight className="h-4 w-4" />
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <aside className="rounded-2xl border border-border/50 bg-card/60 p-6">
+            <div className="mb-5 flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-semibold text-foreground">Upcoming Updates</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Staged work already tracked in the current roadmap.
+                </p>
+              </div>
+              <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                Planned
+              </span>
+            </div>
+
+            <div className="space-y-3">
+              {upcomingUpdates.map((update) => (
+                <div
+                  key={update.id}
+                  className="rounded-xl border border-border/50 bg-background/30 p-4"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h4 className="font-medium text-foreground">{update.title}</h4>
+                      <p className="mt-1 text-sm leading-6 text-muted-foreground">{update.summary}</p>
+                    </div>
+                  </div>
+                  <p className="mt-3 text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                    Owner: {update.ownerFile.split('/').slice(-1)[0]}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </aside>
         </div>
       </section>
 
