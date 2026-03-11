@@ -13,10 +13,16 @@ Goal: prepare Chub-facing fields and ensure greeting/alternates follow Chub form
    - avoid NSFW avatar recommendation if you ask for avatar notes
 
 3) Greetings:
-   - produce one "Initial message"
+   - produce one initial message sourced from the active draft's opener asset
+   - for `V2/V3 Card`, that usually means `intro_scene`
+   - for `Official Aksho`, that usually means `initial_message`
    - if alternate greetings requested:
      - each alternate MUST start with ```"<START>"```
 
 4) Macro hygiene:
    - use {{user}} and {{char}} correctly
    - optionally include time/date macros only if requested
+
+5) Export note:
+   - the repo contains Chub-oriented preset definitions under `presets/`, but the current browser app's export menu is built around `json`, `text`, and `combined`
+   - if you want final Chub JSON in this workspace, treat it as a content-mapping task rather than a shell export step

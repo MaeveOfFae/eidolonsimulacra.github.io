@@ -1,6 +1,6 @@
-# Seed List Generator (seed output/)
+# Seed List Generator
 
-Goal: generate a list of unique seeds for RPBotGenerator.
+Goal: generate a list of unique seeds suitable for the current template-aware generation flow.
 
 1) Ask me for:
    - count (e.g., 25, 50)
@@ -23,5 +23,8 @@ Goal: generate a list of unique seeds for RPBotGenerator.
    - seeds may reference {{user}} only as an anchor (role/leverage/dependency/obligation)
    - never assert {{user}} actions, choices, dialogue, thoughts, emotions, sensations, or consent
 
-5) Save results into:
-   seed output/<descriptive_filename>.txt
+5) Default delivery:
+   - return the seed list directly in chat or in a plain text block
+   - if I explicitly ask for a file, save it somewhere in the workspace I name
+
+6) Do not assume a `seed output/` directory exists.
