@@ -93,9 +93,16 @@ fi
 
 git -C "$repo_root" worktree add --detach "$temp_dir" "$base_ref" >/dev/null
 
-git -C "$temp_dir" rm -r --ignore-unmatch . >/dev/null 2>&1 || true
-find "$temp_dir" -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
-cp -a "$source_path"/. "$temp_dir"/
+# Keep previously published hashed assets so stale cached index.html files
+# can still resolve their script and stylesheet URLs after a new deploy.
+find "$temp_dir" -mindepth 1 -maxdepth 1 ! -name .git ! -name assets -exec rm -rf {} +
+
+find "$source_path" -mindepth 1 -maxdepth 1 ! -name assets -exec cp -a {} "$temp_dir"/ \;
+
+if [[ -d "$source_path/assets" ]]; then
+  mkdir -p "$temp_dir/assets"
+  cp -a "$source_path/assets"/. "$temp_dir/assets"/
+fi
 
 git -C "$temp_dir" add -A
 
