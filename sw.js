@@ -1,4 +1,4 @@
-const CACHE_NAME = 'char-gen-v1';
+const CACHE_NAME = 'eidolon-simulacra-v1';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
