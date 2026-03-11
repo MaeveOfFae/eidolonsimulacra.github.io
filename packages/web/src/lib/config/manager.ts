@@ -17,6 +17,23 @@ const API_KEYS_PERSISTENCE_KEY = 'bpui.web.apiKeys.persist';
  * Can be persisted to localStorage with user consent
  */
 let sessionApiKeys: ApiKeys = {};
+
+function normalizeApiKeyValue(value: string): string {
+  return value
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .trim()
+    .replace(/^['"]+|['"]+$/g, '');
+}
+
+function normalizeApiKeys(keys: ApiKeys): ApiKeys {
+  return Object.fromEntries(
+    Object.entries(keys)
+      .map(([provider, key]) => [provider, typeof key === 'string' ? normalizeApiKeyValue(key) : key])
+      .filter(([, key]) => typeof key === 'string' && key.length > 0)
+  );
+}
 let persistKeys = false;
 
 export interface ConfigManagerOptions {
@@ -118,21 +135,27 @@ export class ConfigManager {
    * Get API keys (from session or localStorage)
    */
   getApiKeys(): ApiKeys {
-    return { ...sessionApiKeys };
+    return normalizeApiKeys(sessionApiKeys);
   }
 
   /**
    * Get a specific API key
    */
   getApiKey(provider: string): string | undefined {
-    return sessionApiKeys[provider];
+    const key = sessionApiKeys[provider];
+    return typeof key === 'string' ? normalizeApiKeyValue(key) : undefined;
   }
 
   /**
    * Set an API key (stored in session, persisted if enabled)
    */
   setApiKey(provider: string, key: string): void {
-    sessionApiKeys[provider] = key;
+    const normalizedKey = normalizeApiKeyValue(key);
+    if (normalizedKey) {
+      sessionApiKeys[provider] = normalizedKey;
+    } else {
+      delete sessionApiKeys[provider];
+    }
     this.persistApiKeysIfNeeded();
   }
 
@@ -140,7 +163,10 @@ export class ConfigManager {
    * Set multiple API keys
    */
   setApiKeys(keys: ApiKeys): void {
-    sessionApiKeys = { ...sessionApiKeys, ...keys };
+    sessionApiKeys = {
+      ...normalizeApiKeys(sessionApiKeys),
+      ...normalizeApiKeys(keys),
+    };
     this.persistApiKeysIfNeeded();
   }
 
@@ -171,7 +197,7 @@ export class ConfigManager {
     try {
       const stored = localStorage.getItem(API_KEYS_STORAGE_KEY);
       if (stored) {
-        sessionApiKeys = JSON.parse(stored);
+        sessionApiKeys = normalizeApiKeys(JSON.parse(stored) as ApiKeys);
       }
     } catch {
       // Ignore parse errors
@@ -184,7 +210,7 @@ export class ConfigManager {
   private persistApiKeysIfNeeded(): void {
     if (persistKeys) {
       try {
-        localStorage.setItem(API_KEYS_STORAGE_KEY, JSON.stringify(sessionApiKeys));
+        localStorage.setItem(API_KEYS_STORAGE_KEY, JSON.stringify(normalizeApiKeys(sessionApiKeys)));
       } catch (error) {
         console.warn('Failed to persist API keys:', error);
       }
@@ -221,7 +247,7 @@ export class ConfigManager {
    * Export API keys as JSON (for backup)
    */
   exportApiKeys(): string {
-    return JSON.stringify(sessionApiKeys, null, 2);
+    return JSON.stringify(normalizeApiKeys(sessionApiKeys), null, 2);
   }
 
   /**
@@ -230,7 +256,7 @@ export class ConfigManager {
   importApiKeys(json: string): void {
     try {
       const keys = JSON.parse(json) as ApiKeys;
-      sessionApiKeys = { ...keys };
+      sessionApiKeys = normalizeApiKeys(keys);
       this.persistApiKeysIfNeeded();
     } catch {
       throw new Error('Invalid API keys JSON');
