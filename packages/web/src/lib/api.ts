@@ -48,7 +48,7 @@ import {
   type ValidatePathRequest,
   type ValidationResponse,
 } from '@char-gen/shared';
-import { MODEL_SUGGESTIONS, createEngine, getDefaultBaseUrl } from './llm/factory.js';
+import { MODEL_SUGGESTIONS, buildProviderHeaders, createEngine, getDefaultBaseUrl } from './llm/factory.js';
 import { configManager } from './config/manager.js';
 import { DraftStorage } from './storage/draft-db.js';
 import { GenerationService } from './services/generation.js';
@@ -393,19 +393,6 @@ function resolveProviderApiKey(provider: string, apiKeys: ApiKeys): string | und
   return getFallbackApiKey(apiKeys);
 }
 
-function buildOpenAICompatibleHeaders(provider: string, apiKey: string): Record<string, string> {
-  const headers: Record<string, string> = {
-    Authorization: `Bearer ${apiKey}`,
-  };
-
-  if (provider === 'openrouter') {
-    headers['HTTP-Referer'] = typeof window !== 'undefined' ? window.location.href : 'https://char-gen.app';
-    headers['X-Title'] = 'Character Generator';
-  }
-
-  return headers;
-}
-
 function getCustomThemes(): ThemePreset[] {
   return readStorage<ThemePreset[]>(CUSTOM_THEMES_STORAGE_KEY, []);
 }
@@ -695,7 +682,7 @@ export class CharacterGeneratorAPI {
   ): Promise<ModelsResponse> {
     const response = await fetch(`${baseUrl}/models`, {
       method: 'GET',
-      headers: buildOpenAICompatibleHeaders(provider, apiKey),
+      headers: buildProviderHeaders(provider as LLMProvider, apiKey),
     });
 
     if (!response.ok) {

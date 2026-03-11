@@ -9,6 +9,11 @@ import { OpenAICompatEngine } from './openai-compat.js';
 import { GoogleEngine } from './google.js';
 import { AnthropicEngine } from './anthropic.js';
 
+export interface ProviderHeaderOptions {
+  accept?: string;
+  contentType?: string;
+}
+
 export interface CreateEngineOptions {
   model: string;
   apiKey?: string;
@@ -107,6 +112,44 @@ export function getProviderAuthType(provider: LLMProvider): 'bearer' | 'raw' {
     default:
       return 'bearer';
   }
+}
+
+export function buildProviderHeaders(
+  provider: LLMProvider,
+  apiKey?: string,
+  options: ProviderHeaderOptions = {}
+): Record<string, string> {
+  const headers: Record<string, string> = {};
+
+  if (options.contentType) {
+    headers['Content-Type'] = options.contentType;
+  }
+
+  if (options.accept) {
+    headers.Accept = options.accept;
+  }
+
+  if (apiKey) {
+    switch (provider) {
+      case 'anthropic':
+        headers['x-api-key'] = apiKey;
+        headers['anthropic-version'] = '2023-06-01';
+        break;
+      case 'google':
+        headers['x-goog-api-key'] = apiKey;
+        break;
+      default:
+        headers.Authorization = `Bearer ${apiKey}`;
+        break;
+    }
+  }
+
+  if (provider === 'openrouter') {
+    headers['HTTP-Referer'] = typeof window !== 'undefined' ? window.location.origin : 'https://char-gen.app';
+    headers['X-Title'] = 'Character Generator';
+  }
+
+  return headers;
 }
 
 /**

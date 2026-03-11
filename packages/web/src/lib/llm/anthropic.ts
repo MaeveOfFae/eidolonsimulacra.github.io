@@ -6,6 +6,7 @@
 import {
   BaseLLMEngine,
 } from './base.js';
+import { buildProviderHeaders } from './factory.js';
 import type {
   ChatMessage,
   ConnectionTestResult,
@@ -59,8 +60,6 @@ interface AnthropicErrorResponse {
   };
 }
 
-const ANTHROPIC_VERSION = '2023-06-01';
-
 export class AnthropicEngine extends BaseLLMEngine {
   private baseUrl: string;
 
@@ -70,11 +69,9 @@ export class AnthropicEngine extends BaseLLMEngine {
   }
 
   private getHeaders(): Record<string, string> {
-    return {
-      'Content-Type': 'application/json',
-      'x-api-key': this.config.apiKey || '',
-      'anthropic-version': ANTHROPIC_VERSION,
-    };
+    return buildProviderHeaders('anthropic', this.config.apiKey, {
+      contentType: 'application/json',
+    });
   }
 
   private formatMessages(messages: ChatMessage[]): AnthropicMessage[] {
@@ -182,10 +179,10 @@ export class AnthropicEngine extends BaseLLMEngine {
     const response = await fetch(`${this.baseUrl}/v1/messages`, {
       ...this.getFetchOptions(options?.signal),
       method: 'POST',
-      headers: {
-        ...this.getHeaders(),
-        Accept: 'text/event-stream',
-      },
+      headers: buildProviderHeaders('anthropic', this.config.apiKey, {
+        contentType: 'application/json',
+        accept: 'text/event-stream',
+      }),
       body: JSON.stringify(body),
     });
 

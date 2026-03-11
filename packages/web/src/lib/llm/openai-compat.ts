@@ -6,6 +6,7 @@
 import {
   BaseLLMEngine,
 } from './base.js';
+import { buildProviderHeaders } from './factory.js';
 import type {
   ChatMessage,
   ConnectionTestResult,
@@ -71,21 +72,9 @@ export class OpenAICompatEngine extends BaseLLMEngine {
   }
 
   private getHeaders(): Record<string, string> {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
-
-    if (this.config.apiKey) {
-      headers['Authorization'] = `Bearer ${this.config.apiKey}`;
-    }
-
-    // Add OpenRouter-specific headers for better routing
-    if (this.config.provider === 'openrouter') {
-      headers['HTTP-Referer'] = typeof window !== 'undefined' ? window.location.href : 'https://char-gen.app';
-      headers['X-Title'] = 'Character Generator';
-    }
-
-    return headers;
+    return buildProviderHeaders(this.config.provider, this.config.apiKey, {
+      contentType: 'application/json',
+    });
   }
 
   private isDirectBrowserOpenAIRequest(): boolean {
@@ -173,10 +162,10 @@ export class OpenAICompatEngine extends BaseLLMEngine {
     const response = await fetch(`${this.baseUrl}/chat/completions`, {
       ...this.getFetchOptions(options?.signal),
       method: 'POST',
-      headers: {
-        ...this.getHeaders(),
-        Accept: 'text/event-stream',
-      },
+      headers: buildProviderHeaders(this.config.provider, this.config.apiKey, {
+        contentType: 'application/json',
+        accept: 'text/event-stream',
+      }),
       body: JSON.stringify({
         model: this.config.model,
         messages: this.formatMessages(messages),

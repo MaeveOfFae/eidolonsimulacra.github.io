@@ -6,6 +6,7 @@
 import {
   BaseLLMEngine,
 } from './base.js';
+import { buildProviderHeaders } from './factory.js';
 import type {
   ChatMessage,
   ConnectionTestResult,
@@ -62,15 +63,9 @@ export class GoogleEngine extends BaseLLMEngine {
   }
 
   private getHeaders(): Record<string, string> {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
-
-    if (this.config.apiKey) {
-      headers['x-goog-api-key'] = this.config.apiKey;
-    }
-
-    return headers;
+    return buildProviderHeaders('google', this.config.apiKey, {
+      contentType: 'application/json',
+    });
   }
 
   private formatMessages(messages: ChatMessage[]): GeminiContent[] {
@@ -102,7 +97,7 @@ export class GoogleEngine extends BaseLLMEngine {
   }
 
   private async callEndpoint(endpoint: string, body: unknown): Promise<Response> {
-    const url = `${this.baseUrl}${endpoint}?key=${this.config.apiKey}`;
+    const url = `${this.baseUrl}${endpoint}`;
 
     return fetch(url, {
       ...this.getFetchOptions(),
