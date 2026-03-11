@@ -16,9 +16,27 @@ export interface ReleaseNoteEntry {
 // Generated and maintained by tools/generation/generate-release-notes.mjs.
 export const releaseNotes: ReleaseNoteEntry[] = [
   {
-    version: '2.0.0',
+    version: '2.0.1',
     releasedOn: '2026-03-11',
     badge: 'Current release',
+    headline: 'Documentation and UI update',
+    summary: 'This release packages 12 recent commits focused on documentation, UI, and platform.',
+    highlights: [
+      'Enhance release notes generation and add changelog for version 2.0.0',
+      'Add "What\'s New" page and integrate release notes; implement version check in CI',
+      'Enhance theme documentation and add new themes',
+      'Update license in README and enhance security policy in SECURITY.md; clarify usage instructions in openrouter.toml and midnight.toml',
+      'Refactor themes: Remove unused color variables and delete obsolete theme files',
+    ],
+    links: [
+      { label: 'Open generation', to: '/generate' },
+      { label: 'Review templates', to: '/templates' },
+    ],
+  },
+  {
+    version: '2.0.0',
+    releasedOn: '2026-03-11',
+    badge: 'Previous release',
     headline: 'Browser-first workspace upgrade',
     summary: 'The app now centers the browser runtime with tighter template tooling, local draft workflows, and clearer in-app boundaries around browser-only storage.',
     highlights: [
