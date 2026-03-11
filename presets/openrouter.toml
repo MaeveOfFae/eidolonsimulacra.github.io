@@ -2,9 +2,9 @@
 # This preset demonstrates using OpenRouter to access various AI models
 # 
 # Quick start:
-# 1. Set your OpenRouter API key: bpui config set api_keys.openrouter your-key
-# 2. Copy this preset to your project: cp presets/openrouter.toml .bpui.toml
-# 3. Run: bpui compile template.toml
+# 1. Open the web app: pnpm dev:web
+# 2. Configure your OpenRouter key in Settings or the browser-side config flow
+# 3. Use this file as a reference preset if you are wiring TOML-driven config back into a runtime surface
 
 [model]
 # Select any OpenRouter model from https://openrouter.ai/models
@@ -24,8 +24,8 @@ engine_mode = "auto"  # Auto-detects OpenRouter and uses OpenAI-compatible API
 
 [api_keys]
 # Set your OpenRouter API key
-# You can set this via: bpui config set api_keys.openrouter your-key
-# Or uncomment and set it here (not recommended for version control)
+# Store secrets outside version control; this file is a repository reference asset, not the browser runtime's active config store
+# Or uncomment and set it here only for local experiments you do not commit
 # openrouter = "sk-or-v1-..."
 
 # Optional: Provider-specific keys for specific models

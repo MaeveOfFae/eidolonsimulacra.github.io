@@ -1,6 +1,7 @@
 name = "midnight"
 display_name = "Midnight"
 description = "Deep blue ocean theme with cyan accents"
+author = "Eidolon Simulacra"
 is_builtin = true
 
 [colors]

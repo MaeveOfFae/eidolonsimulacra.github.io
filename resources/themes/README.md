@@ -8,6 +8,8 @@ Today that means a mix of:
 
 These files are useful reference material and may be reused by future surfaces, but the current browser app does not load them directly at runtime.
 
+Note: `midnight.toml` is maintained in the same TOML format as the other theme metadata files and should be treated as a reference asset, not a runtime-loaded preset.
+
 ## Built-in Themes
 
 - `dark.toml`: Dark reference theme metadata

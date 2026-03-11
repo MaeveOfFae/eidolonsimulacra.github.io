@@ -118,4 +118,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md), [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
 
 ## License
 
-[BSD 3-Clause License](LICENSE)
+[Eidolon Simulacra Personal Use License v1.0](LICENSE)

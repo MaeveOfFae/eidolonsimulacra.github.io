@@ -29,7 +29,7 @@ We will acknowledge receipt within 48 hours and provide a timeline for remediati
 ### API Keys
 
 - Do **not** commit API keys or secrets to source control
-- Use .bpui.toml (gitignored) or environment variables
+- Prefer browser-local configuration for normal use, and use environment variables only for development or deployment workflows that actually consume them
 - Rotate keys periodically
 
 ### Dependencies
