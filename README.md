@@ -18,7 +18,7 @@ The repo is centered on a strict blueprint contract: start from one seed, genera
 ## Workspace Layout
 
 ```text
-character-generator/
+eidolon-simulacra/
 ├── blueprints/          # Orchestrators, template manifests, template-local asset blueprints
 ├── packages/
 │   ├── shared/          # Shared TS types, generation, parsing, export, template utilities

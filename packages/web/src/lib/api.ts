@@ -74,10 +74,34 @@ export interface DownloadResponse {
 
 type StreamEventType = 'chunk' | 'complete' | 'error' | 'batch_start' | 'batch_complete' | 'batch_error';
 
-type StreamEvent = {
-  event: StreamEventType;
-  data: unknown;
+type ChunkStreamData = { content: string };
+type ErrorStreamData = { error: string };
+type BatchStartStreamData = { index: number; seed: string };
+type BatchCompleteStreamData = { index: number; seed: string; draft_path: string };
+type BatchErrorStreamData = { index: number; seed: string; error: string };
+type CompleteStreamData =
+  | GenerationComplete
+  | GenerateAssetResponse
+  | BlueprintPreviewResponse
+  | { draft_id: string; character_name?: string }
+  | { content: string }
+  | { status: 'done' };
+
+type StreamEventMap = {
+  chunk: ChunkStreamData;
+  complete: CompleteStreamData;
+  error: ErrorStreamData;
+  batch_start: BatchStartStreamData;
+  batch_complete: BatchCompleteStreamData;
+  batch_error: BatchErrorStreamData;
 };
+
+type StreamEvent = {
+  [EventType in StreamEventType]: {
+    event: EventType;
+    data: StreamEventMap[EventType];
+  }
+}[StreamEventType];
 
 type StreamReader = (event: StreamEvent) => void;
 
@@ -268,13 +292,13 @@ const builtinThemes: ThemePreset[] = [
 
 class BrowserStream {
   private readers: StreamReader[] = [];
-  private onComplete?: (data: unknown) => void;
+  private onComplete?: (data: CompleteStreamData) => void;
   private onError?: (error: string) => void;
   private controller = new AbortController();
 
   constructor(
     private readonly executor: (helpers: {
-      emit: (event: StreamEventType, data: unknown) => void;
+      emit: <EventType extends StreamEventType>(event: EventType, data: StreamEventMap[EventType]) => void;
       signal: AbortSignal;
     }) => Promise<void>
   ) {}
@@ -284,7 +308,7 @@ class BrowserStream {
     return this;
   }
 
-  onComplete_(callback: (data: unknown) => void): this {
+  onComplete_(callback: (data: CompleteStreamData) => void): this {
     this.onComplete = callback;
     return this;
   }
@@ -312,19 +336,16 @@ class BrowserStream {
     this.controller.abort();
   }
 
-  private emit(event: StreamEventType, data: unknown): void {
-    const payload = { event, data } satisfies StreamEvent;
+  private emit<EventType extends StreamEventType>(event: EventType, data: StreamEventMap[EventType]): void {
+    const payload = { event, data } as StreamEvent;
     this.readers.forEach((reader) => reader(payload));
 
-    if (event === 'complete' && this.onComplete) {
-      this.onComplete(data);
+    if (payload.event === 'complete' && this.onComplete) {
+      this.onComplete(payload.data);
     }
 
-    if (event === 'error' && this.onError) {
-      const message = typeof data === 'object' && data && 'error' in data
-        ? String((data as { error: unknown }).error)
-        : 'Stream failed';
-      this.onError(message);
+    if (payload.event === 'error' && this.onError) {
+      this.onError(payload.data.error);
     }
   }
 }

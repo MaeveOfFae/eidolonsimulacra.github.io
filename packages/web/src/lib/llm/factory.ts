@@ -152,7 +152,7 @@ export function buildProviderHeaders(
   }
 
   if (provider === 'openrouter') {
-    headers['HTTP-Referer'] = typeof window !== 'undefined' ? window.location.origin : 'https://char-gen.app';
+    headers['HTTP-Referer'] = typeof window !== 'undefined' ? window.location.origin : 'https://eidolon-simulacra.app';
     headers['X-OpenRouter-Title'] = 'Eidolon Simulacra';
   }
 
