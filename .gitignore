@@ -1,15 +1,3 @@
-# Generated character packs
-/output/
-/seed output/
-/drafts/
-
-# Batch processing state
-/.bpui-batch-state/
-
-# Chub presets (user-specific)
-/chub preset/
-/chub-preset/
-
 # Python
 __pycache__/
 *.py[cod]
