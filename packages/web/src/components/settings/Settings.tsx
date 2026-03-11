@@ -35,10 +35,6 @@ type ThemeImportPayload = {
   colors?: ThemePreset['colors'];
 };
 
-type ThemeOverrideDraft = ThemeOverride & {
-  tui?: Record<string, string | undefined>;
-};
-
 function buildThemeOverrideFromColors(colors: ThemePreset['colors']): ThemeOverride {
   return {
     app: {
@@ -68,16 +64,6 @@ function buildThemeOverrideFromColors(colors: ThemePreset['colors']): ThemeOverr
       curly_braces: colors.tok_curly_braces,
       pipes: colors.tok_pipes,
       at_sign: colors.tok_at_sign,
-    },
-    tui: {
-      primary: colors.tui_primary,
-      secondary: colors.tui_secondary,
-      surface: colors.tui_surface,
-      panel: colors.tui_panel,
-      warning: colors.tui_warning,
-      error: colors.tui_error,
-      success: colors.tui_success,
-      accent: colors.tui_accent,
     },
   } as ThemeOverride;
 }
@@ -319,11 +305,11 @@ export default function Settings() {
   };
 
   const handleThemeFieldChange = (
-    section: 'app' | 'tokenizer' | 'tui',
+    section: 'app' | 'tokenizer',
     key: string,
     value: string
   ) => {
-    const themeSections = (localConfig.theme ?? {}) as ThemeOverrideDraft & Record<string, Record<string, string | undefined> | undefined>;
+    const themeSections = (localConfig.theme ?? {}) as Record<string, Record<string, string | undefined> | undefined>;
     const sectionValues = themeSections[section] ?? {};
     const nextTheme = {
       ...localConfig.theme,
@@ -338,8 +324,8 @@ export default function Settings() {
     setThemeError(null);
   };
 
-  const getThemeOverrideValue = (section: 'app' | 'tokenizer' | 'tui', key: string) => {
-    const themeSections = (localConfig.theme ?? {}) as ThemeOverrideDraft & Record<string, Record<string, string | undefined> | undefined>;
+  const getThemeOverrideValue = (section: 'app' | 'tokenizer', key: string) => {
+    const themeSections = (localConfig.theme ?? {}) as Record<string, Record<string, string | undefined> | undefined>;
     const sectionValues = themeSections[section] as Record<string, string | undefined> | undefined;
     return sectionValues?.[key] || '';
   };

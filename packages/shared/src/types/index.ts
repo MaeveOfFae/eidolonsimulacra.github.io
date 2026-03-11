@@ -66,21 +66,9 @@ export interface ThemeTokenizerColors {
   at_sign?: string;
 }
 
-export interface ThemeTuiColors {
-  primary?: string;
-  secondary?: string;
-  surface?: string;
-  panel?: string;
-  warning?: string;
-  error?: string;
-  success?: string;
-  accent?: string;
-}
-
 export interface ThemeOverride {
   app?: ThemeAppColors;
   tokenizer?: ThemeTokenizerColors;
-  tui?: ThemeTuiColors;
 }
 
 export interface ThemeColors {
@@ -108,14 +96,6 @@ export interface ThemeColors {
   success_text: string;
   error_text: string;
   warning_text: string;
-  tui_primary: string;
-  tui_secondary: string;
-  tui_surface: string;
-  tui_panel: string;
-  tui_warning: string;
-  tui_error: string;
-  tui_success: string;
-  tui_accent: string;
 }
 
 export interface ThemePreset {

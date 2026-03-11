@@ -162,7 +162,7 @@ const palettePreviewKeys: Array<keyof ThemeColors> = [
   'surface',
   'accent',
   'highlight',
-  'tui_primary',
+  'button',
   'tok_brackets',
 ];
 
@@ -579,7 +579,7 @@ export default function Themes() {
             Theme Manager
           </h1>
           <p className="text-muted-foreground">
-            Save the current palette as a reusable preset and manage custom themes for web and TUI surfaces.
+            Save the current palette as a reusable preset and manage custom themes for the web app and review surfaces.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -701,7 +701,7 @@ export default function Themes() {
                   resolvedCurrentTheme.background,
                   resolvedCurrentTheme.surface,
                   resolvedCurrentTheme.accent,
-                  resolvedCurrentTheme.tui_primary,
+                  resolvedCurrentTheme.button,
                   resolvedCurrentTheme.tok_brackets,
                   resolvedCurrentTheme.highlight,
                 ].map((color) => (
@@ -1103,7 +1103,7 @@ export default function Themes() {
                     )}
                   </div>
                   <div className="flex gap-2">
-                    {[theme.colors.background, theme.colors.surface, theme.colors.accent, theme.colors.tui_primary].map((color) => (
+                    {[theme.colors.background, theme.colors.surface, theme.colors.accent, theme.colors.button].map((color) => (
                       <span key={`${theme.name}-${color}`} className={`${isCompact ? 'h-5 w-5' : 'h-6 w-6'} rounded-full border border-black/10`} style={{ backgroundColor: color }} />
                     ))}
                   </div>

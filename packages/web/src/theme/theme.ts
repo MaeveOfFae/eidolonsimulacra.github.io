@@ -30,18 +30,7 @@ const TOKENIZER_OVERRIDE_MAP: Record<string, keyof ThemeColors> = {
   at_sign: 'tok_at_sign',
 };
 
-const TUI_OVERRIDE_MAP: Record<string, keyof ThemeColors> = {
-  primary: 'tui_primary',
-  secondary: 'tui_secondary',
-  surface: 'tui_surface',
-  panel: 'tui_panel',
-  warning: 'tui_warning',
-  error: 'tui_error',
-  success: 'tui_success',
-  accent: 'tui_accent',
-};
-
-type ThemeFieldSection = 'app' | 'tokenizer' | 'tui';
+type ThemeFieldSection = 'app' | 'tokenizer';
 
 export interface ThemeFieldDefinition {
   section: ThemeFieldSection;
@@ -80,21 +69,9 @@ export const TOKENIZER_THEME_FIELDS: ThemeFieldDefinition[] = [
   { section: 'tokenizer', key: 'at_sign', label: 'At Sign', colorKey: 'tok_at_sign' },
 ];
 
-export const TUI_THEME_FIELDS: ThemeFieldDefinition[] = [
-  { section: 'tui', key: 'primary', label: 'Primary Token', colorKey: 'tui_primary' },
-  { section: 'tui', key: 'secondary', label: 'Secondary Token', colorKey: 'tui_secondary' },
-  { section: 'tui', key: 'surface', label: 'Surface Token', colorKey: 'tui_surface' },
-  { section: 'tui', key: 'panel', label: 'Panel Token', colorKey: 'tui_panel' },
-  { section: 'tui', key: 'warning', label: 'Warning Token', colorKey: 'tui_warning' },
-  { section: 'tui', key: 'error', label: 'Error Token', colorKey: 'tui_error' },
-  { section: 'tui', key: 'success', label: 'Success Token', colorKey: 'tui_success' },
-  { section: 'tui', key: 'accent', label: 'Accent Token', colorKey: 'tui_accent' },
-];
-
 export const EDITABLE_THEME_SECTIONS = [
   { title: 'App Colors', description: 'Web and app-facing surfaces.', fields: APP_THEME_FIELDS },
   { title: 'Tokenizer Colors', description: 'Syntax highlighting tokens used in review surfaces.', fields: TOKENIZER_THEME_FIELDS },
-  { title: 'TUI Tokens', description: 'Textual design tokens used by the terminal UI themes.', fields: TUI_THEME_FIELDS },
 ] as const;
 
 export function resolveThemeColors(
@@ -126,17 +103,6 @@ export function resolveThemeColors(
     }
 
     const mappedKey = TOKENIZER_OVERRIDE_MAP[overrideKey];
-    if (mappedKey) {
-      merged[mappedKey] = value;
-    }
-  }
-
-  for (const [overrideKey, value] of Object.entries(overrides?.tui ?? {})) {
-    if (!value) {
-      continue;
-    }
-
-    const mappedKey = TUI_OVERRIDE_MAP[overrideKey];
     if (mappedKey) {
       merged[mappedKey] = value;
     }

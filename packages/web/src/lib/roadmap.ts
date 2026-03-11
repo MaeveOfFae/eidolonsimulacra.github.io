@@ -250,7 +250,7 @@ export const roadmapGroups: RoadmapGroup[] = [
       'Mobile-first review and approval flow for draft triage on smaller screens',
       'Desktop-native drag-and-drop import/export flows',
       'Responsive split-pane editor optimized for wide and narrow displays',
-      'Keyboard-first review workflows across web, desktop, and TUI surfaces',
+      'Keyboard-first review workflows across web, mobile, and desktop surfaces',
       'Quick actions palette for jumping to drafts, templates, exports, and tools',
       'Pinned dashboard widgets for recent drafts, saved searches, and active queues',
       'Guided empty states that teach features instead of just showing blank screens',

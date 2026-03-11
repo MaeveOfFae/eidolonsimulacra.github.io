@@ -4,7 +4,7 @@ This directory contains repo-tracked non-code assets and reference files.
 
 ## Subdirectories
 
-- **themes/** - theme-related files tracked in the repo, including legacy Textual `.tcss` files and theme metadata `.toml` files
+- **themes/** - theme palette metadata `.toml` files tracked in the repo
 
 ## Current State
 
