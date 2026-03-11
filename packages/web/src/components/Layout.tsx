@@ -23,7 +23,6 @@ import { useState } from 'react';
 import { cn } from '../utils/cn';
 import { AssistantContextProvider } from './common/AssistantContext';
 import GlobalAssistant from './common/GlobalAssistant';
-import KoFiButtonWidget from './common/KoFiButtonWidget';
 
 interface LayoutProps {
   children: ReactNode;
@@ -152,7 +151,14 @@ export default function Layout({ children }: LayoutProps) {
                 </p>
               </div>
               <div className="rounded-xl border border-border/60 bg-background/80 p-3 shadow-sm">
-                <KoFiButtonWidget />
+                <a
+                  href="https://ko-fi.com/maeveoffae"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex w-full items-center justify-center rounded-lg bg-[#72a4f2] px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                >
+                  Support me on Ko-fi
+                </a>
               </div>
             </div>
 
