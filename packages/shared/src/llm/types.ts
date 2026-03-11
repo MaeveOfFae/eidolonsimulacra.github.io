@@ -1,5 +1,5 @@
 /**
- * LLM Engine Types for Client-Side Character Generator
+ * LLM engine types for the Eidolon Simulacra client.
  */
 
 export type LLMProvider =

@@ -1,5 +1,5 @@
 /**
- * Export preset management for Character Generator.
+ * Export preset management for Eidolon Simulacra.
  * Handles loading TOML presets and applying them to character assets.
  */
 

@@ -43,38 +43,103 @@ export interface TagEntity {
   createdAt: number;
 }
 
+const DRAFT_DB_NAME = 'EidolonSimulacraDB';
+const LEGACY_DRAFT_DB_NAMES = ['CharacterGeneratorDB'];
+const DRAFT_DB_SCHEMA = {
+  drafts: '++id, reviewId, [metadata.character_name], createdAt, updatedAt, metadata.favorite, metadata.mode, metadata.genre',
+  assets: '++id, draftId, assetName, createdAt',
+  tags: '++id, tag, draftId',
+} as const;
+
 /**
- * Character Generator Database
+ * Draft database
  */
-class CharacterGeneratorDB extends Dexie {
+class DraftDatabase extends Dexie {
   drafts!: Table<DraftEntity>;
   assets!: Table<AssetEntity>;
   tags!: Table<TagEntity>;
 
-  constructor() {
-    super('CharacterGeneratorDB');
+  constructor(name: string) {
+    super(name);
 
     // Define schema
     // version 1: initial schema
-    this.version(1).stores({
-      drafts: '++id, reviewId, [metadata.character_name], createdAt, updatedAt, metadata.favorite, metadata.mode, metadata.genre',
-      assets: '++id, draftId, assetName, createdAt',
-      tags: '++id, tag, draftId',
-    });
+    this.version(1).stores(DRAFT_DB_SCHEMA);
   }
 }
 
 // Global database instance
-export const db = new CharacterGeneratorDB();
+export const db = new DraftDatabase(DRAFT_DB_NAME);
+
+let migrationPromise: Promise<void> | null = null;
+
+async function migrateLegacyDraftDatabase(): Promise<void> {
+  if (typeof indexedDB === 'undefined') {
+    return;
+  }
+
+  const existingDraftCount = await db.drafts.count();
+  if (existingDraftCount > 0) {
+    return;
+  }
+
+  for (const legacyName of LEGACY_DRAFT_DB_NAMES) {
+    if (!(await Dexie.exists(legacyName))) {
+      continue;
+    }
+
+    const legacyDb = new DraftDatabase(legacyName);
+
+    try {
+      await legacyDb.open();
+
+      const legacyDrafts = await legacyDb.drafts.toArray();
+      if (legacyDrafts.length === 0) {
+        continue;
+      }
+
+      const legacyAssets = await legacyDb.assets.toArray();
+      const legacyTags = await legacyDb.tags.toArray();
+
+      await db.transaction('rw', db.drafts, db.assets, db.tags, async () => {
+        await db.drafts.bulkPut(legacyDrafts);
+        if (legacyAssets.length > 0) {
+          await db.assets.bulkPut(legacyAssets);
+        }
+        if (legacyTags.length > 0) {
+          await db.tags.bulkPut(legacyTags);
+        }
+      });
+
+      legacyDb.close();
+      await Dexie.delete(legacyName);
+      return;
+    } catch (error) {
+      console.warn(`Failed to migrate legacy draft database ${legacyName}:`, error);
+    } finally {
+      legacyDb.close();
+    }
+  }
+}
 
 /**
  * Draft Storage Service
  */
 export class DraftStorage {
+  private static async ensureReady(): Promise<void> {
+    if (!migrationPromise) {
+      migrationPromise = migrateLegacyDraftDatabase();
+    }
+
+    await migrationPromise;
+  }
+
   /**
    * Save or update a draft
    */
   static async saveDraft(draft: Draft): Promise<void> {
+    await this.ensureReady();
+
     const now = Date.now();
     const inferredCharacterName = inferCharacterDisplayNameForTemplate(
       draft.assets,
@@ -135,6 +200,8 @@ export class DraftStorage {
    * Get a draft by review ID
    */
   static async getDraft(reviewId: string): Promise<Draft | null> {
+    await this.ensureReady();
+
     const entity = await db.drafts.where('reviewId').equals(reviewId).first();
 
     if (!entity) {
@@ -152,6 +219,8 @@ export class DraftStorage {
    * Get all drafts
    */
   static async getAllDrafts(): Promise<Draft[]> {
+    await this.ensureReady();
+
     const entities = await db.drafts.toArray();
 
     return entities.map(entity => ({
@@ -165,6 +234,8 @@ export class DraftStorage {
    * Get draft metadata for listing
    */
   static async getAllMetadata(): Promise<DraftMetadata[]> {
+    await this.ensureReady();
+
     const entities = await db.drafts.toArray();
     return entities.map(e => e.metadata);
   }
@@ -173,6 +244,8 @@ export class DraftStorage {
    * Delete a draft
    */
   static async deleteDraft(reviewId: string): Promise<void> {
+    await this.ensureReady();
+
     await db.transaction('rw', db.drafts, db.assets, db.tags, async () => {
       await db.drafts.where('reviewId').equals(reviewId).delete();
       await db.assets.where('draftId').equals(reviewId).delete();
@@ -184,6 +257,8 @@ export class DraftStorage {
    * Update draft metadata
    */
   static async updateMetadata(reviewId: string, updates: Partial<DraftMetadata>): Promise<void> {
+    await this.ensureReady();
+
     const existing = await db.drafts.where('reviewId').equals(reviewId).first();
 
     if (!existing) {
@@ -218,6 +293,8 @@ export class DraftStorage {
    * Update an asset content
    */
   static async updateAsset(reviewId: string, assetName: string, content: string): Promise<void> {
+    await this.ensureReady();
+
     const existing = await db.drafts.where('reviewId').equals(reviewId).first();
 
     if (!existing) {
@@ -245,6 +322,8 @@ export class DraftStorage {
    * Search drafts by query
    */
   static async searchDrafts(query: string): Promise<DraftMetadata[]> {
+    await this.ensureReady();
+
     const q = query.toLowerCase();
 
     const entities = await db.drafts.filter(entity => {
@@ -268,6 +347,8 @@ export class DraftStorage {
    * Get drafts by tag
    */
   static async getDraftsByTag(tag: string): Promise<DraftMetadata[]> {
+    await this.ensureReady();
+
     const draftIds = await db.tags.where('tag').equals(tag).toArray();
     const reviewIds = [...new Set(draftIds.map(t => t.draftId))];
 
@@ -283,6 +364,8 @@ export class DraftStorage {
    * Get all tags
    */
   static async getAllTags(): Promise<string[]> {
+    await this.ensureReady();
+
     const tags = await db.tags.toArray();
     const uniqueTags = [...new Set(tags.map(t => t.tag))];
     return uniqueTags.sort();
@@ -292,6 +375,8 @@ export class DraftStorage {
    * Get favorite drafts
    */
   static async getFavorites(): Promise<DraftMetadata[]> {
+    await this.ensureReady();
+
     const entities = await db.drafts.filter(draft => draft.metadata.favorite === true).toArray();
     return entities.map(e => e.metadata);
   }
@@ -300,6 +385,8 @@ export class DraftStorage {
    * Get drafts by mode
    */
   static async getDraftsByMode(mode: string): Promise<DraftMetadata[]> {
+    await this.ensureReady();
+
     const entities = await db.drafts.where('metadata.mode').equals(mode).toArray();
     return entities.map(e => e.metadata);
   }
@@ -308,6 +395,8 @@ export class DraftStorage {
    * Get drafts by genre
    */
   static async getDraftsByGenre(genre: string): Promise<DraftMetadata[]> {
+    await this.ensureReady();
+
     const entities = await db.drafts.where('metadata.genre').equals(genre).toArray();
     return entities.map(e => e.metadata);
   }
@@ -321,6 +410,8 @@ export class DraftStorage {
     byMode: Record<string, number>;
     byGenre: Record<string, number>;
   }> {
+    await this.ensureReady();
+
     const all = await db.drafts.toArray();
 
     const stats = {
@@ -345,6 +436,8 @@ export class DraftStorage {
    * Export all drafts as JSON
    */
   static async exportAll(): Promise<string> {
+    await this.ensureReady();
+
     const drafts = await this.getAllDrafts();
     const exportData = {
       version: '1.0',
@@ -358,6 +451,8 @@ export class DraftStorage {
    * Import drafts from JSON
    */
   static async import(json: string): Promise<void> {
+    await this.ensureReady();
+
     const data = JSON.parse(json);
 
     if (!data.drafts || !Array.isArray(data.drafts)) {
@@ -378,5 +473,13 @@ export class DraftStorage {
       await db.assets.clear();
       await db.tags.clear();
     });
+
+    for (const legacyName of LEGACY_DRAFT_DB_NAMES) {
+      if (await Dexie.exists(legacyName)) {
+        await Dexie.delete(legacyName);
+      }
+    }
+
+    migrationPromise = null;
   }
 }

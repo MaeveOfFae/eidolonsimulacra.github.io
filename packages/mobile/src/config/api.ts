@@ -1,4 +1,4 @@
-import { CharacterGeneratorAPI } from '@char-gen/shared';
+import { EidolonAPI } from '@char-gen/shared';
 import { NativeModules, Platform } from 'react-native';
 
 const BACKEND_PORT = '8000';
@@ -38,4 +38,4 @@ const API_BASE_URL = __DEV__
   ? `http://${resolveDevHost()}:${BACKEND_PORT}/api`
   : PRODUCTION_API_BASE_URL;
 
-export const api = new CharacterGeneratorAPI(API_BASE_URL);
+export const api = new EidolonAPI(API_BASE_URL);

@@ -1,6 +1,6 @@
 /**
- * Core data types for Character Generator
- * Mirrors Python dataclasses from bpui
+ * Core data types for Eidolon Simulacra.
+ * Mirrors Python dataclasses from bpui.
  */
 
 // ============================================================================

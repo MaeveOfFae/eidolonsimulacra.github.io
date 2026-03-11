@@ -690,7 +690,7 @@ async function generateWithCurrentConfig(messages: ChatMessage[]): Promise<Async
   return engine.generateStream(messages);
 }
 
-export class CharacterGeneratorAPI {
+export class EidolonBrowserAPI {
   private async fetchOpenAICompatibleModels(
     provider: string,
     apiKey: string,
@@ -1484,4 +1484,4 @@ export class CharacterGeneratorAPI {
   }
 }
 
-export const api = new CharacterGeneratorAPI();
+export const api = new EidolonBrowserAPI();

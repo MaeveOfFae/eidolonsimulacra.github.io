@@ -108,7 +108,7 @@ function getBrowserApiKeysHeader(): Record<string, string> {
   return {};
 }
 
-export class CharacterGeneratorAPI {
+class EidolonAPI {
   private baseUrl: string;
 
   constructor(baseUrl: string = '/api') {
@@ -583,6 +583,8 @@ export class CharacterGeneratorAPI {
   }
 }
 
+export { EidolonAPI, EidolonAPI as CharacterGeneratorAPI };
+
 // ============================================================================
 // SSE Streaming Helper
 // ============================================================================
@@ -741,4 +743,4 @@ export class APIError extends Error {
 }
 
 // Default instance
-export const api = new CharacterGeneratorAPI();
+export const api = new EidolonAPI();
