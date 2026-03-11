@@ -26,6 +26,7 @@ import {
   type GenerateRequest,
   type GenerationComplete,
   type LineageNode,
+  type LLMProvider,
   type LineageResponse,
   type ModelsResponse,
   type OffspringRequest,
@@ -47,7 +48,7 @@ import {
   type ValidatePathRequest,
   type ValidationResponse,
 } from '@char-gen/shared';
-import { MODEL_SUGGESTIONS, createEngine } from './llm/factory.js';
+import { MODEL_SUGGESTIONS, createEngine, getDefaultBaseUrl } from './llm/factory.js';
 import { configManager } from './config/manager.js';
 import { DraftStorage } from './storage/draft-db.js';
 import { GenerationService } from './services/generation.js';
@@ -90,6 +91,26 @@ type BlueprintPreviewResponse = GenerateAssetResponse & {
 };
 
 const CUSTOM_THEMES_STORAGE_KEY = 'bpui.web.themes.custom';
+const MODEL_CACHE_TTL_MS = 5 * 60 * 1000;
+
+type CachedModelsEntry = {
+  response: ModelsResponse;
+  cachedAt: number;
+};
+
+type OpenAICompatibleModelsPayload = {
+  data?: Array<{
+    id?: string;
+    name?: string;
+    context_length?: number;
+    architecture?: {
+      input_modalities?: string[];
+    };
+    supported_parameters?: string[];
+  }>;
+};
+
+const modelsCache = new Map<string, CachedModelsEntry>();
 
 const EXPORT_PRESETS: ExportPresetSummary[] = [
   {
@@ -361,6 +382,28 @@ function getFallbackApiKey(apiKeys: ApiKeys): string | undefined {
   return Object.values(apiKeys).find(
     (value): value is string => typeof value === 'string' && value.trim().length > 0
   );
+}
+
+function resolveProviderApiKey(provider: string, apiKeys: ApiKeys): string | undefined {
+  const providerKey = apiKeys[provider];
+  if (typeof providerKey === 'string' && providerKey.trim().length > 0) {
+    return providerKey;
+  }
+
+  return getFallbackApiKey(apiKeys);
+}
+
+function buildOpenAICompatibleHeaders(provider: string, apiKey: string): Record<string, string> {
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${apiKey}`,
+  };
+
+  if (provider === 'openrouter') {
+    headers['HTTP-Referer'] = typeof window !== 'undefined' ? window.location.href : 'https://char-gen.app';
+    headers['X-Title'] = 'Character Generator';
+  }
+
+  return headers;
 }
 
 function getCustomThemes(): ThemePreset[] {
@@ -645,6 +688,110 @@ async function generateWithCurrentConfig(messages: ChatMessage[]): Promise<Async
 }
 
 export class CharacterGeneratorAPI {
+  private async fetchOpenAICompatibleModels(
+    provider: string,
+    apiKey: string,
+    baseUrl: string
+  ): Promise<ModelsResponse> {
+    const response = await fetch(`${baseUrl}/models`, {
+      method: 'GET',
+      headers: buildOpenAICompatibleHeaders(provider, apiKey),
+    });
+
+    if (!response.ok) {
+      let error = `HTTP ${response.status}`;
+      try {
+        const payload = await response.json() as { error?: { message?: string } | string };
+        if (typeof payload.error === 'string') {
+          error = payload.error;
+        } else if (payload.error?.message) {
+          error = payload.error.message;
+        }
+      } catch {
+        // Keep the HTTP status fallback.
+      }
+
+      throw new APIError(response.status, error);
+    }
+
+    const payload = await response.json() as OpenAICompatibleModelsPayload;
+    const models = (payload.data || [])
+      .filter((model): model is NonNullable<OpenAICompatibleModelsPayload['data']>[number] & { id: string } => Boolean(model?.id))
+      .map((model) => ({
+        id: model.id,
+        name: model.name || model.id,
+        provider,
+        context_length: model.context_length,
+        supports_vision: model.architecture?.input_modalities?.includes('image') || false,
+        supports_tools: model.supported_parameters?.includes('tools') || false,
+      }));
+
+    return {
+      provider,
+      models,
+      cached: false,
+    };
+  }
+
+  private async loadProviderModels(provider: string, refresh: boolean = false): Promise<ModelsResponse> {
+    const apiKeys = configManager.getApiKeys();
+    const config = configManager.getConfig();
+    const typedProvider = provider as LLMProvider;
+    const baseUrl = config.base_url || getDefaultBaseUrl(typedProvider);
+    const apiKey = resolveProviderApiKey(provider, apiKeys);
+    const cacheKey = `${provider}|${baseUrl}|${apiKey ? 'auth' : 'anon'}`;
+    const cachedEntry = modelsCache.get(cacheKey);
+    if (!refresh && cachedEntry && Date.now() - cachedEntry.cachedAt < MODEL_CACHE_TTL_MS) {
+      return {
+        ...cachedEntry.response,
+        cached: true,
+      };
+    }
+
+    const fallbackModels = (MODEL_SUGGESTIONS[typedProvider] || []).map((id) => ({
+      id,
+      name: id,
+      provider,
+    }));
+    const supportsRemoteListing = ['openrouter', 'openai', 'deepseek', 'zai', 'moonshot'].includes(provider);
+
+    if (!apiKey || !supportsRemoteListing) {
+      const response = {
+        provider,
+        models: fallbackModels,
+        cached: true,
+        error: apiKey || supportsRemoteListing ? undefined : 'Provider model listing is not available in browser mode.',
+      };
+      modelsCache.set(cacheKey, {
+        response,
+        cachedAt: Date.now(),
+      });
+      return response;
+    }
+
+    try {
+      const response = await this.fetchOpenAICompatibleModels(provider, apiKey, baseUrl);
+      modelsCache.set(cacheKey, {
+        response,
+        cachedAt: Date.now(),
+      });
+      return response;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to load models';
+      const response = {
+        provider,
+        models: fallbackModels,
+        cached: true,
+        error: message,
+      };
+      modelsCache.set(cacheKey, {
+        response,
+        cachedAt: Date.now(),
+      });
+      return response;
+    }
+  }
+
   async getConfig(): Promise<Config> {
     return getBrowserConfig();
   }
@@ -784,17 +931,12 @@ export class CharacterGeneratorAPI {
   }
 
   async getModels(provider: string): Promise<ModelsResponse> {
-    const models = (MODEL_SUGGESTIONS[provider as keyof typeof MODEL_SUGGESTIONS] || []).map((id) => ({
-      id,
-      name: id,
-      provider,
-    }));
-    return { provider, models, cached: true };
+    return this.loadProviderModels(provider, false);
   }
 
   async refreshModels(provider: string): Promise<{ status: string; model_count: number; error?: string }> {
-    const response = await this.getModels(provider);
-    return { status: 'ok', model_count: response.models.length };
+    const response = await this.loadProviderModels(provider, true);
+    return { status: 'ok', model_count: response.models.length, error: response.error };
   }
 
   async generateSeeds(request: SeedGenerationRequest): Promise<SeedGenerationResponse> {

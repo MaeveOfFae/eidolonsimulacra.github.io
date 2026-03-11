@@ -9,6 +9,7 @@
     "dev:web:lan": "pnpm --filter @char-gen/web dev --host 0.0.0.0 --port 3000",
     "build": "turbo run build",
     "build:web": "pnpm build:shared && pnpm --filter @char-gen/web build",
+    "deploy:porkbun": "./tools/deploy/push-porkbun-dist.sh",
     "build:shared": "pnpm --filter @char-gen/shared build",
     "lint": "turbo run lint",
     "test": "turbo run test",

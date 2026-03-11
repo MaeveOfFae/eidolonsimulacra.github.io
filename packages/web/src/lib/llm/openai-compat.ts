@@ -88,6 +88,26 @@ export class OpenAICompatEngine extends BaseLLMEngine {
     return headers;
   }
 
+  private isDirectBrowserOpenAIRequest(): boolean {
+    if (typeof window === 'undefined' || this.config.provider !== 'openai') {
+      return false;
+    }
+
+    try {
+      return new URL(this.baseUrl).hostname === 'api.openai.com';
+    } catch {
+      return this.baseUrl.includes('api.openai.com');
+    }
+  }
+
+  private assertBrowserSupported(): void {
+    if (this.isDirectBrowserOpenAIRequest()) {
+      throw new Error(
+        'Direct OpenAI requests from the browser are blocked by CORS. Use OpenRouter, or configure a custom base URL that points to your own proxy or relay.'
+      );
+    }
+  }
+
   private formatMessages(messages: ChatMessage[]): Array<{
     role: string;
     content: string;
@@ -102,6 +122,7 @@ export class OpenAICompatEngine extends BaseLLMEngine {
     messages: ChatMessage[],
     options?: GenerateOptions
   ): Promise<GenerateResult> {
+    this.assertBrowserSupported();
     const opts = this.mergeOptions(options);
 
     const response = await fetch(`${this.baseUrl}/chat/completions`, {
@@ -146,6 +167,7 @@ export class OpenAICompatEngine extends BaseLLMEngine {
     messages: ChatMessage[],
     options?: StreamGenerateOptions
   ): AsyncIterable<StreamChunk> {
+    this.assertBrowserSupported();
     const opts = this.mergeOptions(options);
 
     const response = await fetch(`${this.baseUrl}/chat/completions`, {
@@ -227,6 +249,15 @@ export class OpenAICompatEngine extends BaseLLMEngine {
   }
 
   async testConnection(): Promise<ConnectionTestResult> {
+    try {
+      this.assertBrowserSupported();
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unsupported browser provider configuration',
+      };
+    }
+
     const startTime = performance.now();
 
     try {

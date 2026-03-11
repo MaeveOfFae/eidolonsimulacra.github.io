@@ -14,12 +14,13 @@ import {
   Lock,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import type { Config, ThemeOverride, ThemePreset } from '@char-gen/shared';
+import type { Config, ModelInfo, ThemeOverride, ThemePreset } from '@char-gen/shared';
 import { useThemePreview } from '../common/useThemePreview';
 import {
   EDITABLE_THEME_SECTIONS,
   resolveThemeColors,
 } from '../../theme/theme';
+import { api } from '../../lib/api.js';
 import { configManager } from '../../lib/config/manager.js';
 import { createEngine, MODEL_SUGGESTIONS } from '../../lib/llm/factory.js';
 
@@ -103,6 +104,9 @@ export default function Settings() {
   const [themeNotice, setThemeNotice] = useState<string | null>(null);
   const [themeError, setThemeError] = useState<string | null>(null);
   const [persistKeys, setPersistKeys] = useState(false);
+  const [availableModels, setAvailableModels] = useState<ModelInfo[]>([]);
+  const [modelsLoading, setModelsLoading] = useState(false);
+  const [modelsNotice, setModelsNotice] = useState<string | null>(null);
 
   // Load config from client-side manager
   useEffect(() => {
@@ -125,10 +129,13 @@ export default function Settings() {
     }
   }, []);
 
-  // Models suggestions for selected provider
   const modelSuggestions = useMemo(() => {
+    if (availableModels.length > 0) {
+      return availableModels.map((model) => model.id);
+    }
+
     return MODEL_SUGGESTIONS[selectedProvider] || [];
-  }, [selectedProvider]);
+  }, [availableModels, selectedProvider]);
 
   const updateConfig = () => {
     const persistedConfig = { ...localConfig };
@@ -154,6 +161,40 @@ export default function Settings() {
     () => resolveThemeColors(selectedTheme, localConfig.theme),
     [selectedTheme, localConfig.theme]
   );
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    const loadModels = async () => {
+      setModelsLoading(true);
+      try {
+        const response = await api.getModels(selectedProvider);
+        if (isCancelled) {
+          return;
+        }
+
+        setAvailableModels(response.models);
+        setModelsNotice(response.error || null);
+      } catch (error) {
+        if (isCancelled) {
+          return;
+        }
+
+        setAvailableModels([]);
+        setModelsNotice(error instanceof Error ? error.message : 'Failed to load models');
+      } finally {
+        if (!isCancelled) {
+          setModelsLoading(false);
+        }
+      }
+    };
+
+    void loadModels();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [selectedProvider, localConfig.api_keys?.[selectedProvider]]);
 
   // Test connection with client-side engine
   const testConnection = async (provider: string) => {
@@ -243,9 +284,7 @@ export default function Settings() {
       ...previous,
       engine: provider,
       engine_mode: 'explicit',
-      model: previous.engine === provider
-        ? previous.model
-        : (MODEL_SUGGESTIONS[provider][0] ?? previous.model),
+      model: previous.engine === provider ? previous.model : '',
     }));
   };
 
@@ -477,6 +516,12 @@ export default function Settings() {
             </div>
 
             <div className="space-y-4">
+              {selectedProvider === 'openai' && (
+                <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-900 dark:text-amber-100">
+                  Direct OpenAI calls from this browser app are blocked by CORS on api.openai.com. Use OpenRouter for browser-direct usage, or point the base URL at your own proxy or relay.
+                </div>
+              )}
+
               <div className="space-y-2">
                 <label className="text-sm font-medium">Provider</label>
                 <select
@@ -506,6 +551,18 @@ export default function Settings() {
                     </option>
                   ))}
                 </select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {modelsLoading
+                    ? 'Loading models from provider API...'
+                    : availableModels.length > 0
+                      ? `Loaded ${availableModels.length} models from ${selectedProvider}.`
+                      : 'Showing built-in suggestions.'}
+                </p>
+                {modelsNotice && (
+                  <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                    {modelsNotice}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">

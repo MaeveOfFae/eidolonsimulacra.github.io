@@ -96,7 +96,7 @@ export class ConfigManager {
     return {
       engine: 'openai_compatible',
       engine_mode: 'auto',
-      model: 'gpt-4o-mini',
+      model: 'openrouter/openai/gpt-4o-mini',
       temperature: 0.7,
       max_tokens: 4096,
       api_keys: {},
