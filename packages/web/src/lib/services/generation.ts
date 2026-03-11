@@ -5,7 +5,6 @@
 
 import type {
   ApiKeys,
-  ContentMode,
   Config,
   Draft,
   GenerateRequest,
@@ -266,7 +265,7 @@ export class GenerationService {
   static async *generateOffspring(
     request: OffspringRequest
   ): AsyncIterable<GenerationProgress> {
-    const { parent1_id, parent2_id, seed, mode = 'Auto', template } = request;
+    const { parent1_id, parent2_id, mode = 'Auto', template } = request;
 
     yield { type: 'status', stage: 'loading_parents' };
 
@@ -424,6 +423,8 @@ export class GenerationService {
     contextAsset?: string
   ): AsyncIterable<GenerationProgress> {
     yield { type: 'status', stage: 'initializing' };
+    void draftId;
+    void contextAsset;
 
     // Get API keys and config
     const apiKeys = configManager.getApiKeys();
@@ -444,7 +445,7 @@ export class GenerationService {
     yield { type: 'status', stage: 'generating' };
 
     // Use first message as system if provided, otherwise use default
-    let systemPrompt = messages[0]?.role === 'system' ? messages[0].content : undefined;
+    const systemPrompt = messages[0]?.role === 'system' ? messages[0].content : undefined;
     const chatMessages = systemPrompt
       ? messages.slice(1)
       : messages;

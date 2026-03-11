@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { FileText, Plus, Star, Trash2, ChevronDown, ChevronUp, ShieldCheck, Copy, Download, Pencil, Upload, Loader2 } from 'lucide-react';
 import type { CreateTemplateRequest, Template, AssetDefinition } from '@char-gen/shared';
 import { api } from '@/lib/api';
-import { useAssistantScreenContext } from '../common/AssistantContext';
+import { useAssistantScreenContext } from '../common/useAssistantContext';
 import { saveDownload } from '../../utils/download';
 import TemplateComparisonPlaceholder from './TemplateComparisonPlaceholder';
 import TemplateMigrationPlaceholder from './TemplateMigrationPlaceholder';

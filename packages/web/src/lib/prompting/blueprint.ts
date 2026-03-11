@@ -5,8 +5,6 @@
 
 import type {
   Template,
-  DraftMetadata,
-  ContentMode,
 } from '@char-gen/shared';
 
 export interface Blueprint {

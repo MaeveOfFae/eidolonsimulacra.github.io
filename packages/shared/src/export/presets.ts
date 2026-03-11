@@ -4,9 +4,7 @@
  */
 
 import type {
-  FieldMapping,
   ExportPreset as TypesExportPreset,
-  ExportFormat,
 } from '../types';
 
 /**

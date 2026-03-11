@@ -1,22 +1,14 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import type { ThemeOverride, ThemePreset } from '@char-gen/shared';
+import type { ThemeOverride } from '@char-gen/shared';
 import { api } from '@/lib/api';
 import { applyThemeToDocument, resolveThemeColors } from '../../theme/theme';
+import { ThemeContext, type ThemeContextValue } from './ThemeContext.shared';
 
 interface ThemePreviewState {
   themeName: string;
   overrides?: ThemeOverride;
 }
-
-interface ThemeContextValue {
-  themes: ThemePreset[];
-  isLoading: boolean;
-  previewTheme: (themeName: string, overrides?: ThemeOverride) => void;
-  clearPreview: () => void;
-}
-
-const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [preview, setPreview] = useState<ThemePreviewState | null>(null);
@@ -54,13 +46,4 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }), [themes, isLoading]);
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
-}
-
-export function useThemePreview() {
-  const context = useContext(ThemeContext);
-  if (!context) {
-    throw new Error('useThemePreview must be used within ThemeProvider');
-  }
-
-  return context;
 }

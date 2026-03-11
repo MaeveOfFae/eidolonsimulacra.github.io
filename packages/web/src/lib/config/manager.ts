@@ -232,7 +232,7 @@ export class ConfigManager {
       const keys = JSON.parse(json) as ApiKeys;
       sessionApiKeys = { ...keys };
       this.persistApiKeysIfNeeded();
-    } catch (error) {
+    } catch {
       throw new Error('Invalid API keys JSON');
     }
   }
@@ -275,7 +275,7 @@ export class ConfigManager {
         this.config = { ...this.getDefaultConfig(), ...data.config };
         this.saveConfig();
       }
-    } catch (error) {
+    } catch {
       throw new Error('Invalid configuration JSON');
     }
   }

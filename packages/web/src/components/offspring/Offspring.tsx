@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { Baby, Loader2, Users, CheckCircle } from 'lucide-react';
 import type { ContentMode } from '@char-gen/shared';
 import { api } from '@/lib/api';
-import { useAssistantScreenContext } from '../common/AssistantContext';
+import { useAssistantScreenContext } from '../common/useAssistantContext';
 
 export default function Offspring() {
   const [parent1, setParent1] = useState<string>('');

@@ -14,6 +14,56 @@ import type {
   LLMProvider,
 } from "./types";
 
+interface OpenAICompatErrorResponse {
+  error?: { message?: string } | string;
+}
+
+interface OpenAICompatUsage {
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  total_tokens?: number;
+}
+
+interface OpenAICompatChoice {
+  message?: { content?: string };
+  finish_reason?: string;
+  delta?: {
+    content?: string;
+    tool_calls?: unknown[];
+  };
+}
+
+interface OpenAICompatChatCompletionResponse {
+  choices?: OpenAICompatChoice[];
+  usage?: OpenAICompatUsage;
+}
+
+interface OpenAICompatModelSummary {
+  id: string;
+}
+
+interface OpenAICompatModelsResponse {
+  data?: OpenAICompatModelSummary[] | null;
+}
+
+function normalizeUsage(
+  usage?: OpenAICompatUsage
+): GenerateResult['usage'] {
+  if (
+    usage?.prompt_tokens === undefined ||
+    usage.completion_tokens === undefined ||
+    usage.total_tokens === undefined
+  ) {
+    return undefined;
+  }
+
+  return {
+    promptTokens: usage.prompt_tokens,
+    completionTokens: usage.completion_tokens,
+    totalTokens: usage.total_tokens,
+  };
+}
+
 export interface OpenAICompatConfig {
   provider: LLMProvider;
   model: string;
@@ -71,7 +121,7 @@ export class OpenAICompatEngine implements LLMEngine {
     }
 
     const responseJson = await response.json();
-    const data = responseJson as any;
+    const data = responseJson as OpenAICompatChatCompletionResponse;
     const content = data?.choices?.[0]?.message?.content;
     if (!content) {
       throw new Error("No content in response");
@@ -80,11 +130,7 @@ export class OpenAICompatEngine implements LLMEngine {
     return {
       content,
       finishReason: data?.choices?.[0]?.finish_reason,
-      usage: data?.usage ? {
-        promptTokens: data?.usage?.prompt_tokens,
-        completionTokens: data?.usage?.completion_tokens,
-        totalTokens: data?.usage?.total_tokens,
-      } : undefined,
+      usage: normalizeUsage(data.usage),
     };
   }
 
@@ -195,7 +241,6 @@ export class OpenAICompatEngine implements LLMEngine {
         },
       };
     } catch (e) {
-      const latency = performance.now() - start;
       return {
         success: false,
         error: e instanceof Error ? e.message : "Unknown error",
@@ -236,7 +281,7 @@ export class OpenAICompatEngine implements LLMEngine {
 
   private async parseErrorResponse(response: Response): Promise<string> {
     try {
-      const data = await response.json() as { error?: { message?: string } | string };
+      const data = await response.json() as OpenAICompatErrorResponse;
       if (typeof data.error === 'object' && data.error?.message) {
         return data.error.message;
       }
@@ -280,11 +325,11 @@ export async function listModels(baseUrl: string, apiKey?: string): Promise<stri
   }
 
   const responseJson = await response.json();
-  const data = responseJson as { data?: { data?: any[]; error?: any; choices?: any[] } | any[] | null };
-  const dataData = data?.data;
+  const data = responseJson as OpenAICompatModelsResponse;
+  const dataData = data.data;
 
   if (dataData && Array.isArray(dataData)) {
-    return dataData.map((m: any) => m.id).sort();
+    return dataData.map((model) => model.id).sort();
   }
 
   return [];

@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { Config, ThemeOverride, ThemePreset } from '@char-gen/shared';
-import { useThemePreview } from '../common/ThemeProvider';
+import { useThemePreview } from '../common/useThemePreview';
 import {
   EDITABLE_THEME_SECTIONS,
   resolveThemeColors,

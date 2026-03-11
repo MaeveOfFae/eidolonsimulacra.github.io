@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { CheckCircle2, Circle, Loader2, XCircle, FileText, Clock, RotateCcw, Save } from 'lucide-react';
 import type { GenerationComplete, Template } from '@char-gen/shared';
-import { GenerationService, type GenerationProgress as GenProgress } from '../../lib/services/generation.js';
+import { GenerationService } from '../../lib/services/generation.js';
 import { configManager } from '../../lib/config/manager.js';
 import { inferCharacterDisplayNameForTemplate } from '../../lib/templates/browser.js';
 

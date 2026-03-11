@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Sparkles, FolderOpen, GitCompare, Baby, ArrowRight, Dice1, GitBranch, ShieldCheck, Zap, FileText, Layers } from 'lucide-react';
 import type { DraftMetadata } from '@char-gen/shared';
 import { api } from '@/lib/api';
-import { useAssistantScreenContext } from './common/AssistantContext';
+import { useAssistantScreenContext } from './common/useAssistantContext';
 import AutomationPlaceholder from './common/AutomationPlaceholder';
 import OnboardingPlaceholder from './common/OnboardingPlaceholder';
 
