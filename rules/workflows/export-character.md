@@ -1,16 +1,26 @@
 # Export Character Bundle
 
-Goal: export a character bundle from a source directory using tools/export_character.sh.
+Goal: export a draft or asset set using the current shared export model instead of the retired shell script flow.
 
 1) Ask me for:
-   - character_name
-   - source_dir (where the generated asset files live)
-   - llm_model (optional; used in output naming)
+   - the source to export: current draft assets, a draft JSON payload, or a workspace folder of asset files
+   - desired export shape: `json`, `text`, or `combined`
+   - whether metadata should be included
 
-2) Confirm that source_dir contains:
-   system_prompt, post_history, character_sheet, intro_scene, intro_page, a1111, suno
+2) Confirm the available assets.
+   - Do not assume the legacy `system_prompt/post_history/character_sheet/intro_scene/intro_page/a1111/suno` pack.
+   - Respect the selected template or the actual files present.
 
-3) Run:
-   ./tools/export_character.sh "character_name" "source_dir" "llm_model"
+3) Export using the current model:
+   - `json`: emit a JSON document with metadata and assets
+   - `text`: emit plain text sections per asset
+   - `combined`: emit one markdown bundle with metadata and all assets
+   - If a platform-specific preset is requested, map the current assets deliberately rather than assuming a checked-in shell tool exists.
 
-4) Report the output directory path and list the files produced.
+4) Report:
+   - the output filename or bundle shape
+   - which assets were included
+   - any assets skipped because they were not present
+
+5) Do not instruct or rely on `tools/export_character.sh`.
+   - That script is not present in the current repo.
