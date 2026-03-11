@@ -19,6 +19,12 @@ const Settings = lazy(() => import('./components/settings/Settings'));
 const Themes = lazy(() => import('./components/settings/Themes'));
 const DataManager = lazy(() => import('./components/common/DataManager'));
 const BatchGenerate = lazy(() => import('./components/batch/BatchGenerate'));
+const About = lazy(() => import('./components/info/About'));
+const LicensePage = lazy(() => import('./components/info/LicensePage'));
+const TermsPage = lazy(() => import('./components/info/TermsPage'));
+const PrivacyPage = lazy(() => import('./components/info/PrivacyPage'));
+const SecurityPage = lazy(() => import('./components/info/SecurityPage'));
+const CodeOfConductPage = lazy(() => import('./components/info/CodeOfConductPage'));
 
 function RouteFallback() {
   return (
@@ -52,6 +58,12 @@ export default function App() {
           <Route path="/themes" element={<Themes />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/data" element={<DataManager />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/license" element={<LicensePage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/security" element={<SecurityPage />} />
+          <Route path="/code-of-conduct" element={<CodeOfConductPage />} />
         </Routes>
       </Suspense>
     </Layout>

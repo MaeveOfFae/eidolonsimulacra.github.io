@@ -16,6 +16,8 @@ import {
   Dice1,
   ShieldCheck,
   Palette,
+  Scale,
+  Info,
 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '../utils/cn';
@@ -40,6 +42,15 @@ const navItems = [
   { path: '/lineage', label: 'Lineage', icon: GitBranch },
   { path: '/themes', label: 'Theme Studio', icon: Palette },
   { path: '/settings', label: 'Settings', icon: Settings },
+];
+
+const footerLinks = [
+  { path: '/about', label: 'About', icon: Info },
+  { path: '/terms', label: 'Terms', icon: Scale },
+  { path: '/privacy', label: 'Privacy', icon: ShieldCheck },
+  { path: '/license', label: 'License', icon: FileText },
+  { path: '/security', label: 'Security', icon: ShieldCheck },
+  { path: '/code-of-conduct', label: 'Conduct', icon: BookOpen },
 ];
 
 interface NavItemProps {
@@ -101,8 +112,8 @@ export default function Layout({ children }: LayoutProps) {
                   <Sparkles className="h-5 w-5 text-white" />
                 </div>
                 <div className="flex flex-col">
-                  <span className="font-bold text-lg">CharGen</span>
-                  <span className="text-xs text-muted-foreground">v2.0</span>
+                  <span className="font-bold text-lg">Eidolon</span>
+                  <span className="text-xs text-muted-foreground">Simulacra v2.0</span>
                 </div>
               </Link>
               <button
@@ -142,6 +153,18 @@ export default function Layout({ children }: LayoutProps) {
                 >
                   Settings
                 </Link>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-x-3 gap-y-2 text-xs text-muted-foreground">
+                {footerLinks.map((item) => (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    className="hover:text-primary transition-colors"
+                    onClick={() => setSidebarOpen(false)}
+                  >
+                    {item.label}
+                  </Link>
+                ))}
               </div>
             </div>
           </div>
