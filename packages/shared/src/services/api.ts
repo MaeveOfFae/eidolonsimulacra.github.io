@@ -583,7 +583,7 @@ class EidolonAPI {
   }
 }
 
-export { EidolonAPI, EidolonAPI as CharacterGeneratorAPI };
+export { EidolonAPI };
 
 // ============================================================================
 // SSE Streaming Helper

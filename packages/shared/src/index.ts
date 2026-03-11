@@ -8,7 +8,7 @@ export * from './types';
 // API
 // ============================================================================
 
-export { api, APIError, EidolonAPI, CharacterGeneratorAPI, GenerationStream } from './services';
+export { api, APIError, EidolonAPI, GenerationStream } from './services';
 export type { DownloadResponse, GenerationEvent, GenerationEventType } from './services';
 
 // ============================================================================
