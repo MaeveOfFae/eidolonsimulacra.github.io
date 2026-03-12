@@ -1,6 +1,22 @@
 # Changelog
 
 
+## v2.0.9 - 2026-03-12
+
+### Documentation and platform update
+
+This release packages 12 recent commits focused on documentation, platform, and templates.
+
+### Highlights
+- Add modal open state handling for ExportModal and GlobalAssistant components
+- Doc update
+- Update version to 2.0.7; enhance changelog and release notes with recent documentation, UI updates, and new links
+- Update version to 2.0.6; enhance changelog and release notes with recent documentation, UI updates, and new links
+- Update version to 2.0.5; enhance changelog and release notes with recent documentation, UI updates, and new links
+
+### Links
+- [Open generation](/generate)
+- [Review templates](/templates)
 ## v2.0.8 - 2026-03-12
 
 ### Documentation and themes update
@@ -147,6 +163,7 @@ The app now centers the browser runtime with tighter template tooling, local dra
 
 - [Open generation](/generate)
 - [Review templates](/templates)
+
 
 
 
