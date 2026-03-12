@@ -1,6 +1,22 @@
 # Changelog
 
 
+## v2.0.12 - 2026-03-12
+
+### Documentation and platform update
+
+This release packages 12 recent commits focused on documentation, platform, and UI.
+
+### Highlights
+- Implement session management for generation process; add functions to load, save, and clear active generation sessions
+- Update version to 2.0.11; enhance changelog and release notes with recent documentation, platform updates, and new links
+- Add help system with guided tours and page help entries
+- Update version to 2.0.10; enhance changelog and release notes with recent documentation, platform updates, and new links
+- Add data attribute for global assistant root in ChatPanel component
+
+### Links
+- [Open generation](/generate)
+- [Review templates](/templates)
 ## v2.0.11 - 2026-03-12
 
 ### Documentation and platform update
@@ -195,6 +211,7 @@ The app now centers the browser runtime with tighter template tooling, local dra
 
 - [Open generation](/generate)
 - [Review templates](/templates)
+
 
 
 

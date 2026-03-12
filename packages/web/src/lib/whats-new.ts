@@ -16,9 +16,27 @@ export interface ReleaseNoteEntry {
 // Generated and maintained by tools/generation/generate-release-notes.mjs.
 export const releaseNotes: ReleaseNoteEntry[] = [
   {
-    version: '2.0.11',
+    version: '2.0.12',
     releasedOn: '2026-03-12',
     badge: 'Current release',
+    headline: 'Documentation and platform update',
+    summary: 'This release packages 12 recent commits focused on documentation, platform, and UI.',
+    highlights: [
+      'Implement session management for generation process; add functions to load, save, and clear active generation sessions',
+      'Update version to 2.0.11; enhance changelog and release notes with recent documentation, platform updates, and new links',
+      'Add help system with guided tours and page help entries',
+      'Update version to 2.0.10; enhance changelog and release notes with recent documentation, platform updates, and new links',
+      'Add data attribute for global assistant root in ChatPanel component',
+    ],
+    links: [
+      { label: 'Open generation', to: '/generate' },
+      { label: 'Review templates', to: '/templates' },
+    ],
+  },
+  {
+    version: '2.0.11',
+    releasedOn: '2026-03-12',
+    badge: 'Previous release',
     headline: 'Documentation and platform update',
     summary: 'This release packages 12 recent commits focused on documentation, platform, and UI.',
     highlights: [
