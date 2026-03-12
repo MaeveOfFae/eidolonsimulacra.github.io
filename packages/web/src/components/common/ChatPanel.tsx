@@ -129,6 +129,7 @@ export default function ChatPanel({ draftId, assetName, onAssetRefined }: ChatPa
     return (
       <button
         onClick={() => setIsOpen(true)}
+        data-global-assistant-root="true"
         className="fixed bottom-6 right-6 inline-flex items-center gap-2 rounded-full bg-primary px-4 py-3 text-sm font-medium text-primary-foreground shadow-lg hover:bg-primary/90 z-50"
       >
         <MessageCircle className="h-5 w-5" />
@@ -138,7 +139,7 @@ export default function ChatPanel({ draftId, assetName, onAssetRefined }: ChatPa
   }
 
   return (
-    <div className="fixed bottom-6 right-6 w-96 max-h-[600px] rounded-lg border border-border bg-card shadow-xl flex flex-col z-50">
+    <div data-global-assistant-root="true" className="fixed bottom-6 right-6 w-96 max-h-[600px] rounded-lg border border-border bg-card shadow-xl flex flex-col z-50">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-border">
         <div className="flex items-center gap-2">
