@@ -80,3 +80,8 @@
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-muted-foreground/50;
 }
+
+body.modal-open [data-global-assistant-root='true'] {
+  opacity: 0;
+  pointer-events: none;
+}

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { X, Download, FileText, FileJson, FileCode, CheckCircle2 } from 'lucide-react';
 import type { ExportPresetSummary } from '@char-gen/shared';
@@ -29,6 +29,14 @@ export default function ExportModal({ draftId, characterName, onClose }: ExportM
     queryKey: ['export-presets'],
     queryFn: () => api.getExportPresets(),
   });
+
+  useEffect(() => {
+    document.body.classList.add('modal-open');
+
+    return () => {
+      document.body.classList.remove('modal-open');
+    };
+  }, []);
 
   const handleExport = async () => {
     if (!selectedPreset) return;

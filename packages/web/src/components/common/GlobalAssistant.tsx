@@ -112,6 +112,7 @@ export default function GlobalAssistant() {
     return (
       <button
         onClick={handleOpen}
+        data-global-assistant-root="true"
         className="fixed bottom-6 right-6 z-30 inline-flex items-center gap-2 rounded-full bg-primary px-4 py-3 text-sm font-medium text-primary-foreground shadow-lg hover:bg-primary/90"
       >
         <MessageCircle className="h-5 w-5" />
@@ -121,7 +122,7 @@ export default function GlobalAssistant() {
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-30 flex max-h-[640px] w-96 flex-col rounded-lg border border-border bg-card shadow-xl">
+    <div data-global-assistant-root="true" className="fixed bottom-6 right-6 z-30 flex max-h-[640px] w-96 flex-col rounded-lg border border-border bg-card shadow-xl">
       <div className="flex items-center justify-between border-b border-border p-4">
         <div>
           <div className="font-semibold">Assistant</div>
