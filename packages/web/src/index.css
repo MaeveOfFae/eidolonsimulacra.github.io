@@ -85,3 +85,10 @@ body.modal-open [data-global-assistant-root='true'] {
   opacity: 0;
   pointer-events: none;
 }
+
+[data-guided-tour-active='true'] {
+  position: relative;
+  z-index: 65;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-highlight) 70%, white 30%), 0 0 0 8px color-mix(in srgb, var(--app-highlight) 20%, transparent);
+  border-radius: 1rem;
+}

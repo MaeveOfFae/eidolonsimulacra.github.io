@@ -149,6 +149,14 @@ export interface ThemeImportRequest {
   target_name?: string;
 }
 
+export interface HelpState {
+  first_run_completed: boolean;
+  show_inline_tips: boolean;
+  completed_guides: string[];
+  dismissed_tips: string[];
+  completed_tours: string[];
+}
+
 export interface Config {
   engine: EngineType;
   engine_mode: EngineMode;
@@ -160,6 +168,7 @@ export interface Config {
   base_url?: string;
   theme_name?: string;
   theme?: ThemeOverride;
+  help?: HelpState;
 }
 
 // ============================================================================

@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   Home,
@@ -18,11 +18,15 @@ import {
   Palette,
   Scale,
   Info,
+  CircleHelp,
 } from 'lucide-react';
-import { useState } from 'react';
+import { helpTopics, resolvePageHelp } from '../lib/help';
 import { cn } from '../utils/cn';
 import { AssistantContextProvider } from './common/AssistantContext';
+import ContextualHelpPanel from './common/ContextualHelpPanel';
 import GlobalAssistant from './common/GlobalAssistant';
+import GuidedTourOverlay from './common/GuidedTourOverlay';
+import { GuidedTourProvider } from './common/GuidedTourContext';
 
 interface LayoutProps {
   children: ReactNode;
@@ -46,6 +50,7 @@ const navItems = [
 
 const footerLinks = [
   { path: '/about', label: 'About', icon: Info },
+  { path: '/help', label: 'Help', icon: BookOpen },
   { path: '/whats-new', label: 'What\'s New', icon: Info },
   { path: '/terms', label: 'Terms', icon: Scale },
   { path: '/privacy', label: 'Privacy', icon: ShieldCheck },
@@ -86,9 +91,20 @@ function NavItem({ path, label, icon: Icon, isActive, onClick }: NavItemProps) {
 export default function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+  const pageHelp = useMemo(() => resolvePageHelp(location.pathname), [location.pathname]);
+  const relatedTopics = useMemo(
+    () => helpTopics.filter((topic) => pageHelp?.relatedTopicIds.includes(topic.id)),
+    [pageHelp]
+  );
+
+  useEffect(() => {
+    setHelpOpen(false);
+  }, [location.pathname]);
 
   return (
     <AssistantContextProvider>
+      <GuidedTourProvider>
       <div className="flex min-h-dvh bg-background lg:h-screen">
         {/* Mobile sidebar backdrop */}
         {sidebarOpen && (
@@ -200,13 +216,55 @@ export default function Layout({ children }: LayoutProps) {
               <Menu className="h-6 w-6" />
             </button>
             <span className="min-w-0 truncate font-semibold text-base sm:text-lg">Eidolon Simulacra</span>
+            {pageHelp && (
+              <button
+                type="button"
+                onClick={() => setHelpOpen(true)}
+                className="ml-auto inline-flex items-center gap-2 rounded-lg border border-border/60 bg-background/50 px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:text-primary"
+              >
+                <CircleHelp className="h-4 w-4" />
+                Help
+              </button>
+            )}
           </header>
 
           {/* Page content */}
-          <div className="p-6 lg:p-8 max-w-6xl mx-auto">{children}</div>
+          <div className="mx-auto max-w-6xl p-6 lg:p-8">
+            {pageHelp && (
+              <section className="mb-6 hidden rounded-2xl border border-border/60 bg-card/60 p-4 backdrop-blur-sm lg:block">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Contextual Help</p>
+                    <h2 className="mt-1 text-lg font-semibold text-foreground">{pageHelp.title}</h2>
+                    <p className="mt-2 text-sm leading-6 text-muted-foreground">{pageHelp.summary}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setHelpOpen(true)}
+                    className="inline-flex items-center gap-2 rounded-lg border border-border/60 bg-background/50 px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:text-primary"
+                  >
+                    <CircleHelp className="h-4 w-4" />
+                    Open page help
+                  </button>
+                </div>
+              </section>
+            )}
+
+            {children}
+          </div>
         </main>
+        {pageHelp && (
+          <ContextualHelpPanel
+            entry={pageHelp}
+            topics={relatedTopics}
+            isOpen={helpOpen}
+            onClose={() => setHelpOpen(false)}
+          />
+        )}
+        <GuidedTourOverlay />
         <GlobalAssistant />
       </div>
+      </GuidedTourProvider>
     </AssistantContextProvider>
   );
 }

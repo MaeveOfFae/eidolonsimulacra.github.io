@@ -6,6 +6,7 @@
 import type {
   ApiKeys,
   Config,
+  HelpState,
 } from '@char-gen/shared';
 
 const CONFIG_STORAGE_KEY = 'eidolon.web.config';
@@ -14,6 +15,7 @@ const API_KEYS_STORAGE_KEY = 'eidolon.web.apiKeys';
 const LEGACY_API_KEYS_STORAGE_KEYS = ['bpui.web.apiKeys'];
 const API_KEYS_PERSISTENCE_KEY = 'eidolon.web.apiKeys.persist';
 const LEGACY_API_KEYS_PERSISTENCE_KEYS = ['bpui.web.apiKeys.persist'];
+const CONFIG_CHANGED_EVENT = 'eidolon:config-changed';
 
 /**
  * In-memory API keys storage (cleared on page refresh by default)
@@ -82,6 +84,14 @@ function removeStoredValues(keys: readonly string[]): void {
   }
 }
 
+function dispatchConfigChangedEvent(): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.dispatchEvent(new Event(CONFIG_CHANGED_EVENT));
+}
+
 function normalizeApiKeys(keys: ApiKeys): ApiKeys {
   return Object.fromEntries(
     Object.entries(keys)
@@ -98,6 +108,16 @@ export interface ConfigManagerOptions {
    * Default: false (keys only in memory)
    */
   persistApiKeys?: boolean;
+}
+
+function createDefaultHelpState(): HelpState {
+  return {
+    first_run_completed: false,
+    show_inline_tips: true,
+    completed_guides: [],
+    dismissed_tips: [],
+    completed_tours: [],
+  };
 }
 
 /**
@@ -118,6 +138,23 @@ export class ConfigManager {
     // Load config from localStorage or use defaults
     this.config = this.loadConfig();
     this.loadPersistedApiKeys();
+  }
+
+  private mergeConfig(config: Partial<Config>): Config {
+    const defaults = this.getDefaultConfig();
+
+    return {
+      ...defaults,
+      ...config,
+      batch: {
+        ...defaults.batch,
+        ...(config.batch ?? {}),
+      },
+      help: {
+        ...defaults.help,
+        ...(config.help ?? {}),
+      },
+    };
   }
 
   private loadPersistPreference(defaultValue: boolean): boolean {
@@ -152,7 +189,7 @@ export class ConfigManager {
     try {
       const stored = readStoredValue([CONFIG_STORAGE_KEY, ...LEGACY_CONFIG_STORAGE_KEYS]);
       if (stored) {
-        const parsed = JSON.parse(stored.value) as Config;
+        const parsed = this.mergeConfig(JSON.parse(stored.value) as Config);
         if (stored.sourceKey !== CONFIG_STORAGE_KEY) {
           writeStoredValue(CONFIG_STORAGE_KEY, LEGACY_CONFIG_STORAGE_KEYS, JSON.stringify(parsed));
         }
@@ -168,6 +205,7 @@ export class ConfigManager {
   private saveConfig(): void {
     try {
       writeStoredValue(CONFIG_STORAGE_KEY, LEGACY_CONFIG_STORAGE_KEYS, JSON.stringify(this.config));
+      dispatchConfigChangedEvent();
     } catch (error) {
       console.warn('Failed to save config to localStorage:', error);
     }
@@ -185,6 +223,7 @@ export class ConfigManager {
         max_concurrent: 3,
         rate_limit_delay: 1000,
       },
+      help: createDefaultHelpState(),
     };
   }
 
@@ -192,7 +231,16 @@ export class ConfigManager {
    * Get the current configuration
    */
   getConfig(): Config {
-    return { ...this.config };
+    return this.mergeConfig(this.config);
+  }
+
+  getHelpState(): HelpState {
+    return {
+      ...(this.config.help ?? createDefaultHelpState()),
+      completed_guides: [...(this.config.help?.completed_guides ?? [])],
+      dismissed_tips: [...(this.config.help?.dismissed_tips ?? [])],
+      completed_tours: [...(this.config.help?.completed_tours ?? [])],
+    };
   }
 
   /**
@@ -339,8 +387,32 @@ export class ConfigManager {
    * Update configuration
    */
   updateConfig(updates: Partial<Config>): void {
-    this.config = { ...this.config, ...updates };
+    this.config = this.mergeConfig({
+      ...this.config,
+      ...updates,
+      batch: {
+        ...this.config.batch,
+        ...(updates.batch ?? {}),
+      },
+      help: {
+        ...this.getHelpState(),
+        ...(updates.help ?? {}),
+      },
+    });
     this.saveConfig();
+  }
+
+  updateHelpState(updates: Partial<HelpState>): void {
+    this.updateConfig({
+      help: {
+        ...this.getHelpState(),
+        ...updates,
+      },
+    });
+  }
+
+  resetHelpState(): void {
+    this.updateConfig({ help: createDefaultHelpState() });
   }
 
   /**
@@ -370,7 +442,7 @@ export class ConfigManager {
     try {
       const data = JSON.parse(json);
       if (data.config) {
-        this.config = { ...this.getDefaultConfig(), ...data.config };
+        this.config = this.mergeConfig(data.config as Config);
         this.saveConfig();
       }
     } catch {
@@ -394,6 +466,8 @@ export class ConfigManager {
     }
   }
 }
+
+export const CONFIG_MANAGER_CHANGED_EVENT = CONFIG_CHANGED_EVENT;
 
 // Global instance
 export const configManager = new ConfigManager();

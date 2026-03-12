@@ -3,9 +3,12 @@ import { useQuery } from '@tanstack/react-query';
 import { X, Download, FileText, FileJson, FileCode, CheckCircle2 } from 'lucide-react';
 import type { ExportPresetSummary } from '@char-gen/shared';
 import { api } from '@/lib/api';
+import { REVIEW_EXPORT_TOUR_ID } from '@/lib/help';
 import { saveDownload } from '../../utils/download';
 import ExportPreviewPlaceholder from './ExportPreviewPlaceholder';
+import InlineHelpTip from './InlineHelpTip';
 import PublishingPlaceholder from './PublishingPlaceholder';
+import { useGuidedTour } from './GuidedTourContext';
 
 type ExportPresetOption = ExportPresetSummary & {
   format?: 'text' | 'json' | 'combined';
@@ -24,6 +27,7 @@ export default function ExportModal({ draftId, characterName, onClose }: ExportM
   const [isExporting, setIsExporting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const { isTourCompleted, restartTour, startTour } = useGuidedTour();
 
   const { data: presets, isLoading, error } = useQuery({
     queryKey: ['export-presets'],
@@ -124,13 +128,21 @@ export default function ExportModal({ draftId, characterName, onClose }: ExportM
 
           {/* Preset Selection */}
           <div className="space-y-2">
+            <InlineHelpTip
+              tipId="export-browser-behavior-tip"
+              title="Browser export is a handoff, not always a save dialog"
+              description="On phones and some browsers, export may open a share sheet, a new tab, or the downloads tray instead of asking for a filename. The success message below tells you which handoff happened."
+              actionLabel={isTourCompleted(REVIEW_EXPORT_TOUR_ID) ? 'Replay Review and Export Tour' : 'Start Review and Export Tour'}
+              onAction={() => (isTourCompleted(REVIEW_EXPORT_TOUR_ID) ? restartTour(REVIEW_EXPORT_TOUR_ID) : startTour(REVIEW_EXPORT_TOUR_ID))}
+              className="mb-2"
+            />
             <label className="text-sm font-medium">Export Preset</label>
             {isLoading ? (
               <p className="text-sm text-muted-foreground">Loading presets...</p>
             ) : error ? (
               <p className="text-sm text-destructive">Failed to load presets: {error.message}</p>
             ) : presets && presets.length > 0 ? (
-              <div className="space-y-2">
+              <div data-tour-anchor="export-preset-selection" className="space-y-2">
                 {presets.map((preset: ExportPresetOption) => {
                   const presetValue = preset.path || preset.name;
 
@@ -215,6 +227,9 @@ export default function ExportModal({ draftId, characterName, onClose }: ExportM
 
         {/* Footer */}
         <div className="shrink-0 border-t border-border p-4">
+          <div className="mb-3 rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+            Preset choice controls the target output structure. After you press Export, keep following the browser handoff message even if no desktop-style save dialog appears.
+          </div>
           <div className="flex justify-end gap-2">
           <button
             onClick={onClose}
@@ -225,6 +240,7 @@ export default function ExportModal({ draftId, characterName, onClose }: ExportM
           <button
             onClick={handleExport}
             disabled={!selectedPreset || isExporting}
+            data-tour-anchor="export-confirm"
             className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
             <Download className="h-4 w-4" />

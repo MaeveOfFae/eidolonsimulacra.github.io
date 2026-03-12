@@ -3,12 +3,16 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { CheckCircle, FolderSearch, Loader2, ShieldAlert, ShieldCheck } from 'lucide-react';
 import type { ValidationResponse } from '@char-gen/shared';
 import { api } from '@/lib/api';
+import { VALIDATION_TOUR_ID } from '@/lib/help';
+import InlineHelpTip from '../common/InlineHelpTip';
+import { useGuidedTour } from '../common/GuidedTourContext';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
 
 export default function Validation() {
   const [path, setPath] = useState('');
   const [selectedDraftId, setSelectedDraftId] = useState('');
   const [result, setResult] = useState<ValidationResponse | null>(null);
+  const { isTourCompleted, restartTour, startTour } = useGuidedTour();
 
   const { data: draftsData, isLoading } = useQuery({
     queryKey: ['drafts'],
@@ -54,6 +58,13 @@ export default function Validation() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
+      <InlineHelpTip
+        tipId="validation-before-export-tip"
+        title="Validation is the last structural check before export"
+        description="Use this screen after meaningful edits or when a draft feels suspicious. It is faster to catch missing required sections here than after a bad export lands in another tool."
+        actionLabel={isTourCompleted(VALIDATION_TOUR_ID) ? 'Replay Validation Tour' : 'Start Validation Tour'}
+        onAction={() => (isTourCompleted(VALIDATION_TOUR_ID) ? restartTour(VALIDATION_TOUR_ID) : startTour(VALIDATION_TOUR_ID))}
+      />
       <div>
         <h1 className="text-3xl font-bold">Validation</h1>
         <p className="text-muted-foreground">
@@ -87,7 +98,7 @@ export default function Validation() {
           </button>
         </section>
 
-        <section className="rounded-lg border border-border bg-card p-6 space-y-4">
+        <section data-tour-anchor="validation-draft-panel" className="rounded-lg border border-border bg-card p-6 space-y-4">
           <div className="flex items-center gap-2">
             <ShieldAlert className="h-5 w-5 text-primary" />
             <h2 className="text-lg font-semibold">Validate Saved Draft</h2>
@@ -110,6 +121,7 @@ export default function Validation() {
           <button
             onClick={() => validateDraftMutation.mutate(selectedDraftId)}
             disabled={isPending || !selectedDraftId}
+            data-tour-anchor="validation-draft-run"
             className="inline-flex items-center gap-2 rounded-md border border-input px-4 py-2 text-sm font-medium hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
           >
             {validateDraftMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
@@ -125,7 +137,7 @@ export default function Validation() {
       )}
 
       {result && (
-        <section className="rounded-lg border border-border bg-card p-6 space-y-4">
+        <section data-tour-anchor="validation-results" className="rounded-lg border border-border bg-card p-6 space-y-4">
           <div className="flex items-start justify-between gap-4">
             <div>
               <h2 className="text-lg font-semibold">Validation Results</h2>

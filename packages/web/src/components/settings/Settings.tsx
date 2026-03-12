@@ -12,6 +12,7 @@ import {
   Zap,
   Palette,
   Lock,
+  BookOpen,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { Config, ModelInfo, ThemeOverride, ThemePreset } from '@char-gen/shared';
@@ -24,6 +25,9 @@ import { api } from '../../lib/api.js';
 import { configManager, isInvalidApiKeyValue, normalizeApiKeyValue } from '../../lib/config/manager.js';
 import { createEngine, MODEL_SUGGESTIONS } from '../../lib/llm/factory.js';
 import { saveBlobDownload } from '../../utils/download';
+import { GETTING_STARTED_TOUR_ID } from '@/lib/help';
+import InlineHelpTip from '../common/InlineHelpTip';
+import { useGuidedTour } from '../common/GuidedTourContext';
 
 const ALL_PROVIDERS = ['openai', 'google', 'openrouter', 'anthropic', 'deepseek', 'zai', 'moonshot'] as const;
 type Provider = typeof ALL_PROVIDERS[number];
@@ -94,6 +98,7 @@ export default function Settings() {
   const [availableModels, setAvailableModels] = useState<ModelInfo[]>([]);
   const [modelsLoading, setModelsLoading] = useState(false);
   const [modelsNotice, setModelsNotice] = useState<string | null>(null);
+  const { isTourCompleted, restartTour, startTour } = useGuidedTour();
 
   // Load config from client-side manager
   useEffect(() => {
@@ -382,6 +387,34 @@ export default function Settings() {
     }
   };
 
+  const handleRestartGettingStarted = () => {
+    const baseHelp = localConfig.help ?? configManager.getHelpState();
+    const nextHelpState = {
+      ...baseHelp,
+      first_run_completed: false,
+      completed_guides: (baseHelp.completed_guides ?? []).filter((guideId) => guideId !== 'getting-started'),
+      completed_tours: (baseHelp.completed_tours ?? []).filter((tourId) => tourId !== 'getting-started'),
+    };
+
+    setLocalConfig((previous) => ({
+      ...previous,
+      help: nextHelpState,
+    }));
+    configManager.updateHelpState(nextHelpState);
+    setThemeNotice('Getting Started has been reset. Return to Home to run through it again.');
+    setThemeError(null);
+  };
+
+  const handleResetHelpPreferences = () => {
+    configManager.resetHelpState();
+    setLocalConfig((previous) => ({
+      ...previous,
+      help: configManager.getHelpState(),
+    }));
+    setThemeNotice('Help preferences were reset. Inline tips and first-run guidance are enabled again.');
+    setThemeError(null);
+  };
+
   const currentModel = localConfig.model || '';
 
   return (
@@ -404,7 +437,14 @@ export default function Settings() {
             Settings, API keys, drafts, templates, themes, and blueprint overrides are stored locally in this browser profile. No backend service is required for the web app runtime.
           </p>
         </div>
-          <div className="rounded-2xl border border-border/50 bg-card/50 p-6">
+          <InlineHelpTip
+            tipId="settings-provider-tip"
+            title="Most early generation failures start here"
+            description="Pick the provider you actually use, enter its key, then confirm the model. If direct OpenAI browser calls are blocked, switch to OpenRouter or your own relay instead of retrying blindly."
+            actionLabel={isTourCompleted(GETTING_STARTED_TOUR_ID) ? 'Replay provider setup tour step' : 'Run Getting Started Tour'}
+            onAction={() => (isTourCompleted(GETTING_STARTED_TOUR_ID) ? restartTour(GETTING_STARTED_TOUR_ID) : startTour(GETTING_STARTED_TOUR_ID))}
+          />
+          <div data-tour-anchor="settings-api-keys" className="rounded-2xl border border-border/50 bg-card/50 p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2 rounded-xl bg-gradient-to-br from-primary to-accent">
                 <Lock className="h-5 w-5 text-white" />
@@ -486,7 +526,7 @@ export default function Settings() {
 
         {/* Model Selection */}
         <section className="space-y-4">
-          <div className="rounded-2xl border border-border/50 bg-card/50 p-6">
+          <div data-tour-anchor="settings-model" className="rounded-2xl border border-border/50 bg-card/50 p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className={`p-2 rounded-xl bg-gradient-to-br ${PROVIDER_COLORS[selectedProvider]}`}>
                 <Zap className="h-5 w-5 text-white" />
@@ -597,7 +637,7 @@ export default function Settings() {
       </div>
 
       {/* Batch Settings */}
-      <section className="rounded-2xl border border-border/50 bg-card/50 p-6">
+      <section data-tour-anchor="settings-help-tutorials" className="rounded-2xl border border-border/50 bg-card/50 p-6">
         <div className="flex items-center gap-3 mb-4">
           <div className="p-2 rounded-xl bg-gradient-to-br from-slate-600 to-slate-700">
             <Zap className="h-5 w-5 text-white" />
@@ -645,6 +685,91 @@ export default function Settings() {
               }
               className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-border/50 bg-card/50 p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-600">
+            <BookOpen className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold">Help and Tutorials</h2>
+            <p className="text-sm text-muted-foreground">
+              Control the first-run guide and inline help surfaces.
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-5">
+          <div className="rounded-xl border border-border/50 bg-background/40 p-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="font-medium text-foreground">Inline tips</h3>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                  Keep plain-language helper copy visible on high-friction screens like generation, review, export, templates, blueprints, and settings.
+                </p>
+              </div>
+              <label className="flex items-center gap-2 text-sm text-foreground">
+                <input
+                  type="checkbox"
+                  checked={localConfig.help?.show_inline_tips ?? true}
+                  onChange={(event) =>
+                    setLocalConfig((previous) => ({
+                      ...previous,
+                      help: {
+                        ...(previous.help ?? configManager.getHelpState()),
+                        show_inline_tips: event.target.checked,
+                      },
+                    }))
+                  }
+                  className="rounded border-input"
+                />
+                Show tips
+              </label>
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-[1.2fr_0.8fr]">
+            <div className="rounded-xl border border-border/50 bg-background/40 p-4">
+              <h3 className="font-medium text-foreground">Getting Started guide</h3>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                Reopen or reset the home-screen starter guide if you want to walk through setup, generation, review, and export again.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <Link
+                  to="/help"
+                  className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm hover:bg-accent transition-colors"
+                >
+                  <BookOpen className="h-4 w-4" />
+                  Open Help Center
+                </Link>
+                <button
+                  type="button"
+                  onClick={handleRestartGettingStarted}
+                  className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm hover:bg-accent transition-colors"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Restart Getting Started
+                </button>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-border/50 bg-background/40 p-4">
+              <h3 className="font-medium text-foreground">Reset help state</h3>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                Restore default tutorial settings and turn first-run guidance back on for this browser profile.
+              </p>
+              <button
+                type="button"
+                onClick={handleResetHelpPreferences}
+                className="mt-4 inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm hover:bg-accent transition-colors"
+              >
+                <RotateCcw className="h-4 w-4" />
+                Reset Help Preferences
+              </button>
+            </div>
           </div>
         </div>
       </section>

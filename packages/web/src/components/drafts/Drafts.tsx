@@ -3,6 +3,9 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { FolderOpen, Star, Clock } from 'lucide-react';
 import { api } from '@/lib/api';
+import { DRAFT_LIBRARY_TOUR_ID } from '@/lib/help';
+import InlineHelpTip from '../common/InlineHelpTip';
+import { useGuidedTour } from '../common/GuidedTourContext';
 import DraftComparisonPlaceholder from './DraftComparisonPlaceholder';
 import LibraryCollectionsPlaceholder from './LibraryCollectionsPlaceholder';
 import ReviewChecklistPlaceholder from './ReviewChecklistPlaceholder';
@@ -11,6 +14,7 @@ import VersionHistoryPlaceholder from './VersionHistoryPlaceholder';
 export default function Drafts() {
   const [leftDraftId, setLeftDraftId] = useState<string>('');
   const [rightDraftId, setRightDraftId] = useState<string>('');
+  const { isTourCompleted, restartTour, startTour } = useGuidedTour();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['drafts'],
@@ -51,6 +55,13 @@ export default function Drafts() {
 
   return (
     <div className="space-y-6">
+      <InlineHelpTip
+        tipId="drafts-library-tip"
+        title="Use the library as a review queue"
+        description="After generation, reopen drafts here, compare promising results, and only then move one draft into full review and export. This keeps the workflow deliberate instead of scattered."
+        actionLabel={isTourCompleted(DRAFT_LIBRARY_TOUR_ID) ? 'Replay Draft Library Tour' : 'Start Draft Library Tour'}
+        onAction={() => (isTourCompleted(DRAFT_LIBRARY_TOUR_ID) ? restartTour(DRAFT_LIBRARY_TOUR_ID) : startTour(DRAFT_LIBRARY_TOUR_ID))}
+      />
       <div>
         <h1 className="text-3xl font-bold">Drafts</h1>
         <p className="text-muted-foreground">
@@ -78,7 +89,7 @@ export default function Drafts() {
         </div>
       )}
 
-      <section className="rounded-lg border border-dashed border-border bg-card/50 p-5">
+      <section data-tour-anchor="drafts-workbench" className="rounded-lg border border-dashed border-border bg-card/50 p-5">
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
             <h2 className="text-lg font-semibold">Draft Workbench</h2>
@@ -106,7 +117,7 @@ export default function Drafts() {
       </section>
 
       {/* Draft List */}
-      <div className="space-y-2">
+      <div data-tour-anchor="drafts-list" className="space-y-2">
         {data?.drafts.length === 0 ? (
           <div className="rounded-lg border border-border bg-card p-8 text-center">
             <FolderOpen className="mx-auto h-12 w-12 text-muted-foreground" />
@@ -119,6 +130,7 @@ export default function Drafts() {
             </div>
             <Link
               to="/generate"
+              data-tour-anchor="drafts-open-review"
               className="mt-4 inline-block rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
             >
               Generate Character
@@ -129,6 +141,7 @@ export default function Drafts() {
             <Link
               key={draft.review_id}
               to={`/drafts/${encodeURIComponent(draft.review_id)}`}
+              data-tour-anchor="drafts-open-review"
               className="flex items-center gap-4 rounded-lg border border-border bg-card p-4 transition-colors hover:bg-accent"
             >
               <div className="flex-1 min-w-0">

@@ -4,7 +4,10 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Sparkles, Zap, BookOpen, XCircle, Loader2 } from 'lucide-react';
 import type { ContentMode, GenerationComplete, Template } from '@char-gen/shared';
 import { api } from '@/lib/api';
+import { GETTING_STARTED_TOUR_ID } from '@/lib/help';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
+import InlineHelpTip from '../common/InlineHelpTip';
+import { useGuidedTour } from '../common/GuidedTourContext';
 import GenerationProgress from './GenerationProgress';
 import ApprovalWorkflowPlaceholder from './ApprovalWorkflowPlaceholder';
 import CheckpointSessionPlaceholder from './CheckpointSessionPlaceholder';
@@ -17,6 +20,7 @@ export default function Generation() {
   const [template, setTemplate] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
+  const { isTourCompleted, restartTour, startTour } = useGuidedTour();
 
   const { data: templates = [], isLoading: templatesLoading } = useQuery({
     queryKey: ['templates'],
@@ -94,7 +98,14 @@ export default function Generation() {
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Seed Input Section */}
         <section className="space-y-4">
-          <div className="rounded-2xl border border-border/50 bg-card/50 p-6">
+          <InlineHelpTip
+            tipId="generate-first-draft-tip"
+            title="Start with one concrete idea"
+            description="Choose the template before you overwork the seed. A short but specific concept plus the right template gives better first drafts than a long unfocused paragraph."
+            actionLabel={isTourCompleted(GETTING_STARTED_TOUR_ID) ? 'Run Getting Started Tour again' : 'Run Getting Started Tour'}
+            onAction={() => (isTourCompleted(GETTING_STARTED_TOUR_ID) ? restartTour(GETTING_STARTED_TOUR_ID) : startTour(GETTING_STARTED_TOUR_ID))}
+          />
+          <div data-tour-anchor="generation-seed" className="rounded-2xl border border-border/50 bg-card/50 p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500">
                 <Zap className="h-5 w-5 text-white" />
@@ -151,7 +162,7 @@ export default function Generation() {
 
             <div className="space-y-4">
               {/* Content Mode */}
-              <div>
+              <div data-tour-anchor="generation-content-mode">
                 <label className="text-sm font-medium mb-3 block">Content Mode</label>
                 <div className="grid grid-cols-2 gap-2">
                   {MODE_OPTIONS.map((option) => {
@@ -181,7 +192,7 @@ export default function Generation() {
               </div>
 
               {/* Template Selection */}
-              <div>
+              <div data-tour-anchor="generation-template">
                 <label className="text-sm font-medium mb-3 block">Template</label>
                 <select
                   value={template}
@@ -212,6 +223,7 @@ export default function Generation() {
             <button
               onClick={handleGenerate}
               disabled={isGenerating || !seed.trim() || templates.length === 0}
+              data-tour-anchor="generation-submit"
               className="w-full mt-4 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary to-accent px-6 py-3.5 text-sm font-semibold text-primary-foreground hover:from-primary/90 hover:to-accent/90 transition-all duration-200 shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Sparkles className="h-5 w-5" />

@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { X, ChevronLeft, ChevronRight, Loader2, CheckCircle2 } from 'lucide-react';
 import type { CreateTemplateRequest, AssetDefinition, Template } from '@char-gen/shared';
 import { api } from '@/lib/api';
+import InlineHelpTip from '../common/InlineHelpTip';
 import BasicInfoStep from './wizard/BasicInfoStep';
 import AssetSelectionStep from './wizard/AssetSelectionStep';
 import DependenciesStep from './wizard/DependenciesStep';
@@ -230,6 +231,26 @@ export default function TemplateWizard({ open, onClose, initialData, templateNam
             <div className="mb-4 rounded-lg border border-destructive bg-destructive/10 p-4 text-sm text-destructive">
               {errors.submit}
             </div>
+          )}
+
+          {!created && (
+            <InlineHelpTip
+              tipId={`template-wizard-step-${currentStep}`}
+              title={currentStep === 1
+                ? 'This wizard is an advanced surface'
+                : currentStep === 2
+                  ? 'Asset order affects the whole template'
+                  : currentStep === 3
+                    ? 'Dependencies are a hard contract'
+                    : 'Review before you commit'}
+              description={currentStep === 1
+                ? 'If you are new, prefer official templates first. Creating or editing a template changes the asset graph for generation, review, and export.'
+                : currentStep === 2
+                  ? 'Add only the assets you actually need. Every extra asset changes review scope and export expectations.'
+                  : currentStep === 3
+                    ? 'Dependencies must reflect upstream facts correctly. If an asset depends on the wrong thing, downstream output quality and structure can drift.'
+                    : 'Use the final review step to catch naming, versioning, and structure mistakes before saving the template.'}
+            />
           )}
 
           {created ? (

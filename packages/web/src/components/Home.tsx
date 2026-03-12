@@ -1,10 +1,12 @@
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Sparkles, FolderOpen, GitCompare, Baby, ArrowRight, Dice1, GitBranch, ShieldCheck, Zap, FileText, Layers } from 'lucide-react';
+import { Sparkles, FolderOpen, GitCompare, Baby, ArrowRight, Dice1, GitBranch, ShieldCheck, Zap, FileText, Layers, PlayCircle, RotateCcw, Target } from 'lucide-react';
 import type { DraftMetadata } from '@char-gen/shared';
 import { api } from '@/lib/api';
+import { getGuidedTour, gettingStartedSteps, guidedTours } from '@/lib/help';
 import { roadmapGroups } from '@/lib/roadmap';
 import { releaseNotes } from '@/lib/whats-new';
+import { useGuidedTour } from './common/GuidedTourContext';
 import { useAssistantScreenContext } from './common/useAssistantContext';
 import AutomationPlaceholder from './common/AutomationPlaceholder';
 import OnboardingPlaceholder from './common/OnboardingPlaceholder';
@@ -116,6 +118,7 @@ function formatReleaseDate(value: string) {
 }
 
 export default function Home() {
+  const { activeStepIndex, activeTourId, goToCurrentStep, helpState, isTourCompleted, restartTour, startTour } = useGuidedTour();
   const { data: statsData } = useQuery({
     queryKey: ['drafts', 'stats'],
     queryFn: () => api.getDrafts({ limit: 1 }),
@@ -142,6 +145,10 @@ export default function Home() {
       summary: group.items[0],
       ownerFile: group.ownerFiles[0],
     }));
+
+  const nextIncompleteTour = guidedTours.find((tour) => !isTourCompleted(tour.id)) ?? null;
+  const activeTour = activeTourId ? getGuidedTour(activeTourId) : null;
+  const activeTourStep = activeTour?.steps[activeStepIndex] ?? null;
 
   return (
     <div className="mx-auto max-w-7xl space-y-12 pb-12">
@@ -343,17 +350,105 @@ export default function Home() {
           ))}
         </div>
 
+        <div className="mt-6 rounded-2xl border border-primary/20 bg-primary/5 p-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h3 className="text-lg font-semibold text-foreground">New here?</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                The app now includes a Help Center and a guided starter path. Follow the checklist below if you want the safest path to a first usable draft.
+              </p>
+            </div>
+            <Link
+              to="/help"
+              className="inline-flex items-center gap-2 rounded-lg border border-border/60 bg-card/70 px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:text-primary"
+            >
+              Open Help Center
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {gettingStartedSteps.slice(0, 3).map((step, index) => (
+              <div key={step.id} className="rounded-xl border border-border/50 bg-background/40 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Step {index + 1}</p>
+                <h4 className="mt-2 font-medium text-foreground">{step.title}</h4>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">{step.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
         <div className="mt-6 rounded-2xl border border-dashed border-border/60 bg-card/40 p-6">
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
-              <h3 className="text-lg font-semibold text-foreground">Planned Guided Workflows</h3>
+              <h3 className="text-lg font-semibold text-foreground">Guided Workflows</h3>
               <p className="text-sm text-muted-foreground">
-                First-run help and queued automations are scaffolded here so they stay visible from the home screen.
+                First-run guidance is live here now, and queued automations will share this home surface later.
               </p>
             </div>
             <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-              Planned
+              First slice live
             </span>
+          </div>
+
+          <div className="mb-4 rounded-2xl border border-primary/20 bg-primary/5 p-5">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 text-sm font-medium text-primary">
+                  <Target className="h-4 w-4" />
+                  Resume Help
+                </div>
+                <h4 className="mt-2 text-lg font-semibold text-foreground">
+                  {activeTour && activeTourStep
+                    ? `Continue ${activeTour.title}`
+                    : nextIncompleteTour
+                      ? `Next tour: ${nextIncompleteTour.title}`
+                      : 'You are caught up on the current guided tours'}
+                </h4>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                  {activeTour && activeTourStep
+                    ? `You are currently on step ${activeStepIndex + 1} of ${activeTour.steps.length}: ${activeTourStep.title}.`
+                    : nextIncompleteTour
+                      ? nextIncompleteTour.summary
+                      : helpState.show_inline_tips
+                        ? 'Use the inline tips and page help strips whenever you need a refresher.'
+                        : 'Inline tips are currently turned off, but all current tours are complete in this browser profile.'}
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                {activeTour ? (
+                  <button
+                    type="button"
+                    onClick={goToCurrentStep}
+                    className="inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                  >
+                    <PlayCircle className="h-4 w-4" />
+                    Resume current tour
+                  </button>
+                ) : nextIncompleteTour ? (
+                  <button
+                    type="button"
+                    onClick={() => startTour(nextIncompleteTour.id)}
+                    className="inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                  >
+                    <PlayCircle className="h-4 w-4" />
+                    Start next tour
+                  </button>
+                ) : null}
+
+                {nextIncompleteTour && (
+                  <button
+                    type="button"
+                    onClick={() => restartTour(nextIncompleteTour.id)}
+                    className="inline-flex items-center gap-2 rounded-lg border border-border/60 bg-background/50 px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:text-primary"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                    Restart next tour
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
 
           <div className="grid gap-4 lg:grid-cols-2">

@@ -4,6 +4,9 @@ import { Link } from 'react-router-dom';
 import { BookOpen, FileJson, Lightbulb, Package, Search, ArrowRight } from 'lucide-react';
 import type { Blueprint } from '@char-gen/shared';
 import { api } from '@/lib/api';
+import { BLUEPRINTS_SAFETY_TOUR_ID } from '@/lib/help';
+import InlineHelpTip from '../common/InlineHelpTip';
+import { useGuidedTour } from '../common/GuidedTourContext';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
 import BlueprintLintPlaceholder from './BlueprintLintPlaceholder';
 import BlueprintSandboxPlaceholder from './BlueprintSandboxPlaceholder';
@@ -16,6 +19,7 @@ type Section = {
 
 export default function Blueprints() {
   const [query, setQuery] = useState('');
+  const { isTourCompleted, restartTour, startTour } = useGuidedTour();
   const { data, isLoading, error } = useQuery({
     queryKey: ['blueprints'],
     queryFn: () => api.getBlueprints(),
@@ -78,6 +82,13 @@ export default function Blueprints() {
 
   return (
     <div className="space-y-6">
+      <InlineHelpTip
+        tipId="blueprints-advanced-surface-tip"
+        title="Blueprints are an advanced editing surface"
+        description="If you are not deliberately changing generation structure, stay with templates instead. Blueprint edits can break parser-facing output even when the text still looks readable."
+        actionLabel={isTourCompleted(BLUEPRINTS_SAFETY_TOUR_ID) ? 'Replay Blueprint Safety Tour' : 'Start Blueprint Safety Tour'}
+        onAction={() => (isTourCompleted(BLUEPRINTS_SAFETY_TOUR_ID) ? restartTour(BLUEPRINTS_SAFETY_TOUR_ID) : startTour(BLUEPRINTS_SAFETY_TOUR_ID))}
+      />
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">Blueprints</h1>
@@ -87,7 +98,7 @@ export default function Blueprints() {
         </div>
       </div>
 
-      <div className="relative max-w-xl">
+      <div data-tour-anchor="blueprints-search" className="relative max-w-xl">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <input
           type="text"
@@ -98,7 +109,7 @@ export default function Blueprints() {
         />
       </div>
 
-      <section className="rounded-lg border border-dashed border-border bg-card/50 p-5">
+      <section data-tour-anchor="blueprints-tools" className="rounded-lg border border-dashed border-border bg-card/50 p-5">
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
             <h2 className="text-lg font-semibold">Blueprint Tools</h2>
@@ -125,7 +136,7 @@ export default function Blueprints() {
           No blueprints match the current search.
         </div>
       ) : (
-        <div className="space-y-6">
+        <div data-tour-anchor="blueprints-list" className="space-y-6">
           {filteredSections.map((section) => (
             <section key={section.title} className="space-y-3">
               <div className="flex items-center gap-2">

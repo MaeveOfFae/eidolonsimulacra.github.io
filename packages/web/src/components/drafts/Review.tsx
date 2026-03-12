@@ -1,10 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Star, Download, Trash2, Edit3, Check, X, ShieldCheck } from 'lucide-react';
 import { api } from '@/lib/api';
+import { getGuidedTour, REVIEW_EXPORT_TOUR_ID } from '@/lib/help';
 import ExportModal from '../common/ExportModal';
 import ChatPanel from '../common/ChatPanel';
+import InlineHelpTip from '../common/InlineHelpTip';
+import { useGuidedTour } from '../common/GuidedTourContext';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
 
 export default function Review() {
@@ -17,6 +20,7 @@ export default function Review() {
   const [editingAsset, setEditingAsset] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
+  const { activeStepIndex, activeTourId, isTourCompleted, restartTour, startTour } = useGuidedTour();
   const queryClient = useQueryClient();
 
   const { data: draft, isLoading, error } = useQuery({
@@ -121,6 +125,24 @@ export default function Review() {
     saveAsset.mutate({ assetName, content: newContent });
   };
 
+  useEffect(() => {
+    if (activeTourId !== REVIEW_EXPORT_TOUR_ID) {
+      return;
+    }
+
+    const activeStep = getGuidedTour(activeTourId)?.steps[activeStepIndex];
+    const needsExportModal = activeStep?.targetId === 'export-preset-selection' || activeStep?.targetId === 'export-confirm';
+
+    if (needsExportModal && !showExportModal) {
+      setShowExportModal(true);
+      return;
+    }
+
+    if (!needsExportModal && showExportModal) {
+      setShowExportModal(false);
+    }
+  }, [activeStepIndex, activeTourId, showExportModal]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -150,6 +172,13 @@ export default function Review() {
 
   return (
     <div className="space-y-6">
+      <InlineHelpTip
+        tipId="review-export-tip"
+        title="Validate before you export"
+        description="Review is where you catch missing sections, unresolved placeholders, and cross-asset drift. Export only after the draft reads coherently across more than one asset."
+        actionLabel={isTourCompleted(REVIEW_EXPORT_TOUR_ID) ? 'Replay Review and Export Tour' : 'Start Review and Export Tour'}
+        onAction={() => (isTourCompleted(REVIEW_EXPORT_TOUR_ID) ? restartTour(REVIEW_EXPORT_TOUR_ID) : startTour(REVIEW_EXPORT_TOUR_ID))}
+      />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="space-y-1">
@@ -201,9 +230,10 @@ export default function Review() {
           )}
           <p className="text-muted-foreground">{draft.metadata.seed}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div data-tour-anchor="review-actions" className="flex items-center gap-2">
           <button
             onClick={() => validateDraft.mutate()}
+            data-tour-anchor="review-validate"
             className="inline-flex items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm hover:bg-accent"
           >
             <ShieldCheck className="h-4 w-4" />
@@ -218,6 +248,7 @@ export default function Review() {
           </button>
           <button
             onClick={() => setShowExportModal(true)}
+            data-tour-anchor="review-export"
             className="inline-flex items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm hover:bg-accent"
           >
             <Download className="h-4 w-4" />
@@ -274,7 +305,7 @@ export default function Review() {
       )}
 
       {/* Assets */}
-      <div className="space-y-4">
+      <div data-tour-anchor="review-assets" className="space-y-4">
         {assetNames.map((assetName) => (
           <div key={assetName} className="space-y-2">
             <div className="flex items-center justify-between">

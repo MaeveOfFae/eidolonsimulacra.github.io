@@ -3,7 +3,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { FileText, Plus, Star, Trash2, ChevronDown, ChevronUp, ShieldCheck, Copy, Download, Pencil, Upload, Loader2 } from 'lucide-react';
 import type { CreateTemplateRequest, Template, AssetDefinition } from '@char-gen/shared';
 import { api } from '@/lib/api';
+import { GETTING_STARTED_TOUR_ID } from '@/lib/help';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
+import InlineHelpTip from '../common/InlineHelpTip';
+import { useGuidedTour } from '../common/GuidedTourContext';
 import { saveDownload } from '../../utils/download';
 import TemplateComparisonPlaceholder from './TemplateComparisonPlaceholder';
 import TemplateMigrationPlaceholder from './TemplateMigrationPlaceholder';
@@ -28,6 +31,7 @@ export default function Templates() {
   const [editingTemplateData, setEditingTemplateData] = useState<CreateTemplateRequest | null>(null);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [validationResults, setValidationResults] = useState<Record<string, { errors: string[]; warnings: string[] }>>({});
+  const { isTourCompleted, restartTour, startTour } = useGuidedTour();
   const queryClient = useQueryClient();
 
   const { data: templates, isLoading, error } = useQuery({
@@ -197,6 +201,13 @@ export default function Templates() {
           {feedback.message}
         </div>
       )}
+      <InlineHelpTip
+        tipId="templates-first-choice-tip"
+        title="Choose a template before you generate"
+        description="Templates decide which assets exist and how review and export behave. If you are new, start with an official template instead of creating one from scratch."
+        actionLabel={isTourCompleted(GETTING_STARTED_TOUR_ID) ? 'Replay Getting Started Tour' : 'Start Getting Started Tour'}
+        onAction={() => (isTourCompleted(GETTING_STARTED_TOUR_ID) ? restartTour(GETTING_STARTED_TOUR_ID) : startTour(GETTING_STARTED_TOUR_ID))}
+      />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Templates</h1>
