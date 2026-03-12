@@ -94,17 +94,20 @@ export default function ExportModal({ draftId, characterName, onClose }: ExportM
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
 
       {/* Modal */}
-      <div className="relative flex w-full max-w-md flex-col overflow-hidden rounded-lg border border-border bg-card shadow-lg max-h-[calc(100dvh-1.5rem)] sm:max-h-[min(80vh,48rem)]">
+      <div className="relative flex h-[calc(100dvh-1.5rem)] min-h-0 w-full max-w-md flex-col overflow-hidden rounded-lg border border-border bg-card shadow-lg sm:h-auto sm:max-h-[min(80vh,48rem)]">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-border">
+        <div className="shrink-0 border-b border-border p-4">
+          <div className="flex items-center justify-between gap-3">
           <h2 className="text-lg font-semibold">Export Character</h2>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
             <X className="h-5 w-5" />
           </button>
+          </div>
         </div>
 
         {/* Content */}
-        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-4">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
+          <div className="space-y-4 pb-2">
           {/* Character Name */}
           <div>
             <label className="text-sm font-medium">Character</label>
@@ -199,10 +202,12 @@ export default function ExportModal({ draftId, characterName, onClose }: ExportM
               </div>
             </div>
           )}
+          </div>
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-2 p-4 border-t border-border">
+        <div className="shrink-0 border-t border-border p-4">
+          <div className="flex justify-end gap-2">
           <button
             onClick={onClose}
             className="px-4 py-2 text-sm font-medium rounded-md border border-input hover:bg-accent"
@@ -217,6 +222,7 @@ export default function ExportModal({ draftId, characterName, onClose }: ExportM
             <Download className="h-4 w-4" />
             {isExporting ? 'Exporting...' : 'Export'}
           </button>
+          </div>
         </div>
       </div>
     </div>
