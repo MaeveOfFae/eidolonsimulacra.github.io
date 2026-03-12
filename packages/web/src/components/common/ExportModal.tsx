@@ -89,12 +89,12 @@ export default function ExportModal({ draftId, characterName, onClose }: ExportM
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-end justify-center p-3 sm:items-center sm:p-4">
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
 
       {/* Modal */}
-      <div className="relative bg-card border border-border rounded-lg shadow-lg w-full max-w-md mx-4 max-h-[80vh] overflow-hidden">
+      <div className="relative flex w-full max-w-md flex-col overflow-hidden rounded-lg border border-border bg-card shadow-lg max-h-[calc(100dvh-1.5rem)] sm:max-h-[min(80vh,48rem)]">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border">
           <h2 className="text-lg font-semibold">Export Character</h2>
@@ -104,7 +104,7 @@ export default function ExportModal({ draftId, characterName, onClose }: ExportM
         </div>
 
         {/* Content */}
-        <div className="p-4 space-y-4 overflow-auto">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-4">
           {/* Character Name */}
           <div>
             <label className="text-sm font-medium">Character</label>
