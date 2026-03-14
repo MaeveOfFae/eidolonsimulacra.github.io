@@ -157,8 +157,6 @@ export default function Settings() {
   useEffect(() => {
     let isCancelled = false;
 
-    console.log('[useEffect] loading models for', selectedProvider, 'apiKey:', localConfig.api_keys?.[selectedProvider] ? 'set' : 'not set');
-
     const loadModels = async () => {
       setModelsLoading(true);
       try {
@@ -167,7 +165,6 @@ export default function Settings() {
           return;
         }
 
-        console.log('[useEffect] got', response.models.length, 'models, cached:', response.cached, 'error:', response.error);
         setAvailableModels(response.models);
         setModelsNotice(response.error || null);
       } catch (error) {
@@ -175,7 +172,6 @@ export default function Settings() {
           return;
         }
 
-        console.error('[useEffect] error loading models:', error);
         setAvailableModels([]);
         setModelsNotice(error instanceof Error ? error.message : 'Failed to load models');
       } finally {
@@ -259,18 +255,15 @@ export default function Settings() {
 
   const handleApiKeyChange = (provider: Provider, value: string) => {
     const normalizedValue = normalizeApiKeyValue(value);
-    console.log('[handleApiKeyChange]', { provider, normalizedValue: normalizedValue ? `${normalizedValue.slice(0, 10)}...` : undefined, isInvalid: isInvalidApiKeyValue(normalizedValue) });
 
     setLocalConfig((previous) => {
       const nextApiKeys = { ...(previous.api_keys || {}) };
       if (normalizedValue && !isInvalidApiKeyValue(normalizedValue)) {
         nextApiKeys[provider] = normalizedValue;
         configManager.setApiKey(provider, normalizedValue);
-        console.log('[handleApiKeyChange] set key for', provider);
       } else {
         delete nextApiKeys[provider];
         configManager.clearApiKey(provider);
-        console.log('[handleApiKeyChange] cleared key for', provider);
       }
       return {
         ...previous,
@@ -528,6 +521,20 @@ export default function Settings() {
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Quick Save Button */}
+          <div className="flex items-center gap-3 pt-2">
+            <button
+              onClick={updateConfig}
+              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary to-accent px-6 py-2.5 text-sm font-semibold text-primary-foreground hover:from-primary/90 hover:to-accent/90 transition-all duration-200 shadow-lg shadow-primary/20"
+            >
+              <Save className="h-4 w-4" />
+              Save Settings
+            </button>
+            {themeNotice && (
+              <span className="text-sm text-green-600 dark:text-green-400">{themeNotice}</span>
+            )}
           </div>
         </section>
 
