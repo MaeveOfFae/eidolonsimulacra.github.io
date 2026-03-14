@@ -1,6 +1,22 @@
 # Changelog
 
 
+## v2.0.14 - 2026-03-14
+
+### Documentation and platform update
+
+This release packages 12 recent commits focused on documentation, platform, and templates.
+
+### Highlights
+- Enhance guided tour functionality; add review export tour and improve navigation path resolution
+- Bump version to 2.0.13; update changelog and release notes with recent documentation, platform updates, and new links
+- Add tests for help components and guided tour functionality
+- Update version to 2.0.12; enhance changelog and release notes with recent documentation, platform updates, and new links
+- Implement session management for generation process; add functions to load, save, and clear active generation sessions
+
+### Links
+- [Open generation](/generate)
+- [Review templates](/templates)
 ## v2.0.13 - 2026-03-14
 
 ### Documentation and platform update
@@ -227,6 +243,7 @@ The app now centers the browser runtime with tighter template tooling, local dra
 
 - [Open generation](/generate)
 - [Review templates](/templates)
+
 
 
 
