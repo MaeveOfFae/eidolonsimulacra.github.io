@@ -522,20 +522,6 @@ export default function Settings() {
               ))}
             </div>
           </div>
-
-          {/* Quick Save Button */}
-          <div className="flex items-center gap-3 pt-2">
-            <button
-              onClick={updateConfig}
-              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary to-accent px-6 py-2.5 text-sm font-semibold text-primary-foreground hover:from-primary/90 hover:to-accent/90 transition-all duration-200 shadow-lg shadow-primary/20"
-            >
-              <Save className="h-4 w-4" />
-              Save Settings
-            </button>
-            {themeNotice && (
-              <span className="text-sm text-green-600 dark:text-green-400">{themeNotice}</span>
-            )}
-          </div>
         </section>
 
         {/* Model Selection */}
@@ -646,6 +632,20 @@ export default function Settings() {
                 />
               </div>
             </div>
+          </div>
+
+          {/* Quick Save Button */}
+          <div className="flex items-center gap-3 pt-2">
+            <button
+              onClick={updateConfig}
+              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary to-accent px-6 py-2.5 text-sm font-semibold text-primary-foreground hover:from-primary/90 hover:to-accent/90 transition-all duration-200 shadow-lg shadow-primary/20"
+            >
+              <Save className="h-4 w-4" />
+              Save Settings
+            </button>
+            {themeNotice && (
+              <span className="text-sm text-green-600 dark:text-green-400">{themeNotice}</span>
+            )}
           </div>
         </section>
       </div>
