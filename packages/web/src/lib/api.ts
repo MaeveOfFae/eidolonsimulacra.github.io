@@ -1487,10 +1487,16 @@ export class EidolonBrowserAPI {
     apiKey: string,
     baseUrl: string
   ): Promise<ModelsResponse> {
-    const response = await fetch(`${baseUrl}/models`, {
+    const url = `${baseUrl}/models`;
+    const headers = buildProviderHeaders(provider as LLMProvider, apiKey);
+    console.log('[fetchOpenAICompatibleModels] url:', url, 'headers:', { ...headers, Authorization: headers.Authorization ? `${headers.Authorization.slice(0, 20)}...` : undefined });
+
+    const response = await fetch(url, {
       method: 'GET',
-      headers: buildProviderHeaders(provider as LLMProvider, apiKey),
+      headers,
     });
+
+    console.log('[fetchOpenAICompatibleModels] response status:', response.status, 'ok:', response.ok);
 
     if (!response.ok) {
       let error = `HTTP ${response.status}`;
@@ -1534,6 +1540,9 @@ export class EidolonBrowserAPI {
     const baseUrl = config.base_url || getDefaultBaseUrl(typedProvider);
     const apiKey = resolveProviderApiKey(provider, apiKeys);
     const cacheKey = `${provider}|${baseUrl}|${apiKey ? 'auth' : 'anon'}`;
+
+    console.log('[loadProviderModels]', { provider, apiKey: apiKey ? `${apiKey.slice(0, 10)}...` : undefined, cacheKey });
+
     const cachedEntry = modelsCache.get(cacheKey);
     if (!refresh && cachedEntry && Date.now() - cachedEntry.cachedAt < MODEL_CACHE_TTL_MS) {
       return {
@@ -1549,7 +1558,10 @@ export class EidolonBrowserAPI {
     }));
     const supportsRemoteListing = ['openrouter', 'openai', 'deepseek', 'zai', 'moonshot'].includes(provider);
 
+    console.log('[loadProviderModels] supportsRemoteListing:', supportsRemoteListing, 'hasApiKey:', !!apiKey);
+
     if (!apiKey || !supportsRemoteListing) {
+      console.log('[loadProviderModels] using fallback models');
       const response = {
         provider,
         models: fallbackModels,
@@ -1564,13 +1576,16 @@ export class EidolonBrowserAPI {
     }
 
     try {
+      console.log('[loadProviderModels] fetching from', `${baseUrl}/models`);
       const response = await this.fetchOpenAICompatibleModels(provider, apiKey, baseUrl);
+      console.log('[loadProviderModels] fetched', response.models.length, 'models');
       modelsCache.set(cacheKey, {
         response,
         cachedAt: Date.now(),
       });
       return response;
     } catch (error) {
+      console.error('[loadProviderModels] fetch error:', error);
       const message = error instanceof Error ? error.message : 'Failed to load models';
       const response = {
         provider,

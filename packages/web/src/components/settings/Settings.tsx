@@ -157,6 +157,8 @@ export default function Settings() {
   useEffect(() => {
     let isCancelled = false;
 
+    console.log('[useEffect] loading models for', selectedProvider, 'apiKey:', localConfig.api_keys?.[selectedProvider] ? 'set' : 'not set');
+
     const loadModels = async () => {
       setModelsLoading(true);
       try {
@@ -165,6 +167,7 @@ export default function Settings() {
           return;
         }
 
+        console.log('[useEffect] got', response.models.length, 'models, cached:', response.cached, 'error:', response.error);
         setAvailableModels(response.models);
         setModelsNotice(response.error || null);
       } catch (error) {
@@ -172,6 +175,7 @@ export default function Settings() {
           return;
         }
 
+        console.error('[useEffect] error loading models:', error);
         setAvailableModels([]);
         setModelsNotice(error instanceof Error ? error.message : 'Failed to load models');
       } finally {
@@ -255,15 +259,18 @@ export default function Settings() {
 
   const handleApiKeyChange = (provider: Provider, value: string) => {
     const normalizedValue = normalizeApiKeyValue(value);
+    console.log('[handleApiKeyChange]', { provider, normalizedValue: normalizedValue ? `${normalizedValue.slice(0, 10)}...` : undefined, isInvalid: isInvalidApiKeyValue(normalizedValue) });
 
     setLocalConfig((previous) => {
       const nextApiKeys = { ...(previous.api_keys || {}) };
       if (normalizedValue && !isInvalidApiKeyValue(normalizedValue)) {
         nextApiKeys[provider] = normalizedValue;
         configManager.setApiKey(provider, normalizedValue);
+        console.log('[handleApiKeyChange] set key for', provider);
       } else {
         delete nextApiKeys[provider];
         configManager.clearApiKey(provider);
+        console.log('[handleApiKeyChange] cleared key for', provider);
       }
       return {
         ...previous,
