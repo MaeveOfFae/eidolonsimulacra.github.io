@@ -1,6 +1,22 @@
 # Changelog
 
 
+## v2.0.20 - 2026-03-14
+
+### Documentation and platform update
+
+This release packages 12 recent commits focused on documentation, platform, and runtime.
+
+### Highlights
+- Move Quick Save Button to a new position in Settings component
+- Update version to 2.0.19; enhance changelog with recent documentation, platform updates, and new links
+- Remove console logs from Settings and API classes; improve error handling message for network issues
+- Update version to 2.0.18; enhance changelog and release notes with recent documentation, platform updates, and new links
+- Add logging for model loading and API key changes in Settings and API classes
+
+### Links
+- [Open generation](/generate)
+- [Review templates](/templates)
 ## v2.0.19 - 2026-03-14
 
 ### Documentation and platform update
@@ -323,6 +339,7 @@ The app now centers the browser runtime with tighter template tooling, local dra
 
 - [Open generation](/generate)
 - [Review templates](/templates)
+
 
 
 

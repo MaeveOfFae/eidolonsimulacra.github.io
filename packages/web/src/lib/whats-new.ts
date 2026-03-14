@@ -16,9 +16,27 @@ export interface ReleaseNoteEntry {
 // Generated and maintained by tools/generation/generate-release-notes.mjs.
 export const releaseNotes: ReleaseNoteEntry[] = [
   {
-    version: '2.0.19',
+    version: '2.0.20',
     releasedOn: '2026-03-14',
     badge: 'Current release',
+    headline: 'Documentation and platform update',
+    summary: 'This release packages 12 recent commits focused on documentation, platform, and runtime.',
+    highlights: [
+      'Move Quick Save Button to a new position in Settings component',
+      'Update version to 2.0.19; enhance changelog with recent documentation, platform updates, and new links',
+      'Remove console logs from Settings and API classes; improve error handling message for network issues',
+      'Update version to 2.0.18; enhance changelog and release notes with recent documentation, platform updates, and new links',
+      'Add logging for model loading and API key changes in Settings and API classes',
+    ],
+    links: [
+      { label: 'Open generation', to: '/generate' },
+      { label: 'Review templates', to: '/templates' },
+    ],
+  },
+  {
+    version: '2.0.19',
+    releasedOn: '2026-03-14',
+    badge: 'Previous release',
     headline: 'Documentation and platform update',
     summary: 'This release packages 12 recent commits focused on documentation, platform, and runtime.',
     highlights: [
