@@ -1,6 +1,22 @@
 # Changelog
 
 
+## v2.0.17 - 2026-03-14
+
+### Platform and documentation update
+
+This release packages 12 recent commits focused on platform, documentation, and templates.
+
+### Highlights
+- Remove unnecessary backdrop-blur class from GuidedTourOverlay component
+- Modified: packages/web/src/components/common/GuidedTourContext.tsx modified: packages/web/src/lib/help.ts
+- Update version to 2.0.16; enhance changelog and release notes with recent documentation, platform updates, and new links
+- Remove GuidedTourContext tests
+- Update version to 2.0.15; enhance changelog and release notes with recent documentation, platform updates, and new links
+
+### Links
+- [Open generation](/generate)
+- [Review templates](/templates)
 ## v2.0.16 - 2026-03-14
 
 ### Documentation and platform update
@@ -275,6 +291,7 @@ The app now centers the browser runtime with tighter template tooling, local dra
 
 - [Open generation](/generate)
 - [Review templates](/templates)
+
 
 
 
