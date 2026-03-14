@@ -1,7 +1,8 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { configManager } from '@/lib/config/manager';
-import { GETTING_STARTED_GUIDE_ID, GETTING_STARTED_TOUR_ID } from '@/lib/help';
+import { api } from '@/lib/api';
+import { GETTING_STARTED_GUIDE_ID, GETTING_STARTED_TOUR_ID, REVIEW_EXPORT_TOUR_ID } from '@/lib/help';
 import { GuidedTourProvider, useGuidedTour } from './GuidedTourContext';
 
 function Probe() {
@@ -25,6 +26,9 @@ function Probe() {
       <div data-testid="completed-tours">{helpState.completed_tours.join(',')}</div>
       <button type="button" onClick={() => startTour(GETTING_STARTED_TOUR_ID)}>
         Start Getting Started
+      </button>
+      <button type="button" onClick={() => startTour(REVIEW_EXPORT_TOUR_ID)}>
+        Start Review Export
       </button>
       <button type="button" onClick={() => goToNextStep()}>
         Next Step
@@ -51,6 +55,7 @@ describe('GuidedTourContext', () => {
     sessionStorage.clear();
     localStorage.clear();
     configManager.clearAll();
+    vi.restoreAllMocks();
   });
 
   it('persists active tour progress to session storage and restores it on remount', async () => {
@@ -102,5 +107,31 @@ describe('GuidedTourContext', () => {
     expect(screen.getByTestId('first-run-completed')).toHaveTextContent('false');
     expect(screen.getByTestId('completed-guides')).toHaveTextContent('');
     expect(screen.getByTestId('completed-tours')).toHaveTextContent('');
+  });
+
+  it('resolves review tour start to a concrete draft route instead of the route pattern', async () => {
+    vi.spyOn(api, 'getDrafts').mockResolvedValue({
+      drafts: [
+        {
+          review_id: 'draft-123',
+        },
+      ],
+      stats: {
+        total_drafts: 1,
+        favorites: 0,
+        by_genre: {},
+      },
+    } as Awaited<ReturnType<typeof api.getDrafts>>);
+
+    renderProvider('/help');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Start Review Export' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('pathname')).toHaveTextContent('/drafts/draft-123');
+    });
+
+    expect(screen.getByTestId('active-tour')).toHaveTextContent(REVIEW_EXPORT_TOUR_ID);
+    expect(screen.getByTestId('active-step')).toHaveTextContent('0');
   });
 });

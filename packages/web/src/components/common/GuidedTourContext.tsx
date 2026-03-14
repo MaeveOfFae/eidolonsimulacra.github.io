@@ -14,8 +14,10 @@ import {
   getGuidedTour,
   guidedTours,
   isGuidedTourStepActive,
+  type GuidedTourStep,
 } from '@/lib/help';
 import { CONFIG_MANAGER_CHANGED_EVENT, configManager } from '@/lib/config/manager';
+import { api } from '@/lib/api';
 
 const ACTIVE_TOUR_STORAGE_KEY = 'eidolon.web.activeTour';
 
@@ -113,7 +115,25 @@ export function GuidedTourProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const navigateToTourStep = (tourId: string, stepIndex: number) => {
+  const resolveStepNavigationPath = async (step: GuidedTourStep): Promise<string> => {
+    if (step.to !== '/drafts/' || (step.matchMode ?? 'exact') !== 'prefix') {
+      return step.to;
+    }
+
+    if (location.pathname.startsWith('/drafts/')) {
+      return location.pathname;
+    }
+
+    try {
+      const drafts = await api.getDrafts();
+      const reviewId = drafts.drafts[0]?.review_id;
+      return reviewId ? `/drafts/${encodeURIComponent(reviewId)}` : '/drafts';
+    } catch {
+      return '/drafts';
+    }
+  };
+
+  const navigateToTourStep = async (tourId: string, stepIndex: number) => {
     const tour = getGuidedTour(tourId);
     const step = tour?.steps[stepIndex];
 
@@ -125,12 +145,12 @@ export function GuidedTourProvider({ children }: { children: ReactNode }) {
     setActiveStepIndex(stepIndex);
 
     if (!isGuidedTourStepActive(location.pathname, step)) {
-      navigate(step.to);
+      navigate(await resolveStepNavigationPath(step));
     }
   };
 
   const startTour = (tourId: string) => {
-    navigateToTourStep(tourId, 0);
+    void navigateToTourStep(tourId, 0);
   };
 
   const restartTour = (tourId: string) => {
@@ -146,7 +166,7 @@ export function GuidedTourProvider({ children }: { children: ReactNode }) {
 
     configManager.updateHelpState(updates);
     syncHelpState();
-    navigateToTourStep(tourId, 0);
+    void navigateToTourStep(tourId, 0);
   };
 
   const closeTour = () => {
@@ -160,7 +180,7 @@ export function GuidedTourProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    navigateToTourStep(activeTourId, activeStepIndex);
+    void navigateToTourStep(activeTourId, activeStepIndex);
   };
 
   const goToPreviousStep = () => {
@@ -168,7 +188,7 @@ export function GuidedTourProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    navigateToTourStep(activeTourId, activeStepIndex - 1);
+    void navigateToTourStep(activeTourId, activeStepIndex - 1);
   };
 
   const finishTour = () => {
@@ -209,7 +229,7 @@ export function GuidedTourProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    navigateToTourStep(activeTourId, activeStepIndex + 1);
+    void navigateToTourStep(activeTourId, activeStepIndex + 1);
   };
 
   const dismissTip = (tipId: string) => {
