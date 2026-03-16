@@ -1,6 +1,22 @@
 # Changelog
 
 
+## v2.1.3 - 2026-03-16
+
+### Documentation and runtime update
+
+This release packages 12 recent commits focused on documentation, runtime, and UI.
+
+### Highlights
+- Summary of Changes 1. Custom API Base URL Support Added base_url and api_proxy_key fields to Config type Added input field in Settings UI for custom API endpoint Added optional proxy API key field for authenticated proxies Updated handleTestApiConnection() to test custom endpoints with optional auth 2. Ollama Support Added ollama to LLMProvider and EngineType types Added default endpoint: http://localhost:11434/v1 Added model suggestions: llama3.2, llama3.1, mistral, codellama, qwen2.5, phi3, gemma2 Added provider color badge (slate/gray gradient) Added auto-detection for common Ollama model names 3. No API Key Required for Local APIs Updated resolveApiKey() to return undefined for Ollama (no auth needed) Updated getHeaders() in OpenAICompatEngine to skip auth headers for Ollama Updated Settings UI: Shows "(optional - local)" label for Ollama API key field Different placeholder: "Optional - Ollama runs locally without auth" Test button enabled even without API key for Ollama Added info banner: "Ollama runs locally on your machine. Make sure Ollama is running..." 4. Provider Support The following providers are now supported:
+- Update version to 2.1.2; enhance changelog and release notes with recent documentation, runtime updates, and new links
+- Add custom API base URL support in settings and API class
+- Update version to 2.1.1; enhance changelog and release notes with recent documentation, platform updates, and new links
+- Update version to 2.1.0; refactor layout and spacing across multiple components
+
+### Links
+- [Open generation](/generate)
+- [Review templates](/templates)
 ## v2.1.2 - 2026-03-16
 
 ### Documentation and runtime update
@@ -371,6 +387,7 @@ The app now centers the browser runtime with tighter template tooling, local dra
 
 - [Open generation](/generate)
 - [Review templates](/templates)
+
 
 
 
