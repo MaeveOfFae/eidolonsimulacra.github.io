@@ -21,12 +21,18 @@ export interface CreateEngineOptions {
   apiKeys?: ApiKeys;
   provider?: LLMProvider;
   baseUrl?: string;
+  proxyKey?: string;
   temperature?: number;
   maxTokens?: number;
   engineMode?: 'auto' | 'explicit';
 }
 
 function resolveApiKey(provider: LLMProvider, apiKey?: string, apiKeys?: ApiKeys): string | undefined {
+  // Ollama doesn't require an API key
+  if (provider === 'ollama') {
+    return undefined;
+  }
+
   if (typeof apiKey === 'string' && apiKey.trim().length > 0) {
     return apiKey;
   }
@@ -51,6 +57,7 @@ export function createEngine(options: CreateEngineOptions) {
     apiKeys,
     provider: explicitProvider,
     baseUrl,
+    proxyKey,
     temperature,
     maxTokens,
   } = options;
@@ -62,6 +69,7 @@ export function createEngine(options: CreateEngineOptions) {
     model,
     apiKey: resolveApiKey(provider, apiKey, apiKeys),
     baseUrl,
+    proxyKey,
     temperature,
     maxTokens,
   };
@@ -79,6 +87,7 @@ export function createEngine(options: CreateEngineOptions) {
     case 'deepseek':
     case 'zai':
     case 'moonshot':
+    case 'ollama':
     default:
       return new OpenAICompatEngine(config);
   }
@@ -178,6 +187,8 @@ export function getDefaultBaseUrl(provider: LLMProvider): string {
       return 'https://open.bigmodel.cn/api/paas/v4';
     case 'moonshot':
       return 'https://api.moonshot.cn/v1';
+    case 'ollama':
+      return 'http://localhost:11434/v1';
     default:
       return 'https://api.openai.com/v1';
   }
@@ -223,5 +234,14 @@ export const MODEL_SUGGESTIONS: Record<LLMProvider, string[]> = {
     'moonshot-v1-8k',
     'moonshot-v1-32k',
     'moonshot-v1-128k',
+  ],
+  ollama: [
+    'llama3.2',
+    'llama3.1',
+    'mistral',
+    'codellama',
+    'qwen2.5',
+    'phi3',
+    'gemma2',
   ],
 } as const;

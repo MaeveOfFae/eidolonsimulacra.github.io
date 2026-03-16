@@ -72,6 +72,21 @@ export class OpenAICompatEngine extends BaseLLMEngine {
   }
 
   private getHeaders(): Record<string, string> {
+    // If using a custom base URL with a proxy key, use the proxy key for auth
+    if (this.config.baseUrl && this.config.proxyKey) {
+      return {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.config.proxyKey}`,
+      };
+    }
+
+    // Ollama doesn't require authentication
+    if (this.config.provider === 'ollama') {
+      return {
+        'Content-Type': 'application/json',
+      };
+    }
+
     return buildProviderHeaders(this.config.provider, this.config.apiKey, {
       contentType: 'application/json',
     });

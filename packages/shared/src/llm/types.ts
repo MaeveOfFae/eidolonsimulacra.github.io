@@ -9,7 +9,8 @@ export type LLMProvider =
   | 'anthropic'
   | 'deepseek'
   | 'zai'
-  | 'moonshot';
+  | 'moonshot'
+  | 'ollama';
 
 export type LLMEngineMode = 'auto' | 'explicit';
 
@@ -20,6 +21,7 @@ export interface LLMConfig {
   temperature?: number;
   maxTokens?: number;
   baseUrl?: string;
+  proxyKey?: string;
   timeout?: number;
 }
 
@@ -115,6 +117,7 @@ export const ProviderEndpoints: Record<LLMProvider, string> = {
   deepseek: 'https://api.deepseek.com',
   zai: 'https://open.bigmodel.cn/api/paas/v4',
   moonshot: 'https://api.moonshot.cn/v1',
+  ollama: 'http://localhost:11434/v1',
 } as const;
 
 /**
@@ -128,6 +131,7 @@ export const ProviderAuthHeaders: Record<LLMProvider, string> = {
   deepseek: 'Authorization',
   zai: 'Authorization',
   moonshot: 'Authorization',
+  ollama: '', // No auth required for local Ollama
 } as const;
 
 /**
@@ -144,6 +148,8 @@ export function formatAuthHeader(provider: LLMProvider, apiKey: string): string 
     case 'google':
     case 'anthropic':
       return apiKey;
+    case 'ollama':
+      return ''; // No auth required for local Ollama
     default:
       return apiKey;
   }
@@ -163,6 +169,7 @@ export function detectProviderFromModel(model: string): LLMProvider {
   if (modelLower.startsWith('deepseek/')) return 'deepseek';
   if (modelLower.startsWith('zai/')) return 'zai';
   if (modelLower.startsWith('moonshot')) return 'moonshot';
+  if (modelLower.startsWith('ollama/')) return 'ollama';
 
   // Auto-detect based on model name patterns
   if (modelLower.startsWith('gpt-') || modelLower.startsWith('o1')) {
@@ -173,6 +180,20 @@ export function detectProviderFromModel(model: string): LLMProvider {
   }
   if (modelLower.startsWith('claude')) {
     return 'anthropic';
+  }
+  // Common Ollama model patterns
+  if (
+    modelLower.startsWith('llama') ||
+    modelLower.startsWith('mistral') ||
+    modelLower.startsWith('codellama') ||
+    modelLower.startsWith('vicuna') ||
+    modelLower.startsWith('qwen') ||
+    modelLower.startsWith('phi') ||
+    modelLower.startsWith('gemma') ||
+    modelLower.startsWith('starcoder') ||
+    modelLower.includes('ollama')
+  ) {
+    return 'ollama';
   }
 
   // Default to openrouter for unknown models

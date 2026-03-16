@@ -30,7 +30,7 @@ import { GETTING_STARTED_TOUR_ID } from '@/lib/help';
 import InlineHelpTip from '../common/InlineHelpTip';
 import { useGuidedTour } from '../common/GuidedTourContext';
 
-const ALL_PROVIDERS = ['openai', 'google', 'openrouter', 'anthropic', 'deepseek', 'zai', 'moonshot'] as const;
+const ALL_PROVIDERS = ['openai', 'google', 'openrouter', 'anthropic', 'deepseek', 'zai', 'moonshot', 'ollama'] as const;
 type Provider = typeof ALL_PROVIDERS[number];
 
 type ThemeImportPayload = {
@@ -83,6 +83,7 @@ const PROVIDER_COLORS: Record<Provider, string> = {
   deepseek: 'from-cyan-500 to-teal-500',
   zai: 'from-pink-500 to-rose-500',
   moonshot: 'from-orange-500 to-amber-500',
+  ollama: 'from-slate-500 to-gray-600',
 };
 
 export default function Settings() {
@@ -195,7 +196,9 @@ export default function Settings() {
 
     try {
       const apiKey = localConfig.api_keys?.[provider];
-      if (!apiKey) {
+
+      // Ollama doesn't require an API key
+      if (!apiKey && provider !== 'ollama') {
         setTestResult({
           provider,
           success: false,
@@ -211,6 +214,7 @@ export default function Settings() {
         provider: provider as Provider,
         engineMode: 'explicit',
         baseUrl: localConfig.base_url || undefined,
+        proxyKey: localConfig.api_proxy_key || undefined,
       });
 
       const startTime = performance.now();
@@ -306,6 +310,14 @@ export default function Settings() {
     }));
   };
 
+  const handleProxyKeyChange = (key: string) => {
+    const trimmedKey = key.trim();
+    setLocalConfig((previous) => ({
+      ...previous,
+      api_proxy_key: trimmedKey || undefined,
+    }));
+  };
+
   const handleTestApiConnection = async () => {
     const baseUrl = localConfig.base_url;
     if (!baseUrl) {
@@ -316,11 +328,18 @@ export default function Settings() {
 
     try {
       const startTime = performance.now();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+
+      // Add proxy API key if provided
+      if (localConfig.api_proxy_key) {
+        headers['Authorization'] = `Bearer ${localConfig.api_proxy_key}`;
+      }
+
       const response = await fetch(`${baseUrl}/models`, {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
       });
       const latency = performance.now() - startTime;
 
@@ -523,13 +542,16 @@ export default function Settings() {
                 <div key={provider} className="space-y-2">
                   <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     {provider}
+                    {provider === 'ollama' && (
+                      <span className="text-xs font-normal text-muted-foreground/70">(optional - local)</span>
+                    )}
                   </label>
                   <div className="relative">
                     <input
                       type={showKeys[provider] ? 'text' : 'password'}
                       value={localConfig.api_keys?.[provider] || ''}
                       onChange={(e) => handleApiKeyChange(provider, e.target.value)}
-                      placeholder={`Enter your ${provider} API key`}
+                      placeholder={provider === 'ollama' ? 'Optional - Ollama runs locally without auth' : `Enter your ${provider} API key`}
                       className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 pr-20 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     />
                     <button
@@ -546,7 +568,7 @@ export default function Settings() {
                     <button
                       type="button"
                       onClick={() => handleTest(provider)}
-                      disabled={!localConfig.api_keys?.[provider]}
+                      disabled={provider !== 'ollama' && !localConfig.api_keys?.[provider]}
                       className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg hover:bg-accent transition-colors disabled:opacity-50"
                     >
                       {testResult?.provider === provider ? (
@@ -584,6 +606,12 @@ export default function Settings() {
               {selectedProvider === 'openai' && (
                 <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-900 dark:text-amber-100">
                   Direct OpenAI calls from this browser app are blocked by CORS on api.openai.com. Use OpenRouter for browser-direct usage, or point the base URL at your own proxy or relay.
+                </div>
+              )}
+
+              {selectedProvider === 'ollama' && (
+                <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 p-3 text-sm text-blue-900 dark:text-blue-100">
+                  Ollama runs locally on your machine. Make sure Ollama is running on <code className="px-1 py-0.5 rounded bg-blue-500/20">http://localhost:11434</code> or configure a custom base URL. No API key required.
                 </div>
               )}
 
@@ -665,6 +693,33 @@ export default function Settings() {
                 />
                 <p className="text-xs text-muted-foreground mt-1">
                   Override the default API endpoint for the selected provider. Useful for proxies, relays, or self-hosted models.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Proxy API Key (Optional)</label>
+                <div className="relative">
+                  <input
+                    type={showKeys['proxy'] ? 'text' : 'password'}
+                    value={localConfig.api_proxy_key || ''}
+                    onChange={(e) => handleProxyKeyChange(e.target.value)}
+                    placeholder="Enter proxy API key if required"
+                    className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 pr-11 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => toggleShowKey('proxy')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg hover:bg-accent transition-colors"
+                  >
+                    {showKeys['proxy'] ? (
+                      <EyeOff className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Optional API key for your custom proxy if it requires authentication.
                 </p>
               </div>
             </div>

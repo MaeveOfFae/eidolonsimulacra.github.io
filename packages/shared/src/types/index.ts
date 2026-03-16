@@ -15,6 +15,7 @@ export type EngineType =
   | 'deepseek'
   | 'zai'
   | 'moonshot'
+  | 'ollama'
   | 'openai_compatible'
   | 'auto';
 export type EngineMode = 'auto' | 'explicit';
@@ -166,6 +167,7 @@ export interface Config {
   api_keys: ApiKeys;
   batch: BatchConfig;
   base_url?: string;
+  api_proxy_key?: string;
   api_base_url?: string;
   theme_name?: string;
   theme?: ThemeOverride;

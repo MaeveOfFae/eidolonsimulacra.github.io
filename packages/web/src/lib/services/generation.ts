@@ -83,6 +83,7 @@ export class GenerationService {
       apiKeys,
       provider,
       baseUrl: config.base_url,
+      proxyKey: config.api_proxy_key,
       temperature: config.temperature,
       maxTokens: config.max_tokens,
     });
