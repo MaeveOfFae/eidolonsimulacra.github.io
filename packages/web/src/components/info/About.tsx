@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { BookOpen, FileLock2, ShieldCheck, Scale, Info, Sparkles } from 'lucide-react';
+import { BookOpen, FileLock2, ShieldCheck, Scale, Info, Sparkles, Mail, Bug, Shield } from 'lucide-react';
 import DocumentPage from './DocumentPage';
 
 const infoCards = [
@@ -123,6 +123,35 @@ export default function About() {
           <Link to="/code-of-conduct" className="text-primary hover:underline">Code of Conduct</Link>
           <Link to="/settings" className="text-primary hover:underline">Settings</Link>
           <Link to="/data" className="text-primary hover:underline">Data Manager</Link>
+        </div>
+      </section>
+
+      <section className="rounded-3xl border border-border/60 bg-card/70 p-6 backdrop-blur-sm">
+        <div className="flex items-center gap-2 text-foreground">
+          <Mail className="h-5 w-5 text-primary" />
+          <h2 className="text-xl font-semibold">Contact</h2>
+        </div>
+        <div className="mt-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="space-y-2 text-sm text-muted-foreground">
+            <p>
+              Found a bug or security issue? We want to hear about it.
+            </p>
+            <p className="flex items-center gap-2">
+              <Bug className="h-4 w-4 text-primary" />
+              <span>Report bugs and get help with issues</span>
+            </p>
+            <p className="flex items-center gap-2">
+              <Shield className="h-4 w-4 text-primary" />
+              <span>Report security vulnerabilities responsibly</span>
+            </p>
+          </div>
+          <a
+            href="mailto:contact@eidolonsimulacra.com?subject=Bug%20Report%20or%20Security%20Issue"
+            className="inline-flex items-center gap-2 rounded-2xl bg-gradient-to-r from-primary to-accent px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-primary/20 transition-all hover:shadow-xl hover:shadow-primary/30"
+          >
+            <Mail className="h-4 w-4" />
+            Contact Us
+          </a>
         </div>
       </section>
 

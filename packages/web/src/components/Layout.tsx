@@ -19,6 +19,7 @@ import {
   Scale,
   Info,
   CircleHelp,
+  Mail,
 } from 'lucide-react';
 import { helpTopics, resolvePageHelp } from '../lib/help';
 import { cn } from '../utils/cn';
@@ -57,6 +58,10 @@ const footerLinks = [
   { path: '/license', label: 'License', icon: FileText },
   { path: '/security', label: 'Security', icon: ShieldCheck },
   { path: '/code-of-conduct', label: 'Conduct', icon: BookOpen },
+];
+
+const externalFooterLinks = [
+  { href: 'mailto:contact@eidolonsimulacra.com?subject=Bug%20Report%20or%20Security%20Issue', label: 'Contact', icon: Mail },
 ];
 
 interface NavItemProps {
@@ -202,6 +207,15 @@ export default function Layout({ children }: LayoutProps) {
                   >
                     {item.label}
                   </Link>
+                ))}
+                {externalFooterLinks.map((item) => (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    className="hover:text-primary transition-colors"
+                  >
+                    {item.label}
+                  </a>
                 ))}
               </div>
             </div>
