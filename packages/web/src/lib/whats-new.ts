@@ -16,9 +16,27 @@ export interface ReleaseNoteEntry {
 // Generated and maintained by tools/generation/generate-release-notes.mjs.
 export const releaseNotes: ReleaseNoteEntry[] = [
   {
-    version: '2.1.3',
+    version: '2.1.4',
     releasedOn: '2026-03-16',
     badge: 'Current release',
+    headline: 'Documentation and UI update',
+    summary: 'This release packages 12 recent commits focused on documentation, UI, and runtime.',
+    highlights: [
+      'Add contact section to About page and external footer links for bug reporting and inquiries',
+      'Update changelog and release notes for version 2.1.3; add highlights for custom API base URL support and Ollama integration',
+      'Summary of Changes 1. Custom API Base URL Support Added base_url and api_proxy_key fields to Config type Added input field in Settings UI for custom API endpoint Added optional proxy API key field for authenticated proxies Updated handleTestApiConnection() to test custom endpoints with optional auth 2. Ollama Support Added ollama to LLMProvider and EngineType types Added default endpoint: http://localhost:11434/v1 Added model suggestions: llama3.2, llama3.1, mistral, codellama, qwen2.5, phi3, gemma2 Added provider color badge (slate/gray gradient) Added auto-detection for common Ollama model names 3. No API Key Required for Local APIs Updated resolveApiKey() to return undefined for Ollama (no auth needed) Updated getHeaders() in OpenAICompatEngine to skip auth headers for Ollama Updated Settings UI: Shows "(optional - local)" label for Ollama API key field Different placeholder: "Optional - Ollama runs locally without auth" Test button enabled even without API key for Ollama Added info banner: "Ollama runs locally on your machine. Make sure Ollama is running..." 4. Provider Support The following providers are now supported:',
+      'Update version to 2.1.2; enhance changelog and release notes with recent documentation, runtime updates, and new links',
+      'Add custom API base URL support in settings and API class',
+    ],
+    links: [
+      { label: 'Open generation', to: '/generate' },
+      { label: 'Review templates', to: '/templates' },
+    ],
+  },
+  {
+    version: '2.1.3',
+    releasedOn: '2026-03-16',
+    badge: 'Previous release',
     headline: 'Documentation and runtime update',
     summary: 'This release packages 12 recent commits focused on documentation, runtime, and UI.',
     highlights: [
