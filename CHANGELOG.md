@@ -1,6 +1,22 @@
 # Changelog
 
 
+## v2.1.2 - 2026-03-16
+
+### Documentation and runtime update
+
+This release packages 12 recent commits focused on documentation, runtime, and UI.
+
+### Highlights
+- Add custom API base URL support in settings and API class
+- Update version to 2.1.1; enhance changelog and release notes with recent documentation, platform updates, and new links
+- Update version to 2.1.0; refactor layout and spacing across multiple components
+- Update version to 2.0.20; enhance changelog and release notes with recent documentation, platform updates, and new links
+- Move Quick Save Button to a new position in Settings component
+
+### Links
+- [Open generation](/generate)
+- [Review templates](/templates)
 ## v2.1.1 - 2026-03-15
 
 ### Documentation and platform update
@@ -355,6 +371,7 @@ The app now centers the browser runtime with tighter template tooling, local dra
 
 - [Open generation](/generate)
 - [Review templates](/templates)
+
 
 
 
