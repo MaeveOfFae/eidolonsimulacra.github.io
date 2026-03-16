@@ -110,9 +110,24 @@ function getBrowserApiKeysHeader(): Record<string, string> {
 
 class EidolonAPI {
   private baseUrl: string;
+  private customApiBaseUrl: string | null = null;
 
   constructor(baseUrl: string = '/api') {
     this.baseUrl = baseUrl;
+  }
+
+  /**
+   * Set a custom API base URL (for custom domain support)
+   */
+  setCustomApiBaseUrl(url: string | null): void {
+    this.customApiBaseUrl = url;
+  }
+
+  /**
+   * Get the current API base URL
+   */
+  getApiBaseUrl(): string {
+    return this.customApiBaseUrl || this.getApiBaseUrl();
   }
 
   private buildHeaders(headers: HeaderInput = {}, contentType?: string): Headers {
@@ -133,7 +148,7 @@ class EidolonAPI {
     path: string,
     options: RequestInit = {}
   ): Promise<T> {
-    const response = await fetch(`${this.baseUrl}${path}`, {
+    const response = await fetch(`${this.getApiBaseUrl()}${path}`, {
       ...options,
       headers: this.buildHeaders(options.headers, 'application/json'),
     });
@@ -174,7 +189,7 @@ class EidolonAPI {
     options: RequestInit = {},
     fallbackError: string
   ): Promise<DownloadResponse> {
-    const response = await fetch(`${this.baseUrl}${path}`, {
+    const response = await fetch(`${this.getApiBaseUrl()}${path}`, {
       ...options,
       headers: this.buildHeaders(options.headers),
     });
@@ -242,7 +257,7 @@ class EidolonAPI {
       formData.append('target_name', options.target_name);
     }
 
-    const response = await fetch(`${this.baseUrl}/config/themes/import`, {
+    const response = await fetch(`${this.getApiBaseUrl()}/config/themes/import`, {
       method: 'POST',
       body: formData,
       headers: this.buildHeaders(),
@@ -363,7 +378,7 @@ class EidolonAPI {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await fetch(`${this.baseUrl}/templates/import`, {
+    const response = await fetch(`${this.getApiBaseUrl()}/templates/import`, {
       method: 'POST',
       body: formData,
       headers: this.buildHeaders(),
@@ -405,7 +420,7 @@ class EidolonAPI {
 
   generate(request: GenerateRequest): GenerationStream {
     return new GenerationStream(
-      `${this.baseUrl}/generate/single`,
+      `${this.getApiBaseUrl()}/generate/single`,
       request
     );
   }
@@ -428,7 +443,7 @@ class EidolonAPI {
 
   generateBatch(seeds: string[], options: Omit<GenerateRequest, 'seed'> & { parallel?: boolean; max_concurrent?: number }): GenerationStream {
     return new GenerationStream(
-      `${this.baseUrl}/generate/batch`,
+      `${this.getApiBaseUrl()}/generate/batch`,
       { seeds, ...options }
     );
   }
@@ -519,7 +534,7 @@ class EidolonAPI {
 
   generateOffspring(request: OffspringRequest): GenerationStream {
     return new GenerationStream(
-      `${this.baseUrl}/offspring`,
+      `${this.getApiBaseUrl()}/offspring`,
       request
     );
   }
@@ -551,14 +566,14 @@ class EidolonAPI {
 
   chat(request: ChatRequest): GenerationStream {
     return new GenerationStream(
-      `${this.baseUrl}/chat`,
+      `${this.getApiBaseUrl()}/chat`,
       request
     );
   }
 
   refine(request: RefineRequest): GenerationStream {
     return new GenerationStream(
-      `${this.baseUrl}/chat/refine`,
+      `${this.getApiBaseUrl()}/chat/refine`,
       request
     );
   }

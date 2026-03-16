@@ -13,6 +13,7 @@ import {
   Palette,
   Lock,
   BookOpen,
+  Globe,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { Config, ModelInfo, ThemeOverride, ThemePreset } from '@char-gen/shared';
@@ -209,6 +210,7 @@ export default function Settings() {
         apiKey,
         provider: provider as Provider,
         engineMode: 'explicit',
+        baseUrl: localConfig.base_url || undefined,
       });
 
       const startTime = performance.now();
@@ -294,6 +296,45 @@ export default function Settings() {
   const handlePersistKeysToggle = (checked: boolean) => {
     setPersistKeys(checked);
     configManager.setPersistApiKeys(checked);
+  };
+
+  const handleBaseUrlChange = (url: string) => {
+    const trimmedUrl = url.trim();
+    setLocalConfig((previous) => ({
+      ...previous,
+      base_url: trimmedUrl || undefined,
+    }));
+  };
+
+  const handleTestApiConnection = async () => {
+    const baseUrl = localConfig.base_url;
+    if (!baseUrl) {
+      setThemeError('Enter a custom API base URL to test');
+      setThemeNotice(null);
+      return;
+    }
+
+    try {
+      const startTime = performance.now();
+      const response = await fetch(`${baseUrl}/models`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      const latency = performance.now() - startTime;
+
+      if (response.ok) {
+        setThemeNotice(`API connection successful (${latency.toFixed(0)}ms)`);
+        setThemeError(null);
+      } else {
+        setThemeError(`API returned status ${response.status}`);
+        setThemeNotice(null);
+      }
+    } catch (error) {
+      setThemeError(error instanceof Error ? error.message : 'Connection failed');
+      setThemeNotice(null);
+    }
   };
 
   const updateTheme = (themeName: string, nextTheme: ThemeOverride) => {
@@ -600,6 +641,30 @@ export default function Settings() {
                 />
                 <p className="text-xs text-muted-foreground mt-1">
                   Use format: provider/model-name
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium">Custom API Base URL</label>
+                  <button
+                    type="button"
+                    onClick={handleTestApiConnection}
+                    disabled={!localConfig.base_url}
+                    className="text-xs px-2 py-1 rounded-md border border-border hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Test Connection
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  value={localConfig.base_url || ''}
+                  onChange={(e) => handleBaseUrlChange(e.target.value)}
+                  placeholder="e.g., https://your-proxy.example.com/v1"
+                  className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Override the default API endpoint for the selected provider. Useful for proxies, relays, or self-hosted models.
                 </p>
               </div>
             </div>

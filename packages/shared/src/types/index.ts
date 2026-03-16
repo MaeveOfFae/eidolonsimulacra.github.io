@@ -166,6 +166,7 @@ export interface Config {
   api_keys: ApiKeys;
   batch: BatchConfig;
   base_url?: string;
+  api_base_url?: string;
   theme_name?: string;
   theme?: ThemeOverride;
   help?: HelpState;
