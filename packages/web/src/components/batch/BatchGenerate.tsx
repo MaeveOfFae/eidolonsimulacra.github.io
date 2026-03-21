@@ -4,6 +4,8 @@ import { Play, Pause, Upload, X, CheckCircle, XCircle, Loader2, List } from 'luc
 import type { ContentMode } from '@char-gen/shared';
 import { api } from '@/lib/api';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
+import BatchSchedulingPlaceholder from './BatchSchedulingPlaceholder';
+import BatchTemplatesPlaceholder from './BatchTemplatesPlaceholder';
 
 interface BatchJob {
   seed: string;
@@ -361,6 +363,32 @@ export default function BatchGenerate() {
           </button>
         )}
       </div>
+
+      {/* Planned Batch Tooling */}
+      <section className="rounded-lg border border-dashed border-border bg-card/50 p-5">
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold">Planned Batch Tooling</h2>
+            <p className="text-sm text-muted-foreground">
+              These placeholders mark where scheduling and template management features will attach.
+            </p>
+          </div>
+          <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+            Planned
+          </span>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          <BatchSchedulingPlaceholder
+            scheduledCount={0}
+            nextRunTime={undefined}
+          />
+          <BatchTemplatesPlaceholder
+            templateName={template || undefined}
+            seedCount={seeds.length}
+          />
+        </div>
+      </section>
     </div>
   );
 }

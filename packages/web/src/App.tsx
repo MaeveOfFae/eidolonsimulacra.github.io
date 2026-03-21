@@ -21,10 +21,14 @@ const Templates = lazy(() => import('./components/templates/Templates'));
 const Lineage = lazy(() => import('./components/lineage/Lineage'));
 const Similarity = lazy(() => import('./components/similarity/Similarity'));
 const Offspring = lazy(() => import('./components/offspring/Offspring'));
+const Worlds = lazy(() => import('./components/worlds/Worlds'));
+const Timelines = lazy(() => import('./components/timelines/Timelines'));
+const Events = lazy(() => import('./components/worlds/Events'));
 const Settings = lazy(() => import('./components/settings/Settings'));
-const Themes = lazy(() => import('./components/settings/Themes'));
+const ThemeStudio = lazy(() => import('./components/themes/ThemeStudio'));
 const DataManager = lazy(() => import('./components/common/DataManager'));
 const BatchGenerate = lazy(() => import('./components/batch/BatchGenerate'));
+const AuthPage = lazy(() => import('./components/auth/AuthPage'));
 const About = lazy(() => import('./components/info/About'));
 const HelpCenterPage = lazy(() => import('./components/info/HelpCenterPage'));
 const WhatsNewPage = lazy(() => import('./components/info/WhatsNewPage'));
@@ -98,9 +102,13 @@ export default function App() {
           <Route path="/lineage" element={<Lineage />} />
           <Route path="/similarity" element={<Similarity />} />
           <Route path="/offspring" element={<Offspring />} />
-          <Route path="/themes" element={<Themes />} />
+          <Route path="/worlds" element={<Worlds />} />
+          <Route path="/timelines" element={<Timelines />} />
+          <Route path="/events" element={<Events />} />
+          <Route path="/themes" element={<ThemeStudio />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/data" element={<DataManager />} />
+          <Route path="/auth" element={<AuthPage />} />
           <Route path="/about" element={<About />} />
           <Route path="/help" element={<HelpCenterPage />} />
           <Route path="/whats-new" element={<WhatsNewPage />} />

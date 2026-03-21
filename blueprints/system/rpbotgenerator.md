@@ -4,6 +4,7 @@ description: Compile a full suite of character assets from a single seed.
 invokable: true
 always: false
 version: 3.1
+feature_category: character_generation
 ---
 
 # RPBotGenerator Orchestrator

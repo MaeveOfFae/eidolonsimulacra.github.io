@@ -311,11 +311,21 @@ export class DraftStorage {
 
     await db.drafts.put(existing);
 
-    // Update assets table
-    await db.assets
-      .where('[draftId+assetName]')
-      .equals([reviewId, assetName])
+    // Keep the optional assets table in sync without relying on a compound index.
+    const updatedRows = await db.assets
+      .where('draftId')
+      .equals(reviewId)
+      .and((asset) => asset.assetName === assetName)
       .modify({ content, createdAt: existing.updatedAt });
+
+    if (updatedRows === 0) {
+      await db.assets.add({
+        draftId: reviewId,
+        assetName,
+        content,
+        createdAt: existing.updatedAt,
+      });
+    }
   }
 
   /**

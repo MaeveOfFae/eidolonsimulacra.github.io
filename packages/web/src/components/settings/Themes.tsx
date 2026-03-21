@@ -17,8 +17,9 @@ import {
 } from 'lucide-react';
 import type { ThemeColors, ThemePreset } from '@char-gen/shared';
 import { api } from '@/lib/api';
-import { EDITABLE_THEME_SECTIONS, resolveThemeColors } from '../../theme/theme';
+import { EDITABLE_THEME_SECTIONS, resolveThemeColors, applyThemeToDocument } from '../../theme/theme';
 import { saveDownload } from '../../utils/download';
+import SyncControls from '../common/SyncControls';
 
 interface ThemeDuplicateDraft {
   sourceName: string;
@@ -259,11 +260,19 @@ export default function Themes() {
     [importDiffSections]
   );
 
-  const invalidateThemeData = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['themes'] }),
-      queryClient.invalidateQueries({ queryKey: ['config'] }),
-    ]);
+  const updateThemesCache = (updatedTheme: ThemePresetRecord) => {
+    const currentThemes = queryClient.getQueryData<ThemePresetRecord[]>(['themes']) ?? [];
+    const updatedThemes = currentThemes.map((t) =>
+      t.name === updatedTheme.name ? updatedTheme : t
+    );
+    queryClient.setQueryData(['themes'], updatedThemes);
+    // If this is the active theme, apply it directly to the document
+    if (config?.theme_name === updatedTheme.name) {
+      const resolved = resolveThemeColors(updatedTheme, config?.theme);
+      if (resolved) {
+        applyThemeToDocument(resolved);
+      }
+    }
   };
 
   const createMutation = useMutation({
@@ -283,7 +292,7 @@ export default function Themes() {
       });
     },
     onSuccess: async (theme) => {
-      await invalidateThemeData();
+      await queryClient.refetchQueries({ queryKey: ['themes'] });
       setNotice(`Created reusable theme preset ${theme.display_name}.`);
       setError(null);
       setNewThemeName('');
@@ -302,7 +311,8 @@ export default function Themes() {
   const activateMutation = useMutation({
     mutationFn: (themeName: string) => api.updateConfig({ theme_name: themeName, theme: {} }),
     onSuccess: async () => {
-      await invalidateThemeData();
+      const newConfig = await api.getConfig();
+      queryClient.setQueryData(['config'], newConfig);
       setNotice('Theme activated.');
       setError(null);
     },
@@ -319,8 +329,8 @@ export default function Themes() {
       }
       return themeApi.updateTheme(themeName, { colors: resolvedCurrentTheme });
     },
-    onSuccess: async (theme) => {
-      await invalidateThemeData();
+    onSuccess: (theme) => {
+      updateThemesCache(theme as ThemePresetRecord);
       setNotice(`Updated ${theme.display_name} from the current active palette.`);
       setError(null);
     },
@@ -338,8 +348,8 @@ export default function Themes() {
       tags: parseTagInput(draft.tags),
       based_on: draft.basedOn,
     }),
-    onSuccess: async (theme) => {
-      await invalidateThemeData();
+    onSuccess: (theme) => {
+      updateThemesCache(theme as ThemePresetRecord);
       setNotice(`Updated metadata for ${theme.display_name}.`);
       setError(null);
       setMetadataDraft(null);
@@ -359,9 +369,9 @@ export default function Themes() {
       tags: parseTagInput(draft.tags),
       based_on: draft.basedOn,
     }),
-    onSuccess: async (theme) => {
-      await invalidateThemeData();
-      setNotice(`Created duplicate preset ${theme.display_name}.`);
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ['themes'] });
+      setNotice(`Created duplicate preset.`);
       setError(null);
       setDuplicateDraft(null);
     },
@@ -377,7 +387,11 @@ export default function Themes() {
       display_name: draft.displayName,
     }),
     onSuccess: async (theme) => {
-      await invalidateThemeData();
+      await queryClient.refetchQueries({ queryKey: ['themes'] });
+      if (config?.theme_name === theme.name) {
+        const newConfig = await api.getConfig();
+        queryClient.setQueryData(['config'], newConfig);
+      }
       setNotice(`Renamed theme to ${theme.display_name}.`);
       setError(null);
       setRenameDraft(null);
@@ -390,8 +404,8 @@ export default function Themes() {
 
   const deleteMutation = useMutation({
     mutationFn: (themeName: string) => themeApi.deleteTheme(themeName),
-    onSuccess: async (_, themeName) => {
-      await invalidateThemeData();
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ['themes'] });
       setNotice(`Deleted ${themeName}.`);
       setError(null);
     },
@@ -420,7 +434,7 @@ export default function Themes() {
   const importMutation = useMutation({
     mutationFn: ({ file, options }: { file: File; options?: ThemeImportOptions }) => themeApi.importTheme(file, options),
     onSuccess: async (theme) => {
-      await invalidateThemeData();
+      await queryClient.refetchQueries({ queryKey: ['themes'] });
       setNotice(`Imported theme preset ${theme.display_name}.`);
       setError(null);
       setImportDraft(null);
@@ -604,6 +618,24 @@ export default function Themes() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Server Sync */}
+      <div className="rounded-lg border border-border bg-card p-4">
+        <SyncControls
+          dataType="themes"
+          label="Themes"
+          onGetLocalData={async () => {
+            const themes = await api.getThemes();
+            return { version: '1.0', exportedAt: new Date().toISOString(), themes };
+          }}
+          onApplyData={async (data) => {
+            // Themes are managed via API, refresh after pull
+            if (data && typeof data === 'object') {
+              queryClient.invalidateQueries({ queryKey: ['themes'] });
+            }
+          }}
+        />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.2fr_1fr]">
@@ -914,26 +946,26 @@ export default function Themes() {
         </div>
 
         <div className="rounded-lg border border-border bg-card p-4">
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-            <label className="space-y-2 text-sm">
-              <span className="font-medium">Search presets</span>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="Search by name, author, tag, lineage, or description"
-                className="w-full rounded-md border border-input bg-background px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
-            </label>
-            <div className="space-y-2 text-sm">
-              <div className="font-medium">Filter by source</div>
+          <label className="mb-4 block space-y-2 text-sm">
+            <span className="font-medium">Search presets</span>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Search by name, author, tag, lineage, or description"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          </label>
+          <div className="flex flex-wrap items-end gap-x-6 gap-y-3">
+            <div className="text-sm">
+              <div className="mb-1.5 font-medium">Source</div>
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
                   onClick={() => setSourceFilter('all')}
                   className={`rounded-full border px-3 py-1.5 text-xs ${sourceFilter === 'all' ? 'border-primary bg-primary text-primary-foreground' : 'border-input hover:bg-accent'}`}
                 >
-                  All presets
+                  All
                 </button>
                 <button
                   type="button"
@@ -951,17 +983,15 @@ export default function Themes() {
                 </button>
               </div>
             </div>
-          </div>
-          <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_240px]">
-            <div className="space-y-2 text-sm">
-              <div className="font-medium">Filter by author</div>
+            <div className="text-sm">
+              <div className="mb-1.5 font-medium">Author</div>
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
                   onClick={() => setSelectedAuthor('all')}
                   className={`rounded-full border px-3 py-1.5 text-xs ${selectedAuthor === 'all' ? 'border-primary bg-primary text-primary-foreground' : 'border-input hover:bg-accent'}`}
                 >
-                  All authors
+                  All
                 </button>
                 {availableAuthors.map((author) => (
                   <button
@@ -974,19 +1004,19 @@ export default function Themes() {
                   </button>
                 ))}
                 {availableAuthors.length === 0 && (
-                  <div className="text-xs text-muted-foreground">No authors yet</div>
+                  <span className="text-xs text-muted-foreground">No authors yet</span>
                 )}
               </div>
             </div>
-            <div className="space-y-2 text-sm">
-              <div className="font-medium">Filter by tag</div>
+            <div className="text-sm">
+              <div className="mb-1.5 font-medium">Tag</div>
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
                   onClick={() => setSelectedTag('all')}
                   className={`rounded-full border px-3 py-1.5 text-xs ${selectedTag === 'all' ? 'border-primary bg-primary text-primary-foreground' : 'border-input hover:bg-accent'}`}
                 >
-                  All tags
+                  All
                 </button>
                 {availableTags.map((tag) => (
                   <button
@@ -999,17 +1029,17 @@ export default function Themes() {
                   </button>
                 ))}
                 {availableTags.length === 0 && (
-                  <div className="text-xs text-muted-foreground">No tags yet</div>
+                  <span className="text-xs text-muted-foreground">No tags yet</span>
                 )}
               </div>
             </div>
-            <div className="space-y-4">
-              <label className="space-y-2 text-sm">
-                <span className="font-medium">Sort presets</span>
+            <div className="flex items-end gap-4 text-sm">
+              <label className="space-y-1.5">
+                <span className="font-medium">Sort</span>
                 <select
                   value={sortMode}
                   onChange={(event) => setSortMode(event.target.value as ThemeSortMode)}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="rounded-md border border-input bg-background px-2 py-1.5 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <option value="name-asc">Name A-Z</option>
                   <option value="name-desc">Name Z-A</option>
@@ -1017,20 +1047,20 @@ export default function Themes() {
                   <option value="source">Source</option>
                 </select>
               </label>
-              <div className="space-y-2 text-sm">
-                <div className="font-medium">View mode</div>
-                <div className="flex gap-2">
+              <div className="space-y-1.5">
+                <div className="font-medium">View</div>
+                <div className="flex gap-1.5">
                   <button
                     type="button"
                     onClick={() => setViewMode('comfortable')}
-                    className={`rounded-md border px-3 py-2 text-xs ${viewMode === 'comfortable' ? 'border-primary bg-primary text-primary-foreground' : 'border-input hover:bg-accent'}`}
+                    className={`rounded-md border px-2 py-1 text-xs ${viewMode === 'comfortable' ? 'border-primary bg-primary text-primary-foreground' : 'border-input hover:bg-accent'}`}
                   >
-                    Comfortable
+                    Comfy
                   </button>
                   <button
                     type="button"
                     onClick={() => setViewMode('compact')}
-                    className={`rounded-md border px-3 py-2 text-xs ${viewMode === 'compact' ? 'border-primary bg-primary text-primary-foreground' : 'border-input hover:bg-accent'}`}
+                    className={`rounded-md border px-2 py-1 text-xs ${viewMode === 'compact' ? 'border-primary bg-primary text-primary-foreground' : 'border-input hover:bg-accent'}`}
                   >
                     Compact
                   </button>

@@ -1,0 +1,763 @@
+/**
+ * Server Sync Client
+ * Handles authentication and data synchronization with the backend server
+ */
+
+// Types
+export interface ServerConfig {
+  url: string;
+  enabled: boolean;
+}
+
+export interface User {
+  id: string;
+  email: string;
+  displayName: string;
+  avatarUrl?: string;
+  createdAt: string;
+  lastLoginAt?: string;
+  isEmailVerified?: boolean;
+  preferences?: Record<string, unknown>;
+}
+
+export interface AuthResponse {
+  user: User;
+  accessToken: string;
+}
+
+export interface SyncStatus {
+  connected: boolean;
+  authenticated: boolean;
+  user?: User;
+  lastSync?: string;
+  error?: string;
+}
+
+// Storage keys
+const SERVER_CONFIG_KEY = 'server-config';
+const ACCESS_TOKEN_KEY = 'server-access-token';
+
+// Custom event for auth state changes
+export const AUTH_STATE_CHANGED_EVENT = 'auth-state-changed';
+
+/**
+ * Server client singleton
+ */
+class ServerClient {
+  private config: ServerConfig;
+  private accessToken: string | null = null;
+  private refreshPromise: Promise<string> | null = null;
+
+  constructor() {
+    this.config = this.loadConfig();
+    this.accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+  }
+
+  // ===========================================================================
+  // Configuration
+  // ===========================================================================
+
+  private loadConfig(): ServerConfig {
+    try {
+      const stored = localStorage.getItem(SERVER_CONFIG_KEY);
+      if (stored) {
+        return JSON.parse(stored);
+      }
+    } catch (e) {
+      console.error('Failed to load server config:', e);
+    }
+    return { url: 'http://localhost:3001', enabled: false };
+  }
+
+  private saveConfig(): void {
+    localStorage.setItem(SERVER_CONFIG_KEY, JSON.stringify(this.config));
+  }
+
+  getConfig(): ServerConfig {
+    return { ...this.config };
+  }
+
+  setConfig(config: Partial<ServerConfig>): void {
+    this.config = { ...this.config, ...config };
+    this.saveConfig();
+  }
+
+  isEnabled(): boolean {
+    return this.config.enabled && !!this.config.url;
+  }
+
+  // ===========================================================================
+  // Token Management
+  // ===========================================================================
+
+  private setAccessToken(token: string): void {
+    this.accessToken = token;
+    localStorage.setItem(ACCESS_TOKEN_KEY, token);
+  }
+
+  private clearAccessToken(): void {
+    this.accessToken = null;
+    localStorage.removeItem(ACCESS_TOKEN_KEY);
+  }
+
+  private notifyAuthStateChanged(): void {
+    window.dispatchEvent(new CustomEvent(AUTH_STATE_CHANGED_EVENT));
+  }
+
+  private getAccessToken(): string | null {
+    return this.accessToken;
+  }
+
+  private async refreshAccessToken(): Promise<string> {
+    // Prevent concurrent refresh requests
+    if (this.refreshPromise) {
+      return this.refreshPromise;
+    }
+
+    this.refreshPromise = this.doRefreshToken();
+    try {
+      return await this.refreshPromise;
+    } finally {
+      this.refreshPromise = null;
+    }
+  }
+
+  private async doRefreshToken(): Promise<string> {
+    const response = await this.request('/api/auth/refresh', {
+      method: 'POST',
+    });
+
+    if (!response.ok) {
+      this.clearAccessToken();
+      throw new Error('Failed to refresh token');
+    }
+
+    const data = await response.json();
+    this.setAccessToken(data.accessToken);
+    return data.accessToken;
+  }
+
+  // ===========================================================================
+  // HTTP Helper
+  // ===========================================================================
+
+  private async request(
+    endpoint: string,
+    options: RequestInit = {},
+    retry = true
+  ): Promise<Response> {
+    const url = `${this.config.url}${endpoint}`;
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    };
+
+    const token = this.getAccessToken();
+    if (token) {
+      (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(url, {
+      ...options,
+      headers,
+      credentials: 'include', // Include cookies for refresh token
+    });
+
+    // Handle token expiration
+    if (response.status === 401 && retry && endpoint !== '/api/auth/refresh') {
+      try {
+        await this.refreshAccessToken();
+        // Retry the original request with new token
+        return this.request(endpoint, options, false);
+      } catch {
+        // Refresh failed, clear auth state
+        this.clearAccessToken();
+        throw new Error('Authentication expired. Please login again.');
+      }
+    }
+
+    return response;
+  }
+
+  // ===========================================================================
+  // Authentication
+  // ===========================================================================
+
+  async register(email: string, password: string, displayName?: string): Promise<AuthResponse> {
+    const response = await this.request('/api/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ email, password, displayName }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Registration failed');
+    }
+
+    const data = await response.json();
+    this.setAccessToken(data.accessToken);
+    this.notifyAuthStateChanged();
+    return data;
+  }
+
+  async login(email: string, password: string): Promise<AuthResponse> {
+    const response = await this.request('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Login failed');
+    }
+
+    const data = await response.json();
+    this.setAccessToken(data.accessToken);
+    this.notifyAuthStateChanged();
+    return data;
+  }
+
+  async logout(): Promise<void> {
+    try {
+      await this.request('/api/auth/logout', { method: 'POST' });
+    } catch (e) {
+      console.error('Logout request failed:', e);
+    } finally {
+      this.clearAccessToken();
+      this.notifyAuthStateChanged();
+    }
+  }
+
+  async getCurrentUser(): Promise<User> {
+    const response = await this.request('/api/auth/me');
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        this.clearAccessToken();
+        throw new Error('Not authenticated');
+      }
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to get user');
+    }
+
+    const data = await response.json();
+    return data.user;
+  }
+
+  async updateProfile(updates: { displayName?: string; avatarUrl?: string; preferences?: Record<string, unknown> }): Promise<User> {
+    const response = await this.request('/api/auth/me', {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to update profile');
+    }
+
+    const data = await response.json();
+    return data.user;
+  }
+
+  async deleteAccount(): Promise<void> {
+    const response = await this.request('/api/auth/me', { method: 'DELETE' });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to delete account');
+    }
+
+    this.clearAccessToken();
+  }
+
+  // ===========================================================================
+  // Status
+  // ===========================================================================
+
+  async checkStatus(): Promise<SyncStatus> {
+    if (!this.isEnabled()) {
+      return { connected: false, authenticated: false };
+    }
+
+    try {
+      // Check health
+      const healthResponse = await fetch(`${this.config.url}/api/health`, {
+        method: 'GET',
+      });
+
+      if (!healthResponse.ok) {
+        return { connected: false, authenticated: false, error: 'Server unreachable' };
+      }
+
+      // Check authentication
+      if (!this.getAccessToken()) {
+        return { connected: true, authenticated: false };
+      }
+
+      const user = await this.getCurrentUser();
+      return { connected: true, authenticated: true, user };
+    } catch (e) {
+      return {
+        connected: false,
+        authenticated: false,
+        error: e instanceof Error ? e.message : 'Unknown error',
+      };
+    }
+  }
+
+  // ===========================================================================
+  // Data Sync
+  // ===========================================================================
+
+  async syncDrafts(action: 'pull' | 'push' | 'list', data?: unknown): Promise<unknown> {
+    const response = await this.request(`/api/sync/drafts/${action}`, {
+      method: action === 'list' ? 'GET' : 'POST',
+      body: action !== 'list' ? JSON.stringify(data) : undefined,
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || `Failed to ${action} drafts`);
+    }
+
+    return response.json();
+  }
+
+  async syncThemes(action: 'pull' | 'push' | 'list', data?: unknown): Promise<unknown> {
+    const response = await this.request(`/api/sync/themes/${action}`, {
+      method: action === 'list' ? 'GET' : 'POST',
+      body: action !== 'list' ? JSON.stringify(data) : undefined,
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || `Failed to ${action} themes`);
+    }
+
+    return response.json();
+  }
+
+  async syncTemplates(action: 'pull' | 'push' | 'list', data?: unknown): Promise<unknown> {
+    const response = await this.request(`/api/sync/templates/${action}`, {
+      method: action === 'list' ? 'GET' : 'POST',
+      body: action !== 'list' ? JSON.stringify(data) : undefined,
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || `Failed to ${action} templates`);
+    }
+
+    return response.json();
+  }
+
+  // Config sync uses different endpoints (GET / PUT instead of /pull /push)
+  async pullConfig(): Promise<{ config: Record<string, unknown> }> {
+    const response = await this.request('/api/sync/config', {
+      method: 'GET',
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to pull config');
+    }
+
+    return response.json();
+  }
+
+  async pushConfig(config: Record<string, unknown>): Promise<{ config: Record<string, unknown> }> {
+    const response = await this.request('/api/sync/config', {
+      method: 'PUT',
+      body: JSON.stringify(config),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to push config');
+    }
+
+    return response.json();
+  }
+
+  async pullApiKeys(): Promise<{ apiKeys: Record<string, string> }> {
+    const response = await this.request('/api/sync/config/api-keys', {
+      method: 'GET',
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to pull API keys');
+    }
+
+    return response.json();
+  }
+
+  async pushApiKeys(apiKeys: Record<string, string>): Promise<{ message: string }> {
+    const response = await this.request('/api/sync/config/api-keys', {
+      method: 'PUT',
+      body: JSON.stringify(apiKeys),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to push API keys');
+    }
+
+    return response.json();
+  }
+
+  // Generic sync method that routes to the correct endpoints
+  async sync(dataType: 'drafts' | 'themes' | 'templates' | 'blueprints' | 'worlds' | 'timelines', action: 'pull' | 'push' | 'list', data?: unknown): Promise<unknown> {
+    switch (dataType) {
+      case 'drafts':
+        return this.syncDrafts(action, data);
+      case 'themes':
+        return this.syncThemes(action, data);
+      case 'templates':
+        return this.syncTemplates(action, data);
+      case 'blueprints':
+        return this.syncBlueprints(action, data);
+      case 'worlds':
+        return this.syncWorlds(action, data);
+      case 'timelines':
+        return this.syncTimelines(action, data);
+      default:
+        throw new Error(`Unknown data type: ${dataType}`);
+    }
+  }
+
+  // ===========================================================================
+  // Blueprints Sync
+  // ===========================================================================
+
+  async syncBlueprints(action: 'pull' | 'push' | 'list', data?: unknown): Promise<unknown> {
+    const response = await this.request(`/api/sync/blueprints/${action}`, {
+      method: action === 'list' ? 'GET' : 'POST',
+      body: action !== 'list' ? JSON.stringify(data) : undefined,
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || `Failed to ${action} blueprints`);
+    }
+
+    return response.json();
+  }
+
+  async getBlueprint(path: string): Promise<{ blueprint: unknown }> {
+    const response = await this.request(`/api/sync/blueprints/${encodeURIComponent(path)}`);
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to get blueprint');
+    }
+
+    return response.json();
+  }
+
+  async createBlueprint(data: { path: string; name: string; description?: string; content: string }): Promise<{ blueprint: unknown }> {
+    const response = await this.request('/api/sync/blueprints', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to create blueprint');
+    }
+
+    return response.json();
+  }
+
+  async updateBlueprint(path: string, data: { name: string; description?: string; content: string }): Promise<{ blueprint: unknown }> {
+    const response = await this.request(`/api/sync/blueprints/${encodeURIComponent(path)}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to update blueprint');
+    }
+
+    return response.json();
+  }
+
+  async deleteBlueprint(path: string): Promise<{ message: string }> {
+    const response = await this.request(`/api/sync/blueprints/${encodeURIComponent(path)}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to delete blueprint');
+    }
+
+    return response.json();
+  }
+
+  async duplicateBlueprint(path: string, newPath?: string, newName?: string): Promise<{ blueprint: unknown }> {
+    const response = await this.request(`/api/sync/blueprints/${encodeURIComponent(path)}/duplicate`, {
+      method: 'POST',
+      body: JSON.stringify({ newPath, newName }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to duplicate blueprint');
+    }
+
+    return response.json();
+  }
+
+  async resetBlueprint(path: string): Promise<{ message: string }> {
+    const response = await this.request(`/api/sync/blueprints/${encodeURIComponent(path)}/reset`, {
+      method: 'POST',
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to reset blueprint');
+    }
+
+    return response.json();
+  }
+
+  // ===========================================================================
+  // Worlds Sync
+  // ===========================================================================
+
+  async syncWorlds(action: 'pull' | 'push', data?: unknown): Promise<unknown> {
+    const response = await this.request(`/api/sync/worlds/${action}`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || `Failed to ${action} worlds`);
+    }
+
+    return response.json();
+  }
+
+  async getWorlds(params?: { search?: string; genre?: string; includePublic?: boolean }): Promise<{ worlds: unknown[] }> {
+    const searchParams = new URLSearchParams();
+    if (params?.search) searchParams.set('search', params.search);
+    if (params?.genre) searchParams.set('genre', params.genre);
+    if (params?.includePublic !== undefined) searchParams.set('includePublic', String(params.includePublic));
+
+    const response = await this.request(`/api/sync/worlds?${searchParams.toString()}`);
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to get worlds');
+    }
+
+    return response.json();
+  }
+
+  async getWorld(id: string): Promise<{ world: unknown }> {
+    const response = await this.request(`/api/sync/worlds/${id}`);
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to get world');
+    }
+
+    return response.json();
+  }
+
+  async createWorld(data: { name: string; description?: string; genre?: string; setting?: string; notes?: string }): Promise<{ world: unknown }> {
+    const response = await this.request('/api/sync/worlds', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to create world');
+    }
+
+    return response.json();
+  }
+
+  async updateWorld(id: string, data: Record<string, unknown>): Promise<{ world: unknown }> {
+    const response = await this.request(`/api/sync/worlds/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to update world');
+    }
+
+    return response.json();
+  }
+
+  async deleteWorld(id: string): Promise<{ message: string }> {
+    const response = await this.request(`/api/sync/worlds/${id}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to delete world');
+    }
+
+    return response.json();
+  }
+
+  // ===========================================================================
+  // Timelines Sync
+  // ===========================================================================
+
+  async syncTimelines(action: 'pull' | 'push', data?: unknown): Promise<unknown> {
+    const response = await this.request(`/api/sync/timelines/${action}`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || `Failed to ${action} timelines`);
+    }
+
+    return response.json();
+  }
+
+  async getTimelines(params?: { worldId?: string; search?: string }): Promise<{ timelines: unknown[] }> {
+    const searchParams = new URLSearchParams();
+    if (params?.worldId) searchParams.set('worldId', params.worldId);
+    if (params?.search) searchParams.set('search', params.search);
+
+    const response = await this.request(`/api/sync/timelines?${searchParams.toString()}`);
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to get timelines');
+    }
+
+    return response.json();
+  }
+
+  async getTimeline(id: string): Promise<{ timeline: unknown }> {
+    const response = await this.request(`/api/sync/timelines/${id}`);
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to get timeline');
+    }
+
+    return response.json();
+  }
+
+  async createTimeline(data: { worldId: string; name: string; description?: string }): Promise<{ timeline: unknown }> {
+    const response = await this.request('/api/sync/timelines', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to create timeline');
+    }
+
+    return response.json();
+  }
+
+  async updateTimeline(id: string, data: Record<string, unknown>): Promise<{ timeline: unknown }> {
+    const response = await this.request(`/api/sync/timelines/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to update timeline');
+    }
+
+    return response.json();
+  }
+
+  async deleteTimeline(id: string): Promise<{ message: string }> {
+    const response = await this.request(`/api/sync/timelines/${id}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to delete timeline');
+    }
+
+    return response.json();
+  }
+
+  async addTimelineEvent(timelineId: string, data: { title: string; description?: string; eventDate?: string }): Promise<{ event: unknown }> {
+    const response = await this.request(`/api/sync/timelines/${timelineId}/events`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to add event');
+    }
+
+    return response.json();
+  }
+
+  async updateTimelineEvent(timelineId: string, eventId: string, data: Record<string, unknown>): Promise<{ event: unknown }> {
+    const response = await this.request(`/api/sync/timelines/${timelineId}/events/${eventId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to update event');
+    }
+
+    return response.json();
+  }
+
+  async deleteTimelineEvent(timelineId: string, eventId: string): Promise<{ message: string }> {
+    const response = await this.request(`/api/sync/timelines/${timelineId}/events/${eventId}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to delete event');
+    }
+
+    return response.json();
+  }
+
+  // ===========================================================================
+  // Test Connection
+  // ===========================================================================
+
+  async testConnection(url: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const response = await fetch(`${url}/api/health`, {
+        method: 'GET',
+        signal: AbortSignal.timeout(5000),
+      });
+
+      if (response.ok) {
+        return { success: true, message: 'Connection successful' };
+      }
+      return { success: false, message: `Server returned ${response.status}` };
+    } catch (e) {
+      return {
+        success: false,
+        message: e instanceof Error ? e.message : 'Connection failed',
+      };
+    }
+  }
+}
+
+// Export singleton instance
+export const serverClient = new ServerClient();

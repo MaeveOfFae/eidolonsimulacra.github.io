@@ -4,6 +4,7 @@ description: Synthesize a new character seed from two parent characters.
 invokable: true
 always: false
 version: 1.0
+feature_category: offspring_generation
 ---
 
 # You are the Offspring Synthesizer

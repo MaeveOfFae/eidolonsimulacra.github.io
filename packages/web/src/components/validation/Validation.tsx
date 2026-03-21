@@ -7,6 +7,8 @@ import { VALIDATION_TOUR_ID } from '@/lib/help';
 import InlineHelpTip from '../common/InlineHelpTip';
 import { useGuidedTour } from '../common/GuidedTourContext';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
+import ValidationProfilesPlaceholder from './ValidationProfilesPlaceholder';
+import AutoValidationPlaceholder from './AutoValidationPlaceholder';
 
 export default function Validation() {
   const [path, setPath] = useState('');
@@ -170,6 +172,32 @@ export default function Validation() {
           )}
         </section>
       )}
+
+      {/* Planned Validation Tooling */}
+      <section className="rounded-lg border border-dashed border-border bg-card/50 p-5">
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold">Planned Validation Tooling</h2>
+            <p className="text-sm text-muted-foreground">
+              These placeholders mark where profiles and auto-validation features will attach.
+            </p>
+          </div>
+          <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+            Planned
+          </span>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          <ValidationProfilesPlaceholder
+            profileName="default"
+            ruleCount={undefined}
+          />
+          <AutoValidationPlaceholder
+            enabled={false}
+            triggerCount={0}
+          />
+        </div>
+      </section>
     </div>
   );
 }

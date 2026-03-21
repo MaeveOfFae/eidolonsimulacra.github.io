@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { BookOpen, FileJson, Lightbulb, Package, Search, ArrowRight } from 'lucide-react';
+import { BookOpen, FileJson, Lightbulb, Package, Search, Edit3, RotateCcw, Copy, Trash2, MoreVertical, Plus } from 'lucide-react';
 import type { Blueprint } from '@char-gen/shared';
 import { api } from '@/lib/api';
 import { BLUEPRINTS_SAFETY_TOUR_ID } from '@/lib/help';
@@ -10,6 +10,7 @@ import { useGuidedTour } from '../common/GuidedTourContext';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
 import BlueprintLintPlaceholder from './BlueprintLintPlaceholder';
 import BlueprintSandboxPlaceholder from './BlueprintSandboxPlaceholder';
+import BlueprintCreateDialog from './BlueprintCreateDialog';
 
 type Section = {
   title: string;
@@ -19,11 +20,79 @@ type Section = {
 
 export default function Blueprints() {
   const [query, setQuery] = useState('');
+  const [actionMenuOpen, setActionMenuOpen] = useState<string | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{ type: 'reset' | 'delete'; blueprint: Blueprint } | null>(null);
+  const [duplicateDialog, setDuplicateDialog] = useState<Blueprint | null>(null);
+  const [duplicateName, setDuplicateName] = useState('');
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const queryClient = useQueryClient();
   const { isTourCompleted, restartTour, startTour } = useGuidedTour();
   const { data, isLoading, error } = useQuery({
     queryKey: ['blueprints'],
     queryFn: () => api.getBlueprints(),
   });
+
+  // Track which blueprints have overrides
+  const overridePaths = useMemo(() => {
+    if (!data) return new Set<string>();
+    const allBlueprints = [
+      ...data.core,
+      ...data.system,
+      ...Object.values(data.templates).flat(),
+      ...data.examples,
+    ];
+    return new Set(allBlueprints.filter(bp => api.hasBlueprintOverride(bp.path)).map(bp => bp.path));
+  }, [data]);
+
+  const handleReset = async (blueprint: Blueprint) => {
+    setIsProcessing(true);
+    try {
+      await api.resetBlueprint(blueprint.path);
+      await queryClient.invalidateQueries({ queryKey: ['blueprints'] });
+      setConfirmAction(null);
+    } catch (err) {
+      console.error('Failed to reset blueprint:', err);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDelete = async (blueprint: Blueprint) => {
+    // Only allow deleting blueprints that are user-created (have overrides and no original)
+    const hasOriginal = api.getOriginalBlueprintContent(blueprint.path) !== null;
+    if (hasOriginal) {
+      // If there's an original, just reset
+      await handleReset(blueprint);
+      return;
+    }
+    setIsProcessing(true);
+    try {
+      await api.resetBlueprint(blueprint.path);
+      await queryClient.invalidateQueries({ queryKey: ['blueprints'] });
+      setConfirmAction(null);
+    } catch (err) {
+      console.error('Failed to delete blueprint:', err);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDuplicate = async () => {
+    if (!duplicateDialog || !duplicateName.trim()) return;
+    setIsProcessing(true);
+    try {
+      const targetPath = `blueprints/custom/${duplicateName.trim().toLowerCase().replace(/\s+/g, '_')}.md`;
+      await api.duplicateBlueprint(duplicateDialog.path, targetPath);
+      await queryClient.invalidateQueries({ queryKey: ['blueprints'] });
+      setDuplicateDialog(null);
+      setDuplicateName('');
+    } catch (err) {
+      console.error('Failed to duplicate blueprint:', err);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   const sections = useMemo<Section[]>(() => {
     if (!data) {
@@ -96,6 +165,13 @@ export default function Blueprints() {
             Browse and edit blueprint files used by templates and generation flows.
           </p>
         </div>
+        <button
+          onClick={() => setCreateDialogOpen(true)}
+          className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+        >
+          <Plus className="h-4 w-4" />
+          New Blueprint
+        </button>
       </div>
 
       <div data-tour-anchor="blueprints-search" className="relative max-w-xl">
@@ -146,30 +222,189 @@ export default function Blueprints() {
               </div>
 
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                {section.blueprints.map((blueprint) => (
-                  <Link
+                {section.blueprints.map((blueprint) => {
+                  const hasOverride = overridePaths.has(blueprint.path);
+                  return (
+                  <div
                     key={blueprint.path}
-                    to={`/blueprints/edit/${encodeURIComponent(blueprint.path)}`}
                     className="group rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary hover:bg-accent/30"
                   >
                     <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <h3 className="font-medium">{blueprint.name}</h3>
-                        <p className="mt-1 text-sm text-muted-foreground">{blueprint.description || 'No description'}</p>
+                      <Link
+                        to={`/blueprints/edit/${encodeURIComponent(blueprint.path)}`}
+                        className="flex-1 min-w-0"
+                      >
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-medium">{blueprint.name}</h3>
+                          {hasOverride && (
+                            <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">
+                              Edited
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-1 text-sm text-muted-foreground truncate">{blueprint.description || 'No description'}</p>
+                      </Link>
+                      <div className="flex items-center gap-1">
+                        <Link
+                          to={`/blueprints/edit/${encodeURIComponent(blueprint.path)}`}
+                          className="p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground"
+                          title="Edit"
+                        >
+                          <Edit3 className="h-4 w-4" />
+                        </Link>
+                        <div className="relative">
+                          <button
+                            onClick={() => setActionMenuOpen(actionMenuOpen === blueprint.path ? null : blueprint.path)}
+                            className="p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground"
+                            title="More actions"
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </button>
+                          {actionMenuOpen === blueprint.path && (
+                            <>
+                              <div className="fixed inset-0 z-10" onClick={() => setActionMenuOpen(null)} />
+                              <div className="absolute right-0 top-full z-20 mt-1 w-40 rounded-md border border-border bg-card py-1 shadow-lg">
+                                <button
+                                  onClick={() => {
+                                    setDuplicateDialog(blueprint);
+                                    setDuplicateName(`${blueprint.name} Copy`);
+                                    setActionMenuOpen(null);
+                                  }}
+                                  className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-left hover:bg-accent"
+                                >
+                                  <Copy className="h-4 w-4" />
+                                  Duplicate
+                                </button>
+                                {hasOverride && (
+                                  <button
+                                    onClick={() => {
+                                      setConfirmAction({ type: 'reset', blueprint });
+                                      setActionMenuOpen(null);
+                                    }}
+                                    className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-left hover:bg-accent"
+                                  >
+                                    <RotateCcw className="h-4 w-4" />
+                                    Reset
+                                  </button>
+                                )}
+                                {hasOverride && (
+                                  <button
+                                    onClick={() => {
+                                      setConfirmAction({ type: 'delete', blueprint });
+                                      setActionMenuOpen(null);
+                                    }}
+                                    className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-left text-destructive hover:bg-destructive/10"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                    Delete
+                                  </button>
+                                )}
+                              </div>
+                            </>
+                          )}
+                        </div>
                       </div>
-                      <ArrowRight className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1" />
                     </div>
                     <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
-                      <span>{blueprint.path}</span>
+                      <span className="truncate">{blueprint.path}</span>
                       <span>v{blueprint.version}</span>
                     </div>
-                  </Link>
-                ))}
+                  </div>
+                )})}
               </div>
             </section>
           ))}
         </div>
       )}
+
+      {/* Confirm Reset/Delete Dialog */}
+      {confirmAction && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50" onClick={() => !isProcessing && setConfirmAction(null)} />
+          <div className="relative bg-card border border-border rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+            <h3 className="text-lg font-semibold">
+              {confirmAction.type === 'reset' ? 'Reset Blueprint?' : 'Delete Blueprint?'}
+            </h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {confirmAction.type === 'reset'
+                ? `This will revert "${confirmAction.blueprint.name}" to its original content. Your changes will be lost.`
+                : `This will delete "${confirmAction.blueprint.name}". This action cannot be undone.`}
+            </p>
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                onClick={() => setConfirmAction(null)}
+                disabled={isProcessing}
+                className="px-4 py-2 text-sm font-medium rounded-md border border-input hover:bg-accent disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (confirmAction.type === 'reset') {
+                    void handleReset(confirmAction.blueprint);
+                  } else {
+                    void handleDelete(confirmAction.blueprint);
+                  }
+                }}
+                disabled={isProcessing}
+                className="px-4 py-2 text-sm font-medium rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
+              >
+                {isProcessing ? 'Processing...' : confirmAction.type === 'reset' ? 'Reset' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Duplicate Dialog */}
+      {duplicateDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50" onClick={() => !isProcessing && setDuplicateDialog(null)} />
+          <div className="relative bg-card border border-border rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+            <h3 className="text-lg font-semibold">Duplicate Blueprint</h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Create a copy of "{duplicateDialog.name}" with a new name.
+            </p>
+            <div className="mt-4">
+              <label className="block text-sm font-medium mb-1.5">New Name</label>
+              <input
+                type="text"
+                value={duplicateName}
+                onChange={(e) => setDuplicateName(e.target.value)}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                placeholder="Blueprint name"
+              />
+            </div>
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setDuplicateDialog(null);
+                  setDuplicateName('');
+                }}
+                disabled={isProcessing}
+                className="px-4 py-2 text-sm font-medium rounded-md border border-input hover:bg-accent disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => void handleDuplicate()}
+                disabled={isProcessing || !duplicateName.trim()}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              >
+                {isProcessing ? 'Duplicating...' : 'Duplicate'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <BlueprintCreateDialog
+        open={createDialogOpen}
+        onClose={() => setCreateDialogOpen(false)}
+        onSuccess={(path) => {
+          void queryClient.invalidateQueries({ queryKey: ['blueprints'] });
+        }}
+      />
     </div>
   );
 }

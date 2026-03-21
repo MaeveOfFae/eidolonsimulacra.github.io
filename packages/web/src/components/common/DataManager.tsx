@@ -13,10 +13,12 @@ import {
   FileJson,
   AlertTriangle,
   CheckCircle2,
+  Cloud,
 } from 'lucide-react';
 import { DraftStorage } from '../../lib/storage/draft-db.js';
 import { configManager } from '../../lib/config/manager.js';
 import { saveBlobDownload } from '../../utils/download';
+import SyncControls from './SyncControls';
 
 interface DataStats {
   drafts: number;
@@ -202,6 +204,67 @@ export default function DataManager() {
           </div>
         </div>
       )}
+
+      {/* Server Sync Section */}
+      <div className="rounded-lg border border-border bg-card">
+        <div className="border-b border-border p-4">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <Cloud className="h-5 w-5" />
+            Server Sync
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Sync your data with a self-hosted server for backup and cross-device access.
+          </p>
+        </div>
+        <div className="p-4 space-y-6">
+          {/* Drafts Sync */}
+          <div>
+            <h3 className="font-medium mb-2">Drafts</h3>
+            <SyncControls
+              dataType="drafts"
+              label="Drafts"
+              onGetLocalData={async () => JSON.parse(await DraftStorage.exportAll())}
+              onApplyData={async (data) => {
+                if (data && typeof data === 'object' && 'drafts' in data) {
+                  await DraftStorage.import(JSON.stringify(data));
+                  await loadStats();
+                }
+              }}
+            />
+          </div>
+
+          {/* Config & API Keys Sync */}
+          <div>
+            <h3 className="font-medium mb-2">Settings & API Keys</h3>
+            <SyncControls
+              dataType="config"
+              label="Settings"
+              onGetLocalData={async () => {
+                const config = JSON.parse(configManager.exportConfig());
+                const apiKeys = configManager.getApiKeys();
+                return { config, apiKeys };
+              }}
+              onApplyData={async (data) => {
+                if (data && typeof data === 'object') {
+                  const d = data as { config?: Record<string, unknown>; apiKeys?: Record<string, string> };
+                  if (d.config) {
+                    configManager.importConfig(JSON.stringify(d.config));
+                  }
+                  if (d.apiKeys) {
+                    // Import API keys
+                    for (const [provider, key] of Object.entries(d.apiKeys)) {
+                      if (key) {
+                        configManager.setApiKey(provider, key);
+                      }
+                    }
+                  }
+                  await loadStats();
+                }
+              }}
+            />
+          </div>
+        </div>
+      </div>
 
       {/* Export Section */}
       <div className="rounded-lg border border-border bg-card">

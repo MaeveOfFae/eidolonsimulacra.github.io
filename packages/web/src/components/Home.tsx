@@ -109,16 +109,8 @@ function RecentDraftCard({ id, to, name, meta }: RecentDraftCardProps) {
   );
 }
 
-function formatReleaseDate(value: string) {
-  return new Date(`${value}T00:00:00`).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
-}
-
 export default function Home() {
-  const { activeStepIndex, activeTourId, goToCurrentStep, helpState, isTourCompleted, restartTour, startTour } = useGuidedTour();
+  const { activeStepIndex, activeTourId, goToCurrentStep, isTourCompleted, restartTour, startTour } = useGuidedTour();
   const { data: statsData } = useQuery({
     queryKey: ['drafts', 'stats'],
     queryFn: () => api.getDrafts({ limit: 1 }),

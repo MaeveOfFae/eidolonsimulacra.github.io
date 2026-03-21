@@ -5,6 +5,8 @@ import { Baby, Loader2, Users, CheckCircle } from 'lucide-react';
 import type { ContentMode } from '@char-gen/shared';
 import { api } from '@/lib/api';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
+import TraitInheritancePlaceholder from './TraitInheritancePlaceholder';
+import BreedingHistoryPlaceholder from './BreedingHistoryPlaceholder';
 
 export default function Offspring() {
   const [parent1, setParent1] = useState<string>('');
@@ -238,6 +240,32 @@ export default function Offspring() {
           </p>
         </div>
       )}
+
+      {/* Planned Offspring Tooling */}
+      <section className="rounded-lg border border-dashed border-border bg-card/50 p-5">
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold">Planned Offspring Tooling</h2>
+            <p className="text-sm text-muted-foreground">
+              These placeholders mark where trait inheritance and breeding chain features will attach.
+            </p>
+          </div>
+          <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+            Planned
+          </span>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          <TraitInheritancePlaceholder
+            parent1Name={parent1 ? getParentName(parent1) : undefined}
+            parent2Name={parent2 ? getParentName(parent2) : undefined}
+          />
+          <BreedingHistoryPlaceholder
+            offspringId={result?.draftId}
+            generation={result ? 1 : undefined}
+          />
+        </div>
+      </section>
     </div>
   );
 }

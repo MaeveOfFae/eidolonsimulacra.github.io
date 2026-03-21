@@ -21,6 +21,20 @@ export type EngineType =
 export type EngineMode = 'auto' | 'explicit';
 export type ContentMode = 'SFW' | 'NSFW' | 'Platform-Safe' | 'Auto';
 
+// Feature categories for blueprints
+export type FeatureCategory =
+  | 'character_generation'
+  | 'offspring_generation'
+  | 'validation'
+  | 'similarity';
+
+export interface FeatureBlueprintDefaults {
+  character_generation?: string;
+  offspring_generation?: string;
+  validation?: string;
+  similarity?: string;
+}
+
 export interface ApiKeys {
   openai?: string;
   google?: string;
@@ -172,6 +186,7 @@ export interface Config {
   theme_name?: string;
   theme?: ThemeOverride;
   help?: HelpState;
+  feature_blueprints?: FeatureBlueprintDefaults;
 }
 
 // ============================================================================
@@ -560,6 +575,7 @@ export interface Blueprint {
   content: string;
   path: string;
   category: 'core' | 'system' | 'template' | 'example';
+  feature_category?: FeatureCategory;
 }
 
 export interface BlueprintCategory {

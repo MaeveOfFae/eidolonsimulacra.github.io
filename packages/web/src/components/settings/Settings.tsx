@@ -13,10 +13,11 @@ import {
   Palette,
   Lock,
   BookOpen,
-  Globe,
+  Server,
+  FileText,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import type { Config, ModelInfo, ThemeOverride, ThemePreset } from '@char-gen/shared';
+import type { Config, FeatureCategory, ModelInfo, ThemeOverride, ThemePreset } from '@char-gen/shared';
 import { useThemePreview } from '../common/useThemePreview';
 import {
   EDITABLE_THEME_SECTIONS,
@@ -29,6 +30,7 @@ import { saveBlobDownload } from '../../utils/download';
 import { GETTING_STARTED_TOUR_ID } from '@/lib/help';
 import InlineHelpTip from '../common/InlineHelpTip';
 import { useGuidedTour } from '../common/GuidedTourContext';
+import ServerSettings from './ServerSettings';
 
 const ALL_PROVIDERS = ['openai', 'google', 'openrouter', 'anthropic', 'deepseek', 'zai', 'moonshot', 'ollama'] as const;
 type Provider = typeof ALL_PROVIDERS[number];
@@ -821,6 +823,127 @@ export default function Settings() {
             />
           </div>
         </div>
+      </section>
+
+      {/* Feature Blueprint Defaults */}
+      <section className="rounded-2xl border border-border/50 bg-card/50 p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2 rounded-xl bg-gradient-to-br from-purple-600 to-violet-600">
+            <FileText className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold">Feature Blueprint Defaults</h2>
+            <p className="text-sm text-muted-foreground">
+              Select default blueprints for each generation feature. Create custom blueprints in the Blueprint Editor.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Character Generation</label>
+            <select
+              value={localConfig.feature_blueprints?.character_generation || 'rpbotgenerator'}
+              onChange={(e) => setLocalConfig((prev) => ({
+                ...prev,
+                feature_blueprints: {
+                  ...prev.feature_blueprints,
+                  character_generation: e.target.value || undefined,
+                },
+              }))}
+              className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="rpbotgenerator">RPBotGenerator (Default)</option>
+              <option value="">None (Built-in)</option>
+            </select>
+            <p className="text-xs text-muted-foreground">
+              Blueprint used for generating new characters from seeds.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Offspring Generation</label>
+            <select
+              value={localConfig.feature_blueprints?.offspring_generation || 'offspring_generator'}
+              onChange={(e) => setLocalConfig((prev) => ({
+                ...prev,
+                feature_blueprints: {
+                  ...prev.feature_blueprints,
+                  offspring_generation: e.target.value || undefined,
+                },
+              }))}
+              className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="offspring_generator">Offspring Generator (Default)</option>
+              <option value="">None (Built-in)</option>
+            </select>
+            <p className="text-xs text-muted-foreground">
+              Blueprint used for breeding characters.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Validation</label>
+            <select
+              value={localConfig.feature_blueprints?.validation || ''}
+              onChange={(e) => setLocalConfig((prev) => ({
+                ...prev,
+                feature_blueprints: {
+                  ...prev.feature_blueprints,
+                  validation: e.target.value || undefined,
+                },
+              }))}
+              className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="">Built-in Validation (Default)</option>
+            </select>
+            <p className="text-xs text-muted-foreground">
+              Blueprint for character validation checks.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Similarity Analysis</label>
+            <select
+              value={localConfig.feature_blueprints?.similarity || ''}
+              onChange={(e) => setLocalConfig((prev) => ({
+                ...prev,
+                feature_blueprints: {
+                  ...prev.feature_blueprints,
+                  similarity: e.target.value || undefined,
+                },
+              }))}
+              className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="">Built-in Analysis (Default)</option>
+            </select>
+            <p className="text-xs text-muted-foreground">
+              Blueprint for comparing character relationships.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-4 pt-4 border-t border-border/50">
+          <p className="text-xs text-muted-foreground">
+            Create custom blueprints in the <Link to="/blueprints" className="text-primary hover:underline">Blueprint Editor</Link> and they will appear here.
+          </p>
+        </div>
+      </section>
+
+      {/* Server Sync Settings */}
+      <section className="rounded-2xl border border-border/50 bg-card/50 p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600">
+            <Server className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold">Server Sync</h2>
+            <p className="text-sm text-muted-foreground">
+              Connect to a self-hosted server to sync data across devices.
+            </p>
+          </div>
+        </div>
+        <ServerSettings />
       </section>
 
       <section data-tour-anchor="settings-help-tutorials" className="rounded-2xl border border-border/50 bg-card/50 p-6">

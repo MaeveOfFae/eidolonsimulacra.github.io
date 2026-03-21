@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { FolderOpen, Star, Clock } from 'lucide-react';
 import { api } from '@/lib/api';
 import { DRAFT_LIBRARY_TOUR_ID } from '@/lib/help';
 import InlineHelpTip from '../common/InlineHelpTip';
 import { useGuidedTour } from '../common/GuidedTourContext';
+import SyncControls from '../common/SyncControls';
+import { DraftStorage } from '@/lib/storage/draft-db';
 import DraftComparisonPlaceholder from './DraftComparisonPlaceholder';
 import LibraryCollectionsPlaceholder from './LibraryCollectionsPlaceholder';
 import ReviewChecklistPlaceholder from './ReviewChecklistPlaceholder';
@@ -15,6 +17,7 @@ export default function Drafts() {
   const [leftDraftId, setLeftDraftId] = useState<string>('');
   const [rightDraftId, setRightDraftId] = useState<string>('');
   const { isTourCompleted, restartTour, startTour } = useGuidedTour();
+  const queryClient = useQueryClient();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['drafts'],
@@ -88,6 +91,21 @@ export default function Drafts() {
           </div>
         </div>
       )}
+
+      {/* Server Sync */}
+      <div className="rounded-lg border border-border bg-card p-4">
+        <SyncControls
+          dataType="drafts"
+          label="Drafts"
+          onGetLocalData={async () => JSON.parse(await DraftStorage.exportAll())}
+          onApplyData={async (data) => {
+            if (data && typeof data === 'object' && 'drafts' in data) {
+              await DraftStorage.import(JSON.stringify(data));
+              queryClient.invalidateQueries({ queryKey: ['drafts'] });
+            }
+          }}
+        />
+      </div>
 
       <section data-tour-anchor="drafts-workbench" className="rounded-lg border border-dashed border-border bg-card/50 p-5">
         <div className="mb-4 flex items-start justify-between gap-4">

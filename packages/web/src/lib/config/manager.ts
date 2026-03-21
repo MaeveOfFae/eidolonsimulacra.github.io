@@ -6,6 +6,7 @@
 import type {
   ApiKeys,
   Config,
+  FeatureBlueprintDefaults,
   HelpState,
 } from '@char-gen/shared';
 
@@ -154,6 +155,10 @@ export class ConfigManager {
         ...defaults.help,
         ...(config.help ?? {}),
       },
+      feature_blueprints: {
+        ...defaults.feature_blueprints,
+        ...(config.feature_blueprints ?? {}),
+      },
     };
   }
 
@@ -224,6 +229,10 @@ export class ConfigManager {
         rate_limit_delay: 1000,
       },
       help: createDefaultHelpState(),
+      feature_blueprints: {
+        character_generation: 'rpbotgenerator',
+        offspring_generation: 'offspring_generator',
+      },
     };
   }
 

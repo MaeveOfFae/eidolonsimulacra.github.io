@@ -55,6 +55,20 @@ export interface GenerationProgress {
 }
 
 /**
+ * Extended generate request with blueprint override
+ */
+export interface ExtendedGenerateRequest extends GenerateRequest {
+  blueprint_override?: string;
+}
+
+/**
+ * Extended offspring request with blueprint override
+ */
+export interface ExtendedOffspringRequest extends OffspringRequest {
+  blueprint_override?: string;
+}
+
+/**
  * Generation Service
  */
 export class GenerationService {
@@ -92,8 +106,8 @@ export class GenerationService {
   /**
    * Generate a full character from a seed
    */
-  static async *generate(request: GenerateRequest): AsyncIterable<GenerationProgress> {
-    const { seed, template, mode = 'Auto', stream = true } = request;
+  static async *generate(request: ExtendedGenerateRequest): AsyncIterable<GenerationProgress> {
+    const { seed, template, mode = 'Auto', stream = true, blueprint_override } = request;
 
     yield { type: 'status', stage: 'initializing' };
 
@@ -106,11 +120,13 @@ export class GenerationService {
 
     yield { type: 'status', stage: 'building_prompt' };
 
-    // Build orchestrator prompt
+    // Build orchestrator prompt - respects settings and override
     const [systemPrompt, userPrompt] = await buildOrchestratorPrompt(
       seed,
       mode,
-      templateAssets
+      templateAssets,
+      undefined,
+      blueprint_override
     );
 
     yield { type: 'status', stage: 'generating' };
@@ -264,9 +280,9 @@ export class GenerationService {
    * Generate offspring from two parents
    */
   static async *generateOffspring(
-    request: OffspringRequest
+    request: ExtendedOffspringRequest
   ): AsyncIterable<GenerationProgress> {
-    const { parent1_id, parent2_id, mode = 'Auto', template } = request;
+    const { parent1_id, parent2_id, mode = 'Auto', template, blueprint_override } = request;
 
     yield { type: 'status', stage: 'loading_parents' };
 
@@ -300,13 +316,15 @@ export class GenerationService {
       maxTokens: config.max_tokens,
     });
 
-    // Build offspring prompt
+    // Build offspring prompt - respects settings and override
     const [systemPrompt, userPrompt] = await buildOffspringPrompt(
       parent1.assets,
       parent2.assets,
       parent1.metadata.character_name || 'Parent 1',
       parent2.metadata.character_name || 'Parent 2',
-      mode
+      mode,
+      undefined,
+      blueprint_override
     );
 
     yield { type: 'status', stage: 'generating' };
@@ -322,7 +340,9 @@ export class GenerationService {
     const [orchestratorSystem, orchestratorUser] = await buildOrchestratorPrompt(
       offspringSeed,
       mode,
-      resolveTemplateAssets(template)
+      resolveTemplateAssets(template),
+      undefined,
+      blueprint_override
     );
 
     const orchestratorMessages = formatMessages(orchestratorSystem, orchestratorUser);

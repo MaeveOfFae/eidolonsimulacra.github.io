@@ -4,8 +4,10 @@
  */
 
 import type {
+  FeatureCategory,
   Template,
 } from '@char-gen/shared';
+import { configManager } from '../config/manager';
 
 export interface Blueprint {
   name: string;
@@ -69,6 +71,36 @@ export async function loadBlueprint(name: string, baseUrl: string = BLUEPRINT_RE
 }
 
 /**
+ * Default blueprints for each feature category
+ */
+const DEFAULT_FEATURE_BLUEPRINTS: Partial<Record<FeatureCategory, string>> = {
+  character_generation: 'rpbotgenerator',
+  offspring_generation: 'offspring_generator',
+};
+
+/**
+ * Resolve a blueprint for a feature category
+ * Priority: override > settings default > system default
+ */
+export async function resolveFeatureBlueprint(
+  feature: FeatureCategory,
+  overridePath?: string,
+  baseUrl: string = BLUEPRINT_REPO_URL
+): Promise<string> {
+  const config = configManager.getConfig();
+  const settingsDefault = config.feature_blueprints?.[feature];
+  const systemDefault = DEFAULT_FEATURE_BLUEPRINTS[feature];
+
+  const blueprintPath = overridePath || settingsDefault || systemDefault;
+
+  if (!blueprintPath) {
+    throw new Error(`No blueprint configured for feature: ${feature}`);
+  }
+
+  return loadBlueprint(blueprintPath, baseUrl);
+}
+
+/**
  * Parse blueprint metadata from frontmatter
  */
 export function parseBlueprintFrontmatter(content: string): {
@@ -76,6 +108,7 @@ export function parseBlueprintFrontmatter(content: string): {
   description: string;
   invokable: boolean;
   version: string;
+  feature_category?: FeatureCategory;
 } {
   // Look for YAML frontmatter between --- markers
   const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
@@ -121,6 +154,7 @@ export function parseBlueprintFrontmatter(content: string): {
     description: String(metadata.description || ''),
     invokable: Boolean(metadata.invokable),
     version: String(metadata.version || '1.0'),
+    feature_category: metadata.feature_category as FeatureCategory | undefined,
   };
 }
 

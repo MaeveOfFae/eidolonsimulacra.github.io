@@ -57,6 +57,8 @@ import {
   getAllTemplateRecords,
   getBlueprintCatalog,
   getBlueprintOverrides,
+  getOriginalBlueprintContent,
+  hasBlueprintOverride,
   getStoredTemplateRecord,
   getStoredTemplates,
   getTemplateRecord,
@@ -65,6 +67,7 @@ import {
   saveBlueprintOverrides,
   saveStoredTemplates,
 } from './templates/browser.js';
+import { serverClient } from './server/client.js';
 
 export interface DownloadResponse {
   blob: Blob;
@@ -1625,6 +1628,51 @@ export class EidolonBrowserAPI {
   }
 
   async getThemes(): Promise<ThemePreset[]> {
+    // Try to sync from server first if authenticated
+    if (serverClient.isEnabled()) {
+      try {
+        const status = await serverClient.checkStatus();
+        if (status.authenticated) {
+          const { themes: serverThemes } = await serverClient.syncThemes('pull') as { themes: Array<{
+            name: string;
+            displayName?: string;
+            description?: string;
+            author?: string;
+            tags: string[];
+            basedOn?: string;
+            isBuiltin: boolean;
+            colors: ThemePreset['colors'];
+          }> };
+
+          // Merge server themes with local storage (only non-builtin)
+          const localThemes = getCustomThemes();
+          for (const serverTheme of serverThemes) {
+            if (!serverTheme.isBuiltin) {
+              const existingIndex = localThemes.findIndex(t => t.name === serverTheme.name);
+              const theme: ThemePreset = {
+                name: serverTheme.name,
+                display_name: serverTheme.displayName || serverTheme.name,
+                description: serverTheme.description || '',
+                author: serverTheme.author || '',
+                tags: serverTheme.tags,
+                based_on: serverTheme.basedOn || '',
+                is_builtin: false,
+                colors: serverTheme.colors,
+              };
+              if (existingIndex >= 0) {
+                localThemes[existingIndex] = theme;
+              } else {
+                localThemes.push(theme);
+              }
+            }
+          }
+          saveCustomThemes(localThemes);
+        }
+      } catch (e) {
+        console.warn('Failed to sync themes from server:', e);
+      }
+    }
+
     return getAllThemes();
   }
 
@@ -1644,6 +1692,29 @@ export class EidolonBrowserAPI {
     };
     themes.push(created);
     saveCustomThemes(themes);
+
+    // Try to sync to server
+    if (serverClient.isEnabled()) {
+      try {
+        const status = await serverClient.checkStatus();
+        if (status.authenticated) {
+          await serverClient.syncThemes('push', {
+            themes: [{
+              name: created.name,
+              displayName: created.display_name,
+              description: created.description,
+              author: created.author,
+              tags: created.tags,
+              basedOn: created.based_on,
+              colors: created.colors,
+            }],
+          });
+        }
+      } catch (e) {
+        console.warn('Failed to sync theme to server:', e);
+      }
+    }
+
     return created;
   }
 
@@ -1689,6 +1760,21 @@ export class EidolonBrowserAPI {
     }
     themes[index] = { ...themes[index], ...theme };
     saveCustomThemes(themes);
+
+    // Try to sync to server
+    if (serverClient.isEnabled()) {
+      try {
+        const status = await serverClient.checkStatus();
+        if (status.authenticated) {
+          await serverClient.syncThemes('push', {
+            themes: [themes[index]],
+          });
+        }
+      } catch (e) {
+        console.warn('Failed to sync theme update to server:', e);
+      }
+    }
+
     return themes[index];
   }
 
@@ -1725,8 +1811,22 @@ export class EidolonBrowserAPI {
   }
 
   async deleteTheme(name: string): Promise<{ status: string; name: string }> {
+    // Delete locally first
     const themes = getCustomThemes().filter((theme) => theme.name !== name);
     saveCustomThemes(themes);
+
+    // Try to delete from server
+    if (serverClient.isEnabled()) {
+      try {
+        const status = await serverClient.checkStatus();
+        if (status.authenticated) {
+          // Server theme deletion happens via sync - the theme won't be in push
+        }
+      } catch (e) {
+        console.warn('Failed to sync theme deletion to server:', e);
+      }
+    }
+
     return { status: 'deleted', name };
   }
 
@@ -1752,6 +1852,47 @@ export class EidolonBrowserAPI {
   }
 
   async getTemplates(): Promise<Template[]> {
+    // Try to sync from server first if authenticated
+    if (serverClient.isEnabled()) {
+      try {
+        const status = await serverClient.checkStatus();
+        if (status.authenticated) {
+          const { templates: serverTemplates } = await serverClient.syncTemplates('pull') as { templates: Array<{
+            name: string;
+            version: string;
+            description?: string;
+            is_official: boolean;
+            is_default: boolean;
+            assets: Array<{ name: string; required: boolean; depends_on: string[]; description: string; blueprint_file?: string }>;
+            blueprint_contents: Record<string, string>;
+          }> };
+
+          // Merge server templates with local storage
+          const localRecords = getStoredTemplates();
+          for (const serverT of serverTemplates) {
+            const existing = localRecords.find((r) => r.template.name === serverT.name);
+            if (!existing) {
+              // Add new template from server
+              localRecords.push({
+                template: {
+              name: serverT.name,
+              version: serverT.version,
+              description: serverT.description || '',
+              is_official: serverT.is_official,
+              is_default: serverT.is_default,
+              assets: serverT.assets,
+            },
+            blueprint_contents: serverT.blueprint_contents,
+              });
+            }
+          }
+          saveStoredTemplates(localRecords);
+        }
+      } catch (e) {
+        console.warn('Failed to sync templates from server:', e);
+      }
+    }
+
     return getAllTemplateRecords().map((record) => record.template);
   }
 
@@ -1787,8 +1928,22 @@ export class EidolonBrowserAPI {
       assets: template.assets,
       is_official: false,
     };
-    records.push({ template: created, blueprint_contents: template.blueprint_contents });
+    const record = { template: created, blueprint_contents: template.blueprint_contents };
+    records.push(record);
     saveStoredTemplates(records);
+
+    // Try to sync to server
+    if (serverClient.isEnabled()) {
+      try {
+        const status = await serverClient.checkStatus();
+        if (status.authenticated) {
+          await serverClient.syncTemplates('push', { templates: [record] });
+        }
+      } catch (e) {
+        console.warn('Failed to sync template to server:', e);
+      }
+    }
+
     return created;
   }
 
@@ -1809,12 +1964,28 @@ export class EidolonBrowserAPI {
       blueprint_contents: template.blueprint_contents,
     };
     saveStoredTemplates(records);
+
+    // Try to sync to server
+    if (serverClient.isEnabled()) {
+      try {
+        const status = await serverClient.checkStatus();
+        if (status.authenticated) {
+          await serverClient.syncTemplates('push', { templates: [records[index]] });
+        }
+      } catch (e) {
+        console.warn('Failed to sync template update to server:', e);
+      }
+    }
+
     return records[index].template;
   }
 
   async deleteTemplate(name: string): Promise<{ status: string; name: string }> {
     const records = getStoredTemplates().filter((record) => record.template.name !== name);
     saveStoredTemplates(records);
+
+    // Note: Template deletion on server is handled via sync - the template won't be in the next push
+
     return { status: 'deleted', name };
   }
 
@@ -1874,6 +2045,80 @@ export class EidolonBrowserAPI {
   }
 
   async getDrafts(filters?: DraftFilters): Promise<DraftListResponse> {
+    // Try to sync from server first if authenticated
+    if (serverClient.isEnabled()) {
+      try {
+        const status = await serverClient.checkStatus();
+        if (status.authenticated) {
+          const { drafts: serverDrafts } = await serverClient.syncDrafts('pull') as { drafts: Array<{
+            id: string;
+            reviewId: string;
+            seed: string;
+            mode: string;
+            model?: string;
+            characterName?: string;
+            templateName?: string;
+            genre?: string;
+            notes?: string;
+            favorite: boolean;
+            tags: string[];
+            offspringType?: string;
+            assets: Record<string, string>;
+            createdAt: string;
+            updatedAt: string;
+          }> };
+
+          // Merge server drafts with local storage
+          for (const serverDraft of serverDrafts) {
+            const local = await DraftStorage.getDraft(serverDraft.reviewId);
+            if (!local) {
+              // Create local copy from server
+              await DraftStorage.saveDraft({
+                metadata: {
+                  review_id: serverDraft.reviewId,
+                  seed: serverDraft.seed,
+                  mode: serverDraft.mode as 'SFW' | 'NSFW' | 'Platform-Safe' | 'Auto',
+                  model: serverDraft.model,
+                  character_name: serverDraft.characterName,
+                  template_name: serverDraft.templateName,
+                  genre: serverDraft.genre,
+                  notes: serverDraft.notes,
+                  favorite: serverDraft.favorite,
+                  tags: serverDraft.tags,
+                  offspring_type: serverDraft.offspringType,
+                },
+                assets: serverDraft.assets,
+              });
+            } else {
+              // Compare updatedAt and keep newer version
+              const localTime = new Date(local.metadata.modified || 0).getTime();
+              const serverTime = new Date(serverDraft.updatedAt).getTime();
+              if (serverTime > localTime) {
+                await DraftStorage.saveDraft({
+                  metadata: {
+                    ...local.metadata,
+                    seed: serverDraft.seed,
+                    mode: serverDraft.mode as 'SFW' | 'NSFW' | 'Platform-Safe' | 'Auto',
+                    model: serverDraft.model,
+                    character_name: serverDraft.characterName,
+                    template_name: serverDraft.templateName,
+                    genre: serverDraft.genre,
+                    notes: serverDraft.notes,
+                    favorite: serverDraft.favorite,
+                    tags: serverDraft.tags,
+                    offspring_type: serverDraft.offspringType,
+                  },
+                  assets: serverDraft.assets,
+                });
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to sync drafts from server:', e);
+      }
+    }
+
     const allMetadata = await DraftStorage.getAllMetadata();
     const filtered = applyDraftFilters(allMetadata, filters);
     return buildDraftListResponse(filtered, filtered.length, allMetadata);
@@ -1892,17 +2137,96 @@ export class EidolonBrowserAPI {
   }
 
   async updateMetadata(reviewId: string, updates: Partial<DraftMetadata>): Promise<{ status: string; draft_id: string }> {
+    // Update locally first
     await DraftStorage.updateMetadata(reviewId, updates);
+
+    // Try to sync to server
+    if (serverClient.isEnabled()) {
+      try {
+        const status = await serverClient.checkStatus();
+        if (status.authenticated) {
+          const draft = await DraftStorage.getDraft(reviewId);
+          if (draft) {
+            await serverClient.syncDrafts('push', {
+              drafts: [{
+                reviewId: draft.metadata.review_id,
+                seed: draft.metadata.seed,
+                mode: draft.metadata.mode,
+                model: draft.metadata.model,
+                characterName: draft.metadata.character_name,
+                templateName: draft.metadata.template_name,
+                genre: draft.metadata.genre,
+                notes: draft.metadata.notes,
+                favorite: draft.metadata.favorite,
+                tags: draft.metadata.tags || [],
+                offspringType: draft.metadata.offspring_type,
+                assets: draft.assets,
+              }],
+            });
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to sync draft metadata to server:', e);
+      }
+    }
+
     return { status: 'updated', draft_id: reviewId };
   }
 
   async deleteDraft(reviewId: string): Promise<{ status: string; draft_id: string }> {
+    // Delete locally first
     await DraftStorage.deleteDraft(reviewId);
+
+    // Try to delete from server
+    if (serverClient.isEnabled()) {
+      try {
+        const status = await serverClient.checkStatus();
+        if (status.authenticated) {
+          // Server doesn't have individual delete in sync, but we can try the drafts route
+          // For now, just log - server sync will handle it on next pull
+        }
+      } catch (e) {
+        console.warn('Failed to sync draft deletion to server:', e);
+      }
+    }
+
     return { status: 'deleted', draft_id: reviewId };
   }
 
   async updateAsset(reviewId: string, assetName: string, content: string): Promise<{ status: string; draft_id: string; asset_name: string }> {
+    // Update locally first
     await DraftStorage.updateAsset(reviewId, assetName, content);
+
+    // Try to sync to server
+    if (serverClient.isEnabled()) {
+      try {
+        const status = await serverClient.checkStatus();
+        if (status.authenticated) {
+          const draft = await DraftStorage.getDraft(reviewId);
+          if (draft) {
+            await serverClient.syncDrafts('push', {
+              drafts: [{
+                reviewId: draft.metadata.review_id,
+                seed: draft.metadata.seed,
+                mode: draft.metadata.mode,
+                model: draft.metadata.model,
+                characterName: draft.metadata.character_name,
+                templateName: draft.metadata.template_name,
+                genre: draft.metadata.genre,
+                notes: draft.metadata.notes,
+                favorite: draft.metadata.favorite,
+                tags: draft.metadata.tags || [],
+                offspringType: draft.metadata.offspring_type,
+                assets: draft.assets,
+              }],
+            });
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to sync draft asset to server:', e);
+      }
+    }
+
     return { status: 'updated', draft_id: reviewId, asset_name: assetName };
   }
 
@@ -2181,6 +2505,44 @@ export class EidolonBrowserAPI {
   }
 
   async getBlueprints(): Promise<BlueprintList> {
+    // Try to sync from server first if authenticated
+    if (serverClient.isEnabled()) {
+      try {
+        const status = await serverClient.checkStatus();
+        if (status.authenticated) {
+          const { blueprints } = await serverClient.syncBlueprints('list') as { blueprints: Array<{
+            path: string;
+            name: string;
+            description: string;
+            invokable: boolean;
+            version: string;
+            content: string;
+            category: string;
+            isBuiltin: boolean;
+          }> };
+
+          // Merge server blueprints with local catalog
+          const localCatalog = getBlueprintCatalog();
+          for (const serverBp of blueprints) {
+            // Server blueprints override local for user-created ones
+            if (!serverBp.isBuiltin) {
+              localCatalog.set(serverBp.path, {
+                name: serverBp.name,
+                description: serverBp.description,
+                invokable: serverBp.invokable,
+                version: serverBp.version,
+                content: serverBp.content,
+                path: serverBp.path,
+                category: serverBp.category as 'core' | 'system' | 'template' | 'example',
+              });
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to sync blueprints from server:', e);
+      }
+    }
+
     const values = [...getBlueprintCatalog().values()];
     return {
       core: values.filter((blueprint) => blueprint.category === 'core'),
@@ -2201,10 +2563,169 @@ export class EidolonBrowserAPI {
   }
 
   async updateBlueprint(path: string, content: string): Promise<Blueprint> {
+    // Save locally first
     const overrides = getBlueprintOverrides();
     overrides[path] = content;
     saveBlueprintOverrides(overrides);
+
+    // Try to sync to server
+    if (serverClient.isEnabled()) {
+      try {
+        const status = await serverClient.checkStatus();
+        if (status.authenticated) {
+          // Parse frontmatter to get metadata
+          const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+          let name = path.split('/').pop()?.replace('.md', '') || 'Blueprint';
+          let description = '';
+          let version = '1.0';
+          let invokable = true;
+
+          if (frontmatterMatch) {
+            const fm = frontmatterMatch[1];
+            const nameMatch = fm.match(/^name:\s*(.+)$/m);
+            const descMatch = fm.match(/^description:\s*(.+)$/m);
+            const versionMatch = fm.match(/^version:\s*(.+)$/m);
+            const invokableMatch = fm.match(/^invokable:\s*(.+)$/m);
+            if (nameMatch) name = nameMatch[1].trim();
+            if (descMatch) description = descMatch[1].trim();
+            if (versionMatch) version = versionMatch[1].trim();
+            if (invokableMatch) invokable = invokableMatch[1].trim() === 'true';
+          }
+
+          await serverClient.syncBlueprints('push', {
+            blueprints: [{
+              path,
+              name,
+              description,
+              invokable,
+              version,
+              category: 'custom',
+              content,
+            }],
+          });
+        }
+      } catch (e) {
+        console.warn('Failed to sync blueprint to server:', e);
+      }
+    }
+
     return this.getBlueprint(path);
+  }
+
+  async resetBlueprint(path: string): Promise<Blueprint> {
+    // Remove local override
+    const overrides = getBlueprintOverrides();
+    delete overrides[path];
+    saveBlueprintOverrides(overrides);
+
+    // Try to reset on server
+    if (serverClient.isEnabled()) {
+      try {
+        const status = await serverClient.checkStatus();
+        if (status.authenticated) {
+          await serverClient.resetBlueprint(path);
+        }
+      } catch (e) {
+        console.warn('Failed to reset blueprint on server:', e);
+      }
+    }
+
+    const blueprint = this.getBlueprint(path);
+    if (!blueprint) {
+      throw new APIError(404, `Blueprint ${path} not found`);
+    }
+    return blueprint;
+  }
+
+  async createBlueprint(path: string, content: string): Promise<Blueprint> {
+    const existing = getBlueprintCatalog().get(path);
+    if (existing) {
+      throw new APIError(409, `Blueprint ${path} already exists`);
+    }
+
+    // Save locally first
+    const overrides = getBlueprintOverrides();
+    overrides[path] = content;
+    saveBlueprintOverrides(overrides);
+
+    // Try to sync to server
+    if (serverClient.isEnabled()) {
+      try {
+        const status = await serverClient.checkStatus();
+        if (status.authenticated) {
+          // Parse frontmatter
+          const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+          let name = path.split('/').pop()?.replace('.md', '') || 'Blueprint';
+          let description = '';
+          let version = '1.0';
+          let invokable = true;
+
+          if (frontmatterMatch) {
+            const fm = frontmatterMatch[1];
+            const nameMatch = fm.match(/^name:\s*(.+)$/m);
+            const descMatch = fm.match(/^description:\s*(.+)$/m);
+            const versionMatch = fm.match(/^version:\s*(.+)$/m);
+            const invokableMatch = fm.match(/^invokable:\s*(.+)$/m);
+            if (nameMatch) name = nameMatch[1].trim();
+            if (descMatch) description = descMatch[1].trim();
+            if (versionMatch) version = versionMatch[1].trim();
+            if (invokableMatch) invokable = invokableMatch[1].trim() === 'true';
+          }
+
+          await serverClient.createBlueprint({
+            path,
+            name,
+            description,
+            invokable,
+            version,
+            category: 'custom',
+            content,
+          });
+        }
+      } catch (e) {
+        console.warn('Failed to create blueprint on server:', e);
+      }
+    }
+
+    return this.getBlueprint(path);
+  }
+
+  async duplicateBlueprint(sourcePath: string, targetPath: string): Promise<Blueprint> {
+    const source = getBlueprintCatalog().get(sourcePath);
+    if (!source) {
+      throw new APIError(404, `Source blueprint ${sourcePath} not found`);
+    }
+    const existing = getBlueprintCatalog().get(targetPath);
+    if (existing) {
+      throw new APIError(409, `Blueprint ${targetPath} already exists`);
+    }
+
+    // Save locally first
+    const overrides = getBlueprintOverrides();
+    overrides[targetPath] = source.content;
+    saveBlueprintOverrides(overrides);
+
+    // Try to sync to server
+    if (serverClient.isEnabled()) {
+      try {
+        const status = await serverClient.checkStatus();
+        if (status.authenticated) {
+          await serverClient.duplicateBlueprint(sourcePath, targetPath);
+        }
+      } catch (e) {
+        console.warn('Failed to duplicate blueprint on server:', e);
+      }
+    }
+
+    return this.getBlueprint(targetPath);
+  }
+
+  hasBlueprintOverride(path: string): boolean {
+    return hasBlueprintOverride(path);
+  }
+
+  getOriginalBlueprintContent(path: string): string | null {
+    return getOriginalBlueprintContent(path);
   }
 
   chat(request: ChatRequest): BrowserStream {

@@ -5,6 +5,8 @@ import { GitCompare, Loader2, Users, AlertCircle, CheckCircle } from 'lucide-rea
 import type { SimilarityResult } from '@char-gen/shared';
 import { api } from '@/lib/api';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
+import ClusteringPlaceholder from './ClusteringPlaceholder';
+import RelationshipGraphPlaceholder from './RelationshipGraphPlaceholder';
 
 export default function Similarity() {
   const [searchParams] = useSearchParams();
@@ -301,6 +303,31 @@ export default function Similarity() {
           </p>
         </div>
       )}
+
+      {/* Planned Similarity Tooling */}
+      <section className="rounded-lg border border-dashed border-border bg-card/50 p-5">
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold">Planned Similarity Tooling</h2>
+            <p className="text-sm text-muted-foreground">
+              These placeholders mark where clustering and relationship graph features will attach.
+            </p>
+          </div>
+          <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+            Planned
+          </span>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          <ClusteringPlaceholder
+            draftIds={draftsData?.drafts.map(d => d.review_id) ?? []}
+          />
+          <RelationshipGraphPlaceholder
+            characterCount={draftsData?.drafts.length ?? 0}
+            relationshipCount={result ? 1 : 0}
+          />
+        </div>
+      </section>
     </div>
   );
 }

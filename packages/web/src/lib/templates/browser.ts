@@ -2,6 +2,7 @@ import {
   OFFICIAL_TEMPLATE,
   getOrderedAssets,
   inferCharacterDisplayNameFromAssets,
+  type FeatureCategory,
   type Template,
 } from '@char-gen/shared';
 import { parseBlueprintFrontmatter, type TemplateAsset, templateToAssets } from '../prompting/blueprint.js';
@@ -32,6 +33,7 @@ interface BrowserBlueprint {
   content: string;
   path: string;
   category: BlueprintCategory;
+  feature_category?: FeatureCategory;
 }
 
 function getAssetBlueprintKey(asset: { name: string; blueprint_file?: string }): string {
@@ -106,6 +108,7 @@ function buildDefaultBlueprintCatalog(): Map<string, BrowserBlueprint> {
       content,
       path: normalizedPath,
       category,
+      feature_category: metadata.feature_category,
     });
   });
 
@@ -138,10 +141,20 @@ export function getBlueprintCatalog(): Map<string, BrowserBlueprint> {
       content,
       path,
       category: existing?.category ?? 'core',
+      feature_category: metadata.feature_category,
     });
   });
 
   return catalog;
+}
+
+export function getOriginalBlueprintContent(path: string): string | null {
+  const modulePath = `../../../../../${path}`;
+  return (blueprintModules as Record<string, string>)[modulePath] ?? null;
+}
+
+export function hasBlueprintOverride(path: string): boolean {
+  return path in getBlueprintOverrides();
 }
 
 export function findBlueprintContent(fileName?: string): string {

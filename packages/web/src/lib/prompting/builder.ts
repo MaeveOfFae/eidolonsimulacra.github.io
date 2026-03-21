@@ -13,6 +13,7 @@ import type {
 } from './blueprint.js';
 import {
   loadBlueprint,
+  resolveFeatureBlueprint,
   topologicalSort,
 } from './blueprint.js';
 
@@ -23,10 +24,11 @@ export async function buildOrchestratorPrompt(
   seed: string,
   mode: ContentMode | null = null,
   templateAssets?: TemplateAsset[],
-  baseUrl?: string
+  baseUrl?: string,
+  blueprintOverride?: string
 ): Promise<[system: string, user: string]> {
-  // Load orchestrator blueprint
-  let orchestrator = await loadBlueprint('rpbotgenerator', baseUrl);
+  // Load orchestrator blueprint - respects settings and override
+  let orchestrator = await resolveFeatureBlueprint('character_generation', blueprintOverride, baseUrl);
 
   // If template provided, modify orchestrator to list custom assets
   if (templateAssets && templateAssets.length > 0) {
@@ -255,10 +257,11 @@ export async function buildOffspringPrompt(
   parent1Name: string,
   parent2Name: string,
   mode: ContentMode | null = null,
-  baseUrl?: string
+  baseUrl?: string,
+  blueprintOverride?: string
 ): Promise<[system: string, user: string]> {
-  // Load offspring generator blueprint
-  const systemPrompt = await loadBlueprint('offspring_generator', baseUrl);
+  // Load offspring generator blueprint - respects settings and override
+  const systemPrompt = await resolveFeatureBlueprint('offspring_generation', blueprintOverride, baseUrl);
 
   const userLines: string[] = [];
 

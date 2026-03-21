@@ -79,11 +79,6 @@ export function GuidedTourProvider({ children }: { children: ReactNode }) {
   const [activeStepIndex, setActiveStepIndex] = useState(persistedState?.activeStepIndex ?? 0);
   const [helpState, setHelpState] = useState(() => configManager.getHelpState());
 
-  const activeTour = useMemo(
-    () => (activeTourId ? getGuidedTour(activeTourId) : null),
-    [activeTourId]
-  );
-
   const syncHelpState = () => {
     setHelpState(configManager.getHelpState());
   };
