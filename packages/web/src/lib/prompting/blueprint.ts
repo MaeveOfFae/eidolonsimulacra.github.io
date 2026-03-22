@@ -20,7 +20,7 @@ export interface Blueprint {
 }
 
 const BLUEPRINT_PATH_ALIASES: Record<string, string> = {
-  rpbotgenerator: 'system/rpbotgenerator.md',
+  rpbotgenerator: 'system/generator.md',
   offspring_generator: 'system/offspring_generator.md',
   system_prompt: 'templates/official_v2v3/assets/system_prompt.md',
   post_history: 'templates/official_v2v3/assets/post_history.md',
@@ -74,7 +74,7 @@ export async function loadBlueprint(name: string, baseUrl: string = BLUEPRINT_RE
  * Default blueprints for each feature category
  */
 const DEFAULT_FEATURE_BLUEPRINTS: Partial<Record<FeatureCategory, string>> = {
-  character_generation: 'rpbotgenerator',
+  character_generation: 'generator',
   offspring_generation: 'offspring_generator',
 };
 
@@ -163,7 +163,7 @@ export function parseBlueprintFrontmatter(content: string): {
  */
 export async function listBlueprints(baseUrl: string = BLUEPRINT_REPO_URL): Promise<Blueprint[]> {
   const systemBlueprints = [
-    'rpbotgenerator',
+    'generator',
     'offspring_generator',
   ];
 

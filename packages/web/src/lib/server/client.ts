@@ -123,12 +123,20 @@ class ServerClient {
   }
 
   private async doRefreshToken(): Promise<string> {
-    const response = await this.request('/api/auth/refresh', {
+    // Make direct request without using this.request() to avoid adding expired auth header
+    // The refresh token is sent via cookies (credentials: 'include')
+    const url = `${this.config.url}/api/auth/refresh`;
+    const response = await fetch(url, {
       method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include', // Include cookies for refresh token
     });
 
     if (!response.ok) {
       this.clearAccessToken();
+      this.notifyAuthStateChanged();
       throw new Error('Failed to refresh token');
     }
 

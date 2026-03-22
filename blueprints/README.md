@@ -7,7 +7,7 @@ This directory contains the official orchestrators, template manifests, template
 ```text
 blueprints/
 ├── system/                    # Orchestrator blueprints
-│   ├── rpbotgenerator.md
+│   ├── generator.md
 │   └── offspring_generator.md
 ├── templates/                 # Template manifests and template-local blueprints
 │   ├── official_v2v3/
@@ -23,7 +23,7 @@ Official asset blueprints now live under their template directories, for example
 
 - `blueprints/templates/official_v2v3/assets/`
 - `blueprints/templates/official_aksho/assets/`
-- `blueprints/system/` for orchestrators like `rpbotgenerator.md`
+- `blueprints/system/` for orchestrators like `generator.md`
 
 ## Official Templates
 

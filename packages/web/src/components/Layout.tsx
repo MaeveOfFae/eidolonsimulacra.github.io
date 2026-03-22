@@ -27,20 +27,23 @@ import {
   ChevronRight,
   Globe,
   Calendar,
-  Inbox,
   ChevronRight as TrayChevronRight,
+  Layers as DynamicIcon,
+  HelpCircle,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { helpTopics, resolvePageHelp } from '../lib/help';
+import { roadmapGroups } from '../lib/roadmap';
 import { api } from '../lib/api';
 import { getFavoriteSeeds } from '../lib/seed-generator';
 import { cn } from '../utils/cn';
 import { AssistantContextProvider } from './common/AssistantContext';
 import ContextualHelpPanel from './common/ContextualHelpPanel';
-import GlobalAssistant from './common/GlobalAssistant';
+import HelpTab from './common/HelpTab';
 import GuidedTourOverlay from './common/GuidedTourOverlay';
 import { GuidedTourProvider } from './common/GuidedTourContext';
 import { serverClient, type SyncStatus, AUTH_STATE_CHANGED_EVENT } from '../lib/server/index.js';
+import { DraftListSidebar } from './drafts/DraftListSidebar';
 
 interface LayoutProps {
   children: ReactNode;
@@ -224,6 +227,7 @@ export default function Layout({ children }: LayoutProps) {
   const [authStatus, setAuthStatus] = useState<SyncStatus | null>(null);
   const [charactersExpanded, setCharactersExpanded] = useState(false);
   const [worldsExpanded, setWorldsExpanded] = useState(false);
+  const [trayTab, setTrayTab] = useState<'help' | 'dynamic' | 'whats-new'>('help');
   const pageHelp = useMemo(() => resolvePageHelp(location.pathname), [location.pathname]);
   const relatedTopics = useMemo(
     () => helpTopics.filter((topic) => pageHelp?.relatedTopicIds.includes(topic.id)),
@@ -231,10 +235,11 @@ export default function Layout({ children }: LayoutProps) {
   );
 
   // Query for drafts count
-  const { data: draftsData } = useQuery({
+  const draftsQuery = useQuery({
     queryKey: ['drafts'],
     queryFn: () => api.getDrafts(),
   });
+  const { data: draftsData } = draftsQuery;
 
   const { data: reviewDraft } = useQuery({
     queryKey: ['draft', reviewDraftId],
@@ -380,6 +385,21 @@ export default function Layout({ children }: LayoutProps) {
       ],
     }];
   }, [location.pathname, draftsData?.drafts, draftsCount, reviewDraftId, reviewDraft?.assets, templatesData, themesData, blueprintsData, seedsCount]);
+
+  // Get upcoming features for What's New tab
+  const upcomingFeatures = useMemo(() => {
+    return roadmapGroups
+      .filter((group) => group.status !== 'implemented')
+      .flatMap((group) =>
+        group.items.slice(0, 3).map((item, index) => ({
+          id: `${group.id}-${index}`,
+          title: item.length > 60 ? item.slice(0, 60) + '...' : item,
+          category: group.title,
+          status: group.status,
+        }))
+      )
+      .slice(0, 12);
+  }, []);
 
   // Check if any characters submenu item is active
   const charactersPaths = charactersSubmenuItems.map((item) => item.path);
@@ -632,26 +652,6 @@ export default function Layout({ children }: LayoutProps) {
 
           {/* Page content */}
           <div className="p-6 lg:p-8">
-            {pageHelp && (
-              <section className="mb-6 hidden rounded-2xl border border-border/60 bg-card/60 p-4 backdrop-blur-sm lg:block">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Contextual Help</p>
-                    <h2 className="mt-1 text-lg font-semibold text-foreground">{pageHelp.title}</h2>
-                    <p className="mt-2 text-sm leading-6 text-muted-foreground">{pageHelp.summary}</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setHelpOpen(true)}
-                    className="inline-flex items-center gap-2 rounded-lg border border-border/60 bg-background/50 px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:text-primary"
-                  >
-                    <CircleHelp className="h-4 w-4" />
-                    Open page help
-                  </button>
-                </div>
-              </section>
-            )}
-
             {children}
           </div>
         </main>
@@ -664,72 +664,152 @@ export default function Layout({ children }: LayoutProps) {
           />
         )}
         <aside className="hidden w-80 flex-col border-l border-border/60 bg-card/40 xl:flex">
-          <div className="sticky top-0 z-10 border-b border-border/60 bg-card/80 p-4 backdrop-blur">
-            <div className="flex items-center gap-2">
-              <Inbox className="h-4 w-4 text-primary" />
-              <h2 className="text-sm font-semibold tracking-wide">Dynamic Tray</h2>
+          <div className="sticky top-0 z-10 border-b border-border/60 bg-card/80 backdrop-blur">
+            {/* Tab buttons */}
+            <div className="flex border-b border-border/40">
+              <button
+                type="button"
+                onClick={() => setTrayTab('help')}
+                className={cn(
+                  'flex-1 flex items-center justify-center gap-2 px-4 py-3 text-xs font-medium transition-colors',
+                  trayTab === 'help'
+                    ? 'border-b-2 border-primary text-primary'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <HelpCircle className="h-3.5 w-3.5" />
+                Help
+              </button>
+              <button
+                type="button"
+                onClick={() => setTrayTab('dynamic')}
+                className={cn(
+                  'flex-1 flex items-center justify-center gap-2 px-4 py-3 text-xs font-medium transition-colors',
+                  trayTab === 'dynamic'
+                    ? 'border-b-2 border-primary text-primary'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <DynamicIcon className="h-3.5 w-3.5" />
+                Dynamic
+              </button>
+              <button
+                type="button"
+                onClick={() => setTrayTab('whats-new')}
+                className={cn(
+                  'flex-1 flex items-center justify-center gap-2 px-4 py-3 text-xs font-medium transition-colors',
+                  trayTab === 'whats-new'
+                    ? 'border-b-2 border-primary text-primary'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                New
+              </button>
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">Dynamic filing tray for the current page.</p>
           </div>
-          <div className="flex-1 overflow-y-auto p-3">
-            <div className="space-y-4">
-              {traySections.map((section) => (
-                <section key={section.id} className="space-y-2">
-                  <h3 className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{section.title}</h3>
-                  {section.items.length === 0 ? (
-                    <div className="rounded-lg border border-dashed border-border p-3 text-xs text-muted-foreground">
-                      {section.emptyLabel}
+          <div className="flex-1 overflow-hidden">
+            {trayTab === 'help' ? (
+              <HelpTab pageHelp={pageHelp} relatedTopics={relatedTopics} />
+            ) : trayTab === 'dynamic' ? (
+              location.pathname.startsWith('/drafts') ? (
+                <DraftListSidebar
+                  drafts={draftsData?.drafts || []}
+                  isLoading={draftsQuery.isLoading}
+                />
+              ) : (
+                <div className="space-y-3">
+                  <div className="px-1">
+                    <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Upcoming Features</h3>
+                    <p className="mt-1 text-xs text-muted-foreground">Planned improvements and new capabilities.</p>
+                  </div>
+                  {upcomingFeatures.map((feature) => (
+                    <div
+                      key={feature.id}
+                      className="rounded-lg border border-border/70 bg-background/50 p-3"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <span className={cn(
+                          'rounded-full px-2 py-0.5 text-[10px] font-semibold',
+                          feature.status === 'planned'
+                            ? 'bg-blue-500/15 text-blue-600 dark:text-blue-400'
+                            : 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
+                        )}>
+                          {feature.status === 'planned' ? 'Planned' : 'In Progress'}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-sm text-foreground leading-snug">{feature.title}</p>
+                      <p className="mt-1.5 text-xs text-muted-foreground">{feature.category}</p>
                     </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {section.items.map((item) => {
-                        const content = (
-                          <>
-                            <div className="min-w-0 flex-1">
-                              <div className="truncate text-sm font-medium">{item.label}</div>
-                              {item.description && (
-                                <div className="truncate text-xs text-muted-foreground">{item.description}</div>
+                  ))}
+                  <Link
+                    to="/whats-new"
+                    className="flex items-center justify-center gap-2 rounded-lg border border-border/60 bg-background/50 px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:text-primary"
+                  >
+                    View Full Roadmap
+                    <TrayChevronRight className="h-4 w-4" />
+                  </Link>
+                </div>
+              )
+            ) : (
+              <div className="space-y-4">
+                {traySections.map((section) => (
+                  <section key={section.id} className="space-y-2">
+                    <h3 className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{section.title}</h3>
+                    {section.items.length === 0 ? (
+                      <div className="rounded-lg border border-dashed border-border p-3 text-xs text-muted-foreground">
+                        {section.emptyLabel}
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {section.items.map((item) => {
+                          const content = (
+                            <>
+                              <div className="min-w-0 flex-1">
+                                <div className="truncate text-sm font-medium">{item.label}</div>
+                                {item.description && (
+                                  <div className="truncate text-xs text-muted-foreground">{item.description}</div>
+                                )}
+                              </div>
+                              {item.badge && (
+                                <span className="rounded-full border border-border bg-background px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                                  {item.badge}
+                                </span>
                               )}
-                            </div>
-                            {item.badge && (
-                              <span className="rounded-full border border-border bg-background px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
-                                {item.badge}
-                              </span>
-                            )}
-                            {item.to && <TrayChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
-                          </>
-                        );
+                              {item.to && <TrayChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
+                            </>
+                          );
 
-                        if (item.to) {
+                          if (item.to) {
+                            return (
+                              <Link
+                                key={item.id}
+                                to={item.to}
+                                className="flex items-center gap-2 rounded-lg border border-border/70 bg-background/70 px-3 py-2 transition-colors hover:border-primary/40 hover:bg-accent/40"
+                              >
+                                {content}
+                              </Link>
+                            );
+                          }
+
                           return (
-                            <Link
+                            <div
                               key={item.id}
-                              to={item.to}
-                              className="flex items-center gap-2 rounded-lg border border-border/70 bg-background/70 px-3 py-2 transition-colors hover:border-primary/40 hover:bg-accent/40"
+                              className="flex items-center gap-2 rounded-lg border border-border/70 bg-background/50 px-3 py-2"
                             >
                               {content}
-                            </Link>
+                            </div>
                           );
-                        }
-
-                        return (
-                          <div
-                            key={item.id}
-                            className="flex items-center gap-2 rounded-lg border border-border/70 bg-background/50 px-3 py-2"
-                          >
-                            {content}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </section>
-              ))}
-            </div>
+                        })}
+                      </div>
+                    )}
+                  </section>
+                ))}
+              </div>
+            )}
           </div>
         </aside>
         <GuidedTourOverlay />
-        <GlobalAssistant />
       </div>
       </GuidedTourProvider>
     </AssistantContextProvider>

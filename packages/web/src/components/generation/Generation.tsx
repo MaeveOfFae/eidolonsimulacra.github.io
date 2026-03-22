@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Sparkles, Zap, BookOpen, XCircle, Loader2 } from 'lucide-react';
+import { Sparkles, Zap, BookOpen, XCircle, Loader2, Edit3, MessageSquarePlus } from 'lucide-react';
 import type { ContentMode, GenerationComplete, Template } from '@char-gen/shared';
 import { api } from '@/lib/api';
 import { GETTING_STARTED_TOUR_ID } from '@/lib/help';
@@ -13,12 +13,29 @@ import { useAssistantScreenContext } from '../common/useAssistantContext';
 import InlineHelpTip from '../common/InlineHelpTip';
 import { useGuidedTour } from '../common/GuidedTourContext';
 import GenerationProgress from './GenerationProgress';
+import DraftRefiner from './DraftRefiner';
+import IntroGenerator from './IntroGenerator';
 import ApprovalWorkflowPlaceholder from './ApprovalWorkflowPlaceholder';
 import CheckpointSessionPlaceholder from './CheckpointSessionPlaceholder';
+
+type TabId = 'generate' | 'refine' | 'intros';
+
+interface Tab {
+  id: TabId;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
+
+const TABS: Tab[] = [
+  { id: 'generate', label: 'Generate New', icon: Sparkles },
+  { id: 'refine', label: 'Refine Draft', icon: Edit3 },
+  { id: 'intros', label: 'More Intros', icon: MessageSquarePlus },
+];
 
 export default function Generation() {
   const location = useLocation();
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<TabId>('generate');
   const [seed, setSeed] = useState('');
   const [mode, setMode] = useState<ContentMode>('NSFW');
   const [template, setTemplate] = useState('');
@@ -129,14 +146,45 @@ export default function Generation() {
       <div className="text-center space-y-3 mb-8">
         <div className="inline-flex items-center gap-3 px-4 py-2 rounded-xl bg-gradient-to-r from-primary to-accent shadow-lg shadow-primary/20">
           <Sparkles className="h-6 w-6 text-white animate-pulse" />
-          <span className="text-xl font-bold text-white">Generate Character</span>
+          <span className="text-xl font-bold text-white">Character Generator</span>
         </div>
         <p className="text-muted-foreground max-w-xl mx-auto">
-          Enter a seed concept and optionally choose content mode and template to generate a character.
+          Generate new characters or refine existing drafts field by field.
         </p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      {/* Tab Navigation */}
+      <div className="flex justify-center">
+        <div className="inline-flex rounded-xl border border-border bg-card/50 p-1">
+          {TABS.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                  isActive
+                    ? 'bg-primary text-primary-foreground shadow-md'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === 'refine' ? (
+        <DraftRefiner templates={templates} />
+      ) : activeTab === 'intros' ? (
+        <IntroGenerator templates={templates} />
+      ) : (
+        <>
+        <div className="grid gap-6 lg:grid-cols-2">
         {/* Seed Input Section */}
         <section className="space-y-4">
           <InlineHelpTip
@@ -316,6 +364,8 @@ export default function Generation() {
           onError={handleError}
           onCancel={handleCancel}
         />
+      )}
+      </>
       )}
     </div>
   );

@@ -230,7 +230,7 @@ export class ConfigManager {
       },
       help: createDefaultHelpState(),
       feature_blueprints: {
-        character_generation: 'rpbotgenerator',
+        character_generation: 'generator',
         offspring_generation: 'offspring_generator',
       },
     };

@@ -1,5 +1,5 @@
 /**
- * RPBotGenerator Orchestrator - Main system prompt for character generation.
+ * Generator Orchestrator - Main system prompt for character generation.
  *
  * This is the blueprint sent to the LLM to generate character assets.
  * It defines the contract, rules, and structure for character generation.
@@ -116,14 +116,14 @@ export function buildOrchestrator(options: OrchestratorOptions = {}): string {
   const modeInstruction = buildModeInstruction(mode);
 
   return `---
-name: RPBotGenerator Orchestrator
+name: Generator Orchestrator
 description: Compile a full suite of character assets from a single seed.
 invokable: true
 always: false
 version: 3.1
 ---
 
-# RPBotGenerator Orchestrator
+# Generator Orchestrator
 
 You do not write disconnected snippets.
 You compile a character package.

@@ -11,7 +11,7 @@ Goal: compile one seed into a complete template-specific asset suite using the o
      b) app-ready asset text for manual paste into the browser flow
 
 2) Open and read:
-   - `blueprints/system/rpbotgenerator.md`
+   - `blueprints/system/generator.md`
    - the selected template's `template.toml`
    - every asset blueprint referenced by that template
 

@@ -843,7 +843,7 @@ export default function Settings() {
           <div className="space-y-2">
             <label className="text-sm font-medium">Character Generation</label>
             <select
-              value={localConfig.feature_blueprints?.character_generation || 'rpbotgenerator'}
+              value={localConfig.feature_blueprints?.character_generation || 'generator'}
               onChange={(e) => setLocalConfig((prev) => ({
                 ...prev,
                 feature_blueprints: {
@@ -853,7 +853,7 @@ export default function Settings() {
               }))}
               className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <option value="rpbotgenerator">RPBotGenerator (Default)</option>
+              <option value="generator">Orchestrator (Default)</option>
               <option value="">None (Built-in)</option>
             </select>
             <p className="text-xs text-muted-foreground">

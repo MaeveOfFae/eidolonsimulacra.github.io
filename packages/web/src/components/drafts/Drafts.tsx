@@ -1,17 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { FolderOpen, Star, Clock } from 'lucide-react';
+import { FolderOpen } from 'lucide-react';
 import { api } from '@/lib/api';
-import { DRAFT_LIBRARY_TOUR_ID } from '@/lib/help';
-import InlineHelpTip from '../common/InlineHelpTip';
-import { useGuidedTour } from '../common/GuidedTourContext';
 import SyncControls from '../common/SyncControls';
 import { DraftStorage } from '@/lib/storage/draft-db';
-import DraftComparisonPlaceholder from './DraftComparisonPlaceholder';
-import LibraryCollectionsPlaceholder from './LibraryCollectionsPlaceholder';
-import ReviewChecklistPlaceholder from './ReviewChecklistPlaceholder';
-import VersionHistoryPlaceholder from './VersionHistoryPlaceholder';
+import InlineHelpTip from '../common/InlineHelpTip';
+import { useGuidedTour } from '../common/GuidedTourContext';
+import { DRAFT_LIBRARY_TOUR_ID } from '@/lib/help';
+import { LibraryCollectionsPlaceholder } from './LibraryCollectionsPlaceholder';
+import { DraftComparisonPlaceholder } from './DraftComparisonPlaceholder';
+import { ReviewChecklistPlaceholder } from './ReviewChecklistPlaceholder';
+import { VersionHistoryPlaceholder } from './VersionHistoryPlaceholder';
 
 export default function Drafts() {
   const [leftDraftId, setLeftDraftId] = useState<string>('');
@@ -56,19 +56,21 @@ export default function Drafts() {
     );
   }
 
+  const hasDrafts = data?.drafts.length > 0;
+
   return (
     <div className="space-y-6">
       <InlineHelpTip
         tipId="drafts-library-tip"
         title="Use the library as a review queue"
-        description="After generation, reopen drafts here, compare promising results, and only then move one draft into full review and export. This keeps the workflow deliberate instead of scattered."
+        description="Select drafts from the sidebar to compare and review. Use filters to find specific characters quickly."
         actionLabel={isTourCompleted(DRAFT_LIBRARY_TOUR_ID) ? 'Replay Draft Library Tour' : 'Start Draft Library Tour'}
         onAction={() => (isTourCompleted(DRAFT_LIBRARY_TOUR_ID) ? restartTour(DRAFT_LIBRARY_TOUR_ID) : startTour(DRAFT_LIBRARY_TOUR_ID))}
       />
       <div>
         <h1 className="text-3xl font-bold">Drafts</h1>
         <p className="text-muted-foreground">
-          Browse and manage your saved characters
+          Compare and review your saved characters
         </p>
       </div>
 
@@ -107,93 +109,56 @@ export default function Drafts() {
         />
       </div>
 
-      <section data-tour-anchor="drafts-workbench" className="rounded-lg border border-dashed border-border bg-card/50 p-5">
-        <div className="mb-4 flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-semibold">Draft Workbench</h2>
-            <p className="text-sm text-muted-foreground">
-              Comparison and review checks are available now. Collections and version history remain staged for later workflow work.
-            </p>
+      {/* Empty State */}
+      {!hasDrafts && (
+        <div className="rounded-lg border border-border bg-card p-8 text-center">
+          <FolderOpen className="mx-auto h-12 w-12 text-muted-foreground" />
+          <h3 className="mt-4 text-lg font-semibold">No drafts yet</h3>
+          <p className="text-muted-foreground">
+            Generate your first character to get started
+          </p>
+          <div className="mt-6 text-left">
+            <LibraryCollectionsPlaceholder collectionName="first-run library" />
           </div>
-          <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-            Mixed
-          </span>
+          <Link
+            to="/generate"
+            data-tour-anchor="drafts-open-review"
+            className="mt-4 inline-block rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+          >
+            Generate Character
+          </Link>
         </div>
+      )}
 
-        <div className="grid gap-4 lg:grid-cols-2">
-          <LibraryCollectionsPlaceholder
-            collectionName={data?.drafts.length ? 'all drafts' : 'empty library'}
-          />
-          <DraftComparisonPlaceholder
-            leftDraftId={leftDraftId}
-            rightDraftId={rightDraftId}
-            draftOptions={data?.drafts}
-          />
-          <ReviewChecklistPlaceholder draftId={leftDraftId || data?.drafts[0]?.review_id} />
-          <VersionHistoryPlaceholder draftId={data?.drafts[0]?.review_id} />
-        </div>
-      </section>
-
-      {/* Draft List */}
-      <div data-tour-anchor="drafts-list" className="space-y-2">
-        {data?.drafts.length === 0 ? (
-          <div className="rounded-lg border border-border bg-card p-8 text-center">
-            <FolderOpen className="mx-auto h-12 w-12 text-muted-foreground" />
-            <h3 className="mt-4 text-lg font-semibold">No drafts yet</h3>
-            <p className="text-muted-foreground">
-              Generate your first character to get started
-            </p>
-            <div className="mt-6 text-left">
-              <LibraryCollectionsPlaceholder collectionName="first-run library" />
+      {/* Draft Workbench - only show when there are drafts */}
+      {hasDrafts && (
+        <section data-tour-anchor="drafts-workbench" className="rounded-lg border border-dashed border-border bg-card/50 p-5">
+          <div className="mb-4 flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-semibold">Draft Workbench</h2>
+              <p className="text-sm text-muted-foreground">
+                Select drafts from the sidebar to compare and review. Use the filters to find specific characters.
+              </p>
             </div>
-            <Link
-              to="/generate"
-              data-tour-anchor="drafts-open-review"
-              className="mt-4 inline-block rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
-            >
-              Generate Character
-            </Link>
+            <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+              {data?.drafts.length} drafts
+            </span>
           </div>
-        ) : (
-          data?.drafts.map((draft) => (
-            <Link
-              key={draft.review_id}
-              to={`/drafts/${encodeURIComponent(draft.review_id)}`}
-              data-tour-anchor="drafts-open-review"
-              className="flex items-center gap-4 rounded-lg border border-border bg-card p-4 transition-colors hover:bg-accent"
-            >
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-medium truncate">
-                    {draft.character_name || draft.seed}
-                  </h3>
-                  {draft.favorite && <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />}
-                </div>
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                  <span>{draft.template_name || 'Default Template'}</span>
-                  <span>{draft.mode}</span>
-                  {draft.created && (
-                    <span className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {new Date(draft.created).toLocaleDateString()}
-                    </span>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                {draft.tags?.slice(0, 2).map((tag) => (
-                  <span
-                    key={tag}
-                    className="rounded-full bg-muted px-2 py-0.5 text-xs"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            </Link>
-          ))
-        )}
-      </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <LibraryCollectionsPlaceholder
+              collectionName="all drafts"
+            />
+            <DraftComparisonPlaceholder
+              leftDraftId={leftDraftId}
+              rightDraftId={rightDraftId}
+              draftOptions={data?.drafts}
+            />
+            <ReviewChecklistPlaceholder draftId={leftDraftId || data?.drafts[0]?.review_id} />
+            <VersionHistoryPlaceholder draftId={data?.drafts[0]?.review_id} />
+          </div>
+        </section>
+      )}
     </div>
   );
 }
