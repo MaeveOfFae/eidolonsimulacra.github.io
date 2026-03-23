@@ -25,6 +25,7 @@ import {
 } from '../../theme/theme';
 import { api } from '../../lib/api.js';
 import { configManager, isInvalidApiKeyValue, normalizeApiKeyValue } from '../../lib/config/manager.js';
+import { queueAutoSync } from '../../lib/server/auto-sync.js';
 import { createEngine, MODEL_SUGGESTIONS } from '../../lib/llm/factory.js';
 import { saveBlobDownload } from '../../utils/download';
 import { GETTING_STARTED_TOUR_ID } from '@/lib/help';
@@ -133,15 +134,14 @@ export default function Settings() {
     return MODEL_SUGGESTIONS[selectedProvider] || [];
   }, [availableModels, selectedProvider]);
 
-  const updateConfig = () => {
+  const updateConfig = async () => {
     const persistedConfig = { ...localConfig };
     delete persistedConfig.api_keys;
-    configManager.updateConfig(persistedConfig);
+    await api.updateConfig({
+      ...persistedConfig,
+      api_keys: localConfig.api_keys,
+    });
     configManager.setPersistApiKeys(persistKeys);
-
-    if (localConfig.api_keys) {
-      configManager.setApiKeys(localConfig.api_keys);
-    }
 
     setThemeNotice('Settings saved. Theme and generation config are now persisted.');
     setThemeError(null);
@@ -273,6 +273,7 @@ export default function Settings() {
         delete nextApiKeys[provider];
         configManager.clearApiKey(provider);
       }
+      queueAutoSync('config');
       return {
         ...previous,
         api_keys: nextApiKeys,
@@ -463,12 +464,14 @@ export default function Settings() {
       help: nextHelpState,
     }));
     configManager.updateHelpState(nextHelpState);
+    queueAutoSync('config');
     setThemeNotice('Getting Started has been reset. Return to Home to run through it again.');
     setThemeError(null);
   };
 
   const handleResetHelpPreferences = () => {
     configManager.resetHelpState();
+    queueAutoSync('config');
     setLocalConfig((previous) => ({
       ...previous,
       help: configManager.getHelpState(),
@@ -781,7 +784,7 @@ export default function Settings() {
           {/* Quick Save Button */}
           <div className="flex items-center gap-3 pt-2">
             <button
-              onClick={updateConfig}
+              onClick={() => void updateConfig()}
               className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary to-accent px-6 py-2.5 text-sm font-semibold text-primary-foreground hover:from-primary/90 hover:to-accent/90 transition-all duration-200 shadow-lg shadow-primary/20"
             >
               <Save className="h-4 w-4" />
@@ -1308,7 +1311,7 @@ export default function Settings() {
           </div>
         )}
         <button
-          onClick={updateConfig}
+          onClick={() => void updateConfig()}
           className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary to-accent px-6 py-2.5 text-sm font-semibold text-primary-foreground hover:from-primary/90 hover:to-accent/90 transition-all duration-200 shadow-lg shadow-primary/20"
         >
           <Save className="h-4 w-4" />

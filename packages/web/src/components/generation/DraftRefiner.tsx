@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   RotateCcw,
@@ -13,6 +13,12 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { GenerationService } from '@/lib/services/generation';
+import {
+  clearActiveDraftRefinerSession,
+  type ActiveDraftRefinerAssetState,
+  loadActiveDraftRefinerSession,
+  saveActiveDraftRefinerSession,
+} from '@/lib/services/generation-session';
 import type { Draft, Template } from '@char-gen/shared';
 
 interface DraftRefinerProps {
@@ -32,6 +38,8 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
   const [expandedAssets, setExpandedAssets] = useState<Set<string>>(new Set());
   const [editingAsset, setEditingAsset] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
+  const [resumeNotice, setResumeNotice] = useState<string | null>(null);
+  const restoredSessionRef = useRef(loadActiveDraftRefinerSession());
   const queryClient = useQueryClient();
 
   // Fetch all drafts for selection
@@ -58,8 +66,33 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
     return draft ? Object.keys(draft.assets) : [];
   }, [draft]);
 
+  useEffect(() => {
+    const session = restoredSessionRef.current;
+    if (!session) {
+      return;
+    }
+
+    setSelectedDraftId(session.selectedDraftId);
+    setAssetStates(session.assetStates);
+    setExpandedAssets(new Set(session.expandedAssets));
+    setEditingAsset(session.editingAsset);
+    setEditContent(session.editContent);
+
+    if (session.interrupted) {
+      setResumeNotice('Draft refinement was interrupted. Restored your editable snapshot.');
+    } else if (session.editingAsset) {
+      setResumeNotice('Restored draft refinement edit in progress.');
+    } else if (Object.values(session.assetStates).some((state) => state.status === 'reviewing' || state.content !== state.originalContent)) {
+      setResumeNotice('Restored draft refinement changes for review.');
+    } else if (session.selectedDraftId) {
+      setResumeNotice('Restored selected draft.');
+    }
+
+    restoredSessionRef.current = null;
+  }, []);
+
   // Initialize asset states when draft loads
-  useMemo(() => {
+  useEffect(() => {
     if (draft && Object.keys(assetStates).length === 0) {
       const states: Record<string, AssetRegenerationState> = {};
       for (const name of Object.keys(draft.assets)) {
@@ -272,7 +305,69 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
     setAssetStates({});
     setExpandedAssets(new Set());
     setEditingAsset(null);
+    setEditContent('');
+    setResumeNotice(null);
   }, []);
+
+  useEffect(() => {
+    const hasState = Boolean(
+      selectedDraftId
+      || Object.keys(assetStates).length > 0
+      || editingAsset
+      || editContent.trim()
+    );
+
+    if (!hasState) {
+      clearActiveDraftRefinerSession();
+      return;
+    }
+
+    const interrupted = Object.values(assetStates).some(
+      (state) => state.status === 'generating' || state.status === 'saving'
+    );
+
+    const serializedAssetStates: Record<string, ActiveDraftRefinerAssetState> = Object.fromEntries(
+      Object.entries(assetStates).map(([assetName, state]) => [
+        assetName,
+        {
+          assetName: state.assetName,
+          status: state.status === 'reviewing' ? 'reviewing' : 'idle',
+          content: state.content,
+          originalContent: state.originalContent,
+        },
+      ])
+    );
+
+    saveActiveDraftRefinerSession({
+      version: 1,
+      selectedDraftId,
+      assetStates: serializedAssetStates,
+      expandedAssets: Array.from(expandedAssets),
+      editingAsset,
+      editContent,
+      interrupted,
+      updatedAt: Date.now(),
+    });
+  }, [assetStates, editContent, editingAsset, expandedAssets, selectedDraftId]);
+
+  useEffect(() => {
+    const hasWorkingState = Boolean(
+      editingAsset
+      || Object.values(assetStates).some((state) => state.status !== 'idle' || state.content !== state.originalContent)
+    );
+
+    if (!hasWorkingState) {
+      return;
+    }
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [assetStates, editingAsset]);
 
   const getStatusIcon = (status: AssetRegenerationState['status']) => {
     switch (status) {
@@ -305,6 +400,12 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
             </option>
           ))}
         </select>
+
+        {resumeNotice && (
+          <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+            {resumeNotice}
+          </div>
+        )}
       </div>
 
       {/* Loading State */}

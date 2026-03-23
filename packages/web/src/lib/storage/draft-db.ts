@@ -216,6 +216,16 @@ export class DraftStorage {
   }
 
   /**
+   * Get asset activity rows for a draft, newest first.
+   */
+  static async getAssetActivity(reviewId: string): Promise<AssetEntity[]> {
+    await this.ensureReady();
+
+    const rows = await db.assets.where('draftId').equals(reviewId).toArray();
+    return rows.sort((left, right) => right.createdAt - left.createdAt);
+  }
+
+  /**
    * Get all drafts
    */
   static async getAllDrafts(): Promise<Draft[]> {

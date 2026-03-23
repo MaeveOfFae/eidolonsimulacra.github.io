@@ -1,8 +1,13 @@
-import { useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Play, Pause, Upload, X, CheckCircle, XCircle, Loader2, List } from 'lucide-react';
 import type { ContentMode } from '@char-gen/shared';
 import { api } from '@/lib/api';
+import {
+  clearActiveBatchGenerationSession,
+  loadActiveBatchGenerationSession,
+  saveActiveBatchGenerationSession,
+} from '@/lib/services/generation-session';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
 import BatchSchedulingPlaceholder from './BatchSchedulingPlaceholder';
 import BatchTemplatesPlaceholder from './BatchTemplatesPlaceholder';
@@ -24,12 +29,40 @@ export default function BatchGenerate() {
   const [isRunning, setIsRunning] = useState(false);
   const [currentSeed, setCurrentSeed] = useState<string>('');
   const [inputText, setInputText] = useState('');
+  const [resumeNotice, setResumeNotice] = useState<string | null>(null);
+  const restoredSessionRef = useRef(loadActiveBatchGenerationSession());
   const abortRef = useRef<(() => void) | null>(null);
 
   const { data: templates } = useQuery({
     queryKey: ['templates'],
     queryFn: () => api.getTemplates(),
   });
+
+  useEffect(() => {
+    const session = restoredSessionRef.current;
+    if (!session) {
+      return;
+    }
+
+    setSeeds(session.seeds);
+    setMode(session.mode);
+    setTemplate(session.template || '');
+    setParallel(session.parallel);
+    setMaxConcurrent(session.maxConcurrent);
+    setInputText(session.inputText);
+    setJobs(session.jobs);
+    setCurrentSeed(session.currentSeed);
+
+    if (session.status === 'running') {
+      setResumeNotice('Batch generation was interrupted. Restored the queue snapshot; start again to continue remaining work.');
+    } else if (session.jobs.length > 0) {
+      setResumeNotice('Restored batch queue and progress snapshot.');
+    } else {
+      setResumeNotice('Restored batch queue settings.');
+    }
+
+    restoredSessionRef.current = null;
+  }, []);
 
   const handleAddSeeds = () => {
     const newSeeds = inputText
@@ -39,22 +72,29 @@ export default function BatchGenerate() {
     if (newSeeds.length > 0) {
       setSeeds(prev => [...prev, ...newSeeds]);
       setInputText('');
+      setResumeNotice(null);
     }
   };
 
   const handleRemoveSeed = (seed: string) => {
     setSeeds(prev => prev.filter(s => s !== seed));
+    setResumeNotice(null);
   };
 
   const handleClearAll = () => {
     setSeeds([]);
     setJobs([]);
+    setCurrentSeed('');
+    setInputText('');
+    setResumeNotice(null);
+    clearActiveBatchGenerationSession();
   };
 
   const handleRunBatch = async () => {
     if (seeds.length === 0 || isRunning) return;
 
     setIsRunning(true);
+    setResumeNotice(null);
     setJobs(seeds.map(seed => ({ seed, status: 'pending' as const })));
 
     try {
@@ -93,6 +133,7 @@ export default function BatchGenerate() {
         console.error('Batch error:', error);
         setIsRunning(false);
         setCurrentSeed('');
+        setResumeNotice('Batch run stopped after an error. Queue snapshot is still available.');
       });
 
       stream.onComplete_(() => {
@@ -105,6 +146,7 @@ export default function BatchGenerate() {
       console.error(err);
       setIsRunning(false);
       setCurrentSeed('');
+      setResumeNotice('Batch run was interrupted. Queue snapshot was preserved.');
     }
   };
 
@@ -113,8 +155,54 @@ export default function BatchGenerate() {
       abortRef.current();
       setIsRunning(false);
       setCurrentSeed('');
+      setResumeNotice('Batch run stopped. Queue snapshot is still available.');
     }
   };
+
+  useEffect(() => {
+    const hasState = Boolean(
+      seeds.length > 0
+      || inputText.trim()
+      || jobs.length > 0
+      || template
+      || mode !== 'SFW'
+      || !parallel
+      || maxConcurrent !== 3
+    );
+
+    if (!hasState) {
+      clearActiveBatchGenerationSession();
+      return;
+    }
+
+    saveActiveBatchGenerationSession({
+      version: 1,
+      seeds,
+      mode,
+      template: template || undefined,
+      parallel,
+      maxConcurrent,
+      inputText,
+      jobs,
+      currentSeed,
+      status: isRunning ? 'running' : jobs.length > 0 ? 'ready' : 'configuring',
+      updatedAt: Date.now(),
+    });
+  }, [currentSeed, inputText, isRunning, jobs, maxConcurrent, mode, parallel, seeds, template]);
+
+  useEffect(() => {
+    if (!isRunning && seeds.length === 0 && !inputText.trim() && jobs.length === 0) {
+      return;
+    }
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [inputText, isRunning, jobs.length, seeds.length]);
 
   const modes: ContentMode[] = ['SFW', 'NSFW', 'Platform-Safe', 'Auto'];
 
@@ -201,6 +289,12 @@ export default function BatchGenerate() {
             </button>
           </div>
         </div>
+
+        {resumeNotice && (
+          <div className="rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-sm text-foreground">
+            {resumeNotice}
+          </div>
+        )}
 
         {/* Seed List */}
         {seeds.length > 0 && (

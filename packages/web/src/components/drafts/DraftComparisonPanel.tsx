@@ -4,7 +4,7 @@ import { GitCompare, Loader2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { DraftMetadata } from '@char-gen/shared';
 
-export interface DraftComparisonPlaceholderProps {
+export interface DraftComparisonPanelProps {
   leftDraftId?: string;
   rightDraftId?: string;
   draftOptions?: DraftMetadata[];
@@ -25,11 +25,11 @@ function countChangedLines(left: string, right: string): number {
   return changed;
 }
 
-export function DraftComparisonPlaceholder({
+export function DraftComparisonPanel({
   leftDraftId,
   rightDraftId,
   draftOptions = [],
-}: DraftComparisonPlaceholderProps) {
+}: DraftComparisonPanelProps) {
   const [selectedLeftDraftId, setSelectedLeftDraftId] = useState(leftDraftId || '');
   const [selectedRightDraftId, setSelectedRightDraftId] = useState(rightDraftId || '');
   const [selectedAsset, setSelectedAsset] = useState<string>('');
@@ -244,4 +244,4 @@ export function DraftComparisonPlaceholder({
   );
 }
 
-export default DraftComparisonPlaceholder;
+export default DraftComparisonPanel;

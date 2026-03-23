@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Sparkles, Loader2, ArrowRight, Copy, Check, RefreshCcw, Wand2, Star, History } from 'lucide-react';
@@ -22,6 +22,11 @@ import {
   type SeedRunRecord,
   type SeedSuggestionPreset,
 } from '../../lib/seed-generator.js';
+import {
+  clearActiveSeedGeneratorSession,
+  loadActiveSeedGeneratorSession,
+  saveActiveSeedGeneratorSession,
+} from '@/lib/services/generation-session';
 
 const defaultPreset = pickSurpriseSeedPreset();
 
@@ -38,13 +43,17 @@ export default function SeedGenerator() {
     count: DEFAULT_SEED_COUNT,
     coverageMode: 'per-genre',
   });
+  const [resumeNotice, setResumeNotice] = useState<string | null>(null);
   const [history, setHistory] = useState<SeedRunRecord[]>(() => getSeedRunHistory());
   const [favorites, setFavorites] = useState<FavoriteSeedRecord[]>(() => getFavoriteSeeds());
+  const [restoredSeeds, setRestoredSeeds] = useState<string[]>(() => loadActiveSeedGeneratorSession()?.seeds ?? []);
+  const restoredSessionRef = useRef(loadActiveSeedGeneratorSession());
   const presets = useMemo(() => getSeedSuggestionPresets(), []);
 
   const seedMutation = useMutation({
     mutationFn: (request: SeedGenerationRequest) => api.generateSeeds(request),
     onSuccess: (data, variables) => {
+      setRestoredSeeds(data.seeds);
       const nextHistory = saveSeedRun({
         request: {
           genreLines: variables.genre_lines,
@@ -59,8 +68,29 @@ export default function SeedGenerator() {
     },
   });
 
-  const seeds = seedMutation.data?.seeds ?? [];
+  const seeds = seedMutation.data?.seeds ?? restoredSeeds;
   const inputLineCount = countNonEmptyLines(genreLines);
+
+  useEffect(() => {
+    const session = restoredSessionRef.current;
+    if (!session) {
+      return;
+    }
+
+    setGenreLines(session.genreLines);
+    setActivePreset(session.activePreset);
+    setControls(session.controls);
+
+    if (session.status === 'generating') {
+      setResumeNotice('Seed generation was interrupted. Review the restored inputs and generate again to continue.');
+    } else if (session.status === 'ready' && session.seeds.length > 0) {
+      setResumeNotice('Restored generated seeds.');
+    } else {
+      setResumeNotice('Restored seed generator inputs.');
+    }
+
+    restoredSessionRef.current = null;
+  }, []);
 
   useAssistantScreenContext({
     genre_input_preview: genreLines.slice(0, 400),
@@ -83,10 +113,14 @@ export default function SeedGenerator() {
   const favoriteSeeds = useMemo(() => new Set(favorites.map((entry) => entry.seed)), [favorites]);
 
   const handleGenerate = () => {
+    setResumeNotice(null);
+    setRestoredSeeds([]);
     seedMutation.mutate({ genre_lines: requestGenreLines, surprise_mode: false });
   };
 
   const handleSurprise = () => {
+    setResumeNotice(null);
+    setRestoredSeeds([]);
     const preset = pickSurpriseSeedPreset();
     setGenreLines(preset.genreLines);
     setActivePreset(preset.id);
@@ -99,12 +133,16 @@ export default function SeedGenerator() {
   const handlePreset = (preset: SeedSuggestionPreset) => {
     setGenreLines(preset.genreLines);
     setActivePreset(preset.id);
+    setResumeNotice(null);
   };
 
   const handleReset = () => {
     setGenreLines(defaultPreset.genreLines);
     setActivePreset(defaultPreset.id);
     setControls({ count: DEFAULT_SEED_COUNT, coverageMode: 'per-genre' });
+    setRestoredSeeds([]);
+    setResumeNotice(null);
+    clearActiveSeedGeneratorSession();
   };
 
   const handleCopyAll = async () => {
@@ -152,6 +190,7 @@ export default function SeedGenerator() {
       coverageMode: entry.request.coverageMode,
     });
     setActivePreset(entry.request.presetId || null);
+    setResumeNotice(null);
   };
 
   const handleCountChange = (value: string) => {
@@ -164,6 +203,48 @@ export default function SeedGenerator() {
   const handleCoverageMode = (coverageMode: SeedCoverageMode) => {
     setControls((previous) => ({ ...previous, coverageMode }));
   };
+
+  useEffect(() => {
+    const hasState = Boolean(
+      genreLines.trim()
+      || seeds.length > 0
+      || activePreset
+      || controls.count !== DEFAULT_SEED_COUNT
+      || controls.coverageMode !== 'per-genre'
+    );
+
+    if (!hasState) {
+      clearActiveSeedGeneratorSession();
+      return;
+    }
+
+    saveActiveSeedGeneratorSession({
+      version: 1,
+      genreLines,
+      activePreset,
+      controls: {
+        count: controls.count,
+        coverageMode: controls.coverageMode,
+      },
+      seeds,
+      status: seedMutation.isPending ? 'generating' : seeds.length > 0 ? 'ready' : 'idle',
+      updatedAt: Date.now(),
+    });
+  }, [activePreset, controls, genreLines, seedMutation.isPending, seeds]);
+
+  useEffect(() => {
+    if (!seedMutation.isPending && !genreLines.trim() && seeds.length === 0) {
+      return;
+    }
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [genreLines, seedMutation.isPending, seeds.length]);
 
   return (
     <div className="space-y-6">
@@ -267,6 +348,12 @@ export default function SeedGenerator() {
           <div className="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
             {inputLineCount} input lines. Request controls: {controls.count} seeds, {controls.coverageMode}. Output stays one seed per line with no numbering or headings.
           </div>
+
+          {resumeNotice && !seedMutation.error && (
+            <div className="rounded-lg border border-primary/30 bg-primary/10 p-3 text-sm text-foreground">
+              {resumeNotice}
+            </div>
+          )}
 
           <div className="flex flex-wrap gap-3">
             <button

@@ -15,7 +15,6 @@ import {
   resolveThemeColors,
 } from '../../theme/theme';
 import { api } from '../../lib/api.js';
-import { configManager } from '../../lib/config/manager.js';
 import { saveBlobDownload } from '../../utils/download';
 
 type ThemeImportPayload = {
@@ -154,10 +153,6 @@ export default function ThemeSelection() {
   const handleSaveTheme = async () => {
     try {
       await api.updateConfig({
-        theme_name: localConfig.theme_name,
-        theme: localConfig.theme,
-      });
-      configManager.updateConfig({
         theme_name: localConfig.theme_name,
         theme: localConfig.theme,
       });

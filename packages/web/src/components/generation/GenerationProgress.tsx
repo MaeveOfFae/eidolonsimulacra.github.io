@@ -3,6 +3,7 @@ import { CheckCircle2, Circle, Loader2, XCircle, FileText, Clock, RotateCcw, Sav
 import type { GenerationComplete, Template } from '@char-gen/shared';
 import { GenerationService } from '../../lib/services/generation.js';
 import { configManager } from '../../lib/config/manager.js';
+import { queueAutoSync } from '../../lib/server/auto-sync.js';
 import {
   clearActiveGenerationSession,
   loadActiveGenerationSession,
@@ -218,6 +219,7 @@ export default function GenerationProgress({
       };
 
       await DraftStorage.saveDraft(draft);
+      queueAutoSync('drafts');
 
       clearActiveGenerationSession();
       setCharacterName(nextCharacterName);

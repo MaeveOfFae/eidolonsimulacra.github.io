@@ -1,8 +1,10 @@
 import {
   OFFICIAL_TEMPLATE,
   detectProviderFromModel,
+  validateAssetContent,
   validateTemplate as validateTemplateDefinition,
   getOrderedAssets,
+  type AssetName,
   type ApiKeys,
   type Blueprint,
   type BlueprintList,
@@ -70,6 +72,7 @@ import {
   saveStoredTemplates,
 } from './templates/browser.js';
 import { serverClient } from './server/client.js';
+import { queueAutoSync } from './server/auto-sync.js';
 
 export interface DownloadResponse {
   blob: Blob;
@@ -77,8 +80,9 @@ export interface DownloadResponse {
   contentType: string | null;
 }
 
-type StreamEventType = 'chunk' | 'complete' | 'error' | 'batch_start' | 'batch_complete' | 'batch_error';
+type StreamEventType = 'status' | 'chunk' | 'complete' | 'error' | 'batch_start' | 'batch_complete' | 'batch_error';
 
+type StatusStreamData = { stage?: string; asset?: string; progress?: number };
 type ChunkStreamData = { content: string };
 type ErrorStreamData = { error: string };
 type BatchStartStreamData = { index: number; seed: string };
@@ -93,6 +97,7 @@ type CompleteStreamData =
   | { status: 'done' };
 
 type StreamEventMap = {
+  status: StatusStreamData;
   chunk: ChunkStreamData;
   complete: CompleteStreamData;
   error: ErrorStreamData;
@@ -1365,11 +1370,6 @@ function validateDraftAssets(draft: Draft): ValidationResponse {
   const findings: string[] = [];
   const template = resolveTemplateDefinition(draft.metadata.template_name) || OFFICIAL_TEMPLATE;
   const requiredAssets = getOrderedAssets(template).filter((asset) => asset.required);
-  const placeholderPatterns = [
-    /\{[A-Z_][A-Z0-9_]*\}/g,
-    /\(\([^\n]+?\)\)/g,
-    /\[(Name|Age|Content):?[^\]]*\]/g,
-  ];
 
   requiredAssets.forEach((asset) => {
     const content = draft.assets[asset.name];
@@ -1384,9 +1384,9 @@ function validateDraftAssets(draft: Draft): ValidationResponse {
       return;
     }
 
-    const matches = placeholderPatterns.flatMap((pattern) => content.match(pattern) ?? []);
-    if (matches.length > 0) {
-      findings.push(`- ${assetName}: unresolved placeholders ${matches.join(', ')}`);
+    const issues = validateAssetContent(assetName as AssetName, content);
+    if (issues.length > 0) {
+      findings.push(`- ${assetName}: ${Array.from(new Set(issues)).join(', ')}`);
     }
   });
 
@@ -1672,6 +1672,7 @@ export class EidolonBrowserAPI {
       delete nextConfig.api_keys;
     }
     configManager.updateConfig(nextConfig);
+    queueAutoSync('config');
     return this.getConfig();
   }
 
@@ -1758,28 +1759,7 @@ export class EidolonBrowserAPI {
     };
     themes.push(created);
     saveCustomThemes(themes);
-
-    // Try to sync to server
-    if (serverClient.isEnabled()) {
-      try {
-        const status = await serverClient.checkStatus();
-        if (status.authenticated) {
-          await serverClient.syncThemes('push', {
-            themes: [{
-              name: created.name,
-              displayName: created.display_name,
-              description: created.description,
-              author: created.author,
-              tags: created.tags,
-              basedOn: created.based_on,
-              colors: created.colors,
-            }],
-          });
-        }
-      } catch (e) {
-        console.warn('Failed to sync theme to server:', e);
-      }
-    }
+    queueAutoSync('themes');
 
     return created;
   }
@@ -1815,6 +1795,7 @@ export class EidolonBrowserAPI {
     }
 
     saveCustomThemes(themes);
+    queueAutoSync('themes');
     return incoming;
   }
 
@@ -1826,20 +1807,7 @@ export class EidolonBrowserAPI {
     }
     themes[index] = { ...themes[index], ...theme };
     saveCustomThemes(themes);
-
-    // Try to sync to server
-    if (serverClient.isEnabled()) {
-      try {
-        const status = await serverClient.checkStatus();
-        if (status.authenticated) {
-          await serverClient.syncThemes('push', {
-            themes: [themes[index]],
-          });
-        }
-      } catch (e) {
-        console.warn('Failed to sync theme update to server:', e);
-      }
-    }
+    queueAutoSync('themes');
 
     return themes[index];
   }
@@ -1872,6 +1840,7 @@ export class EidolonBrowserAPI {
       }
       themes[index] = { ...theme, name: request.new_name };
       saveCustomThemes(themes);
+      queueAutoSync('themes');
       return themes[index];
     });
   }
@@ -1880,18 +1849,7 @@ export class EidolonBrowserAPI {
     // Delete locally first
     const themes = getCustomThemes().filter((theme) => theme.name !== name);
     saveCustomThemes(themes);
-
-    // Try to delete from server
-    if (serverClient.isEnabled()) {
-      try {
-        const status = await serverClient.checkStatus();
-        if (status.authenticated) {
-          // Server theme deletion happens via sync - the theme won't be in push
-        }
-      } catch (e) {
-        console.warn('Failed to sync theme deletion to server:', e);
-      }
-    }
+    queueAutoSync('themes');
 
     return { status: 'deleted', name };
   }
@@ -1997,18 +1955,7 @@ export class EidolonBrowserAPI {
     const record = { template: created, blueprint_contents: template.blueprint_contents };
     records.push(record);
     saveStoredTemplates(records);
-
-    // Try to sync to server
-    if (serverClient.isEnabled()) {
-      try {
-        const status = await serverClient.checkStatus();
-        if (status.authenticated) {
-          await serverClient.syncTemplates('push', { templates: [record] });
-        }
-      } catch (e) {
-        console.warn('Failed to sync template to server:', e);
-      }
-    }
+    queueAutoSync('templates');
 
     return created;
   }
@@ -2047,18 +1994,7 @@ export class EidolonBrowserAPI {
       blueprint_contents: template.blueprint_contents,
     };
     saveStoredTemplates(records);
-
-    // Try to sync to server
-    if (serverClient.isEnabled()) {
-      try {
-        const status = await serverClient.checkStatus();
-        if (status.authenticated) {
-          await serverClient.syncTemplates('push', { templates: [records[index]] });
-        }
-      } catch (e) {
-        console.warn('Failed to sync template update to server:', e);
-      }
-    }
+    queueAutoSync('templates');
 
     return records[index].template;
   }
@@ -2066,8 +2002,7 @@ export class EidolonBrowserAPI {
   async deleteTemplate(name: string): Promise<{ status: string; name: string }> {
     const records = getStoredTemplates().filter((record) => record.template.name !== name);
     saveStoredTemplates(records);
-
-    // Note: Template deletion on server is handled via sync - the template won't be in the next push
+    queueAutoSync('templates');
 
     return { status: 'deleted', name };
   }
@@ -2224,36 +2159,7 @@ export class EidolonBrowserAPI {
   async updateMetadata(reviewId: string, updates: Partial<DraftMetadata>): Promise<{ status: string; draft_id: string }> {
     // Update locally first
     await DraftStorage.updateMetadata(reviewId, updates);
-
-    // Try to sync to server
-    if (serverClient.isEnabled()) {
-      try {
-        const status = await serverClient.checkStatus();
-        if (status.authenticated) {
-          const draft = await DraftStorage.getDraft(reviewId);
-          if (draft) {
-            await serverClient.syncDrafts('push', {
-              drafts: [{
-                reviewId: draft.metadata.review_id,
-                seed: draft.metadata.seed,
-                mode: draft.metadata.mode,
-                model: draft.metadata.model,
-                characterName: draft.metadata.character_name,
-                templateName: draft.metadata.template_name,
-                genre: draft.metadata.genre,
-                notes: draft.metadata.notes,
-                favorite: draft.metadata.favorite,
-                tags: draft.metadata.tags || [],
-                offspringType: draft.metadata.offspring_type,
-                assets: draft.assets,
-              }],
-            });
-          }
-        }
-      } catch (e) {
-        console.warn('Failed to sync draft metadata to server:', e);
-      }
-    }
+    queueAutoSync('drafts');
 
     return { status: 'updated', draft_id: reviewId };
   }
@@ -2261,19 +2167,7 @@ export class EidolonBrowserAPI {
   async deleteDraft(reviewId: string): Promise<{ status: string; draft_id: string }> {
     // Delete locally first
     await DraftStorage.deleteDraft(reviewId);
-
-    // Try to delete from server
-    if (serverClient.isEnabled()) {
-      try {
-        const status = await serverClient.checkStatus();
-        if (status.authenticated) {
-          // Server doesn't have individual delete in sync, but we can try the drafts route
-          // For now, just log - server sync will handle it on next pull
-        }
-      } catch (e) {
-        console.warn('Failed to sync draft deletion to server:', e);
-      }
-    }
+    queueAutoSync('drafts');
 
     return { status: 'deleted', draft_id: reviewId };
   }
@@ -2281,36 +2175,7 @@ export class EidolonBrowserAPI {
   async updateAsset(reviewId: string, assetName: string, content: string): Promise<{ status: string; draft_id: string; asset_name: string }> {
     // Update locally first
     await DraftStorage.updateAsset(reviewId, assetName, content);
-
-    // Try to sync to server
-    if (serverClient.isEnabled()) {
-      try {
-        const status = await serverClient.checkStatus();
-        if (status.authenticated) {
-          const draft = await DraftStorage.getDraft(reviewId);
-          if (draft) {
-            await serverClient.syncDrafts('push', {
-              drafts: [{
-                reviewId: draft.metadata.review_id,
-                seed: draft.metadata.seed,
-                mode: draft.metadata.mode,
-                model: draft.metadata.model,
-                characterName: draft.metadata.character_name,
-                templateName: draft.metadata.template_name,
-                genre: draft.metadata.genre,
-                notes: draft.metadata.notes,
-                favorite: draft.metadata.favorite,
-                tags: draft.metadata.tags || [],
-                offspringType: draft.metadata.offspring_type,
-                assets: draft.assets,
-              }],
-            });
-          }
-        }
-      } catch (e) {
-        console.warn('Failed to sync draft asset to server:', e);
-      }
-    }
+    queueAutoSync('drafts');
 
     return { status: 'updated', draft_id: reviewId, asset_name: assetName };
   }
@@ -2337,7 +2202,7 @@ export class EidolonBrowserAPI {
 
   generate(_request: GenerateRequest): BrowserStream {
     return new BrowserStream(async ({ emit, signal }) => {
-      for await (const progress of GenerationService.generate(_request)) {
+      for await (const progress of GenerationService.generate(_request, { signal })) {
         if (signal.aborted) {
           return;
         }
@@ -2426,6 +2291,7 @@ export class EidolonBrowserAPI {
       assets: request.assets,
     };
     await DraftStorage.saveDraft(draft);
+    queueAutoSync('drafts');
     return {
       draft_path: reviewId,
       draft_id: reviewId,
@@ -2444,7 +2310,7 @@ export class EidolonBrowserAPI {
             seed,
             mode: request.mode,
             template: request.template,
-          })) {
+          }, { signal })) {
             if (signal.aborted) {
               return;
             }
@@ -2538,9 +2404,16 @@ export class EidolonBrowserAPI {
 
   generateOffspring(request: OffspringRequest): BrowserStream {
     return new BrowserStream(async ({ emit, signal }) => {
-      for await (const progress of GenerationService.generateOffspring(request)) {
+      for await (const progress of GenerationService.generateOffspring(request, { signal })) {
         if (signal.aborted) {
           return;
+        }
+        if (progress.type === 'status') {
+          emit('status', {
+            stage: progress.stage,
+            asset: progress.asset,
+            progress: progress.progress,
+          });
         }
         if (progress.type === 'chunk') {
           emit('chunk', { content: progress.content || '' });
@@ -2555,6 +2428,32 @@ export class EidolonBrowserAPI {
         }
         if (progress.type === 'error') {
           emit('error', { error: progress.error || 'Offspring generation failed' });
+        }
+      }
+    });
+  }
+
+  generateOffspringSeed(request: OffspringRequest): BrowserStream {
+    return new BrowserStream(async ({ emit, signal }) => {
+      for await (const progress of GenerationService.generateOffspringSeed(request, { signal })) {
+        if (signal.aborted) {
+          return;
+        }
+        if (progress.type === 'status') {
+          emit('status', {
+            stage: progress.stage,
+            asset: progress.asset,
+            progress: progress.progress,
+          });
+        }
+        if (progress.type === 'chunk') {
+          emit('chunk', { content: progress.content || '' });
+        }
+        if (progress.type === 'complete') {
+          emit('complete', { content: progress.content || '' });
+        }
+        if (progress.type === 'error') {
+          emit('error', { error: progress.error || 'Offspring seed generation failed' });
         }
       }
     });
@@ -2659,30 +2558,7 @@ export class EidolonBrowserAPI {
     const overrides = getBlueprintOverrides();
     overrides[path] = content;
     saveBlueprintOverrides(overrides);
-
-    // Try to sync to server
-    if (serverClient.isEnabled()) {
-      try {
-        const status = await serverClient.checkStatus();
-        if (status.authenticated) {
-          const { name, description, version, invokable } = parseBlueprintMetadata(path, content);
-
-          await serverClient.syncBlueprints('push', {
-            blueprints: [{
-              path,
-              name,
-              description,
-              invokable,
-              version,
-              category: 'custom',
-              content,
-            }],
-          });
-        }
-      } catch (e) {
-        console.warn('Failed to sync blueprint to server:', e);
-      }
-    }
+    queueAutoSync('blueprints');
 
     return this.getBlueprint(path);
   }
@@ -2695,17 +2571,7 @@ export class EidolonBrowserAPI {
     const overrides = getBlueprintOverrides();
     delete overrides[path];
     saveBlueprintOverrides(overrides);
-
-    if (serverClient.isEnabled()) {
-      try {
-        const status = await serverClient.checkStatus();
-        if (status.authenticated) {
-          await serverClient.deleteBlueprint(path);
-        }
-      } catch (e) {
-        console.warn('Failed to delete blueprint on server:', e);
-      }
-    }
+    queueAutoSync('blueprints');
 
     return { status: 'deleted', path };
   }
@@ -2715,18 +2581,7 @@ export class EidolonBrowserAPI {
     const overrides = getBlueprintOverrides();
     delete overrides[path];
     saveBlueprintOverrides(overrides);
-
-    // Try to reset on server
-    if (serverClient.isEnabled()) {
-      try {
-        const status = await serverClient.checkStatus();
-        if (status.authenticated) {
-          await serverClient.resetBlueprint(path);
-        }
-      } catch (e) {
-        console.warn('Failed to reset blueprint on server:', e);
-      }
-    }
+    queueAutoSync('blueprints');
 
     const blueprint = this.getBlueprint(path);
     if (!blueprint) {
@@ -2745,25 +2600,7 @@ export class EidolonBrowserAPI {
     const overrides = getBlueprintOverrides();
     overrides[path] = content;
     saveBlueprintOverrides(overrides);
-
-    // Try to sync to server
-    if (serverClient.isEnabled()) {
-      try {
-        const status = await serverClient.checkStatus();
-        if (status.authenticated) {
-          const { name, description } = parseBlueprintMetadata(path, content);
-
-          await serverClient.createBlueprint({
-            path,
-            name,
-            description,
-            content,
-          });
-        }
-      } catch (e) {
-        console.warn('Failed to create blueprint on server:', e);
-      }
-    }
+    queueAutoSync('blueprints');
 
     return this.getBlueprint(path);
   }
@@ -2782,18 +2619,7 @@ export class EidolonBrowserAPI {
     const overrides = getBlueprintOverrides();
     overrides[targetPath] = source.content;
     saveBlueprintOverrides(overrides);
-
-    // Try to sync to server
-    if (serverClient.isEnabled()) {
-      try {
-        const status = await serverClient.checkStatus();
-        if (status.authenticated) {
-          await serverClient.duplicateBlueprint(sourcePath, targetPath);
-        }
-      } catch (e) {
-        console.warn('Failed to duplicate blueprint on server:', e);
-      }
-    }
+    queueAutoSync('blueprints');
 
     return this.getBlueprint(targetPath);
   }

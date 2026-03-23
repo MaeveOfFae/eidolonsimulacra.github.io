@@ -20,6 +20,7 @@ import {
 } from '@char-gen/shared';
 import { createEngine } from '../llm/factory.js';
 import { configManager } from '../config/manager.js';
+import { queueAutoSync } from '../server/auto-sync.js';
 import { DraftStorage } from '../storage/draft-db.js';
 import {
   buildOrchestratorPrompt,
@@ -59,6 +60,7 @@ export interface GenerationProgress {
  */
 export interface ExtendedGenerateRequest extends GenerateRequest {
   blueprint_override?: string;
+  additional_instructions?: string[];
 }
 
 /**
@@ -66,6 +68,10 @@ export interface ExtendedGenerateRequest extends GenerateRequest {
  */
 export interface ExtendedOffspringRequest extends OffspringRequest {
   blueprint_override?: string;
+}
+
+interface GenerationRunOptions {
+  signal?: AbortSignal;
 }
 
 /**
@@ -103,11 +109,37 @@ export class GenerationService {
     });
   }
 
+  private static sanitizeGeneratedSeed(content: string): string {
+    return content
+      .replace(/^```[a-z]*\n?/i, '')
+      .replace(/```$/i, '')
+      .trim()
+      .replace(/^['"]|['"]$/g, '');
+  }
+
+  private static getOffspringCarryRules(): string[] {
+    return [
+      'Treat this seed as an offspring outcome shaped by two parent suites, not a disconnected standalone premise.',
+      'Preserve the inherited, inverted, or transmuted relational vector toward {{user}} implied by the offspring seed.',
+      'Do not flatten lineage tension: the generated assets should still feel like a descendant response to parental influence even when the seed expresses rebellion or mutation.',
+    ];
+  }
+
   /**
    * Generate a full character from a seed
    */
-  static async *generate(request: ExtendedGenerateRequest): AsyncIterable<GenerationProgress> {
-    const { seed, template, mode = 'Auto', stream = true, blueprint_override } = request;
+  static async *generate(
+    request: ExtendedGenerateRequest,
+    options: GenerationRunOptions = {}
+  ): AsyncIterable<GenerationProgress> {
+    const {
+      seed,
+      template,
+      mode = 'Auto',
+      stream = true,
+      blueprint_override,
+      additional_instructions = [],
+    } = request;
 
     yield { type: 'status', stage: 'initializing' };
 
@@ -125,7 +157,8 @@ export class GenerationService {
       mode,
       templateDefinition,
       undefined,
-      blueprint_override
+      blueprint_override,
+      additional_instructions
     );
 
     yield { type: 'status', stage: 'generating' };
@@ -135,7 +168,7 @@ export class GenerationService {
     let fullContent = '';
 
     if (stream) {
-      for await (const chunk of engine.generateStream(messages)) {
+      for await (const chunk of engine.generateStream(messages, { signal: options.signal })) {
         if (chunk.content) {
           fullContent += chunk.content;
           yield {
@@ -148,7 +181,7 @@ export class GenerationService {
         }
       }
     } else {
-      const result = await engine.generate(messages);
+      const result = await engine.generate(messages, { signal: options.signal });
       fullContent = result.content;
     }
 
@@ -186,6 +219,7 @@ export class GenerationService {
     };
 
     await DraftStorage.saveDraft(draft);
+    queueAutoSync('drafts');
 
     yield {
       type: 'complete',
@@ -276,12 +310,13 @@ export class GenerationService {
   }
 
   /**
-   * Generate offspring from two parents
+   * Generate an offspring seed from two parents
    */
-  static async *generateOffspring(
-    request: ExtendedOffspringRequest
+  static async *generateOffspringSeed(
+    request: ExtendedOffspringRequest,
+    options: GenerationRunOptions = {}
   ): AsyncIterable<GenerationProgress> {
-    const { parent1_id, parent2_id, mode = 'Auto', template, blueprint_override } = request;
+    const { parent1_id, parent2_id, mode = 'Auto', blueprint_override } = request;
 
     yield { type: 'status', stage: 'loading_parents' };
 
@@ -299,21 +334,7 @@ export class GenerationService {
 
     yield { type: 'status', stage: 'building_prompt' };
 
-    // Get API keys and config
-    const apiKeys = configManager.getApiKeys();
-    const config = configManager.getConfig();
-
-    // Create engine
-    const provider = this.resolveConfiguredProvider(config);
-    const engine = createEngine({
-      model: config.model,
-      apiKey: provider ? apiKeys[provider] : this.getFallbackApiKey(apiKeys),
-      apiKeys,
-      provider,
-      baseUrl: config.base_url,
-      temperature: config.temperature,
-      maxTokens: config.max_tokens,
-    });
+    const engine = this.createConfiguredEngine();
 
     // Build offspring prompt - respects settings and override
     const [systemPrompt, userPrompt] = await buildOffspringPrompt(
@@ -332,60 +353,109 @@ export class GenerationService {
 
     // Generate seed
     const messages = formatMessages(systemPrompt, userPrompt);
-    const result = await engine.generate(messages);
-    const offspringSeed = result.content.trim();
+    let fullContent = '';
 
-    // Now generate the full character from the seed
-    yield { type: 'status', stage: 'generating_character' };
-
-    const [orchestratorSystem, orchestratorUser] = await buildOrchestratorPrompt(
-      offspringSeed,
-      mode,
-      template ? resolveTemplateDefinition(template) : undefined,
-      undefined,
-      blueprint_override
-    );
-
-    const orchestratorMessages = formatMessages(orchestratorSystem, orchestratorUser);
-    const orchestratorResult = await engine.generate(orchestratorMessages);
-    let assets: Record<string, string>;
-    const templateDefinition = template ? resolveTemplateDefinition(template) : undefined;
-    try {
-      assets = templateDefinition
-        ? parseGeneratedBlueprintOutput(orchestratorResult.content, templateDefinition).assets
-        : this.parseBlueprintOutput(orchestratorResult.content);
-    } catch {
-      assets = this.parseBlueprintOutput(orchestratorResult.content);
+    for await (const chunk of engine.generateStream(messages, { signal: options.signal })) {
+      if (chunk.content) {
+        fullContent += chunk.content;
+        yield {
+          type: 'chunk',
+          content: chunk.content,
+        };
+      }
+      if (chunk.done) {
+        break;
+      }
     }
 
-    yield { type: 'status', stage: 'saving' };
-
-    // Save draft
-    const reviewId = this.generateReviewId();
-    const characterName = inferCharacterDisplayNameForTemplate(assets, template);
-    const draft: Draft = {
-      path: reviewId,
-      metadata: {
-        review_id: reviewId,
-        seed: offspringSeed,
-        mode,
-        model: config.model,
-        created: new Date().toISOString(),
-        modified: new Date().toISOString(),
-        favorite: false,
-        template_name: template,
-        parent_drafts: [parent1_id, parent2_id],
-        offspring_type: 'offspring',
-        character_name: characterName,
-      },
-      assets,
-    };
-
-    await DraftStorage.saveDraft(draft);
+    const offspringSeed = this.sanitizeGeneratedSeed(fullContent);
 
     yield {
       type: 'complete',
-      asset: reviewId,
+      content: offspringSeed,
+    };
+  }
+
+  /**
+   * Generate offspring from two parents
+   */
+  static async *generateOffspring(
+    request: ExtendedOffspringRequest,
+    options: GenerationRunOptions = {}
+  ): AsyncIterable<GenerationProgress> {
+    const { parent1_id, parent2_id, mode = 'Auto', template, blueprint_override } = request;
+
+    let offspringSeed = '';
+    for await (const progress of this.generateOffspringSeed(request, options)) {
+      if (progress.type === 'error') {
+        yield progress;
+        return;
+      }
+
+      if (progress.type === 'status' || progress.type === 'chunk') {
+        yield progress;
+      }
+
+      if (progress.type === 'complete') {
+        offspringSeed = progress.content || '';
+      }
+    }
+
+    if (!offspringSeed) {
+      yield {
+        type: 'error',
+        error: 'Offspring seed generation finished without seed content.',
+      };
+      return;
+    }
+
+    // Hand the offspring seed into the standard generator path.
+    yield { type: 'status', stage: 'generating_character' };
+
+    let draftId = '';
+    for await (const progress of this.generate(
+      {
+        seed: offspringSeed,
+        mode,
+        template,
+        stream: false,
+        blueprint_override,
+        additional_instructions: this.getOffspringCarryRules(),
+      },
+      options
+    )) {
+      if (progress.type === 'error') {
+        yield progress;
+        return;
+      }
+
+      if (progress.type === 'status' && progress.stage === 'saving') {
+        yield { type: 'status', stage: 'saving' };
+      }
+
+      if (progress.type === 'complete') {
+        draftId = progress.asset || '';
+      }
+    }
+
+    if (!draftId) {
+      yield {
+        type: 'error',
+        error: 'Offspring generation finished without a saved draft id.',
+      };
+      return;
+    }
+
+    await DraftStorage.updateMetadata(draftId, {
+      seed: offspringSeed,
+      parent_drafts: [parent1_id, parent2_id],
+      offspring_type: 'offspring',
+    });
+    queueAutoSync('drafts');
+
+    yield {
+      type: 'complete',
+      asset: draftId,
     };
   }
 

@@ -40,7 +40,7 @@ export function authenticateToken(
     req.user = payload;
     next();
   } catch {
-    res.status(403).json({ error: "Invalid or expired token" });
+    res.status(401).json({ error: "Invalid or expired token" });
   }
 }
 

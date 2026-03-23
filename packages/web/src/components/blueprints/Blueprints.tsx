@@ -8,8 +8,8 @@ import { BLUEPRINTS_SAFETY_TOUR_ID } from '@/lib/help';
 import InlineHelpTip from '../common/InlineHelpTip';
 import { useGuidedTour } from '../common/GuidedTourContext';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
-import BlueprintLintPlaceholder from './BlueprintLintPlaceholder';
-import BlueprintSandboxPlaceholder from './BlueprintSandboxPlaceholder';
+import BlueprintLintPanel from './BlueprintLintPanel';
+import BlueprintSandboxPanel from './BlueprintSandboxPanel';
 import BlueprintCreateDialog from './BlueprintCreateDialog';
 
 type Section = {
@@ -232,8 +232,8 @@ export default function Blueprints() {
         </div>
 
         <div className="grid gap-4 lg:grid-cols-2">
-          <BlueprintLintPlaceholder blueprintPath={highlightedBlueprint?.path} />
-          <BlueprintSandboxPlaceholder
+          <BlueprintLintPanel blueprintPath={highlightedBlueprint?.path} />
+          <BlueprintSandboxPanel
             blueprintPath={highlightedBlueprint?.path}
             seed={normalizedQuery || 'preview seed'}
           />

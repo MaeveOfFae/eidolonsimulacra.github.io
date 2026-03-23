@@ -4,13 +4,13 @@ import { AlertTriangle, CheckCircle2, FileWarning, Loader2 } from 'lucide-react'
 import { api } from '@/lib/api';
 import { lintBlueprintContent } from './blueprintLint';
 
-export interface BlueprintLintPlaceholderProps {
+export interface BlueprintLintPanelProps {
   blueprintPath?: string;
 }
 
-export function BlueprintLintPlaceholder({
+export function BlueprintLintPanel({
   blueprintPath,
-}: BlueprintLintPlaceholderProps) {
+}: BlueprintLintPanelProps) {
   const { data, isLoading, error } = useQuery({
     queryKey: ['blueprint', blueprintPath, 'lint'],
     queryFn: () => api.getBlueprint(blueprintPath || ''),
@@ -95,4 +95,4 @@ export function BlueprintLintPlaceholder({
   );
 }
 
-export default BlueprintLintPlaceholder;
+export default BlueprintLintPanel;

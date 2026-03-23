@@ -9,8 +9,8 @@ import ChatPanel from '../common/ChatPanel';
 import InlineHelpTip from '../common/InlineHelpTip';
 import { useGuidedTour } from '../common/GuidedTourContext';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
-import ReviewChecklistPlaceholder from './ReviewChecklistPlaceholder';
-import VersionHistoryPlaceholder from './VersionHistoryPlaceholder';
+import ReviewChecklistPanel from './ReviewChecklistPanel';
+import VersionHistoryPanel from './VersionHistoryPanel';
 
 export default function Review() {
   const { id } = useParams<{ id: string }>();
@@ -402,19 +402,19 @@ export default function Review() {
       <section className="app-panel p-5">
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-lg font-semibold">Planned Review Upgrades</h2>
+            <h2 className="text-lg font-semibold">Review Tooling</h2>
             <p className="text-sm text-muted-foreground">
-              These placeholders mark where structured review and versioning features will attach.
+              The checklist and local version activity are live now. Restore points and true revision diffs are still planned.
             </p>
           </div>
-          <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-            Planned
+          <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-300">
+            Partial
           </span>
         </div>
 
         <div className="grid gap-4 lg:grid-cols-2">
-          <ReviewChecklistPlaceholder draftId={reviewId} />
-          <VersionHistoryPlaceholder draftId={reviewId} />
+          <ReviewChecklistPanel draftId={reviewId} />
+          <VersionHistoryPanel draftId={reviewId} />
         </div>
       </section>
 

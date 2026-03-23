@@ -4,7 +4,7 @@ import { FlaskConical, Loader2, Play, RotateCcw } from 'lucide-react';
 import type { ContentMode } from '@char-gen/shared';
 import { api } from '@/lib/api';
 
-export interface BlueprintSandboxPlaceholderProps {
+export interface BlueprintSandboxPanelProps {
   blueprintPath?: string;
   seed?: string;
 }
@@ -27,10 +27,10 @@ function deriveAssetName(blueprintPath?: string): string {
   return fileName.replace(/\.md$/i, '') || 'preview_asset';
 }
 
-export function BlueprintSandboxPlaceholder({
+export function BlueprintSandboxPanel({
   blueprintPath,
   seed,
-}: BlueprintSandboxPlaceholderProps) {
+}: BlueprintSandboxPanelProps) {
   const [seedInput, setSeedInput] = useState(seed ?? 'preview seed');
   const [mode, setMode] = useState<ContentMode>('Auto');
   const [assetName, setAssetName] = useState(() => deriveAssetName(blueprintPath));
@@ -258,4 +258,4 @@ export function BlueprintSandboxPlaceholder({
   );
 }
 
-export default BlueprintSandboxPlaceholder;
+export default BlueprintSandboxPanel;

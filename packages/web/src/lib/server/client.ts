@@ -302,8 +302,16 @@ class ServerClient {
         return { connected: true, authenticated: false };
       }
 
-      const user = await this.getCurrentUser();
-      return { connected: true, authenticated: true, user };
+      try {
+        const user = await this.getCurrentUser();
+        return { connected: true, authenticated: true, user };
+      } catch (e) {
+        return {
+          connected: true,
+          authenticated: false,
+          error: e instanceof Error ? e.message : 'Authentication failed',
+        };
+      }
     } catch (e) {
       return {
         connected: false,
@@ -331,6 +339,32 @@ class ServerClient {
     return response.json();
   }
 
+  async listRemoteDrafts(): Promise<{ drafts: Array<{ id: string; reviewId: string }> }> {
+    const response = await this.request('/api/sync/drafts/list', {
+      method: 'GET',
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to list remote drafts');
+    }
+
+    return response.json();
+  }
+
+  async deleteRemoteDraft(id: string): Promise<{ message: string }> {
+    const response = await this.request(`/api/sync/drafts/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to delete remote draft');
+    }
+
+    return response.json();
+  }
+
   async syncThemes(action: 'pull' | 'push' | 'list', data?: unknown): Promise<unknown> {
     const response = await this.request(`/api/sync/themes/${action}`, {
       method: action === 'list' ? 'GET' : 'POST',
@@ -345,6 +379,32 @@ class ServerClient {
     return response.json();
   }
 
+  async listRemoteThemes(): Promise<{ themes: Array<{ name: string; isBuiltin?: boolean }> }> {
+    const response = await this.request('/api/sync/themes/list', {
+      method: 'GET',
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to list remote themes');
+    }
+
+    return response.json();
+  }
+
+  async deleteRemoteTheme(name: string): Promise<{ message: string }> {
+    const response = await this.request(`/api/sync/themes/${encodeURIComponent(name)}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to delete remote theme');
+    }
+
+    return response.json();
+  }
+
   async syncTemplates(action: 'pull' | 'push' | 'list', data?: unknown): Promise<unknown> {
     const response = await this.request(`/api/sync/templates/${action}`, {
       method: action === 'list' ? 'GET' : 'POST',
@@ -354,6 +414,32 @@ class ServerClient {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || `Failed to ${action} templates`);
+    }
+
+    return response.json();
+  }
+
+  async listRemoteTemplates(): Promise<{ templates: Array<{ name: string; isOfficial?: boolean }> }> {
+    const response = await this.request('/api/sync/templates/list', {
+      method: 'GET',
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to list remote templates');
+    }
+
+    return response.json();
+  }
+
+  async deleteRemoteTemplate(name: string): Promise<{ message: string }> {
+    const response = await this.request(`/api/sync/templates/${encodeURIComponent(name)}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to delete remote template');
     }
 
     return response.json();
@@ -453,6 +539,32 @@ class ServerClient {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || `Failed to ${action} blueprints`);
+    }
+
+    return response.json();
+  }
+
+  async listRemoteBlueprints(): Promise<{ blueprints: Array<{ path: string; isBuiltin?: boolean; userId?: string | null }> }> {
+    const response = await this.request('/api/sync/blueprints/list', {
+      method: 'GET',
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to list remote blueprints');
+    }
+
+    return response.json();
+  }
+
+  async deleteRemoteBlueprint(path: string): Promise<{ message: string }> {
+    const response = await this.request(`/api/sync/blueprints/${encodeURIComponent(path)}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to delete remote blueprint');
     }
 
     return response.json();

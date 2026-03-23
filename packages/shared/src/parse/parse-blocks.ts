@@ -254,6 +254,7 @@ export function inferCharacterNameFromAssets(
 
 const PLACEHOLDER_PATTERNS: ReadonlyArray<[string, RegExp]> = [
   ['{PLACEHOLDER}', /\{PLACEHOLDER\}/g],
+  ['Generic {...} placeholder', /(?<!\{)\{(?!\{)[^{}\n]*[A-Za-z][^{}\n]*\}(?!\})/g],
   ['Suno {TITLE}', /\{TITLE\}/g],
   [
     'Suno other {..}',
@@ -266,7 +267,7 @@ const PLACEHOLDER_PATTERNS: ReadonlyArray<[string, RegExp]> = [
   ],
   [
     'Character sheet bracket placeholders',
-    /\[(?!")["'][A-Z][^\]]*\]/g,
+    /\[[A-Za-z][^\]\n]*\]/g,
   ],
 ] as const;
 

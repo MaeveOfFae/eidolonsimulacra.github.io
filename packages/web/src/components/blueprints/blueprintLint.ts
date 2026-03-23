@@ -14,6 +14,12 @@ function getLineNumber(content: string, index: number): number {
   return content.slice(0, index).split('\n').length;
 }
 
+function getFieldLineNumber(frontmatterBlock: string, field: string): number | null {
+  const lines = frontmatterBlock.split('\n');
+  const lineIndex = lines.findIndex((line) => new RegExp(`^${field}:`).test(line));
+  return lineIndex === -1 ? null : lineIndex + 2;
+}
+
 function shouldWarnForMissingCodeBlock(context?: BlueprintLintContext): boolean {
   if (!context) {
     return true;
@@ -47,24 +53,47 @@ function getShortContentThreshold(context?: BlueprintLintContext): number {
 export function lintBlueprintContent(content: string, context?: BlueprintLintContext): BlueprintLintIssue[] {
   const issues: BlueprintLintIssue[] = [];
   const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+  const requiredFrontmatterFields = ['name', 'description', 'version', 'invokable', 'always'];
 
   if (!frontmatterMatch) {
     issues.push({ severity: 'warning', message: 'Missing YAML frontmatter block. Browser tools will fall back to heading-derived metadata.', line: 1 });
   } else {
     const frontmatter = frontmatterMatch[1];
-    for (const field of ['name', 'description', 'version']) {
+    for (const field of requiredFrontmatterFields) {
       if (!new RegExp(`^${field}:`, 'm').test(frontmatter)) {
-        const headerStart = frontmatterMatch.index ?? 0;
-        const fieldLineIndex = headerStart + frontmatterMatch[0].split('\n').findIndex((line) => line === '---');
-        issues.push({ severity: 'warning', message: `Frontmatter is missing ${field}.`, line: Math.max(1, fieldLineIndex + 1) });
+        issues.push({ severity: 'warning', message: `Frontmatter is missing ${field}.`, line: 2 });
       }
     }
+
+    if (context?.category === 'system' && !/^feature_category:/m.test(frontmatter)) {
+      issues.push({ severity: 'warning', message: 'System blueprints should declare feature_category in frontmatter.', line: 2 });
+    }
+
+    const invokableLine = getFieldLineNumber(frontmatter, 'invokable');
+    const alwaysLine = getFieldLineNumber(frontmatter, 'always');
+
+    if (invokableLine !== null && !/^invokable:\s*(true|false)\s*$/m.test(frontmatter)) {
+      issues.push({ severity: 'warning', message: 'Frontmatter invokable should be a boolean.', line: invokableLine });
+    }
+
+    if (alwaysLine !== null && !/^always:\s*(true|false)\s*$/m.test(frontmatter)) {
+      issues.push({ severity: 'warning', message: 'Frontmatter always should be a boolean.', line: alwaysLine });
+    }
+  }
+
+  const bodyStartIndex = frontmatterMatch ? frontmatterMatch[0].length + 1 : 0;
+  const body = content.slice(bodyStartIndex).trimStart();
+  const bodyOffset = body.length === 0 ? bodyStartIndex : content.indexOf(body, bodyStartIndex);
+
+  if (body.length === 0) {
+    issues.push({ severity: 'warning', message: 'Blueprint body is empty.', line: getLineNumber(content, bodyStartIndex) });
+  } else if (!body.startsWith('# ')) {
+    issues.push({ severity: 'warning', message: 'Blueprint body should start with a top-level heading.', line: getLineNumber(content, bodyOffset) });
   }
 
   const hasCodeBlock = /```[\s\S]*?```/g.test(content);
   if (!hasCodeBlock && shouldWarnForMissingCodeBlock(context)) {
-    const bodyStart = frontmatterMatch ? (frontmatterMatch[0].length + 1) : 0;
-    issues.push({ severity: 'warning', message: 'No fenced example or output block detected.', line: getLineNumber(content, bodyStart) });
+    issues.push({ severity: 'warning', message: 'No fenced example or output block detected.', line: getLineNumber(content, bodyStartIndex) });
   }
 
   if (content.length < getShortContentThreshold(context)) {

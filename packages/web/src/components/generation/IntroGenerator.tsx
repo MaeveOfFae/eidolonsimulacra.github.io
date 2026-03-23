@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   MessageSquarePlus,
@@ -17,6 +17,11 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { GenerationService } from '@/lib/services/generation';
+import {
+  clearActiveIntroGeneratorSession,
+  loadActiveIntroGeneratorSession,
+  saveActiveIntroGeneratorSession,
+} from '@/lib/services/generation-session';
 import type { Draft, Template } from '@char-gen/shared';
 
 interface IntroGeneratorProps {
@@ -120,6 +125,8 @@ export default function IntroGenerator({ templates }: IntroGeneratorProps) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [generationCount, setGenerationCount] = useState(3);
   const [customInstructions, setCustomInstructions] = useState('');
+  const [resumeNotice, setResumeNotice] = useState<string | null>(null);
+  const restoredSessionRef = useRef(loadActiveIntroGeneratorSession());
   const queryClient = useQueryClient();
 
   // Fetch all drafts for selection
@@ -156,6 +163,29 @@ export default function IntroGenerator({ templates }: IntroGeneratorProps) {
     }
     return [];
   }, [draft]);
+
+  useEffect(() => {
+    const session = restoredSessionRef.current;
+    if (!session) {
+      return;
+    }
+
+    setSelectedDraftId(session.selectedDraftId);
+    setGenerationCount(session.generationCount);
+    setCustomInstructions(session.customInstructions);
+    setGeneratedIntros(session.generatedIntros);
+    setGeneratingContent(session.generatingContent);
+
+    if (session.status === 'generating') {
+      setResumeNotice('Intro generation was interrupted. Restored the draft and output snapshot; generate again to continue.');
+    } else if (session.generatedIntros.length > 0) {
+      setResumeNotice('Restored generated intro candidates.');
+    } else {
+      setResumeNotice('Restored intro generator settings.');
+    }
+
+    restoredSessionRef.current = null;
+  }, []);
 
   // Update asset mutation
   const updateAsset = useMutation({
@@ -330,6 +360,8 @@ export default function IntroGenerator({ templates }: IntroGeneratorProps) {
     setGeneratedIntros([]);
     setExpandedIntros(new Set());
     setCustomInstructions('');
+    setGeneratingContent('');
+    setResumeNotice(null);
   }, []);
 
   // Filter drafts that have templates supporting intro generation
@@ -345,6 +377,46 @@ export default function IntroGenerator({ templates }: IntroGeneratorProps) {
   const isActiveIntro = useCallback((intro: SavedIntro) => {
     return draft?.assets.intro_scene === intro.content;
   }, [draft?.assets.intro_scene]);
+
+  useEffect(() => {
+    const hasState = Boolean(
+      selectedDraftId
+      || customInstructions.trim()
+      || generatedIntros.length > 0
+      || generatingContent.trim()
+      || generationCount !== 3
+    );
+
+    if (!hasState) {
+      clearActiveIntroGeneratorSession();
+      return;
+    }
+
+    saveActiveIntroGeneratorSession({
+      version: 1,
+      selectedDraftId,
+      generationCount,
+      customInstructions,
+      generatedIntros,
+      generatingContent,
+      status: isGenerating ? 'generating' : (generatedIntros.length > 0 || generatingContent.trim()) ? 'ready' : 'configuring',
+      updatedAt: Date.now(),
+    });
+  }, [customInstructions, generatedIntros, generatingContent, generationCount, isGenerating, selectedDraftId]);
+
+  useEffect(() => {
+    if (!isGenerating && !selectedDraftId && generatedIntros.length === 0 && !customInstructions.trim() && !generatingContent.trim()) {
+      return;
+    }
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [customInstructions, generatedIntros.length, generatingContent, isGenerating, selectedDraftId]);
 
   // Render an intro card
   const renderIntroCard = (intro: SavedIntro, index: number, isSaved: boolean) => {
@@ -482,6 +554,12 @@ export default function IntroGenerator({ templates }: IntroGeneratorProps) {
             No drafts with intro-capable templates found.
           </p>
         )}
+
+        {resumeNotice && (
+          <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+            {resumeNotice}
+          </div>
+        )}
       </div>
 
       {/* Loading State */}
@@ -572,6 +650,18 @@ export default function IntroGenerator({ templates }: IntroGeneratorProps) {
               <div className="flex items-center gap-2 mb-3">
                 <Loader2 className="h-4 w-4 animate-spin text-primary" />
                 <span className="text-sm font-medium">Generating intro...</span>
+              </div>
+              <div className="max-h-64 overflow-y-auto rounded-md bg-muted/50 p-3 text-sm font-mono whitespace-pre-wrap">
+                {generatingContent}
+              </div>
+            </div>
+          )}
+
+          {!isGenerating && generatingContent && (
+            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <FileText className="h-4 w-4 text-amber-200" />
+                <span className="text-sm font-medium text-amber-100">Restored interrupted intro snapshot</span>
               </div>
               <div className="max-h-64 overflow-y-auto rounded-md bg-muted/50 p-3 text-sm font-mono whitespace-pre-wrap">
                 {generatingContent}

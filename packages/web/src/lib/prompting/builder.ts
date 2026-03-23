@@ -138,7 +138,8 @@ export async function buildOrchestratorPrompt(
   mode: ContentMode | null = null,
   template?: Template,
   baseUrl?: string,
-  blueprintOverride?: string
+  blueprintOverride?: string,
+  additionalInstructions: string[] = []
 ): Promise<[system: string, user: string]> {
   // Load orchestrator blueprint - respects settings and override
   let orchestrator = await resolveFeatureBlueprint('character_generation', blueprintOverride, baseUrl);
@@ -154,6 +155,14 @@ export async function buildOrchestratorPrompt(
     userLines.push(`Mode: ${mode}`);
   }
   userLines.push(`SEED: ${seed}`);
+
+  if (additionalInstructions.length > 0) {
+    userLines.push('');
+    userLines.push('ADDITIONAL RULES:');
+    additionalInstructions.forEach((instruction) => {
+      userLines.push(`- ${instruction}`);
+    });
+  }
 
   return [systemPrompt, userLines.join('\n')];
 }

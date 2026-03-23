@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { DraftStorage } from '../../lib/storage/draft-db.js';
 import { configManager } from '../../lib/config/manager.js';
+import { queueAutoSync } from '../../lib/server/auto-sync.js';
 import { saveBlobDownload } from '../../utils/download';
 import SyncControls from './SyncControls';
 
@@ -101,6 +102,7 @@ export default function DataManager() {
     try {
       const text = await file.text();
       await DraftStorage.import(text);
+      queueAutoSync('drafts');
       await loadStats();
 
       setNotice({ type: 'success', message: `Imported drafts from ${file.name}` });
@@ -118,6 +120,7 @@ export default function DataManager() {
     try {
       const text = await file.text();
       configManager.importConfig(text);
+      queueAutoSync('config');
       await loadStats();
 
       setNotice({ type: 'success', message: `Configuration imported from ${file.name}` });
@@ -136,6 +139,8 @@ export default function DataManager() {
         DraftStorage.clearAll(),
         Promise.resolve(configManager.clearAll()),
       ]);
+
+      queueAutoSync(['drafts', 'config'], { immediate: true });
 
       await loadStats();
       setNotice({ type: 'success', message: 'All data cleared successfully' });

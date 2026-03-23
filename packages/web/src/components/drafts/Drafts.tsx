@@ -9,9 +9,9 @@ import InlineHelpTip from '../common/InlineHelpTip';
 import { useGuidedTour } from '../common/GuidedTourContext';
 import { DRAFT_LIBRARY_TOUR_ID } from '@/lib/help';
 import { LibraryCollectionsPlaceholder } from './LibraryCollectionsPlaceholder';
-import { DraftComparisonPlaceholder } from './DraftComparisonPlaceholder';
-import { ReviewChecklistPlaceholder } from './ReviewChecklistPlaceholder';
-import { VersionHistoryPlaceholder } from './VersionHistoryPlaceholder';
+import { DraftComparisonPanel } from './DraftComparisonPanel';
+import { ReviewChecklistPanel } from './ReviewChecklistPanel';
+import { VersionHistoryPanel } from './VersionHistoryPanel';
 
 export default function Drafts() {
   const [leftDraftId, setLeftDraftId] = useState<string>('');
@@ -180,13 +180,13 @@ export default function Drafts() {
             <LibraryCollectionsPlaceholder
               collectionName="all drafts"
             />
-            <DraftComparisonPlaceholder
+            <DraftComparisonPanel
               leftDraftId={leftDraftId}
               rightDraftId={rightDraftId}
               draftOptions={data?.drafts}
             />
-            <ReviewChecklistPlaceholder draftId={leftDraftId || data?.drafts[0]?.review_id} />
-            <VersionHistoryPlaceholder draftId={data?.drafts[0]?.review_id} />
+            <ReviewChecklistPanel draftId={leftDraftId || data?.drafts[0]?.review_id} />
+            <VersionHistoryPanel draftId={data?.drafts[0]?.review_id} />
           </div>
         </section>
       )}

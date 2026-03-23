@@ -96,11 +96,11 @@ export class GoogleEngine extends BaseLLMEngine {
     return contents;
   }
 
-  private async callEndpoint(endpoint: string, body: unknown): Promise<Response> {
+  private async callEndpoint(endpoint: string, body: unknown, signal?: AbortSignal): Promise<Response> {
     const url = `${this.baseUrl}${endpoint}`;
 
     return this.performFetch(url, {
-      ...this.getFetchOptions(),
+      ...this.getFetchOptions(signal),
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify(body),
@@ -123,7 +123,7 @@ export class GoogleEngine extends BaseLLMEngine {
       },
     };
 
-    const response = await this.callEndpoint(endpoint, body);
+    const response = await this.callEndpoint(endpoint, body, options?.signal);
 
     if (!response.ok) {
       const error = await this.parseError(response);
@@ -164,7 +164,7 @@ export class GoogleEngine extends BaseLLMEngine {
       },
     };
 
-    const response = await this.callEndpoint(endpoint, body);
+    const response = await this.callEndpoint(endpoint, body, options?.signal);
 
     if (!response.ok) {
       const error = await this.parseError(response);

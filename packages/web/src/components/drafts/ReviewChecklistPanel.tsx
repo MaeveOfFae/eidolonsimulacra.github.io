@@ -3,11 +3,11 @@ import { useQuery } from '@tanstack/react-query';
 import { CheckCircle2, ClipboardList, Loader2 } from 'lucide-react';
 import { api } from '@/lib/api';
 
-export interface ReviewChecklistPlaceholderProps {
+export interface ReviewChecklistPanelProps {
   draftId?: string;
 }
 
-export function ReviewChecklistPlaceholder({ draftId }: ReviewChecklistPlaceholderProps) {
+export function ReviewChecklistPanel({ draftId }: ReviewChecklistPanelProps) {
   const draftQuery = useQuery({
     queryKey: ['draft', draftId, 'checklist'],
     queryFn: () => api.getDraft(draftId || ''),
@@ -81,4 +81,4 @@ export function ReviewChecklistPlaceholder({ draftId }: ReviewChecklistPlacehold
   );
 }
 
-export default ReviewChecklistPlaceholder;
+export default ReviewChecklistPanel;

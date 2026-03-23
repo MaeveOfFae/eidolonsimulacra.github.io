@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight, CheckCircle2, Circle, PlayCircle, RotateCcw } from 'lucide-react';
 import { configManager } from '../../lib/config/manager';
+import { queueAutoSync } from '../../lib/server/auto-sync';
 import { GETTING_STARTED_GUIDE_ID, GETTING_STARTED_TOUR_ID, gettingStartedSteps } from '../../lib/help';
 import { useGuidedTour } from './GuidedTourContext';
 
@@ -18,6 +19,7 @@ export function OnboardingPlaceholder({ templateName }: OnboardingPlaceholderPro
       completed_guides: nextCompleted,
       first_run_completed: true,
     });
+    queueAutoSync('config');
   };
 
   const restartGuide = () => {
@@ -25,6 +27,7 @@ export function OnboardingPlaceholder({ templateName }: OnboardingPlaceholderPro
       first_run_completed: false,
       completed_guides: helpState.completed_guides.filter((guideId) => guideId !== GETTING_STARTED_GUIDE_ID),
     });
+    queueAutoSync('config');
   };
 
   return (

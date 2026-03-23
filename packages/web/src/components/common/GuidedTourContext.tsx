@@ -1,3 +1,4 @@
+import { queueAutoSync } from '../../lib/server/auto-sync';
 import {
   createContext,
   useEffect,
@@ -160,6 +161,7 @@ export function GuidedTourProvider({ children }: { children: ReactNode }) {
     }
 
     configManager.updateHelpState(updates);
+    queueAutoSync('config');
     syncHelpState();
     void navigateToTourStep(tourId, 0);
   };
@@ -204,6 +206,7 @@ export function GuidedTourProvider({ children }: { children: ReactNode }) {
     }
 
     configManager.updateHelpState(updates);
+    queueAutoSync('config');
     syncHelpState();
     closeTour();
   };
@@ -230,6 +233,7 @@ export function GuidedTourProvider({ children }: { children: ReactNode }) {
   const dismissTip = (tipId: string) => {
     const nextDismissed = Array.from(new Set([...helpState.dismissed_tips, tipId]));
     configManager.updateHelpState({ dismissed_tips: nextDismissed });
+    queueAutoSync('config');
     syncHelpState();
   };
 

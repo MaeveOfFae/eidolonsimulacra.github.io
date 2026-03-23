@@ -21,7 +21,7 @@ import { saveDownload } from '../../utils/download';
 import InlineHelpTip from '../common/InlineHelpTip';
 import { useGuidedTour } from '../common/GuidedTourContext';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
-import TemplateComparisonPlaceholder from './TemplateComparisonPlaceholder';
+import TemplateComparisonPanel from './TemplateComparisonPanel';
 import TemplateMigrationPlaceholder from './TemplateMigrationPlaceholder';
 
 const TemplateWizard = lazy(() => import('./TemplateWizard'));
@@ -457,20 +457,17 @@ export default function Templates() {
         <section className="app-panel p-5">
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
-              <h2 className="text-lg font-semibold">Planned Template Tooling</h2>
+              <h2 className="text-lg font-semibold">Template Tooling</h2>
               <p className="text-sm text-muted-foreground">
-                These disabled cards keep migration and comparison work discoverable without adding new routes.
+                Template comparison is live now for structural diffs. Migration guidance is still staged here until draft-level migration flows exist.
               </p>
             </div>
-            <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">Planned</span>
+            <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-300">Partial</span>
           </div>
 
           <div className="grid gap-4 lg:grid-cols-2">
             <TemplateMigrationPlaceholder templateName={templatesList[0]?.name} draftId={undefined} />
-            <TemplateComparisonPlaceholder
-              leftTemplate={templatesList[0]?.name}
-              rightTemplate={templatesList[1]?.name}
-            />
+            <TemplateComparisonPanel templates={templatesList} leftTemplate={templatesList[0]?.name} rightTemplate={templatesList[1]?.name} />
           </div>
         </section>
       </div>
