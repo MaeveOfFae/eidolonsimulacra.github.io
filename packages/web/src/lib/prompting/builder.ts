@@ -6,16 +6,129 @@
 import type {
   ChatMessage,
   ContentMode,
+  Template,
 } from '@char-gen/shared';
 import { buildSeedGeneratorSystemPrompt } from '../seed-generator.js';
-import type {
-  TemplateAsset,
-} from './blueprint.js';
 import {
   loadBlueprint,
   resolveFeatureBlueprint,
+  templateToAssets,
   topologicalSort,
 } from './blueprint.js';
+import { resolveTemplateBlueprintContent } from '../templates/browser.js';
+
+function buildTemplateOverrideSection(template: Template): string {
+  const assets = templateToAssets(template);
+  if (assets.length === 0) {
+    return '';
+  }
+
+  let orderedNames: string[];
+  try {
+    orderedNames = topologicalSort(assets);
+  } catch {
+    orderedNames = assets.map((asset) => asset.name);
+  }
+
+  const orderedAssets = orderedNames
+    .map((name) => assets.find((asset) => asset.name === name))
+    .filter((asset): asset is NonNullable<typeof asset> => Boolean(asset));
+
+  const lines: string[] = [];
+  lines.push('\n\n## TEMPLATE OVERRIDE\n');
+  lines.push('The following active template contract is authoritative. Use it instead of the fallback template order.');
+  lines.push(`Template name: ${template.name}`);
+  lines.push(`Template version: ${template.version}`);
+  if (template.description?.trim()) {
+    lines.push(`Template description: ${template.description.trim()}`);
+  }
+  lines.push(`Asset count: ${orderedAssets.length}`);
+  lines.push('');
+  lines.push('Asset output order:');
+  orderedAssets.forEach((asset, index) => {
+    lines.push(`${index + 1}. ${asset.name}`);
+  });
+  lines.push('');
+  lines.push('Declared asset contract:');
+  orderedAssets.forEach((asset) => {
+    const dependsOn = asset.dependsOn.length > 0 ? asset.dependsOn.join(', ') : 'none';
+    lines.push(`- ${asset.name}`);
+    lines.push(`  - required: ${asset.required}`);
+    lines.push(`  - depends_on: ${dependsOn}`);
+    if (asset.blueprintFile) {
+      lines.push(`  - blueprint_file: ${asset.blueprintFile}`);
+    }
+    if (asset.description?.trim()) {
+      lines.push(`  - description: ${asset.description.trim()}`);
+    }
+  });
+
+  const blueprintSections = orderedAssets
+    .map((asset) => {
+      const blueprintContent = resolveTemplateBlueprintContent(template.name, asset.name)?.trim();
+      if (!blueprintContent) {
+        return null;
+      }
+
+      return [
+        '',
+        `### ASSET BLUEPRINT: ${asset.name}`,
+        '```md',
+        blueprintContent,
+        '```',
+      ].join('\n');
+    })
+    .filter((section): section is string => Boolean(section));
+
+  if (blueprintSections.length > 0) {
+    lines.push('');
+    lines.push('Resolved asset blueprints:');
+    lines.push('Follow these blueprint sources exactly for structure, placeholders, control blocks, and field names.');
+    lines.push(blueprintSections.join('\n'));
+  }
+
+  return lines.join('\n');
+}
+
+function getOrderedTemplateAssetNames(template?: Template): string[] {
+  if (!template) {
+    return [];
+  }
+
+  const assets = templateToAssets(template);
+  if (assets.length === 0) {
+    return [];
+  }
+
+  try {
+    return topologicalSort(assets);
+  } catch {
+    return assets.map((asset) => asset.name);
+  }
+}
+
+function buildParentSuiteSection(
+  label: string,
+  parentName: string,
+  parentAssets: Record<string, string>,
+  template?: Template
+): string[] {
+  const orderedNames = getOrderedTemplateAssetNames(template);
+  const assetNames = orderedNames.length > 0 ? orderedNames : Object.keys(parentAssets);
+  const lines: string[] = [`\n## ${label}: ${parentName}`];
+
+  if (template) {
+    lines.push(`Template: ${template.name} (${template.version})`);
+  }
+
+  assetNames.forEach((assetName) => {
+    lines.push(`### ${assetName}:\n\`\`\``);
+    lines.push(parentAssets[assetName] || '');
+    lines.push('\`\`\`');
+  });
+
+  return lines;
+}
 
 /**
  * Build orchestrator prompt for character generation
@@ -23,29 +136,15 @@ import {
 export async function buildOrchestratorPrompt(
   seed: string,
   mode: ContentMode | null = null,
-  templateAssets?: TemplateAsset[],
+  template?: Template,
   baseUrl?: string,
   blueprintOverride?: string
 ): Promise<[system: string, user: string]> {
   // Load orchestrator blueprint - respects settings and override
   let orchestrator = await resolveFeatureBlueprint('character_generation', blueprintOverride, baseUrl);
 
-  // If template provided, modify orchestrator to list custom assets
-  if (templateAssets && templateAssets.length > 0) {
-    try {
-      const assetOrder = topologicalSort(templateAssets);
-      const assetList = assetOrder.join(', ');
-
-      let templateOverride = `\n\n## TEMPLATE OVERRIDE\n\nUsing custom template with ${templateAssets.length} assets\n`;
-      templateOverride += `Generate these assets in order: ${assetList}\n`;
-      templateOverride += 'Follow dependency order defined in template.\n';
-
-      orchestrator = orchestrator + templateOverride;
-    } catch {
-      // Use unsorted list if topological sort fails
-      const assetList = templateAssets.map(a => a.name).join(', ');
-      orchestrator += `\n\n## TEMPLATE OVERRIDE\n\nGenerate these assets: ${assetList}\n`;
-    }
+  if (template && template.assets.length > 0) {
+    orchestrator += buildTemplateOverrideSection(template);
   }
 
   const systemPrompt = orchestrator;
@@ -257,6 +356,8 @@ export async function buildOffspringPrompt(
   parent1Name: string,
   parent2Name: string,
   mode: ContentMode | null = null,
+  parent1Template?: Template,
+  parent2Template?: Template,
   baseUrl?: string,
   blueprintOverride?: string
 ): Promise<[system: string, user: string]> {
@@ -269,39 +370,13 @@ export async function buildOffspringPrompt(
     userLines.push(`Mode: ${mode}`);
   }
 
-  // Add parent 1's assets
-  userLines.push(`\n## PARENT 1: ${parent1Name}`);
-  userLines.push('### System Prompt:\n```');
-  userLines.push(parent1Assets.system_prompt || '');
-  userLines.push('```');
-  userLines.push('### Post History:\n```');
-  userLines.push(parent1Assets.post_history || '');
-  userLines.push('```');
-  userLines.push('### Character Sheet:\n```');
-  userLines.push(parent1Assets.character_sheet || '');
-  userLines.push('```');
-  userLines.push('### Intro Scene:\n```');
-  userLines.push(parent1Assets.intro_scene || '');
-  userLines.push('```');
-
-  // Add parent 2's assets
-  userLines.push(`\n## PARENT 2: ${parent2Name}`);
-  userLines.push('### System Prompt:\n```');
-  userLines.push(parent2Assets.system_prompt || '');
-  userLines.push('```');
-  userLines.push('### Post History:\n```');
-  userLines.push(parent2Assets.post_history || '');
-  userLines.push('```');
-  userLines.push('### Character Sheet:\n```');
-  userLines.push(parent2Assets.character_sheet || '');
-  userLines.push('```');
-  userLines.push('### Intro Scene:\n```');
-  userLines.push(parent2Assets.intro_scene || '');
-  userLines.push('```');
+  userLines.push(...buildParentSuiteSection('PARENT 1', parent1Name, parent1Assets, parent1Template));
+  userLines.push(...buildParentSuiteSection('PARENT 2', parent2Name, parent2Assets, parent2Template));
 
   // Instruction
   userLines.push('\n## INSTRUCTION:');
   userLines.push('Analyze how these two parents would shape a new character\'s upbringing and generate the offspring\'s SEED.');
+  userLines.push('Treat each parent suite according to the template contract shown in the provided assets.');
 
   return [systemPrompt, userLines.join('\n')];
 }

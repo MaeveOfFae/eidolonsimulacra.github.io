@@ -133,43 +133,64 @@ export default function Lineage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Lineage</h1>
-          <p className="text-muted-foreground">
-            Browse family trees across generated offspring and follow each branch back into draft review.
-          </p>
+    <div className="app-page space-y-6 pb-12">
+      <section className="app-page-hero">
+        <div className="app-page-hero-grid">
+          <div className="space-y-4">
+            <p className="app-page-eyebrow">Family graph</p>
+            <h1 className="app-page-title">Trace offspring branches back through reviewed draft history.</h1>
+            <p className="app-page-summary">
+              This screen is the lineage map for generated descendants, parent relationships, and generation depth. Use it to inspect ancestry before jumping back into review or similarity analysis.
+            </p>
+            <button
+              onClick={() => void refetch()}
+              className="inline-flex items-center gap-2 rounded-2xl border border-input px-4 py-2.5 text-sm font-medium hover:bg-accent"
+            >
+              <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+          </div>
+
+          <div className="app-panel-muted p-5">
+            <p className="app-page-eyebrow">Lineage state</p>
+            <div className="mt-4 app-page-metrics">
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">Characters</p>
+                <div className="app-page-metric-value text-2xl">{data?.stats.total_characters ?? 0}</div>
+              </div>
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">Roots</p>
+                <div className="app-page-metric-value text-2xl">{data?.stats.root_characters ?? 0}</div>
+              </div>
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">Generations</p>
+                <div className="app-page-metric-value text-2xl">{data?.stats.generations ?? 0}</div>
+              </div>
+            </div>
+          </div>
         </div>
-        <button
-          onClick={() => void refetch()}
-          className="inline-flex items-center gap-2 rounded-md border border-input px-4 py-2 text-sm font-medium hover:bg-accent"
-        >
-          <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
-          Refresh
-        </button>
-      </div>
+      </section>
 
       <div className="grid gap-4 sm:grid-cols-4">
-        <div className="rounded-lg border border-border bg-card p-4">
+        <div className="app-panel p-4">
           <div className="text-2xl font-bold">{data?.stats.total_characters ?? 0}</div>
           <div className="text-sm text-muted-foreground">Characters</div>
         </div>
-        <div className="rounded-lg border border-border bg-card p-4">
+        <div className="app-panel p-4">
           <div className="text-2xl font-bold">{data?.stats.root_characters ?? 0}</div>
           <div className="text-sm text-muted-foreground">Roots</div>
         </div>
-        <div className="rounded-lg border border-border bg-card p-4">
+        <div className="app-panel p-4">
           <div className="text-2xl font-bold">{data?.stats.leaf_characters ?? 0}</div>
           <div className="text-sm text-muted-foreground">Leaves</div>
         </div>
-        <div className="rounded-lg border border-border bg-card p-4">
+        <div className="app-panel p-4">
           <div className="text-2xl font-bold">{data?.stats.generations ?? 0}</div>
           <div className="text-sm text-muted-foreground">Generations</div>
         </div>
       </div>
 
-      <div className="rounded-lg border border-border bg-card p-4">
+      <div className="app-panel p-4">
         <div className="grid gap-4 md:grid-cols-[1fr_auto_auto_auto] md:items-end">
           <div>
             <label className="text-sm font-medium">Generation</label>
@@ -227,7 +248,7 @@ export default function Lineage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.3fr_0.9fr]">
-        <section className="rounded-lg border border-border bg-card p-4">
+        <section className="app-panel p-4">
           <div className="mb-4 flex items-center gap-2">
             <GitBranch className="h-5 w-5 text-primary" />
             <h2 className="text-lg font-semibold">Family Tree</h2>
@@ -252,7 +273,7 @@ export default function Lineage() {
           )}
         </section>
 
-        <section className="rounded-lg border border-border bg-card p-4">
+        <section className="app-panel p-4">
           <div className="mb-4 flex items-center gap-2">
             <Users className="h-5 w-5 text-primary" />
             <h2 className="text-lg font-semibold">Character Details</h2>
@@ -326,7 +347,7 @@ export default function Lineage() {
       </div>
 
       {/* Planned Lineage Tooling */}
-      <section className="rounded-lg border border-dashed border-border bg-card/50 p-5">
+      <section className="app-panel border-dashed p-5">
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
             <h2 className="text-lg font-semibold">Planned Lineage Tooling</h2>

@@ -3,7 +3,7 @@ name: Intro Page
 description: Generate a character intro page with Markdown.
 invokable: true
 always: false
-version: 3.1
+version: 3.2
 ---
 
 # Intro Page
@@ -12,7 +12,9 @@ Use this blueprint to produce a single Markdown snippet. Keep the layout lean an
 
 Version note: version tracks the format spec for this blueprint (not a bundle version).
 
-**CRITICAL: ALL PLACEHOLDERS MUST BE REPLACED**
+## Critical Requirement
+
+All placeholders must be replaced.
 
 Rules:
 
@@ -21,6 +23,8 @@ Rules:
 - Hard ban: never emit any example or prior character names (e.g., seed/test names) when generating a new character.
 - Safety: do not narrate user thoughts, actions, decisions, or consent; frame the user as an observer, not an actor.
 - Respect the orchestrator content mode when present (SFW/NSFW/Platform-Safe); if SFW/Platform-Safe, avoid explicit sexual content.
+- Keep every section aligned with the upstream system prompt, character sheet, and intro scene; do not beautify away contradictions or rough edges.
+- Do not turn the page into sanitized marketing copy. Preserve the character's pressure points, damage, hunger, and friction when the seed implies them.
 - Output ONLY the finished intro page inside a single markdown code block.
 - No commentary or explanations.
 

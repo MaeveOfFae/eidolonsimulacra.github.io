@@ -53,6 +53,7 @@ import { configManager } from './config/manager.js';
 import { DraftStorage } from './storage/draft-db.js';
 import { GenerationService } from './services/generation.js';
 import {
+  buildUniqueCustomBlueprintPath,
   type StoredTemplateRecord,
   getAllTemplateRecords,
   getBlueprintCatalog,
@@ -63,6 +64,7 @@ import {
   getStoredTemplates,
   getTemplateRecord,
   inferCharacterDisplayNameForTemplate,
+  isCustomBlueprintPath,
   resolveTemplateDefinition,
   saveBlueprintOverrides,
   saveStoredTemplates,
@@ -118,6 +120,70 @@ type BlueprintPreviewResponse = GenerateAssetResponse & {
 };
 
 const CUSTOM_THEMES_STORAGE_KEY = 'eidolon.web.themes.custom';
+
+function parseBlueprintMetadata(path: string, content: string): {
+  name: string;
+  description: string;
+  version: string;
+  invokable: boolean;
+} {
+  const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+  let name = path.split('/').pop()?.replace('.md', '') || 'Blueprint';
+  let description = '';
+  let version = '1.0';
+  let invokable = true;
+
+  if (!frontmatterMatch) {
+    return { name, description, version, invokable };
+  }
+
+  const frontmatter = frontmatterMatch[1];
+  const nameMatch = frontmatter.match(/^name:\s*(.+)$/m);
+  const descriptionMatch = frontmatter.match(/^description:\s*(.+)$/m);
+  const versionMatch = frontmatter.match(/^version:\s*(.+)$/m);
+  const invokableMatch = frontmatter.match(/^invokable:\s*(.+)$/m);
+
+  if (nameMatch) {
+    name = nameMatch[1].trim();
+  }
+  if (descriptionMatch) {
+    description = descriptionMatch[1].trim();
+  }
+  if (versionMatch) {
+    version = versionMatch[1].trim();
+  }
+  if (invokableMatch) {
+    invokable = invokableMatch[1].trim() === 'true';
+  }
+
+  return { name, description, version, invokable };
+}
+
+function getUniqueTemplateName(requestedName: string, excludeName?: string): string {
+  const existingNames = new Set(
+    getAllTemplateRecords()
+      .map((record) => record.template.name)
+      .filter((name) => name !== excludeName)
+  );
+
+  if (!existingNames.has(requestedName)) {
+    return requestedName;
+  }
+
+  const copyBase = requestedName.endsWith(' Copy') ? requestedName : `${requestedName} Copy`;
+  if (!existingNames.has(copyBase)) {
+    return copyBase;
+  }
+
+  let suffix = 2;
+  let candidate = `${copyBase} ${suffix}`;
+  while (existingNames.has(candidate)) {
+    suffix += 1;
+    candidate = `${copyBase} ${suffix}`;
+  }
+
+  return candidate;
+}
 const LEGACY_CUSTOM_THEMES_STORAGE_KEYS = ['bpui.web.themes.custom'];
 const MODEL_CACHE_TTL_MS = 5 * 60 * 1000;
 
@@ -1951,8 +2017,25 @@ export class EidolonBrowserAPI {
     const records = getStoredTemplates();
     const index = records.findIndex((record) => record.template.name === name);
     if (index < 0) {
-      throw new APIError(404, `Custom template ${name} not found`);
+      const sourceRecord = getTemplateRecord(name);
+      if (!sourceRecord) {
+        throw new APIError(404, `Template ${name} not found`);
+      }
+
+      const nextName = getUniqueTemplateName(template.name, name);
+      return this.createTemplate({
+        ...template,
+        name: nextName,
+      });
     }
+
+    if (template.name !== name) {
+      const conflictingRecord = getTemplateRecord(template.name);
+      if (conflictingRecord && conflictingRecord.template.name !== name) {
+        throw new APIError(409, `Template ${template.name} already exists`);
+      }
+    }
+
     records[index] = {
       template: {
         name: template.name,
@@ -2074,6 +2157,7 @@ export class EidolonBrowserAPI {
             if (!local) {
               // Create local copy from server
               await DraftStorage.saveDraft({
+                path: serverDraft.reviewId,
                 metadata: {
                   review_id: serverDraft.reviewId,
                   seed: serverDraft.seed,
@@ -2095,6 +2179,7 @@ export class EidolonBrowserAPI {
               const serverTime = new Date(serverDraft.updatedAt).getTime();
               if (serverTime > localTime) {
                 await DraftStorage.saveDraft({
+                  path: local.path,
                   metadata: {
                     ...local.metadata,
                     seed: serverDraft.seed,
@@ -2563,6 +2648,13 @@ export class EidolonBrowserAPI {
   }
 
   async updateBlueprint(path: string, content: string): Promise<Blueprint> {
+    const isBuiltinBlueprint = getOriginalBlueprintContent(path) !== null && !isCustomBlueprintPath(path);
+    if (isBuiltinBlueprint) {
+      const metadata = parseBlueprintMetadata(path, content);
+      const targetPath = buildUniqueCustomBlueprintPath(metadata.name || path, path);
+      return this.createBlueprint(targetPath, content);
+    }
+
     // Save locally first
     const overrides = getBlueprintOverrides();
     overrides[path] = content;
@@ -2573,24 +2665,7 @@ export class EidolonBrowserAPI {
       try {
         const status = await serverClient.checkStatus();
         if (status.authenticated) {
-          // Parse frontmatter to get metadata
-          const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
-          let name = path.split('/').pop()?.replace('.md', '') || 'Blueprint';
-          let description = '';
-          let version = '1.0';
-          let invokable = true;
-
-          if (frontmatterMatch) {
-            const fm = frontmatterMatch[1];
-            const nameMatch = fm.match(/^name:\s*(.+)$/m);
-            const descMatch = fm.match(/^description:\s*(.+)$/m);
-            const versionMatch = fm.match(/^version:\s*(.+)$/m);
-            const invokableMatch = fm.match(/^invokable:\s*(.+)$/m);
-            if (nameMatch) name = nameMatch[1].trim();
-            if (descMatch) description = descMatch[1].trim();
-            if (versionMatch) version = versionMatch[1].trim();
-            if (invokableMatch) invokable = invokableMatch[1].trim() === 'true';
-          }
+          const { name, description, version, invokable } = parseBlueprintMetadata(path, content);
 
           await serverClient.syncBlueprints('push', {
             blueprints: [{
@@ -2610,6 +2685,29 @@ export class EidolonBrowserAPI {
     }
 
     return this.getBlueprint(path);
+  }
+
+  async deleteBlueprint(path: string): Promise<{ status: 'deleted'; path: string }> {
+    if (getOriginalBlueprintContent(path) !== null) {
+      throw new APIError(400, `Cannot delete built-in blueprint ${path}`);
+    }
+
+    const overrides = getBlueprintOverrides();
+    delete overrides[path];
+    saveBlueprintOverrides(overrides);
+
+    if (serverClient.isEnabled()) {
+      try {
+        const status = await serverClient.checkStatus();
+        if (status.authenticated) {
+          await serverClient.deleteBlueprint(path);
+        }
+      } catch (e) {
+        console.warn('Failed to delete blueprint on server:', e);
+      }
+    }
+
+    return { status: 'deleted', path };
   }
 
   async resetBlueprint(path: string): Promise<Blueprint> {
@@ -2653,32 +2751,12 @@ export class EidolonBrowserAPI {
       try {
         const status = await serverClient.checkStatus();
         if (status.authenticated) {
-          // Parse frontmatter
-          const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
-          let name = path.split('/').pop()?.replace('.md', '') || 'Blueprint';
-          let description = '';
-          let version = '1.0';
-          let invokable = true;
-
-          if (frontmatterMatch) {
-            const fm = frontmatterMatch[1];
-            const nameMatch = fm.match(/^name:\s*(.+)$/m);
-            const descMatch = fm.match(/^description:\s*(.+)$/m);
-            const versionMatch = fm.match(/^version:\s*(.+)$/m);
-            const invokableMatch = fm.match(/^invokable:\s*(.+)$/m);
-            if (nameMatch) name = nameMatch[1].trim();
-            if (descMatch) description = descMatch[1].trim();
-            if (versionMatch) version = versionMatch[1].trim();
-            if (invokableMatch) invokable = invokableMatch[1].trim() === 'true';
-          }
+          const { name, description } = parseBlueprintMetadata(path, content);
 
           await serverClient.createBlueprint({
             path,
             name,
             description,
-            invokable,
-            version,
-            category: 'custom',
             content,
           });
         }

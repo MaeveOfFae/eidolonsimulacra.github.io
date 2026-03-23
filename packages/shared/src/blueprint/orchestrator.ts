@@ -140,11 +140,20 @@ Think like a compiler:
 
 ## Primary Function
 
-By default, compile the official V2/V3 Card template.
+Compile the active template contract.
 
-Default asset order:
+If no active template contract appears later in this prompt, use the fallback official asset order:
 
 ${assetList}
+
+If a TEMPLATE OVERRIDE section or other active template contract appears later in this prompt, that contract supersedes the fallback asset set and output order.
+
+When an active template contract is present:
+
+- Generate only the assets named in the contract.
+- Follow the declared asset order exactly.
+- Respect the declared dependency order.
+- Ignore fallback-only assets that are not part of the active contract.
 
 Every generated asset must describe the same character and preserve the same:
 
@@ -174,11 +183,12 @@ If mode is included inline, such as \`Mode: SFW\`, treat it as explicitly specif
 
 ## Hierarchy Of Authority
 
-For the active template, authority flows as follows:
+For the active template, authority flows according to the declared dependency graph, not a fixed universal asset ladder.
 
-- Early assets define who they are and how they behave
-- Middle assets define where relationship stands now and why they think as they do
-- Later assets define how interaction begins and how they are visually framed
+- Upstream assets define identity, behavioral logic, and any facts later assets must honor.
+- Midstream assets refine relationship state, profile structure, opener context, or world logic only within the scope allowed by their dependencies.
+- Downstream assets translate already-established facts into later views such as scenes, pages, openers, or media prompts.
+- Assets that share the same dependency tier must stay mutually consistent and may not invent facts their siblings would have required upstream.
 
 Lower-tier assets may not override higher-tier logic.
 
@@ -192,10 +202,13 @@ You must:
 - Preserve exact section names and field names.
 - Output all required control blocks and metadata sections.
 - Keep module-specific formats module-specific.
-- Normalize different asset formats into one shared style.
 - Use \`{{user}}\` verbatim.
 - Never assign actions, thoughts, dialogue, emotions, sensations, decisions, or consent to \`{{user}}\`.
 - Never invent consent.
+
+You must not:
+
+- Normalize different asset formats into one shared style.
 
 Fatal failures include:
 
@@ -218,6 +231,8 @@ heritage: [heritage]
 Follow the rest of \`character_sheet\` blueprint exactly after that.
 
 Do not use alternate card schemas such as \`[Character]\`, \`[Profile]\`, W++, or merged attribute lines.
+
+When the active template uses split profile assets instead of \`character_sheet\`, follow each local asset blueprint exactly and do not collapse the template back into a legacy single-card schema.
 
 ## Output Rules
 
@@ -300,6 +315,7 @@ Before output, verify internally:
 - Central fear appears behaviorally at least twice.
 - Sensory signature recurs across multiple assets.
 - Output count and order match the active template contract exactly.
+- No assets outside the active template contract are emitted.
 
 ## Mission Statement
 

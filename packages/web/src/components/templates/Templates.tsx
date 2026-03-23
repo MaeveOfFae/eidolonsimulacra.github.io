@@ -1,13 +1,26 @@
 import { lazy, Suspense, useState, type ChangeEvent } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { FileText, Plus, Star, Trash2, ChevronDown, ChevronUp, ShieldCheck, Copy, Download, Pencil, Upload, Loader2 } from 'lucide-react';
-import type { CreateTemplateRequest, Template, AssetDefinition } from '@char-gen/shared';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  Download,
+  FileText,
+  Loader2,
+  Pencil,
+  Plus,
+  ShieldCheck,
+  Star,
+  Trash2,
+  Upload,
+} from 'lucide-react';
+import type { AssetDefinition, CreateTemplateRequest, Template } from '@char-gen/shared';
 import { api } from '@/lib/api';
 import { GETTING_STARTED_TOUR_ID } from '@/lib/help';
-import { useAssistantScreenContext } from '../common/useAssistantContext';
+import { saveDownload } from '../../utils/download';
 import InlineHelpTip from '../common/InlineHelpTip';
 import { useGuidedTour } from '../common/GuidedTourContext';
-import { saveDownload } from '../../utils/download';
+import { useAssistantScreenContext } from '../common/useAssistantContext';
 import TemplateComparisonPlaceholder from './TemplateComparisonPlaceholder';
 import TemplateMigrationPlaceholder from './TemplateMigrationPlaceholder';
 
@@ -45,8 +58,8 @@ export default function Templates() {
       queryClient.invalidateQueries({ queryKey: ['templates'] });
       setFeedback({ type: 'success', message: 'Template deleted.' });
     },
-    onError: (error: Error) => {
-      setFeedback({ type: 'error', message: error.message });
+    onError: (mutationError: Error) => {
+      setFeedback({ type: 'error', message: mutationError.message });
     },
   });
 
@@ -57,8 +70,8 @@ export default function Templates() {
       queryClient.invalidateQueries({ queryKey: ['templates'] });
       setFeedback({ type: 'success', message: `Duplicated template as ${template.name}.` });
     },
-    onError: (error: Error) => {
-      setFeedback({ type: 'error', message: error.message });
+    onError: (mutationError: Error) => {
+      setFeedback({ type: 'error', message: mutationError.message });
     },
   });
 
@@ -68,13 +81,13 @@ export default function Templates() {
       queryClient.invalidateQueries({ queryKey: ['templates'] });
       setFeedback({ type: 'success', message: `Imported template ${template.name}.` });
     },
-    onError: (error: Error) => {
-      setFeedback({ type: 'error', message: error.message });
+    onError: (mutationError: Error) => {
+      setFeedback({ type: 'error', message: mutationError.message });
     },
   });
 
   const toggleExpand = (name: string) => {
-    setExpandedTemplate(expandedTemplate === name ? null : name);
+    setExpandedTemplate((current) => (current === name ? null : name));
   };
 
   const handleValidate = async (name: string) => {
@@ -88,8 +101,11 @@ export default function Templates() {
             ? `Validation finished for ${name}.`
             : `${name} is valid and ready to use.`,
       });
-    } catch (error) {
-      setFeedback({ type: 'error', message: error instanceof Error ? error.message : 'Validation failed' });
+    } catch (validationError) {
+      setFeedback({
+        type: 'error',
+        message: validationError instanceof Error ? validationError.message : 'Validation failed',
+      });
     }
   };
 
@@ -104,33 +120,47 @@ export default function Templates() {
   const handleExport = async (name: string) => {
     try {
       const download = await api.exportTemplate(name);
-      const result = await saveDownload(
-        download,
-        `${name.toLowerCase().replace(/[^a-z0-9]+/gi, '_')}.json`
-      );
+      const result = await saveDownload(download, `${name.toLowerCase().replace(/[^a-z0-9]+/gi, '_')}.json`);
 
       if (result.saved) {
         setFeedback({ type: 'success', message: `Exported ${name}.` });
       }
-    } catch (error) {
-      setFeedback({ type: 'error', message: error instanceof Error ? error.message : 'Export failed' });
+    } catch (exportError) {
+      setFeedback({ type: 'error', message: exportError instanceof Error ? exportError.message : 'Export failed' });
     }
   };
 
   const handleEdit = async (template: Template) => {
     try {
       const response = await api.getTemplateBlueprintContents(template.name);
+      const isBuiltinTemplate = Boolean(template.is_official || template.is_default);
+      const existingNames = new Set((templates ?? []).map((entry) => entry.name));
+      let suggestedName = template.name;
+
+      if (isBuiltinTemplate) {
+        const baseName = `${template.name} Copy`;
+        suggestedName = baseName;
+        let suffix = 2;
+        while (existingNames.has(suggestedName)) {
+          suggestedName = `${baseName} ${suffix}`;
+          suffix += 1;
+        }
+      }
+
       setEditingTemplate(template);
       setEditingTemplateData({
-        name: template.name,
+        name: suggestedName,
         version: template.version,
         description: template.description,
         assets: template.assets,
         blueprint_contents: response.blueprint_contents,
       });
       setShowWizard(true);
-    } catch (error) {
-      setFeedback({ type: 'error', message: error instanceof Error ? error.message : 'Failed to load template editor' });
+    } catch (editError) {
+      setFeedback({
+        type: 'error',
+        message: editError instanceof Error ? editError.message : 'Failed to load template editor',
+      });
     }
   };
 
@@ -139,14 +169,19 @@ export default function Templates() {
     if (!file) {
       return;
     }
+
     importMutation.mutate(file);
     event.target.value = '';
   };
 
   const wizardInitialData: CreateTemplateRequest | undefined = editingTemplateData ?? undefined;
+  const templatesList = templates ?? [];
+  const templateCount = templatesList.length;
+  const officialCount = templatesList.filter((template) => template.is_official).length;
+  const customCount = templateCount - officialCount;
 
   useAssistantScreenContext({
-    template_count: templates?.length ?? 0,
+    template_count: templateCount,
     expanded_template: expandedTemplate,
     editing_template: editingTemplate?.name ?? null,
     wizard_open: showWizard,
@@ -164,7 +199,7 @@ export default function Templates() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex h-64 items-center justify-center">
         <div className="text-muted-foreground">Loading templates...</div>
       </div>
     );
@@ -191,182 +226,171 @@ export default function Templates() {
             }}
             initialData={wizardInitialData}
             templateName={editingTemplate?.name}
+            forkMode={Boolean(editingTemplate?.is_official || editingTemplate?.is_default)}
           />
         </Suspense>
       )}
 
-      <div className="space-y-6">
-      {feedback && (
-        <div className={`rounded-lg border p-4 text-sm ${feedback.type === 'error' ? 'border-destructive bg-destructive/10 text-destructive' : 'border-green-600/30 bg-green-600/10 text-green-700 dark:text-green-400'}`}>
-          {feedback.message}
-        </div>
-      )}
-      <InlineHelpTip
-        tipId="templates-first-choice-tip"
-        title="Choose a template before you generate"
-        description="Templates decide which assets exist and how review and export behave. If you are new, start with an official template instead of creating one from scratch."
-        actionLabel={isTourCompleted(GETTING_STARTED_TOUR_ID) ? 'Replay Getting Started Tour' : 'Start Getting Started Tour'}
-        onAction={() => (isTourCompleted(GETTING_STARTED_TOUR_ID) ? restartTour(GETTING_STARTED_TOUR_ID) : startTour(GETTING_STARTED_TOUR_ID))}
-      />
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Templates</h1>
-          <p className="text-muted-foreground">
-            Manage character generation templates
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <label className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-input px-4 py-2 text-sm font-medium hover:bg-accent">
-            <Upload className="h-4 w-4" />
-            Import Template
-            <input type="file" accept=".json,.zip" className="hidden" onChange={handleImportChange} />
-          </label>
-          <button
-            onClick={() => {
-              setEditingTemplate(null);
-
-      <section className="rounded-lg border border-dashed border-border bg-card/50 p-5">
-        <div className="mb-4 flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-semibold">Planned Template Tooling</h2>
-            <p className="text-sm text-muted-foreground">
-              These disabled cards keep migration and comparison work discoverable without adding new routes.
-            </p>
-          </div>
-          <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-            Planned
-          </span>
-        </div>
-
-        <div className="grid gap-4 lg:grid-cols-2">
-          <TemplateMigrationPlaceholder
-            templateName={templates?.[0]?.name}
-            draftId={undefined}
-          />
-          <TemplateComparisonPlaceholder
-            leftTemplate={templates?.[0]?.name}
-            rightTemplate={templates?.[1]?.name}
-          />
-        </div>
-      </section>
-              setShowWizard(true);
-            }}
-            className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-          >
-            <Plus className="h-4 w-4" />
-            Create Template
-          </button>
-        </div>
-      </div>
-
-      {/* Template List */}
-      <div className="space-y-3">
-        {templates?.map((template: Template) => (
+      <div className="app-page space-y-6 pb-12">
+        {feedback && (
           <div
-            key={template.name}
-            className="rounded-lg border border-border bg-card overflow-hidden"
+            className={`app-note p-4 text-sm ${
+              feedback.type === 'error'
+                ? 'border-destructive/40 bg-destructive/10 text-destructive'
+                : 'border-green-600/30 bg-green-600/10 text-green-700 dark:text-green-400'
+            }`}
           >
-            {/* Header */}
-            <button
-              onClick={() => toggleExpand(template.name)}
-              className="w-full flex items-center justify-between p-4 hover:bg-accent/50 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <FileText className="h-5 w-5 text-muted-foreground" />
-                <div className="text-left">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">{template.name}</span>
-                    {template.is_official && (
-                      <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
-                    )}
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {template.description || `${template.assets.length} assets`}
-                  </p>
+            {feedback.message}
+          </div>
+        )}
+
+        <InlineHelpTip
+          tipId="templates-first-choice-tip"
+          title="Choose a template before you generate"
+          description="Templates decide which assets exist and how review and export behave. If you are new, start with an official template instead of creating one from scratch."
+          actionLabel={isTourCompleted(GETTING_STARTED_TOUR_ID) ? 'Replay Getting Started Tour' : 'Start Getting Started Tour'}
+          onAction={() =>
+            isTourCompleted(GETTING_STARTED_TOUR_ID)
+              ? restartTour(GETTING_STARTED_TOUR_ID)
+              : startTour(GETTING_STARTED_TOUR_ID)
+          }
+        />
+
+        <section className="app-page-hero">
+          <div className="app-page-hero-grid">
+            <div className="space-y-4">
+              <p className="app-page-eyebrow">Template contracts</p>
+              <h1 className="app-page-title">Choose or edit the asset graph before you ask the model for content.</h1>
+              <p className="app-page-summary">
+                Templates define which assets exist, how they depend on each other, and what export expects. This page controls the structural layer for the browser workflow.
+              </p>
+              <div className="flex flex-wrap items-center gap-3">
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-input px-4 py-2.5 text-sm font-medium hover:bg-accent">
+                  <Upload className="h-4 w-4" />
+                  Import Template
+                  <input type="file" accept=".json,.zip" className="hidden" onChange={handleImportChange} />
+                </label>
+                <button
+                  onClick={() => {
+                    setEditingTemplate(null);
+                    setEditingTemplateData(null);
+                    setShowWizard(true);
+                  }}
+                  className="inline-flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+                >
+                  <Plus className="h-4 w-4" />
+                  Create Template
+                </button>
+              </div>
+            </div>
+
+            <div className="app-panel-muted p-5">
+              <p className="app-page-eyebrow">Catalog state</p>
+              <div className="mt-4 app-page-metrics">
+                <div className="app-page-metric">
+                  <p className="app-page-metric-label">Templates</p>
+                  <div className="app-page-metric-value text-2xl">{templateCount}</div>
+                </div>
+                <div className="app-page-metric">
+                  <p className="app-page-metric-label">Official</p>
+                  <div className="app-page-metric-value text-2xl">{officialCount}</div>
+                </div>
+                <div className="app-page-metric">
+                  <p className="app-page-metric-label">Custom</p>
+                  <div className="app-page-metric-value text-2xl">{customCount}</div>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">v{template.version}</span>
-                {expandedTemplate === template.name ? (
-                  <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                ) : (
-                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                )}
-              </div>
-            </button>
+            </div>
+          </div>
+        </section>
 
-            {/* Expanded Content */}
-            {expandedTemplate === template.name && (
-              <div className="border-t border-border p-4 space-y-4">
-                {/* Assets */}
-                <div>
-                  <h3 className="text-sm font-medium mb-2">Assets ({template.assets.length})</h3>
-                  <div className="space-y-2">
-                    {template.assets.map((asset: AssetDefinition) => (
-                      <div
-                        key={asset.name}
-                        className="flex items-center justify-between text-sm p-2 rounded bg-muted/50"
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className={asset.required ? 'text-primary' : 'text-muted-foreground'}>
-                            {asset.name}
-                          </span>
-                          {asset.depends_on.length > 0 && (
-                            <span className="text-xs text-muted-foreground">
-                              (depends: {asset.depends_on.join(', ')})
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {asset.required && (
-                            <span className="text-xs px-2 py-0.5 rounded bg-primary/20 text-primary">
-                              required
-                            </span>
-                          )}
-                          {asset.blueprint_file && (
-                            <span className="text-xs text-muted-foreground">
-                              {asset.blueprint_file}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+        <div className="space-y-3">
+          {templatesList.map((template: Template) => (
+            <div key={template.name} className="app-panel overflow-hidden">
+              <button
+                onClick={() => toggleExpand(template.name)}
+                className="flex w-full items-center justify-between p-4 transition-colors hover:bg-accent/30"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="rounded-xl border border-border/60 bg-background/55 p-2 text-primary">
+                    <FileText className="h-5 w-5" />
+                  </div>
+                  <div className="text-left">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-foreground">{template.name}</span>
+                      {template.is_official && <Star className="h-4 w-4 fill-yellow-500 text-yellow-500" />}
+                    </div>
+                    <p className="text-sm text-muted-foreground">{template.description || `${template.assets.length} assets`}</p>
                   </div>
                 </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">v{template.version}</span>
+                  {expandedTemplate === template.name ? (
+                    <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </div>
+              </button>
 
-                {validationResults[template.name] && (
-                  <div className="rounded-lg border border-border bg-muted/30 p-3 text-sm">
-                    {validationResults[template.name].errors.length === 0 && validationResults[template.name].warnings.length === 0 ? (
-                      <p className="text-green-700 dark:text-green-400">No validation issues found.</p>
-                    ) : (
-                      <div className="space-y-2">
-                        {validationResults[template.name].errors.length > 0 && (
-                          <div>
-                            <p className="font-medium text-destructive">Errors</p>
-                            <ul className="list-disc pl-5 text-destructive">
-                              {validationResults[template.name].errors.map((issue) => (
-                                <li key={issue}>{issue}</li>
-                              ))}
-                            </ul>
+              {expandedTemplate === template.name && (
+                <div className="space-y-4 border-t border-border/60 p-4">
+                  <div>
+                    <h3 className="mb-2 text-sm font-medium text-foreground">Assets ({template.assets.length})</h3>
+                    <div className="space-y-2">
+                      {template.assets.map((asset: AssetDefinition) => (
+                        <div key={asset.name} className="app-panel-muted flex items-center justify-between gap-3 p-3 text-sm">
+                          <div className="flex items-center gap-2">
+                            <span className={asset.required ? 'text-primary' : 'text-muted-foreground'}>{asset.name}</span>
+                            {asset.depends_on.length > 0 && (
+                              <span className="text-xs text-muted-foreground">(depends: {asset.depends_on.join(', ')})</span>
+                            )}
                           </div>
-                        )}
-                        {validationResults[template.name].warnings.length > 0 && (
-                          <div>
-                            <p className="font-medium text-yellow-700 dark:text-yellow-400">Warnings</p>
-                            <ul className="list-disc pl-5 text-yellow-700 dark:text-yellow-400">
-                              {validationResults[template.name].warnings.map((issue) => (
-                                <li key={issue}>{issue}</li>
-                              ))}
-                            </ul>
+                          <div className="flex items-center gap-2">
+                            {asset.required && (
+                              <span className="rounded-full bg-primary/20 px-2 py-0.5 text-xs text-primary">required</span>
+                            )}
+                            {asset.blueprint_file && (
+                              <span className="text-xs text-muted-foreground">{asset.blueprint_file}</span>
+                            )}
                           </div>
-                        )}
-                      </div>
-                    )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                )}
 
-                {/* Actions */}
-                <div className="flex flex-wrap justify-end gap-3">
+                  {validationResults[template.name] && (
+                    <div className="app-panel-muted p-3 text-sm">
+                      {validationResults[template.name].errors.length === 0 && validationResults[template.name].warnings.length === 0 ? (
+                        <p className="text-green-700 dark:text-green-400">No validation issues found.</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {validationResults[template.name].errors.length > 0 && (
+                            <div>
+                              <p className="font-medium text-destructive">Errors</p>
+                              <ul className="list-disc pl-5 text-destructive">
+                                {validationResults[template.name].errors.map((issue) => (
+                                  <li key={issue}>{issue}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          {validationResults[template.name].warnings.length > 0 && (
+                            <div>
+                              <p className="font-medium text-yellow-700 dark:text-yellow-400">Warnings</p>
+                              <ul className="list-disc pl-5 text-yellow-700 dark:text-yellow-400">
+                                {validationResults[template.name].warnings.map((issue) => (
+                                  <li key={issue}>{issue}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap justify-end gap-3">
                     <button
                       onClick={() => handleValidate(template.name)}
                       className="inline-flex items-center gap-2 text-sm text-foreground hover:text-primary"
@@ -389,49 +413,66 @@ export default function Templates() {
                       <Download className="h-4 w-4" />
                       Export
                     </button>
-                {!template.is_official && (
-                    <button
-                      onClick={() => handleEdit(template)}
-                      className="inline-flex items-center gap-2 text-sm text-foreground hover:text-primary"
-                    >
-                      <Pencil className="h-4 w-4" />
-                      Edit
-                    </button>
-                )}
-                {!template.is_official && (
-                    <button
-                      onClick={() => {
-                        if (confirm(`Delete template "${template.name}"?`)) {
-                          deleteMutation.mutate(template.name);
-                        }
-                      }}
-                      disabled={deleteMutation.isPending}
-                      className="inline-flex items-center gap-2 text-sm text-destructive hover:text-destructive/80 disabled:opacity-50"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      Delete Template
-                    </button>
-                )}
+                    {!template.is_official && (
+                      <button
+                        onClick={() => handleEdit(template)}
+                        className="inline-flex items-center gap-2 text-sm text-foreground hover:text-primary"
+                      >
+                        <Pencil className="h-4 w-4" />
+                        Edit
+                      </button>
+                    )}
+                    {!template.is_official && (
+                      <button
+                        onClick={() => {
+                          if (confirm(`Delete template "${template.name}"?`)) {
+                            deleteMutation.mutate(template.name);
+                          }
+                        }}
+                        disabled={deleteMutation.isPending}
+                        className="inline-flex items-center gap-2 text-sm text-destructive hover:text-destructive/80 disabled:opacity-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Delete Template
+                      </button>
+                    )}
                   </div>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {/* Empty State */}
-      {templates?.length === 0 && (
-        <div className="rounded-lg border border-border bg-card p-8 text-center">
-          <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
-          <h3 className="mt-4 text-lg font-semibold">No templates yet</h3>
-          <p className="text-muted-foreground">
-            Create your first template to customize character generation
-          </p>
-          <div className="mt-6 text-left">
-            <TemplateMigrationPlaceholder templateName="first template" />
-          </div>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
-      )}
+
+        {templatesList.length === 0 && (
+          <div className="app-panel p-8 text-center">
+            <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
+            <h3 className="mt-4 text-lg font-semibold">No templates yet</h3>
+            <p className="text-muted-foreground">Create your first template to customize character generation</p>
+            <div className="mt-6 text-left">
+              <TemplateMigrationPlaceholder templateName="first template" />
+            </div>
+          </div>
+        )}
+
+        <section className="app-panel p-5">
+          <div className="mb-4 flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-semibold">Planned Template Tooling</h2>
+              <p className="text-sm text-muted-foreground">
+                These disabled cards keep migration and comparison work discoverable without adding new routes.
+              </p>
+            </div>
+            <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">Planned</span>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <TemplateMigrationPlaceholder templateName={templatesList[0]?.name} draftId={undefined} />
+            <TemplateComparisonPlaceholder
+              leftTemplate={templatesList[0]?.name}
+              rightTemplate={templatesList[1]?.name}
+            />
+          </div>
+        </section>
       </div>
     </>
   );

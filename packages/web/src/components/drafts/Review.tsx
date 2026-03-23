@@ -26,14 +26,16 @@ export default function Review() {
   const { activeStepIndex, activeTourId, isTourCompleted, restartTour, startTour } = useGuidedTour();
   const queryClient = useQueryClient();
 
+  const reviewId = decodeURIComponent(id || '');
+
   const { data: draft, isLoading, error } = useQuery({
     queryKey: ['draft', id],
-    queryFn: () => api.getDraft(decodeURIComponent(id || '')),
+    queryFn: () => api.getDraft(reviewId),
     enabled: !!id,
   });
 
   const toggleFavorite = useMutation({
-    mutationFn: () => api.updateMetadata(decodeURIComponent(id || ''), {
+    mutationFn: () => api.updateMetadata(reviewId, {
       favorite: !draft?.metadata.favorite,
     }),
     onSuccess: () => {
@@ -43,7 +45,7 @@ export default function Review() {
   });
 
   const deleteDraft = useMutation({
-    mutationFn: () => api.deleteDraft(decodeURIComponent(id || '')),
+    mutationFn: () => api.deleteDraft(reviewId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['drafts'] });
       navigate('/drafts');
@@ -51,7 +53,7 @@ export default function Review() {
   });
 
   const updateMetadata = useMutation({
-    mutationFn: (metadata: { character_name?: string }) => api.updateMetadata(decodeURIComponent(id || ''), metadata),
+    mutationFn: (metadata: { character_name?: string }) => api.updateMetadata(reviewId, metadata),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['draft', id] });
       queryClient.invalidateQueries({ queryKey: ['drafts'] });
@@ -60,8 +62,7 @@ export default function Review() {
   });
 
   const saveAsset = useMutation({
-    mutationFn: ({ assetName, content }: { assetName: string; content: string }) =>
-      api.updateAsset(decodeURIComponent(id || ''), assetName, content),
+    mutationFn: ({ assetName, content }: { assetName: string; content: string }) => api.updateAsset(reviewId, assetName, content),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['draft', id] });
       setEditingAsset(null);
@@ -70,17 +71,17 @@ export default function Review() {
   });
 
   const validateDraft = useMutation({
-    mutationFn: () => api.validateDraft(decodeURIComponent(id || '')),
+    mutationFn: () => api.validateDraft(reviewId),
     onSuccess: (result) => {
       setValidationMessage(result.success ? 'Validation passed' : 'Validation failed');
     },
-    onError: (error: Error) => {
-      setValidationMessage(error.message);
+    onError: (mutationError: Error) => {
+      setValidationMessage(mutationError.message);
     },
   });
 
   useAssistantScreenContext({
-    draft_id: decodeURIComponent(id || ''),
+    draft_id: reviewId,
     character_name: draft?.metadata.character_name || '',
     mode: draft?.metadata.mode || '',
     template_name: draft?.metadata.template_name || '',
@@ -91,10 +92,12 @@ export default function Review() {
   });
 
   const handleEditAsset = (assetName: string) => {
-    if (draft) {
-      setEditingAsset(assetName);
-      setEditContent(draft.assets[assetName]);
+    if (!draft) {
+      return;
     }
+
+    setEditingAsset(assetName);
+    setEditContent(draft.assets[assetName]);
   };
 
   const handleEditName = () => {
@@ -156,7 +159,7 @@ export default function Review() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex h-64 items-center justify-center">
         <div className="text-muted-foreground">Loading draft...</div>
       </div>
     );
@@ -182,7 +185,7 @@ export default function Review() {
   const assetNames = Object.keys(draft.assets);
 
   return (
-    <div className="space-y-6">
+    <div className="app-page space-y-6 pb-12">
       <InlineHelpTip
         tipId="review-export-tip"
         title="Validate before you export"
@@ -190,101 +193,117 @@ export default function Review() {
         actionLabel={isTourCompleted(REVIEW_EXPORT_TOUR_ID) ? 'Replay Review and Export Tour' : 'Start Review and Export Tour'}
         onAction={() => (isTourCompleted(REVIEW_EXPORT_TOUR_ID) ? restartTour(REVIEW_EXPORT_TOUR_ID) : startTour(REVIEW_EXPORT_TOUR_ID))}
       />
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="space-y-1">
-          <Link
-            to="/drafts"
-            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Drafts
-          </Link>
-          {isEditingName ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <input
-                value={editName}
-                onChange={(event) => setEditName(event.target.value)}
-                placeholder="Character name"
-                className="min-w-[18rem] rounded-md border border-input bg-background px-3 py-2 text-2xl font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
+
+      <section className="app-page-hero">
+        <div className="app-page-hero-grid">
+          <div className="space-y-3">
+            <Link
+              to="/drafts"
+              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to Drafts
+            </Link>
+            <p className="app-page-eyebrow">Draft review</p>
+            {isEditingName ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  value={editName}
+                  onChange={(event) => setEditName(event.target.value)}
+                  placeholder="Character name"
+                  className="min-w-[18rem] rounded-xl border border-input bg-background px-3 py-2 text-2xl font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  style={{ fontFamily: '"Space Grotesk", sans-serif' }}
+                />
+                <button
+                  onClick={handleSaveName}
+                  disabled={updateMetadata.isPending}
+                  className="inline-flex items-center gap-1 rounded-xl bg-primary px-3 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                >
+                  <Check className="h-4 w-4" />
+                  Save Name
+                </button>
+                <button
+                  onClick={handleCancelNameEdit}
+                  disabled={updateMetadata.isPending}
+                  className="inline-flex items-center gap-1 rounded-xl border border-input bg-background px-3 py-2 text-sm hover:bg-accent disabled:opacity-50"
+                >
+                  <X className="h-4 w-4" />
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="app-page-title text-[clamp(2rem,4vw,3.4rem)]">
+                  {draft.metadata.character_name || draft.metadata.seed}
+                </h1>
+                <button
+                  onClick={handleEditName}
+                  className="inline-flex items-center gap-1 rounded-xl border border-input bg-background px-2.5 py-1.5 text-xs hover:bg-accent"
+                >
+                  <Edit3 className="h-3 w-3" />
+                  Edit Name
+                </button>
+              </div>
+            )}
+            <p className="app-page-summary max-w-4xl">{draft.metadata.seed}</p>
+          </div>
+
+          <div className="app-panel-muted p-5">
+            <p className="app-page-eyebrow">Draft state</p>
+            <div className="mt-4 app-page-metrics">
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">Assets</p>
+                <div className="app-page-metric-value text-2xl">{assetNames.length}</div>
+              </div>
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">Mode</p>
+                <div className="app-page-metric-value text-xl sm:text-2xl">{draft.metadata.mode || 'Unset'}</div>
+              </div>
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">Template</p>
+                <div className="app-page-metric-value text-base sm:text-xl">{draft.metadata.template_name || 'Unset'}</div>
+              </div>
+            </div>
+
+            <div data-tour-anchor="review-actions" className="mt-5 flex flex-wrap gap-2">
               <button
-                onClick={handleSaveName}
-                disabled={updateMetadata.isPending}
-                className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                onClick={() => validateDraft.mutate()}
+                data-tour-anchor="review-validate"
+                className="inline-flex items-center gap-2 rounded-xl border border-input bg-background px-3 py-2 text-sm hover:bg-accent"
               >
-                <Check className="h-4 w-4" />
-                Save Name
+                <ShieldCheck className="h-4 w-4" />
+                Validate
               </button>
               <button
-                onClick={handleCancelNameEdit}
-                disabled={updateMetadata.isPending}
-                className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-3 py-2 text-sm hover:bg-accent disabled:opacity-50"
+                onClick={() => toggleFavorite.mutate()}
+                className="inline-flex items-center gap-2 rounded-xl border border-input bg-background px-3 py-2 text-sm hover:bg-accent"
               >
-                <X className="h-4 w-4" />
-                Cancel
+                <Star className={`h-4 w-4 ${draft.metadata.favorite ? 'fill-yellow-500 text-yellow-500' : ''}`} />
+                {draft.metadata.favorite ? 'Favorited' : 'Favorite'}
+              </button>
+              <button
+                onClick={() => {
+                  setTourManagedExportModal(false);
+                  setShowExportModal(true);
+                }}
+                data-tour-anchor="review-export"
+                className="inline-flex items-center gap-2 rounded-xl border border-input bg-background px-3 py-2 text-sm hover:bg-accent"
+              >
+                <Download className="h-4 w-4" />
+                Export
+              </button>
+              <button
+                onClick={() => setShowDeleteModal(true)}
+                className="inline-flex items-center gap-2 rounded-xl border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive hover:bg-destructive/20"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete
               </button>
             </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <h1 className="text-3xl font-bold">
-                {draft.metadata.character_name || draft.metadata.seed}
-              </h1>
-              <button
-                onClick={handleEditName}
-                className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-2 py-1 text-xs hover:bg-accent"
-              >
-                <Edit3 className="h-3 w-3" />
-                Edit Name
-              </button>
-            </div>
-          )}
-          <p className="text-muted-foreground">{draft.metadata.seed}</p>
+          </div>
         </div>
-        <div data-tour-anchor="review-actions" className="flex items-center gap-2">
-          <button
-            onClick={() => validateDraft.mutate()}
-            data-tour-anchor="review-validate"
-            className="inline-flex items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm hover:bg-accent"
-          >
-            <ShieldCheck className="h-4 w-4" />
-            Validate
-          </button>
-          <button
-            onClick={() => toggleFavorite.mutate()}
-            className="inline-flex items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm hover:bg-accent"
-          >
-            <Star className={`h-4 w-4 ${draft.metadata.favorite ? 'fill-yellow-500 text-yellow-500' : ''}`} />
-            {draft.metadata.favorite ? 'Favorited' : 'Favorite'}
-          </button>
-          <button
-            onClick={() => {
-              setTourManagedExportModal(false);
-              setShowExportModal(true);
-            }}
-            data-tour-anchor="review-export"
-            className="inline-flex items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm hover:bg-accent"
-          >
-            <Download className="h-4 w-4" />
-            Export
-          </button>
-          <button
-            onClick={() => setShowDeleteModal(true)}
-            className="inline-flex items-center gap-2 rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive hover:bg-destructive/20"
-          >
-            <Trash2 className="h-4 w-4" />
-            Delete
-          </button>
-        </div>
-      </div>
+      </section>
 
-      {validationMessage && (
-        <div className="rounded-lg border border-border bg-card p-4 text-sm">
-          {validationMessage}. <Link to="/validation" className="text-primary hover:underline">Open Validation screen</Link>
-        </div>
-      )}
-
-      {/* Metadata */}
       <div className="flex flex-wrap gap-2">
         {draft.metadata.mode && (
           <span className="rounded-full bg-primary/10 px-3 py-1 text-sm text-primary">
@@ -308,47 +327,51 @@ export default function Review() {
         ))}
       </div>
 
-      {/* Lineage Info */}
+      {validationMessage && (
+        <div className="app-note p-4 text-sm">
+          {validationMessage}. <Link to="/validation" className="text-primary hover:underline">Open Validation screen</Link>
+        </div>
+      )}
+
       {draft.metadata.parent_drafts && draft.metadata.parent_drafts.length > 0 && (
-        <div className="rounded-lg border border-border bg-card p-4">
-          <h3 className="text-sm font-medium mb-2">Lineage</h3>
+        <div className="app-panel p-4">
+          <h3 className="mb-2 text-sm font-medium">Lineage</h3>
           <p className="text-sm text-muted-foreground">
             Offspring of: {draft.metadata.parent_drafts.join(' + ')}
           </p>
         </div>
       )}
 
-      {/* Assets */}
       <div data-tour-anchor="review-assets" className="space-y-4">
         {assetNames.map((assetName) => (
           <div key={assetName} className="space-y-2">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold capitalize">
+              <h2 className="text-lg font-semibold capitalize" style={{ fontFamily: '"Space Grotesk", sans-serif' }}>
                 {assetName.replace(/_/g, ' ')}
               </h2>
               {editingAsset !== assetName && (
                 <button
                   onClick={() => handleEditAsset(assetName)}
-                  className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-2 py-1 text-xs hover:bg-accent"
+                  className="inline-flex items-center gap-1 rounded-xl border border-input bg-background px-2 py-1 text-xs hover:bg-accent"
                 >
                   <Edit3 className="h-3 w-3" />
                   Edit
                 </button>
               )}
             </div>
-            <div className="rounded-lg border border-border bg-card p-4">
+            <div className="app-panel p-4">
               {editingAsset === assetName ? (
                 <div className="space-y-3">
                   <textarea
                     value={editContent}
-                    onChange={(e) => setEditContent(e.target.value)}
-                    className="w-full min-h-[200px] rounded-md border border-input bg-background p-3 text-sm font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    onChange={(event) => setEditContent(event.target.value)}
+                    className="w-full min-h-[200px] rounded-xl border border-input bg-background p-3 text-sm font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   />
                   <div className="flex gap-2">
                     <button
                       onClick={handleSaveAsset}
                       disabled={saveAsset.isPending}
-                      className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                      className="inline-flex items-center gap-1 rounded-xl bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                     >
                       {saveAsset.isPending ? (
                         <span className="animate-spin">⏳</span>
@@ -359,7 +382,7 @@ export default function Review() {
                     </button>
                     <button
                       onClick={handleCancelEdit}
-                      className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm hover:bg-accent"
+                      className="inline-flex items-center gap-1 rounded-xl border border-input bg-background px-3 py-1.5 text-sm hover:bg-accent"
                     >
                       <X className="h-4 w-4" />
                       Cancel
@@ -376,8 +399,7 @@ export default function Review() {
         ))}
       </div>
 
-      {/* Planned Review Features */}
-      <section className="rounded-lg border border-dashed border-border bg-card/50 p-5">
+      <section className="app-panel p-5">
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
             <h2 className="text-lg font-semibold">Planned Review Upgrades</h2>
@@ -391,15 +413,14 @@ export default function Review() {
         </div>
 
         <div className="grid gap-4 lg:grid-cols-2">
-          <ReviewChecklistPlaceholder draftId={decodeURIComponent(id || '')} />
-          <VersionHistoryPlaceholder draftId={decodeURIComponent(id || '')} />
+          <ReviewChecklistPlaceholder draftId={reviewId} />
+          <VersionHistoryPlaceholder draftId={reviewId} />
         </div>
       </section>
 
-      {/* Export Modal */}
       {showExportModal && (
         <ExportModal
-          draftId={decodeURIComponent(id || '')}
+          draftId={reviewId}
           characterName={draft.metadata.character_name || draft.metadata.seed}
           onClose={() => {
             setShowExportModal(false);
@@ -438,9 +459,8 @@ export default function Review() {
         </div>
       )}
 
-      {/* Chat Panel for Refinement */}
       <ChatPanel
-        draftId={decodeURIComponent(id || '')}
+        draftId={reviewId}
         onAssetRefined={handleAssetRefined}
       />
     </div>

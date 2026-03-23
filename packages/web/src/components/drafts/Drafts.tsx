@@ -59,7 +59,7 @@ export default function Drafts() {
   const hasDrafts = data?.drafts.length > 0;
 
   return (
-    <div className="space-y-6">
+    <div className="app-page space-y-6 pb-12">
       <InlineHelpTip
         tipId="drafts-library-tip"
         title="Use the library as a review queue"
@@ -67,25 +67,56 @@ export default function Drafts() {
         actionLabel={isTourCompleted(DRAFT_LIBRARY_TOUR_ID) ? 'Replay Draft Library Tour' : 'Start Draft Library Tour'}
         onAction={() => (isTourCompleted(DRAFT_LIBRARY_TOUR_ID) ? restartTour(DRAFT_LIBRARY_TOUR_ID) : startTour(DRAFT_LIBRARY_TOUR_ID))}
       />
-      <div>
-        <h1 className="text-3xl font-bold">Drafts</h1>
-        <p className="text-muted-foreground">
-          Compare and review your saved characters
-        </p>
-      </div>
+      <section className="app-page-hero">
+        <div className="app-page-hero-grid">
+          <div className="space-y-4">
+            <p className="app-page-eyebrow">Draft library</p>
+            <h1 className="app-page-title">Treat saved drafts like an active review queue, not a dead archive.</h1>
+            <p className="app-page-summary">
+              Reopen work, compare candidates, push data to sync when you need it, and move the best draft into full review. This is where Home hands off after generation.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <Link to="/generate" className="inline-flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
+                Generate another draft
+              </Link>
+              <Link to="/validation" className="inline-flex items-center gap-2 rounded-2xl border border-border/60 bg-background/55 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary/35 hover:text-primary">
+                Validation
+              </Link>
+            </div>
+          </div>
+
+          <div className="app-panel-muted p-5">
+            <p className="app-page-eyebrow">Library state</p>
+            <div className="mt-4 app-page-metrics">
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">Drafts</p>
+                <div className="app-page-metric-value text-2xl">{data?.stats?.total_drafts ?? 0}</div>
+              </div>
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">Favorites</p>
+                <div className="app-page-metric-value text-2xl">{data?.stats?.favorites ?? 0}</div>
+              </div>
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">Genres</p>
+                <div className="app-page-metric-value text-2xl">{data?.stats ? Object.keys(data.stats.by_genre).length : 0}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* Stats */}
       {data?.stats && (
         <div className="grid gap-4 sm:grid-cols-3">
-          <div className="rounded-lg border border-border bg-card p-4">
+          <div className="app-panel-muted p-4">
             <div className="text-2xl font-bold">{data.stats.total_drafts}</div>
             <div className="text-sm text-muted-foreground">Total Drafts</div>
           </div>
-          <div className="rounded-lg border border-border bg-card p-4">
+          <div className="app-panel-muted p-4">
             <div className="text-2xl font-bold">{data.stats.favorites}</div>
             <div className="text-sm text-muted-foreground">Favorites</div>
           </div>
-          <div className="rounded-lg border border-border bg-card p-4">
+          <div className="app-panel-muted p-4">
             <div className="text-2xl font-bold">
               {Object.keys(data.stats.by_genre).length}
             </div>
@@ -95,7 +126,7 @@ export default function Drafts() {
       )}
 
       {/* Server Sync */}
-      <div className="rounded-lg border border-border bg-card p-4">
+      <div className="app-panel p-4">
         <SyncControls
           dataType="drafts"
           label="Drafts"
@@ -111,7 +142,7 @@ export default function Drafts() {
 
       {/* Empty State */}
       {!hasDrafts && (
-        <div className="rounded-lg border border-border bg-card p-8 text-center">
+        <div className="app-panel p-8 text-center">
           <FolderOpen className="mx-auto h-12 w-12 text-muted-foreground" />
           <h3 className="mt-4 text-lg font-semibold">No drafts yet</h3>
           <p className="text-muted-foreground">
@@ -132,7 +163,7 @@ export default function Drafts() {
 
       {/* Draft Workbench - only show when there are drafts */}
       {hasDrafts && (
-        <section data-tour-anchor="drafts-workbench" className="rounded-lg border border-dashed border-border bg-card/50 p-5">
+        <section data-tour-anchor="drafts-workbench" className="app-panel p-5">
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
               <h2 className="text-lg font-semibold">Draft Workbench</h2>

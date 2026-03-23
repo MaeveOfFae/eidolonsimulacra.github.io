@@ -28,12 +28,6 @@ const BLUEPRINT_PATH_ALIASES: Record<string, string> = {
   intro_scene: 'templates/official_v2v3/assets/intro_scene.md',
   intro_page: 'templates/official_v2v3/assets/intro_page.md',
   a1111: 'templates/official_v2v3/assets/a1111.md',
-  char_basic_info: 'templates/official_aksho/assets/char_basic_info.md',
-  char_physical: 'templates/official_aksho/assets/char_physical.md',
-  char_clothing: 'templates/official_aksho/assets/char_clothing.md',
-  char_personality: 'templates/official_aksho/assets/char_personality.md',
-  char_background: 'templates/official_aksho/assets/char_background.md',
-  initial_message: 'templates/official_aksho/assets/initial_message.md',
 };
 
 function resolveBlueprintPath(nameOrPath: string): string {

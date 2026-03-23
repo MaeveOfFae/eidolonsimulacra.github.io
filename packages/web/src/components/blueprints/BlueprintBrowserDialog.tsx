@@ -4,6 +4,8 @@ import { ChevronRight, ChevronDown, FileText, Search, X, FolderOpen, FileJson, B
 import type { Blueprint } from '@char-gen/shared';
 import { api } from '@/lib/api';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { markdownComponents } from '../common/markdownComponents';
 import { cn } from '../../utils/cn';
 
 interface BlueprintBrowserDialogProps {
@@ -269,7 +271,7 @@ export default function BlueprintBrowserDialog({
                   <label className="text-sm font-medium mb-2 block">Preview</label>
                   <div className="rounded-md border border-border bg-card p-4 max-h-[300px] overflow-y-auto">
                     <div className="prose prose-sm dark:prose-invert max-w-none">
-                      <ReactMarkdown>{selectedBlueprint.content || '*No content*'}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{selectedBlueprint.content || '*No content*'}</ReactMarkdown>
                     </div>
                   </div>
                 </div>

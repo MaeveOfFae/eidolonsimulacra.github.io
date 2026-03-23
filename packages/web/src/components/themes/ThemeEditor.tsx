@@ -402,7 +402,7 @@ export default function Themes() {
 
   const deleteMutation = useMutation({
     mutationFn: (themeName: string) => themeApi.deleteTheme(themeName),
-    onSuccess: async () => {
+    onSuccess: async (_, themeName) => {
       await queryClient.refetchQueries({ queryKey: ['themes'] });
       setNotice(`Deleted ${themeName}.`);
       setError(null);

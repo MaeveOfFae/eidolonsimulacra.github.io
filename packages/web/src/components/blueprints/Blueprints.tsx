@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { BookOpen, FileJson, Lightbulb, Package, Search, Edit3, RotateCcw, Copy, Trash2, MoreVertical, Plus } from 'lucide-react';
 import type { Blueprint } from '@char-gen/shared';
 import { api } from '@/lib/api';
@@ -19,6 +19,7 @@ type Section = {
 };
 
 export default function Blueprints() {
+  const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [actionMenuOpen, setActionMenuOpen] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<{ type: 'reset' | 'delete'; blueprint: Blueprint } | null>(null);
@@ -42,7 +43,11 @@ export default function Blueprints() {
       ...Object.values(data.templates).flat(),
       ...data.examples,
     ];
-    return new Set(allBlueprints.filter(bp => api.hasBlueprintOverride(bp.path)).map(bp => bp.path));
+    return new Set(
+      allBlueprints
+        .filter((bp) => api.getOriginalBlueprintContent(bp.path) !== null && api.hasBlueprintOverride(bp.path))
+        .map((bp) => bp.path)
+    );
   }, [data]);
 
   const handleReset = async (blueprint: Blueprint) => {
@@ -68,7 +73,7 @@ export default function Blueprints() {
     }
     setIsProcessing(true);
     try {
-      await api.resetBlueprint(blueprint.path);
+      await api.deleteBlueprint(blueprint.path);
       await queryClient.invalidateQueries({ queryKey: ['blueprints'] });
       setConfirmAction(null);
     } catch (err) {
@@ -99,9 +104,13 @@ export default function Blueprints() {
       return [];
     }
 
+    const customBlueprints = data.core.filter((blueprint) => blueprint.path.startsWith('blueprints/custom/'));
+    const coreBlueprints = data.core.filter((blueprint) => !blueprint.path.startsWith('blueprints/custom/'));
+
     return [
-      { title: 'Core Blueprints', blueprints: data.core, icon: <BookOpen className="h-5 w-5 text-primary" /> },
+      { title: 'Core Blueprints', blueprints: coreBlueprints, icon: <BookOpen className="h-5 w-5 text-primary" /> },
       { title: 'System Blueprints', blueprints: data.system, icon: <FileJson className="h-5 w-5 text-primary" /> },
+      { title: 'Custom Blueprints', blueprints: customBlueprints, icon: <Edit3 className="h-5 w-5 text-primary" /> },
       {
         title: 'Template Blueprints',
         blueprints: Object.values(data.templates).flat(),
@@ -129,12 +138,14 @@ export default function Blueprints() {
     .filter((section) => section.blueprints.length > 0);
 
   const highlightedBlueprint = filteredSections[0]?.blueprints[0] ?? sections[0]?.blueprints[0];
+  const totalBlueprints = sections.reduce((count, section) => count + section.blueprints.length, 0);
+  const visibleBlueprints = filteredSections.reduce((count, section) => count + section.blueprints.length, 0);
 
   useAssistantScreenContext({
     search_query: query,
     visible_sections: filteredSections.map((section) => section.title),
-    total_visible_blueprints: filteredSections.reduce((count, section) => count + section.blueprints.length, 0),
-    total_blueprints: sections.reduce((count, section) => count + section.blueprints.length, 0),
+    total_visible_blueprints: visibleBlueprints,
+    total_blueprints: totalBlueprints,
   });
 
   if (isLoading) {
@@ -150,7 +161,7 @@ export default function Blueprints() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="app-page space-y-6 pb-12">
       <InlineHelpTip
         tipId="blueprints-advanced-surface-tip"
         title="Blueprints are an advanced editing surface"
@@ -158,21 +169,43 @@ export default function Blueprints() {
         actionLabel={isTourCompleted(BLUEPRINTS_SAFETY_TOUR_ID) ? 'Replay Blueprint Safety Tour' : 'Start Blueprint Safety Tour'}
         onAction={() => (isTourCompleted(BLUEPRINTS_SAFETY_TOUR_ID) ? restartTour(BLUEPRINTS_SAFETY_TOUR_ID) : startTour(BLUEPRINTS_SAFETY_TOUR_ID))}
       />
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Blueprints</h1>
-          <p className="text-muted-foreground">
-            Browse and edit blueprint files used by templates and generation flows.
-          </p>
+
+      <section className="app-page-hero">
+        <div className="app-page-hero-grid">
+          <div className="space-y-4">
+            <p className="app-page-eyebrow">Blueprint source control</p>
+            <h1 className="app-page-title">Browse the parser-facing blueprint layer and keep risky edits isolated.</h1>
+            <p className="app-page-summary">
+              This is the advanced contract surface behind generation structure. Use it when you need to inspect or fork blueprint behavior, not for routine template or draft editing.
+            </p>
+            <button
+              onClick={() => setCreateDialogOpen(true)}
+              className="inline-flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            >
+              <Plus className="h-4 w-4" />
+              New Blueprint
+            </button>
+          </div>
+
+          <div className="app-panel-muted p-5">
+            <p className="app-page-eyebrow">Catalog state</p>
+            <div className="mt-4 app-page-metrics">
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">Visible</p>
+                <div className="app-page-metric-value text-2xl">{visibleBlueprints}</div>
+              </div>
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">Total</p>
+                <div className="app-page-metric-value text-2xl">{totalBlueprints}</div>
+              </div>
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">Overrides</p>
+                <div className="app-page-metric-value text-2xl">{overridePaths.size}</div>
+              </div>
+            </div>
+          </div>
         </div>
-        <button
-          onClick={() => setCreateDialogOpen(true)}
-          className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-        >
-          <Plus className="h-4 w-4" />
-          New Blueprint
-        </button>
-      </div>
+      </section>
 
       <div data-tour-anchor="blueprints-search" className="relative max-w-xl">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -185,7 +218,7 @@ export default function Blueprints() {
         />
       </div>
 
-      <section data-tour-anchor="blueprints-tools" className="rounded-lg border border-dashed border-border bg-card/50 p-5">
+      <section data-tour-anchor="blueprints-tools" className="app-panel border-dashed p-5">
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
             <h2 className="text-lg font-semibold">Blueprint Tools</h2>
@@ -208,7 +241,7 @@ export default function Blueprints() {
       </section>
 
       {filteredSections.length === 0 ? (
-        <div className="rounded-lg border border-border bg-card p-8 text-center text-muted-foreground">
+        <div className="app-panel p-8 text-center text-muted-foreground">
           No blueprints match the current search.
         </div>
       ) : (
@@ -224,14 +257,25 @@ export default function Blueprints() {
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                 {section.blueprints.map((blueprint) => {
                   const hasOverride = overridePaths.has(blueprint.path);
+                  const editorPath = `/blueprints/edit/${encodeURIComponent(blueprint.path)}`;
                   return (
                   <div
                     key={blueprint.path}
-                    className="group rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary hover:bg-accent/30"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => navigate(editorPath)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        navigate(editorPath);
+                      }
+                    }}
+                    className="group app-panel cursor-pointer p-4 transition-colors hover:border-primary hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <Link
-                        to={`/blueprints/edit/${encodeURIComponent(blueprint.path)}`}
+                        to={editorPath}
+                        onClick={(event) => event.stopPropagation()}
                         className="flex-1 min-w-0"
                       >
                         <div className="flex items-center gap-2">
@@ -246,7 +290,8 @@ export default function Blueprints() {
                       </Link>
                       <div className="flex items-center gap-1">
                         <Link
-                          to={`/blueprints/edit/${encodeURIComponent(blueprint.path)}`}
+                          to={editorPath}
+                          onClick={(event) => event.stopPropagation()}
                           className="p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground"
                           title="Edit"
                         >
@@ -254,7 +299,10 @@ export default function Blueprints() {
                         </Link>
                         <div className="relative">
                           <button
-                            onClick={() => setActionMenuOpen(actionMenuOpen === blueprint.path ? null : blueprint.path)}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setActionMenuOpen(actionMenuOpen === blueprint.path ? null : blueprint.path);
+                            }}
                             className="p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground"
                             title="More actions"
                           >
@@ -265,7 +313,8 @@ export default function Blueprints() {
                               <div className="fixed inset-0 z-10" onClick={() => setActionMenuOpen(null)} />
                               <div className="absolute right-0 top-full z-20 mt-1 w-40 rounded-md border border-border bg-card py-1 shadow-lg">
                                 <button
-                                  onClick={() => {
+                                  onClick={(event) => {
+                                    event.stopPropagation();
                                     setDuplicateDialog(blueprint);
                                     setDuplicateName(`${blueprint.name} Copy`);
                                     setActionMenuOpen(null);
@@ -277,7 +326,8 @@ export default function Blueprints() {
                                 </button>
                                 {hasOverride && (
                                   <button
-                                    onClick={() => {
+                                    onClick={(event) => {
+                                      event.stopPropagation();
                                       setConfirmAction({ type: 'reset', blueprint });
                                       setActionMenuOpen(null);
                                     }}
@@ -289,7 +339,8 @@ export default function Blueprints() {
                                 )}
                                 {hasOverride && (
                                   <button
-                                    onClick={() => {
+                                    onClick={(event) => {
+                                      event.stopPropagation();
                                       setConfirmAction({ type: 'delete', blueprint });
                                       setActionMenuOpen(null);
                                     }}

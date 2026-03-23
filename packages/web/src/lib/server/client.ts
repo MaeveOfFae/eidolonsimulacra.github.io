@@ -426,8 +426,14 @@ class ServerClient {
       case 'blueprints':
         return this.syncBlueprints(action, data);
       case 'worlds':
+        if (action === 'list') {
+          throw new Error('World sync does not support list');
+        }
         return this.syncWorlds(action, data);
       case 'timelines':
+        if (action === 'list') {
+          throw new Error('Timeline sync does not support list');
+        }
         return this.syncTimelines(action, data);
       default:
         throw new Error(`Unknown data type: ${dataType}`);

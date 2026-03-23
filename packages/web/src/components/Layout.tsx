@@ -459,7 +459,7 @@ export default function Layout({ children }: LayoutProps) {
   return (
     <AssistantContextProvider>
       <GuidedTourProvider>
-      <div className="flex min-h-dvh bg-background lg:h-screen">
+      <div className="app-shell flex min-h-dvh bg-background lg:h-screen">
         {/* Mobile sidebar backdrop */}
         {sidebarOpen && (
           <div
@@ -472,19 +472,20 @@ export default function Layout({ children }: LayoutProps) {
         <aside
           className={cn(
             'fixed inset-y-0 left-0 z-50 w-[min(20rem,calc(100vw-1rem))] max-w-[calc(100vw-1rem)] bg-card/80 backdrop-blur-md border-r border-border transition-transform duration-300 ease-out lg:static lg:w-72 lg:max-w-none lg:translate-x-0',
+            'app-sidebar',
             sidebarOpen ? 'translate-x-0' : '-translate-x-full'
           )}
         >
           <div className="flex h-dvh flex-col lg:h-full">
             {/* Logo */}
-            <div className="flex h-16 items-center justify-between px-4 border-b border-border/50">
+            <div className="flex h-16 items-center justify-between border-b border-border/50 px-4">
               <Link to="/" className="flex items-center gap-2" onClick={() => setSidebarOpen(false)}>
                 <div className="p-2 rounded-lg bg-gradient-to-br from-primary to-accent shadow-lg shadow-primary/20">
                   <Sparkles className="h-5 w-5 text-white" />
                 </div>
                 <div className="flex flex-col">
-                  <span className="font-bold text-lg">Eidolon</span>
-                  <span className="text-xs text-muted-foreground">Simulacra v{__APP_VERSION__}</span>
+                  <span className="text-lg font-semibold tracking-tight text-foreground" style={{ fontFamily: '"Space Grotesk", sans-serif' }}>Eidolon</span>
+                  <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground" style={{ fontFamily: '"IBM Plex Mono", monospace' }}>Simulacra v{__APP_VERSION__}</span>
                 </div>
               </Link>
               <button
@@ -633,11 +634,11 @@ export default function Layout({ children }: LayoutProps) {
         {/* Main content */}
         <main className="min-w-0 flex-1 overflow-auto">
           {/* Mobile header */}
-          <header className="flex h-16 items-center gap-3 border-b border-border/50 bg-card/50 backdrop-blur-md px-4 lg:hidden sticky top-0 z-30">
+          <header className="app-frame-panel sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border/50 px-4 lg:hidden">
             <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-lg hover:bg-accent transition-colors">
               <Menu className="h-6 w-6" />
             </button>
-            <span className="min-w-0 truncate font-semibold text-base sm:text-lg">Eidolon Simulacra</span>
+            <span className="min-w-0 truncate text-base font-semibold tracking-tight text-foreground sm:text-lg" style={{ fontFamily: '"Space Grotesk", sans-serif' }}>Eidolon Simulacra</span>
             {pageHelp && (
               <button
                 type="button"
@@ -651,7 +652,7 @@ export default function Layout({ children }: LayoutProps) {
           </header>
 
           {/* Page content */}
-          <div className="p-6 lg:p-8">
+          <div className="mx-auto max-w-[1600px] p-6 lg:p-8">
             {children}
           </div>
         </main>
@@ -663,7 +664,7 @@ export default function Layout({ children }: LayoutProps) {
             onClose={() => setHelpOpen(false)}
           />
         )}
-        <aside className="hidden w-80 flex-col border-l border-border/60 bg-card/40 xl:flex">
+        <aside className="app-sidebar hidden w-80 flex-col border-l border-border/60 xl:flex">
           <div className="sticky top-0 z-10 border-b border-border/60 bg-card/80 backdrop-blur">
             {/* Tab buttons */}
             <div className="flex border-b border-border/40">

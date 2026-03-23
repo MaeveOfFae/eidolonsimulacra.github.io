@@ -14,6 +14,7 @@ interface TemplateWizardProps {
   onClose: () => void;
   initialData?: CreateTemplateRequest;
   templateName?: string;
+  forkMode?: boolean;
 }
 
 type Step = 1 | 2 | 3 | 4;
@@ -26,7 +27,7 @@ const defaultTemplateData: CreateTemplateRequest = {
   blueprint_contents: {},
 };
 
-export default function TemplateWizard({ open, onClose, initialData, templateName }: TemplateWizardProps) {
+export default function TemplateWizard({ open, onClose, initialData, templateName, forkMode = false }: TemplateWizardProps) {
   const queryClient = useQueryClient();
   const isEditMode = Boolean(templateName);
 
@@ -181,7 +182,7 @@ export default function TemplateWizard({ open, onClose, initialData, templateNam
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border">
           <div>
-            <h2 className="text-lg font-semibold">{isEditMode ? 'Edit Template' : 'Create Template'}</h2>
+            <h2 className="text-lg font-semibold">{forkMode ? 'Create Template Copy' : isEditMode ? 'Edit Template' : 'Create Template'}</h2>
             <p className="text-sm text-muted-foreground">
               Step {currentStep} of 4: {stepTitles[currentStep]}
             </p>
@@ -233,6 +234,12 @@ export default function TemplateWizard({ open, onClose, initialData, templateNam
             </div>
           )}
 
+          {forkMode && (
+            <div className="mb-4 rounded-lg border border-blue-500/40 bg-blue-500/10 p-4 text-sm text-blue-700 dark:text-blue-300">
+              You are editing a built-in template. Saving will create a personal copy in local storage or your synced account instead of changing the default template.
+            </div>
+          )}
+
           {!created && (
             <InlineHelpTip
               tipId={`template-wizard-step-${currentStep}`}
@@ -258,7 +265,7 @@ export default function TemplateWizard({ open, onClose, initialData, templateNam
               <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mb-4">
                 <CheckCircle2 className="h-8 w-8 text-green-500" />
               </div>
-                <h3 className="text-xl font-semibold mb-2">{isEditMode ? 'Template Updated!' : 'Template Created!'}</h3>
+                <h3 className="text-xl font-semibold mb-2">{forkMode ? 'Template Copy Saved!' : isEditMode ? 'Template Updated!' : 'Template Created!'}</h3>
               <p className="text-muted-foreground mb-1">
                 {createdTemplate?.name}
               </p>
@@ -327,12 +334,12 @@ export default function TemplateWizard({ open, onClose, initialData, templateNam
               {isCreating ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  {isEditMode ? 'Saving...' : 'Creating...'}
+                  {forkMode ? 'Saving copy...' : isEditMode ? 'Saving...' : 'Creating...'}
                 </>
               ) : currentStep === 4 ? (
                 <>
                   <CheckCircle2 className="h-4 w-4" />
-                  {isEditMode ? 'Save Template' : 'Create Template'}
+                  {forkMode ? 'Save Template Copy' : isEditMode ? 'Save Template' : 'Create Template'}
                 </>
               ) : (
                 <>

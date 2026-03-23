@@ -25,10 +25,10 @@ export default function InlineHelpTip({
   }
 
   return (
-    <aside className={`rounded-2xl border border-primary/20 bg-primary/5 p-4 ${className ?? ''}`.trim()}>
+    <aside className={`app-note p-4 ${className ?? ''}`.trim()}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3">
-          <div className="rounded-xl bg-primary/10 p-2 text-primary">
+          <div className="rounded-xl border border-primary/20 bg-primary/10 p-2 text-primary">
             <CircleHelp className="h-4 w-4" />
           </div>
           <div>
@@ -51,7 +51,7 @@ export default function InlineHelpTip({
           <button
             type="button"
             onClick={onAction}
-            className="inline-flex items-center gap-2 rounded-lg border border-border/60 bg-background/60 px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:text-primary"
+            className="inline-flex items-center gap-2 rounded-xl border border-border/60 bg-background/60 px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:text-primary"
           >
             <PlayCircle className="h-4 w-4" />
             {actionLabel}

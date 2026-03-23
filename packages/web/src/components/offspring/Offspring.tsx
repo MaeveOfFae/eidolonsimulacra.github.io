@@ -91,18 +91,39 @@ export default function Offspring() {
   const modes: ContentMode[] = ['SFW', 'NSFW', 'Platform-Safe', 'Auto'];
 
   return (
-    <div className="space-y-6 max-w-4xl">
-      <div>
-        <h1 className="text-3xl font-bold">Offspring Generator</h1>
-        <p className="text-muted-foreground">
-          Create a child character from two parent characters
-        </p>
-      </div>
+    <div className="app-page max-w-5xl space-y-6 pb-12">
+      <section className="app-page-hero">
+        <div className="app-page-hero-grid">
+          <div className="space-y-4">
+            <p className="app-page-eyebrow">Offspring synthesis</p>
+            <h1 className="app-page-title">Combine two reviewed drafts into a descendant character with inherited cues.</h1>
+            <p className="app-page-summary">
+              Offspring generation uses two parent drafts as source material, then streams a new character draft through the browser workflow so you can inspect lineage, review output, and continue iteration.
+            </p>
+          </div>
 
-      {/* Parent Selection */}
+          <div className="app-panel-muted p-5">
+            <p className="app-page-eyebrow">Generation state</p>
+            <div className="mt-4 app-page-metrics">
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">Drafts</p>
+                <div className="app-page-metric-value text-2xl">{draftsData?.drafts.length ?? 0}</div>
+              </div>
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">Mode</p>
+                <div className="app-page-metric-value text-2xl">{mode}</div>
+              </div>
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">Result</p>
+                <div className="app-page-metric-value text-2xl">{result ? 'Ready' : 'Pending'}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <div className="grid gap-6 md:grid-cols-2">
-        {/* Parent 1 */}
-        <div className="rounded-lg border border-border bg-card p-6">
+        <div className="app-panel p-6">
           <div className="flex items-center gap-2 mb-4">
             <Users className="h-5 w-5 text-primary" />
             <h2 className="text-lg font-semibold">Parent 1</h2>
@@ -128,8 +149,7 @@ export default function Offspring() {
           )}
         </div>
 
-        {/* Parent 2 */}
-        <div className="rounded-lg border border-border bg-card p-6">
+        <div className="app-panel p-6">
           <div className="flex items-center gap-2 mb-4">
             <Users className="h-5 w-5 text-secondary" />
             <h2 className="text-lg font-semibold">Parent 2</h2>
@@ -156,8 +176,7 @@ export default function Offspring() {
         </div>
       </div>
 
-      {/* Options */}
-      <div className="rounded-lg border border-border bg-card p-6 space-y-4">
+      <div className="app-panel space-y-4 p-6">
         <h2 className="text-lg font-semibold">Options</h2>
 
         <div className="space-y-2">
@@ -198,9 +217,8 @@ export default function Offspring() {
         </button>
       </div>
 
-      {/* Result */}
       {result && (
-        <div className="rounded-lg border border-green-500/50 bg-green-500/10 p-6">
+        <div className="app-note border-green-500/50 bg-green-500/10 p-6 text-green-700 dark:text-green-400">
           <div className="flex items-center gap-2 mb-4">
             <CheckCircle className="h-5 w-5 text-green-500" />
             <h2 className="text-lg font-semibold text-green-500">Offspring Created!</h2>
@@ -220,19 +238,17 @@ export default function Offspring() {
         </div>
       )}
 
-      {/* Output Preview */}
       {output && (
         <div className="space-y-2">
           <h2 className="text-lg font-semibold">Generation Output</h2>
-          <div className="rounded-lg border border-border bg-card p-4 max-h-96 overflow-auto">
+          <div className="app-panel max-h-96 overflow-auto p-4">
             <pre className="whitespace-pre-wrap text-sm">{output}</pre>
           </div>
         </div>
       )}
 
-      {/* Empty State */}
       {!parent1 && !parent2 && !isGenerating && (
-        <div className="rounded-lg border border-border bg-card p-8 text-center">
+        <div className="app-panel p-8 text-center">
           <Baby className="mx-auto h-12 w-12 text-muted-foreground" />
           <h3 className="mt-4 text-lg font-semibold">Select Two Parents</h3>
           <p className="text-muted-foreground">
@@ -241,8 +257,7 @@ export default function Offspring() {
         </div>
       )}
 
-      {/* Planned Offspring Tooling */}
-      <section className="rounded-lg border border-dashed border-border bg-card/50 p-5">
+      <section className="app-panel border-dashed p-5">
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
             <h2 className="text-lg font-semibold">Planned Offspring Tooling</h2>

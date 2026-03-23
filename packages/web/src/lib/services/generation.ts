@@ -115,7 +115,6 @@ export class GenerationService {
     const engine = this.createConfiguredEngine();
 
     // Get template assets
-    const templateAssets = resolveTemplateAssets(template);
     const templateDefinition = template ? resolveTemplateDefinition(template) : undefined;
 
     yield { type: 'status', stage: 'building_prompt' };
@@ -124,7 +123,7 @@ export class GenerationService {
     const [systemPrompt, userPrompt] = await buildOrchestratorPrompt(
       seed,
       mode,
-      templateAssets,
+      templateDefinition,
       undefined,
       blueprint_override
     );
@@ -323,6 +322,8 @@ export class GenerationService {
       parent1.metadata.character_name || 'Parent 1',
       parent2.metadata.character_name || 'Parent 2',
       mode,
+      parent1.metadata.template_name ? resolveTemplateDefinition(parent1.metadata.template_name) : undefined,
+      parent2.metadata.template_name ? resolveTemplateDefinition(parent2.metadata.template_name) : undefined,
       undefined,
       blueprint_override
     );
@@ -340,7 +341,7 @@ export class GenerationService {
     const [orchestratorSystem, orchestratorUser] = await buildOrchestratorPrompt(
       offspringSeed,
       mode,
-      resolveTemplateAssets(template),
+      template ? resolveTemplateDefinition(template) : undefined,
       undefined,
       blueprint_override
     );

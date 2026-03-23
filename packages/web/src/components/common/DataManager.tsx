@@ -148,16 +148,39 @@ export default function DataManager() {
   }
 
   return (
-    <div className="max-w-4xl space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Data Management</h1>
-        <p className="text-muted-foreground">
-          Export your drafts and configuration for backup, or import from a previous export.
-        </p>
-      </div>
+    <div className="app-page max-w-5xl space-y-6 pb-12">
+      <section className="app-page-hero">
+        <div className="app-page-hero-grid">
+          <div className="space-y-4">
+            <p className="app-page-eyebrow">Local storage ops</p>
+            <h1 className="app-page-title">Back up, migrate, or purge the browser-side workspace without touching blueprint source files.</h1>
+            <p className="app-page-summary">
+              This page is for operational data management: exporting drafts, preserving provider configuration, syncing with an optional server, and clearing local state when you need a hard reset.
+            </p>
+          </div>
+
+          <div className="app-panel-muted p-5">
+            <p className="app-page-eyebrow">Stored state</p>
+            <div className="mt-4 app-page-metrics">
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">Drafts</p>
+                <div className="app-page-metric-value text-2xl">{stats?.drafts ?? 0}</div>
+              </div>
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">API Keys</p>
+                <div className="app-page-metric-value text-2xl">{stats?.apiKeys ?? 0}</div>
+              </div>
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">Config</p>
+                <div className="app-page-metric-value text-2xl">{stats?.configExists ? 'Set' : 'Default'}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {notice && (
-        <div className={`rounded-md border px-4 py-3 flex items-start gap-3 ${
+        <div className={`app-note flex items-start gap-3 px-4 py-3 ${
           notice.type === 'success' ? 'border-green-500/50 bg-green-500/10 text-green-700 dark:text-green-400' : 'border-destructive/50 bg-destructive/10 text-destructive'
         }`}>
           {notice.type === 'success' ? (
@@ -178,7 +201,7 @@ export default function DataManager() {
       {/* Stats */}
       {stats && (
         <div className="grid gap-4 sm:grid-cols-3">
-          <div className="rounded-lg border border-border bg-card p-4">
+          <div className="app-panel p-4">
             <div className="flex items-center gap-2">
               <Database className="h-5 w-5 text-primary" />
               <h3 className="font-semibold">Drafts</h3>
@@ -186,7 +209,7 @@ export default function DataManager() {
             <p className="text-2xl font-bold mt-2">{stats.drafts}</p>
             <p className="text-xs text-muted-foreground mt-1">Stored locally</p>
           </div>
-          <div className="rounded-lg border border-border bg-card p-4">
+          <div className="app-panel p-4">
             <div className="flex items-center gap-2">
               <FileJson className="h-5 w-5 text-primary" />
               <h3 className="font-semibold">API Keys</h3>
@@ -194,7 +217,7 @@ export default function DataManager() {
             <p className="text-2xl font-bold mt-2">{stats.apiKeys}</p>
             <p className="text-xs text-muted-foreground mt-1">Configured providers</p>
           </div>
-          <div className="rounded-lg border border-border bg-card p-4">
+          <div className="app-panel p-4">
             <div className="flex items-center gap-2">
               <Settings className="h-5 w-5 text-primary" />
               <h3 className="font-semibold">Config</h3>
@@ -205,8 +228,7 @@ export default function DataManager() {
         </div>
       )}
 
-      {/* Server Sync Section */}
-      <div className="rounded-lg border border-border bg-card">
+      <div className="app-panel">
         <div className="border-b border-border p-4">
           <h2 className="text-lg font-semibold flex items-center gap-2">
             <Cloud className="h-5 w-5" />
@@ -266,8 +288,7 @@ export default function DataManager() {
         </div>
       </div>
 
-      {/* Export Section */}
-      <div className="rounded-lg border border-border bg-card">
+      <div className="app-panel">
         <div className="border-b border-border p-4">
           <h2 className="text-lg font-semibold">Export Data</h2>
           <p className="text-sm text-muted-foreground">
@@ -334,8 +355,7 @@ export default function DataManager() {
         </div>
       </div>
 
-      {/* Import Section */}
-      <div className="rounded-lg border border-border bg-card">
+      <div className="app-panel">
         <div className="border-b border-border p-4">
           <h2 className="text-lg font-semibold">Import Data</h2>
           <p className="text-sm text-muted-foreground">
@@ -397,8 +417,7 @@ export default function DataManager() {
         </div>
       </div>
 
-      {/* Clear Section */}
-      <div className="rounded-lg border border-destructive/50 bg-destructive/5">
+      <div className="app-panel border-destructive/50 bg-destructive/5">
         <div className="border-b border-destructive/50 p-4">
           <h2 className="text-lg font-semibold text-destructive">Danger Zone</h2>
           <p className="text-sm text-muted-foreground">

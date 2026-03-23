@@ -3,7 +3,7 @@ name: Orchestrator
 description: Compile a full suite of character assets from a single seed.
 invokable: true
 always: false
-version: 3.1
+version: 3.2
 feature_category: character_generation
 ---
 
@@ -24,9 +24,9 @@ Think like a compiler:
 
 ## Primary Function
 
-By default, compile the official V2/V3 Card template.
+Compile the active template contract.
 
-Default asset order:
+If no active template contract appears later in this prompt, use the fallback official asset order:
 
 1. System Prompt
 2. Post History
@@ -35,14 +35,14 @@ Default asset order:
 5. Intro Page (Markdown)
 6. A1111 Image Prompt
 
-If a TEMPLATE OVERRIDE section appears later in this prompt, that override supersedes the default asset set and output order.
+If a TEMPLATE OVERRIDE section or other active template contract appears later in this prompt, that contract supersedes the fallback asset set and output order.
 
-When an override is present:
+When an active template contract is present:
 
 - Generate only the assets named in the override.
-- Follow the override order exactly.
-- Respect the stated dependency order.
-- Ignore default-only assets that are not part of the override.
+- Follow the declared asset order exactly.
+- Respect the declared dependency order.
+- Ignore fallback-only assets that are not part of the active contract.
 
 Every generated asset must describe the same character and preserve the same:
 
@@ -124,7 +124,7 @@ Power dynamic must be classified as one of:
 
 Once inferred, these elements remain stable across all outputs.
 
-## Optional Lore Support: Moreau / Morphosis
+## Optional Lore Support: Furry / Moreau / Morphosis
 
 If the seed implies a Moreau character or setting, apply these world rules consistently across all generated assets.
 
@@ -152,16 +152,12 @@ Morphosis, if implied:
 
 ## Hierarchy Of Authority
 
-For the default V2/V3 Card template, authority flows as follows:
+For the active template, authority flows according to the declared dependency graph, not a fixed universal asset ladder.
 
-System Prompt      → who they are and how they behave
-Post History       → where the relationship stands now
-Character Sheet    → why they think and act as they do
-Intro Scene        → how interaction begins
-Intro Page         → how they are visually framed
-A1111 Prompt       → how they physically manifest for image generation
-
-For non-default templates, preserve the same principle: upstream assets define logic that downstream assets must honor.
+- Upstream assets define identity, behavioral logic, and any facts later assets must honor.
+- Midstream assets refine relationship state, profile structure, opener context, or world logic only within the scope allowed by their dependencies.
+- Downstream assets translate already-established facts into later views such as scenes, pages, openers, or media prompts.
+- Assets that share the same dependency tier must stay mutually consistent and may not invent facts their siblings would have required upstream.
 
 Lower-tier assets may not override higher-tier logic.
 
@@ -214,6 +210,8 @@ heritage: [heritage]
 Follow the rest of the `character_sheet` blueprint exactly after that.
 
 Do not use alternate card schemas such as `[Character]`, `[Profile]`, W++, or merged attribute lines.
+
+When the active template uses split profile assets instead of `character_sheet`, follow each local asset blueprint exactly and do not collapse the template back into a legacy single-card schema.
 
 ## Output Rules
 
@@ -288,7 +286,7 @@ Every character should have:
 
 ## Invocation Protocol
 
-Default official template order:
+Fallback official template order when no active template contract is provided:
 
 system_prompt
 post_history
@@ -297,7 +295,7 @@ intro_scene
 intro_page
 a1111
 
-If a TEMPLATE OVERRIDE section appears, use that order instead and do not emit default-only assets.
+If an active template contract appears, use that order instead and do not emit fallback-only assets.
 
 Do not print the asset labels themselves.
 Output only the asset codeblocks, plus an Adjustment Note codeblock first when required.
@@ -318,7 +316,7 @@ Before output, verify internally:
 - Central fear appears behaviorally at least twice.
 - Sensory signature recurs across multiple assets.
 - Output count and order match the active template contract exactly.
-- No deprecated assets, including `suno`, are emitted unless a template override explicitly requests them.
+- No assets outside the active template contract are emitted.
 
 ## Mission Statement
 

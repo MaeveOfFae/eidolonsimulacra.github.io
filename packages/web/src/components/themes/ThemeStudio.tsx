@@ -43,22 +43,44 @@ export default function ThemeStudio() {
   const queryClient = useQueryClient();
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="flex items-center gap-2 text-3xl font-bold">
-          <Palette className="h-7 w-7 text-primary" />
-          Theme Studio
-        </h1>
-        <p className="mt-2 text-muted-foreground">
-          Select, customize, and manage themes for the application and review surfaces.
-        </p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Changes apply automatically. If other pages don't update, press <kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">F5</kbd> to refresh.
-        </p>
-      </div>
+    <div className="app-page space-y-6 pb-12">
+      <section className="app-page-hero">
+        <div className="app-page-hero-grid">
+          <div className="space-y-4">
+            <p className="app-page-eyebrow">Theme runtime</p>
+            <h1 className="app-page-title flex items-center gap-3">
+              <Palette className="h-7 w-7 text-primary" />
+              Theme Studio
+            </h1>
+            <p className="app-page-summary">
+              Select, customize, and manage browser themes for the app shell and review surfaces. Changes apply live to the runtime theme system used by the current browser app.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Changes apply automatically. If another page does not repaint cleanly, press <kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">F5</kbd> to refresh.
+            </p>
+          </div>
 
-      {/* Theme Sync */}
-      <div className="rounded-lg border border-border bg-card p-4">
+          <div className="app-panel-muted p-5">
+            <p className="app-page-eyebrow">Studio state</p>
+            <div className="mt-4 app-page-metrics">
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">Section</p>
+                <div className="app-page-metric-value text-2xl">{activeTab === 'selection' ? 'Select' : activeTab === 'editor' ? 'Edit' : 'Browse'}</div>
+              </div>
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">Sync</p>
+                <div className="app-page-metric-value text-2xl">Ready</div>
+              </div>
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">Runtime</p>
+                <div className="app-page-metric-value text-2xl">Live</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="app-panel p-4">
         <SyncControls
           dataType="themes"
           label="Themes"
@@ -74,9 +96,8 @@ export default function ThemeStudio() {
         />
       </div>
 
-      {/* Tab Navigation */}
-      <div className="border-b border-border">
-        <div className="flex gap-1">
+      <div className="app-tab-group">
+        <div className="flex flex-wrap gap-2">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -86,10 +107,10 @@ export default function ThemeStudio() {
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
-                  'flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors',
+                  'app-tab-button',
                   isActive
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground'
+                    ? 'is-active'
+                    : ''
                 )}
               >
                 <Icon className="h-4 w-4" />
@@ -100,8 +121,7 @@ export default function ThemeStudio() {
         </div>
       </div>
 
-      {/* Tab Content */}
-      <div className="mt-6">
+      <div className="app-panel p-5">
         {activeTab === 'selection' && <ThemeSelection />}
         {activeTab === 'editor' && <ThemeEditor />}
         {activeTab === 'browser' && <ThemeBrowserPlaceholder />}

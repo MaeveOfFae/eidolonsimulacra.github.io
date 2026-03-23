@@ -141,21 +141,56 @@ export default function Generation() {
   ];
 
   return (
-    <div className="space-y-8 pb-12">
-      {/* Header */}
-      <div className="text-center space-y-3 mb-8">
-        <div className="inline-flex items-center gap-3 px-4 py-2 rounded-xl bg-gradient-to-r from-primary to-accent shadow-lg shadow-primary/20">
-          <Sparkles className="h-6 w-6 text-white animate-pulse" />
-          <span className="text-xl font-bold text-white">Character Generator</span>
+    <div className="app-page space-y-8 pb-12">
+      <section className="app-page-hero">
+        <div className="app-page-hero-grid">
+          <div className="space-y-5">
+            <p className="app-page-eyebrow">Generation surface</p>
+            <div className="space-y-4">
+              <h1 className="app-page-title">Build a draft pack with the same structure-first workflow the new home page points to.</h1>
+              <p className="app-page-summary">
+                Set the template, lock the content mode, write one concrete seed, then generate. This page is the operational handoff from Home, not a separate visual language.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <Link to="/templates" className="inline-flex items-center gap-2 rounded-2xl border border-border/60 bg-background/55 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary/35 hover:text-primary">
+                <BookOpen className="h-4 w-4" />
+                Review templates
+              </Link>
+              <Link to="/seed-generator" className="inline-flex items-center gap-2 rounded-2xl border border-border/60 bg-background/55 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary/35 hover:text-primary">
+                <Zap className="h-4 w-4" />
+                Open seed generator
+              </Link>
+            </div>
+          </div>
+
+          <div className="app-panel-muted p-5">
+            <p className="app-page-eyebrow">Run profile</p>
+            <div className="mt-4 app-page-metrics">
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">Mode</p>
+                <div className="app-page-metric-value text-2xl">{mode}</div>
+              </div>
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">Templates</p>
+                <div className="app-page-metric-value text-2xl">{templates.length}</div>
+              </div>
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">Selected</p>
+                <div className="app-page-metric-value text-lg sm:text-2xl">{template || 'Pending'}</div>
+              </div>
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">Assets</p>
+                <div className="app-page-metric-value text-2xl">{selectedTemplate?.assets.length ?? '--'}</div>
+              </div>
+            </div>
+          </div>
         </div>
-        <p className="text-muted-foreground max-w-xl mx-auto">
-          Generate new characters or refine existing drafts field by field.
-        </p>
-      </div>
+      </section>
 
       {/* Tab Navigation */}
       <div className="flex justify-center">
-        <div className="inline-flex rounded-xl border border-border bg-card/50 p-1">
+        <div className="app-tab-group">
           {TABS.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -163,11 +198,8 @@ export default function Generation() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                  isActive
-                    ? 'bg-primary text-primary-foreground shadow-md'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                }`}
+                data-active={isActive ? 'true' : 'false'}
+                className="app-tab-button"
               >
                 <Icon className="h-4 w-4" />
                 {tab.label}
@@ -194,7 +226,7 @@ export default function Generation() {
             actionLabel={isTourCompleted(GETTING_STARTED_TOUR_ID) ? 'Run Getting Started Tour again' : 'Run Getting Started Tour'}
             onAction={() => (isTourCompleted(GETTING_STARTED_TOUR_ID) ? restartTour(GETTING_STARTED_TOUR_ID) : startTour(GETTING_STARTED_TOUR_ID))}
           />
-          <div data-tour-anchor="generation-seed" className="rounded-2xl border border-border/50 bg-card/50 p-6">
+          <div data-tour-anchor="generation-seed" className="app-panel p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500">
                 <Zap className="h-5 w-5 text-white" />
@@ -242,7 +274,7 @@ export default function Generation() {
 
         {/* Options Section */}
         <section className="space-y-4">
-          <div className="rounded-2xl border border-border/50 bg-card/50 p-6">
+          <div className="app-panel p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2.5 rounded-xl bg-gradient-to-br from-violet-500 to-purple-500">
                 <BookOpen className="h-5 w-5 text-white" />
@@ -328,7 +360,7 @@ export default function Generation() {
         </section>
       </div>
 
-      <section className="rounded-2xl border border-dashed border-border/60 bg-card/40 p-6">
+      <section className="app-panel p-6">
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
             <h2 className="text-lg font-semibold">Planned Workflow Upgrades</h2>

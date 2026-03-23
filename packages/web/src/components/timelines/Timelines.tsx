@@ -16,56 +16,76 @@ export default function Timelines() {
   });
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Timelines</h1>
-          <p className="text-muted-foreground">
-            View generation history, world events, and continuity across your characters and drafts.
-          </p>
+    <div className="app-page space-y-6 pb-12">
+      <section className="app-page-hero">
+        <div className="app-page-hero-grid">
+          <div className="space-y-4">
+            <p className="app-page-eyebrow">Chronology layer</p>
+            <h1 className="app-page-title">Track generation history, continuity pressure, and world chronology across the draft graph.</h1>
+            <p className="app-page-summary">
+              Timelines will eventually unify lineage branches, world events, and continuity conflicts. The route is still placeholder-driven, but it now sits inside the same workspace shell as the rest of the app.
+            </p>
+          </div>
+          <div className="app-panel-muted p-5">
+            <p className="app-page-eyebrow">Timeline state</p>
+            <div className="mt-4 app-page-metrics">
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">Branches</p>
+                <div className="app-page-metric-value text-2xl">0</div>
+              </div>
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">Events</p>
+                <div className="app-page-metric-value text-2xl">0</div>
+              </div>
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">Conflicts</p>
+                <div className="app-page-metric-value text-2xl">0</div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            className="inline-flex items-center gap-2 rounded-md border border-input px-4 py-2 text-sm font-medium hover:bg-accent"
-            disabled
-          >
-            <RefreshCw className="h-4 w-4" />
-            Refresh
-          </button>
-          <button
-            className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 opacity-50 cursor-not-allowed"
-            disabled
-          >
-            <Plus className="h-4 w-4" />
-            Add Event
-          </button>
-        </div>
+      </section>
+
+      <div className="flex items-center gap-2">
+        <button
+          className="inline-flex items-center gap-2 rounded-2xl border border-input px-4 py-2.5 text-sm font-medium hover:bg-accent"
+          disabled
+        >
+          <RefreshCw className="h-4 w-4" />
+          Refresh
+        </button>
+        <button
+          className="inline-flex cursor-not-allowed items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground opacity-50"
+          disabled
+        >
+          <Plus className="h-4 w-4" />
+          Add Event
+        </button>
       </div>
 
-      {/* Stats Cards */}
       <div className="grid gap-4 sm:grid-cols-4">
-        <div className="rounded-lg border border-border bg-card p-4">
+        <div className="app-panel p-4">
           <div className="flex items-center gap-2">
             <GitBranch className="h-4 w-4 text-muted-foreground" />
             <span className="text-2xl font-bold">0</span>
           </div>
           <div className="text-sm text-muted-foreground">Lineage Branches</div>
         </div>
-        <div className="rounded-lg border border-border bg-card p-4">
+        <div className="app-panel p-4">
           <div className="flex items-center gap-2">
             <Calendar className="h-4 w-4 text-muted-foreground" />
             <span className="text-2xl font-bold">0</span>
           </div>
           <div className="text-sm text-muted-foreground">Events</div>
         </div>
-        <div className="rounded-lg border border-border bg-card p-4">
+        <div className="app-panel p-4">
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4 text-muted-foreground" />
             <span className="text-2xl font-bold">0</span>
           </div>
           <div className="text-sm text-muted-foreground">Generations</div>
         </div>
-        <div className="rounded-lg border border-border bg-card p-4">
+        <div className="app-panel p-4">
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 text-muted-foreground" />
             <span className="text-2xl font-bold">0</span>
@@ -74,8 +94,7 @@ export default function Timelines() {
         </div>
       </div>
 
-      {/* Empty State */}
-      <div className="rounded-lg border border-border bg-card p-8 text-center">
+      <div className="app-panel p-8 text-center">
         <Clock className="mx-auto h-12 w-12 text-muted-foreground" />
         <h3 className="mt-4 text-lg font-semibold">No Timeline Data</h3>
         <p className="text-muted-foreground">
@@ -83,8 +102,7 @@ export default function Timelines() {
         </p>
       </div>
 
-      {/* Planned Timeline Tooling */}
-      <section className="rounded-lg border border-dashed border-border bg-card/50 p-5">
+      <section className="app-panel border-dashed p-5">
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
             <h2 className="text-lg font-semibold">Planned Timeline Features</h2>

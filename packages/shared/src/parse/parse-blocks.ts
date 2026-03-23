@@ -209,7 +209,7 @@ export function sanitizeCharacterName(name: string): string {
  */
 export function inferCharacterDisplayNameFromAssets(
   assets: Record<string, string>,
-  preferredAssets: Iterable<string> = ['character_sheet', 'char_basic_info']
+  preferredAssets: Iterable<string> = ['character_sheet']
 ): string | null {
   const orderedAssetNames: AssetName[] = [];
   const seen = new Set<AssetName>();

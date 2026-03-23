@@ -1,6 +1,6 @@
 [template]
 name = "Official V2/V3"
-version = "3.1"
+version = "3.2"
 description = "Official V2/V3 card template with the shared six-asset flow"
 
 [[assets]]

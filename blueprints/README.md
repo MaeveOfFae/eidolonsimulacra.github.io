@@ -13,21 +13,17 @@ blueprints/
 │   ├── official_v2v3/
 │   │   ├── template.toml
 │   │   └── assets/
-│   └── official_aksho/
-│       ├── template.toml
-│       └── assets/
 └── examples/                  # Alternate/example blueprints
 ```
 
 Official asset blueprints now live under their template directories, for example:
 
 - `blueprints/templates/official_v2v3/assets/`
-- `blueprints/templates/official_aksho/assets/`
 - `blueprints/system/` for orchestrators like `generator.md`
 
 ## Official Templates
 
-The repo currently carries two official template families.
+The repo currently carries one official template family.
 
 ### V2/V3 Card
 
@@ -42,21 +38,6 @@ This remains the default official template used by the browser generation flow. 
 
 `suno` is not part of the current official default.
 
-### Official Aksho
-
-Aksho uses a split eight-asset flow with a different dependency graph and different output files:
-
-1. `system_prompt`
-2. `char_basic_info`
-3. `char_physical`
-4. `char_clothing`
-5. `char_personality`
-6. `char_background`
-7. `post_history`
-8. `initial_message`
-
-Do not describe Aksho as a minor variant of the six-asset contract. It is template-specific by design.
-
 ## Template Manifests
 
 Each template directory under `blueprints/templates/` contains a `template.toml` manifest describing:
@@ -66,7 +47,7 @@ Each template directory under `blueprints/templates/` contains a `template.toml`
 - dependency order via `depends_on`
 - template-local blueprint files
 
-The built-in templates currently live under `blueprints/templates/official_v2v3/` and `blueprints/templates/official_aksho/`.
+The built-in template currently lives under `blueprints/templates/official_v2v3/`.
 
 ## Resolution Order
 
@@ -76,6 +57,16 @@ When a template references blueprint files, resolution happens in this order:
 2. Relative path from the template directory
 3. Another blueprint under `blueprints/`
 4. Example blueprint under `blueprints/examples/`
+
+Current starter examples under `blueprints/examples/` include:
+
+- `generic_system_prompt.md`
+- `generic_post_history.md`
+- `generic_character_sheet.md`
+- `generic_intro_scene.md`
+- `generic_intro_page.md`
+- `generic_initial_message.md`
+- `a1111_sdxl_comfyui.md`
 
 ## Editing Rules
 

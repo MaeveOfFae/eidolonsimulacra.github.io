@@ -121,10 +121,44 @@ export default function AuthPage() {
     setError(null);
   };
 
+  const serverConnected = Boolean(serverStatus?.connected);
+  const isAuthenticated = Boolean(serverStatus?.authenticated);
+
   return (
-    <div className="min-h-[80vh] flex items-center justify-center p-4">
-      <div className="w-full max-w-md space-y-6">
-        {/* Back button */}
+    <div className="app-page mx-auto max-w-5xl space-y-6 pb-12">
+      <section className="app-page-hero">
+        <div className="app-page-hero-grid">
+          <div className="space-y-4">
+            <p className="app-page-eyebrow">Auth and sync</p>
+            <h1 className="app-page-title">
+              {mode === 'login' ? 'Reconnect to your sync server.' : 'Create an account for cross-device sync.'}
+            </h1>
+            <p className="app-page-summary">
+              This screen only matters if you are using the optional self-hosted sync service. Local browser storage still remains the default workflow for drafts, themes, and provider configuration.
+            </p>
+          </div>
+
+          <div className="app-panel-muted p-5">
+            <p className="app-page-eyebrow">Connection state</p>
+            <div className="mt-4 app-page-metrics">
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">Server</p>
+                <div className="app-page-metric-value text-2xl">{serverConnected ? 'Online' : 'Offline'}</div>
+              </div>
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">Session</p>
+                <div className="app-page-metric-value text-2xl">{isAuthenticated ? 'Active' : 'Guest'}</div>
+              </div>
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">Mode</p>
+                <div className="app-page-metric-value text-2xl">{mode === 'login' ? 'Login' : 'Register'}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="mx-auto w-full max-w-md space-y-6">
         <button
           onClick={() => navigate(-1)}
           className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
@@ -133,8 +167,7 @@ export default function AuthPage() {
           Back
         </button>
 
-        {/* Header */}
-        <div className="text-center">
+        <div className="app-panel p-6 text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent">
             <Server className="h-8 w-8 text-primary-foreground" />
           </div>
@@ -148,28 +181,26 @@ export default function AuthPage() {
           </p>
         </div>
 
-        {/* Server Status */}
         {isCheckingServer ? (
-          <div className="flex items-center justify-center gap-2 rounded-lg border border-border bg-card p-4">
+          <div className="app-panel flex items-center justify-center gap-2 p-4">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             <span className="text-sm text-muted-foreground">Checking server connection...</span>
           </div>
         ) : serverStatus?.connected ? (
-          <div className="flex items-center justify-center gap-2 rounded-lg border border-green-500/50 bg-green-500/10 p-3">
+          <div className="app-note flex items-center justify-center gap-2 border-green-500/50 bg-green-500/10 p-3 text-green-700 dark:text-green-400">
             <CheckCircle2 className="h-5 w-5 text-green-500" />
-            <span className="text-sm text-green-600 dark:text-green-400">Server connected</span>
+            <span className="text-sm">Server connected</span>
           </div>
         ) : (
           <div className="space-y-3">
-            <div className="flex items-center justify-center gap-2 rounded-lg border border-red-500/50 bg-red-500/10 p-3">
+            <div className="app-note flex items-center justify-center gap-2 border-red-500/50 bg-red-500/10 p-3 text-red-600 dark:text-red-400">
               <XCircle className="h-5 w-5 text-red-500" />
-              <span className="text-sm text-red-600 dark:text-red-400">
+              <span className="text-sm">
                 {serverStatus?.error || 'Server not connected'}
               </span>
             </div>
 
-            {/* Server Configuration */}
-            <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+            <div className="app-panel space-y-3 p-4">
               <div className="flex items-center justify-between">
                 <h3 className="font-medium text-sm">Server Configuration</h3>
                 <button
@@ -210,16 +241,14 @@ export default function AuthPage() {
           </div>
         )}
 
-        {/* Error Message */}
         {error && (
-          <div className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-600 dark:text-red-400">
+          <div className="app-note border-red-500/50 bg-red-500/10 p-3 text-sm text-red-600 dark:text-red-400">
             {error}
           </div>
         )}
 
-        {/* Auth Form */}
         {serverStatus?.connected && !serverStatus?.authenticated && (
-          <form onSubmit={handleSubmit} className="space-y-4 rounded-lg border border-border bg-card p-6">
+          <form onSubmit={handleSubmit} className="app-panel space-y-4 p-6">
             {mode === 'register' && (
               <div>
                 <label htmlFor="displayName" className="text-sm font-medium">
@@ -310,9 +339,8 @@ export default function AuthPage() {
           </form>
         )}
 
-        {/* Toggle Mode */}
         {serverStatus?.connected && (
-          <div className="text-center text-sm">
+          <div className="app-panel p-4 text-center text-sm">
             <span className="text-muted-foreground">
               {mode === 'login' ? "Don't have an account?" : 'Already have an account?'}
             </span>

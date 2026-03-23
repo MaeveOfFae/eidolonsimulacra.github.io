@@ -59,7 +59,7 @@ export default function Validation() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="app-page space-y-6 pb-12">
       <InlineHelpTip
         tipId="validation-before-export-tip"
         title="Validation is the last structural check before export"
@@ -67,15 +67,34 @@ export default function Validation() {
         actionLabel={isTourCompleted(VALIDATION_TOUR_ID) ? 'Replay Validation Tour' : 'Start Validation Tour'}
         onAction={() => (isTourCompleted(VALIDATION_TOUR_ID) ? restartTour(VALIDATION_TOUR_ID) : startTour(VALIDATION_TOUR_ID))}
       />
-      <div>
-        <h1 className="text-3xl font-bold">Validation</h1>
-        <p className="text-muted-foreground">
-          Run browser-side validation against a saved draft or an IndexedDB-backed draft path.
-        </p>
-      </div>
+      <section className="app-page-hero">
+        <div className="app-page-hero-grid">
+          <div className="space-y-4">
+            <p className="app-page-eyebrow">Structural checks</p>
+            <h1 className="app-page-title">Use validation as a normal review gate, not a panic button.</h1>
+            <p className="app-page-summary">
+              Run browser-side validation against a saved draft or an IndexedDB-backed draft path before export. This page exists to catch structural drift while the fix is still cheap.
+            </p>
+          </div>
+
+          <div className="app-panel-muted p-5">
+            <p className="app-page-eyebrow">Current state</p>
+            <div className="mt-4 app-page-metrics">
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">Drafts</p>
+                <div className="app-page-metric-value text-2xl">{draftsData?.drafts.length ?? 0}</div>
+              </div>
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">Last run</p>
+                <div className="app-page-metric-value text-xl sm:text-2xl">{result ? (result.success ? 'Passed' : 'Failed') : 'Idle'}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <section className="rounded-lg border border-border bg-card p-6 space-y-4">
+        <section className="app-panel space-y-4 p-6">
           <div className="flex items-center gap-2">
             <FolderSearch className="h-5 w-5 text-primary" />
             <h2 className="text-lg font-semibold">Validate Directory</h2>
@@ -100,7 +119,7 @@ export default function Validation() {
           </button>
         </section>
 
-        <section data-tour-anchor="validation-draft-panel" className="rounded-lg border border-border bg-card p-6 space-y-4">
+        <section data-tour-anchor="validation-draft-panel" className="app-panel space-y-4 p-6">
           <div className="flex items-center gap-2">
             <ShieldAlert className="h-5 w-5 text-primary" />
             <h2 className="text-lg font-semibold">Validate Saved Draft</h2>
@@ -133,13 +152,13 @@ export default function Validation() {
       </div>
 
       {mutationError && (
-        <div className="rounded-lg border border-destructive bg-destructive/10 p-4 text-sm text-destructive">
+        <div className="app-note border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
           {mutationError instanceof Error ? mutationError.message : 'Validation failed'}
         </div>
       )}
 
       {result && (
-        <section data-tour-anchor="validation-results" className="rounded-lg border border-border bg-card p-6 space-y-4">
+        <section data-tour-anchor="validation-results" className="app-panel space-y-4 p-6">
           <div className="flex items-start justify-between gap-4">
             <div>
               <h2 className="text-lg font-semibold">Validation Results</h2>
@@ -150,7 +169,7 @@ export default function Validation() {
             </span>
           </div>
 
-          <div className="rounded-lg border border-border bg-muted/30 p-4">
+          <div className="app-panel-muted p-4">
             {findings.length === 0 ? (
               <p className="text-sm text-muted-foreground">No validator output.</p>
             ) : (
@@ -165,7 +184,7 @@ export default function Validation() {
           </div>
 
           {result.errors && (
-            <div className="rounded-lg border border-destructive bg-destructive/10 p-4">
+            <div className="app-note border-destructive/40 bg-destructive/10 p-4">
               <h3 className="mb-2 text-sm font-semibold text-destructive">Stderr</h3>
               <pre className="whitespace-pre-wrap text-xs text-destructive">{result.errors}</pre>
             </div>
@@ -174,7 +193,7 @@ export default function Validation() {
       )}
 
       {/* Planned Validation Tooling */}
-      <section className="rounded-lg border border-dashed border-border bg-card/50 p-5">
+      <section className="app-panel p-5">
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
             <h2 className="text-lg font-semibold">Planned Validation Tooling</h2>

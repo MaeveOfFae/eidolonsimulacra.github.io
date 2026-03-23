@@ -480,20 +480,42 @@ export default function Settings() {
   const currentModel = localConfig.model || '';
 
   return (
-    <div className="space-y-8 pb-8">
-      {/* Header */}
-      <div className="text-center space-y-2 mb-8">
-        <h1 className="text-3xl font-bold">Settings</h1>
-        <p className="text-muted-foreground max-w-2xl mx-auto">
-          Configure providers, generation defaults, and customize your theme.
-        </p>
-      </div>
+    <div className="app-page space-y-8 pb-8">
+      <section className="app-page-hero">
+        <div className="app-page-hero-grid">
+          <div className="space-y-4">
+            <p className="app-page-eyebrow">Runtime controls</p>
+            <h1 className="app-page-title">Configure the browser runtime before you blame generation, review, or export.</h1>
+            <p className="app-page-summary">
+              Provider access, model routing, batch defaults, theme presets, help state, and browser-local persistence are all controlled here. This page should feel like part of the same operating deck as Home.
+            </p>
+          </div>
+
+          <div className="app-panel-muted p-5">
+            <p className="app-page-eyebrow">Current runtime</p>
+            <div className="mt-4 app-page-metrics">
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">Provider</p>
+                <div className="app-page-metric-value text-xl sm:text-2xl">{selectedProvider}</div>
+              </div>
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">Model</p>
+                <div className="app-page-metric-value text-base sm:text-xl">{currentModel || 'Unset'}</div>
+              </div>
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">Stored keys</p>
+                <div className="app-page-metric-value text-2xl">{persistKeys ? 'On' : 'Off'}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* API Keys Section */}
         <section className="lg:col-span-2 space-y-4">
 
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm">
+        <div className="app-note border-amber-500/30 bg-amber-500/10 p-4 text-sm">
           <div className="font-semibold text-foreground">Browser-only persistence</div>
           <p className="mt-1 text-muted-foreground">
             Settings, API keys, drafts, templates, themes, and blueprint overrides are stored locally in this browser profile. No backend service is required for the web app runtime.
@@ -506,7 +528,7 @@ export default function Settings() {
             actionLabel={isTourCompleted(GETTING_STARTED_TOUR_ID) ? 'Replay provider setup tour step' : 'Run Getting Started Tour'}
             onAction={() => (isTourCompleted(GETTING_STARTED_TOUR_ID) ? restartTour(GETTING_STARTED_TOUR_ID) : startTour(GETTING_STARTED_TOUR_ID))}
           />
-          <div data-tour-anchor="settings-api-keys" className="rounded-2xl border border-border/50 bg-card/50 p-6">
+          <div data-tour-anchor="settings-api-keys" className="app-panel p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2 rounded-xl bg-gradient-to-br from-primary to-accent">
                 <Lock className="h-5 w-5 text-white" />
@@ -591,7 +613,7 @@ export default function Settings() {
 
         {/* Model Selection */}
         <section className="space-y-4">
-          <div data-tour-anchor="settings-model" className="rounded-2xl border border-border/50 bg-card/50 p-6">
+          <div data-tour-anchor="settings-model" className="app-panel p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className={`p-2 rounded-xl bg-gradient-to-br ${PROVIDER_COLORS[selectedProvider]}`}>
                 <Zap className="h-5 w-5 text-white" />
@@ -773,7 +795,7 @@ export default function Settings() {
       </div>
 
       {/* Batch Settings */}
-      <section className="rounded-2xl border border-border/50 bg-card/50 p-6">
+      <section className="app-panel p-6">
         <div className="flex items-center gap-3 mb-4">
           <div className="p-2 rounded-xl bg-gradient-to-br from-slate-600 to-slate-700">
             <Zap className="h-5 w-5 text-white" />
@@ -826,7 +848,7 @@ export default function Settings() {
       </section>
 
       {/* Feature Blueprint Defaults */}
-      <section className="rounded-2xl border border-border/50 bg-card/50 p-6">
+      <section className="app-panel p-6">
         <div className="flex items-center gap-3 mb-4">
           <div className="p-2 rounded-xl bg-gradient-to-br from-purple-600 to-violet-600">
             <FileText className="h-5 w-5 text-white" />
@@ -931,7 +953,7 @@ export default function Settings() {
       </section>
 
       {/* Server Sync Settings */}
-      <section className="rounded-2xl border border-border/50 bg-card/50 p-6">
+      <section className="app-panel p-6">
         <div className="flex items-center gap-3 mb-4">
           <div className="p-2 rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600">
             <Server className="h-5 w-5 text-white" />
@@ -946,7 +968,7 @@ export default function Settings() {
         <ServerSettings />
       </section>
 
-      <section data-tour-anchor="settings-help-tutorials" className="rounded-2xl border border-border/50 bg-card/50 p-6">
+      <section data-tour-anchor="settings-help-tutorials" className="app-panel p-6">
         <div className="flex items-center gap-3 mb-4">
           <div className="p-2 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-600">
             <BookOpen className="h-5 w-5 text-white" />
@@ -1032,7 +1054,7 @@ export default function Settings() {
       </section>
 
       {/* Theme Section */}
-      <section className="rounded-2xl border border-border/50 bg-card/50 p-6">
+      <section className="app-panel p-6">
         <div className="flex items-center gap-3 mb-4">
           <div className="p-2 rounded-xl bg-gradient-to-br from-pink-500 to-rose-500">
             <Palette className="h-5 w-5 text-white" />

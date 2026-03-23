@@ -1,6 +1,24 @@
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Sparkles, FolderOpen, GitCompare, Baby, ArrowRight, Dice1, GitBranch, ShieldCheck, Zap, FileText, Layers, PlayCircle, RotateCcw, Target } from 'lucide-react';
+import {
+  ArrowRight,
+  Baby,
+  BookOpen,
+  CheckCircle2,
+  Dice1,
+  FileText,
+  FolderOpen,
+  GitBranch,
+  GitCompare,
+  Layers,
+  PlayCircle,
+  RotateCcw,
+  Settings,
+  ShieldCheck,
+  Sparkles,
+  Target,
+  Zap,
+} from 'lucide-react';
 import type { DraftMetadata } from '@char-gen/shared';
 import { api } from '@/lib/api';
 import { getGuidedTour, gettingStartedSteps, guidedTours } from '@/lib/help';
@@ -11,73 +29,191 @@ import { useAssistantScreenContext } from './common/useAssistantContext';
 import AutomationPlaceholder from './common/AutomationPlaceholder';
 import OnboardingPlaceholder from './common/OnboardingPlaceholder';
 
-const QUICK_ACTIONS = [
-  { to: '/generate', label: 'Generate', description: 'Create a new simulacrum', icon: Sparkles, color: 'from-purple-500 to-pink-500' },
-  { to: '/seed-generator', label: 'Seeds', description: 'Brainstorm concepts', icon: Dice1, color: 'from-blue-500 to-cyan-500' },
-  { to: '/drafts', label: 'Drafts', description: 'Browse saved drafts', icon: FolderOpen, color: 'from-amber-500 to-orange-500' },
-  { to: '/similarity', label: 'Compare', description: 'Analyze similarities', icon: GitCompare, color: 'from-emerald-500 to-teal-500' },
-  { to: '/offspring', label: 'Offspring', description: 'Combine characters', icon: Baby, color: 'from-rose-500 to-pink-500' },
-  { to: '/lineage', label: 'Lineage', description: 'Explore family trees', icon: GitBranch, color: 'from-violet-500 to-purple-500' },
+const RECENT_DRAFT_LIMIT = 6;
+
+const WORKFLOW_LANES = [
+  {
+    to: '/settings',
+    eyebrow: 'Setup',
+    title: 'Wire the model path first',
+    description: 'Provider keys, model choice, and browser persistence all live here. Most first-run failures start with skipping this step.',
+    detail: 'Settings, keys, model routing',
+    icon: ShieldCheck,
+  },
+  {
+    to: '/templates',
+    eyebrow: 'Structure',
+    title: 'Lock the asset graph',
+    description: 'Templates decide which assets exist and how they export. Treat them as workflow contracts, not decorative presets.',
+    detail: 'Official V2/V3 and Aksho paths',
+    icon: Layers,
+  },
+  {
+    to: '/generate',
+    eyebrow: 'Draft',
+    title: 'Generate the first usable pack',
+    description: 'Move from one concrete seed to a full character pack, then treat the result as something to review instead of something to trust blindly.',
+    detail: 'Seed, mode, template, generation',
+    icon: Sparkles,
+  },
+  {
+    to: '/drafts',
+    eyebrow: 'Review',
+    title: 'Reopen, compare, and export',
+    description: 'The draft library is the working queue for validation, cleanup, favorites, and export handoff.',
+    detail: 'Review, validate, export',
+    icon: FolderOpen,
+  },
 ] as const;
 
-const MORE_ACTIONS = [
-  { to: '/validation', label: 'Validation', description: 'Check drafts and exports', icon: ShieldCheck },
-  { to: '/templates', label: 'Templates', description: 'Manage templates', icon: FileText },
-  { to: '/batch', label: 'Batch', description: 'Bulk generation', icon: Layers },
+const EXPLORATION_ACTIONS = [
+  {
+    to: '/seed-generator',
+    label: 'Seed Generator',
+    description: 'Brainstorm concepts before committing to a draft run.',
+    icon: Dice1,
+  },
+  {
+    to: '/validation',
+    label: 'Validation',
+    description: 'Catch broken structure before export.',
+    icon: ShieldCheck,
+  },
+  {
+    to: '/batch',
+    label: 'Batch',
+    description: 'Run multiple seeds in sequence when throughput matters.',
+    icon: Layers,
+  },
+  {
+    to: '/similarity',
+    label: 'Compare',
+    description: 'Inspect overlap before your library starts to blur.',
+    icon: GitCompare,
+  },
+  {
+    to: '/lineage',
+    label: 'Lineage',
+    description: 'Trace family-tree style relationships.',
+    icon: GitBranch,
+  },
+  {
+    to: '/blueprints',
+    label: 'Blueprints',
+    description: 'Inspect the advanced contract layer carefully.',
+    icon: BookOpen,
+  },
+  {
+    to: '/offspring',
+    label: 'Offspring',
+    description: 'Combine character inputs into a derived result.',
+    icon: Baby,
+  },
+  {
+    to: '/help',
+    label: 'Help Center',
+    description: 'Use the guided path when you do not want to guess.',
+    icon: FileText,
+  },
 ] as const;
 
-interface StatCardProps {
-  icon: React.ReactNode;
-  value: string | number;
-  label: string;
-  gradient?: string;
+interface SectionHeaderProps {
+  eyebrow: string;
+  title: string;
+  summary: string;
 }
 
-function StatCard({ icon, value, label, gradient }: StatCardProps) {
+function SectionHeader({ eyebrow, title, summary }: SectionHeaderProps) {
   return (
-    <div className={`relative overflow-hidden rounded-2xl border border-border/50 ${gradient || 'bg-gradient-to-br from-slate-800 to-slate-900'}`}>
-      <div className="absolute -right-8 -top-8 h-32 w-32 bg-white/5 rounded-full blur-3xl" />
-      <div className="relative p-6">
-        <div className="flex items-center justify-between mb-2">
-          <div className="p-3 rounded-xl bg-white/10 backdrop-blur-sm">
-            {icon}
-          </div>
-          <div className="text-xs text-white/60 font-mono">
-            {new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-          </div>
-        </div>
-        <div className="text-4xl font-bold text-white mb-1">{value}</div>
-        <div className="text-sm text-white/70 font-medium">{label}</div>
+    <div className="max-w-3xl space-y-3">
+      <p className="home-kicker">{eyebrow}</p>
+      <h2 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl" style={{ fontFamily: '"Space Grotesk", sans-serif' }}>
+        {title}
+      </h2>
+      <p className="text-sm leading-7 text-muted-foreground sm:text-base">{summary}</p>
+    </div>
+  );
+}
+
+interface MetricTileProps {
+  label: string;
+  value: string | number;
+  tone?: 'default' | 'accent';
+}
+
+function MetricTile({ label, value, tone = 'default' }: MetricTileProps) {
+  return (
+    <div className={`rounded-2xl border px-4 py-4 ${tone === 'accent' ? 'border-primary/30 bg-primary/10' : 'border-border/60 bg-background/55'}`}>
+      <p className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground" style={{ fontFamily: '"IBM Plex Mono", monospace' }}>
+        {label}
+      </p>
+      <div className="mt-2 text-3xl font-semibold text-foreground" style={{ fontFamily: '"Space Grotesk", sans-serif' }}>
+        {value}
       </div>
     </div>
   );
 }
 
-interface ActionCardProps {
+interface LaneCardProps {
+  to: string;
+  eyebrow: string;
+  title: string;
+  description: string;
+  detail: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
+
+function LaneCard({ to, eyebrow, title, description, detail, icon: Icon }: LaneCardProps) {
+  return (
+    <Link to={to} className="home-rail-card group rounded-[1.75rem] border border-border/60 bg-card/75 p-5 backdrop-blur-sm">
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-3">
+          <p className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground" style={{ fontFamily: '"IBM Plex Mono", monospace' }}>
+            {eyebrow}
+          </p>
+          <h3 className="text-xl font-semibold text-foreground" style={{ fontFamily: '"Space Grotesk", sans-serif' }}>
+            {title}
+          </h3>
+          <p className="text-sm leading-7 text-muted-foreground">{description}</p>
+        </div>
+        <div className="rounded-2xl border border-border/60 bg-background/65 p-3 text-primary transition-transform duration-300 group-hover:-translate-y-1">
+          <Icon className="h-5 w-5" />
+        </div>
+      </div>
+
+      <div className="mt-6 flex items-center justify-between gap-3 border-t border-border/60 pt-4">
+        <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground" style={{ fontFamily: '"IBM Plex Mono", monospace' }}>
+          {detail}
+        </span>
+        <span className="inline-flex items-center gap-2 text-sm font-medium text-foreground transition-colors group-hover:text-primary">
+          Open
+          <ArrowRight className="h-4 w-4" />
+        </span>
+      </div>
+    </Link>
+  );
+}
+
+interface ActionLinkProps {
   to: string;
   label: string;
   description: string;
   icon: React.ComponentType<{ className?: string }>;
-  gradient?: string;
 }
 
-function ActionCard({ to, label, description, icon: Icon, gradient }: ActionCardProps) {
+function ActionLink({ to, label, description, icon: Icon }: ActionLinkProps) {
   return (
-    <Link
-      to={to}
-      className="group relative overflow-hidden rounded-2xl border border-border/50 bg-gradient-to-br from-slate-800/50 to-slate-900/50 hover:from-slate-700/50 hover:to-slate-800/50 backdrop-blur-sm transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl hover:shadow-primary/20"
-    >
-      <div className={`absolute -right-12 -bottom-12 h-48 w-48 ${gradient || 'bg-gradient-to-br from-primary/20 to-accent/20'} rounded-full blur-3xl group-hover:scale-110 transition-transform duration-500`} />
-      <div className="relative p-6">
-        <div className="flex items-center gap-4 mb-4">
-          <div className={`p-3 rounded-xl ${gradient || 'bg-gradient-to-br from-primary to-accent'} shadow-lg shadow-black/20`}>
-            <Icon className="h-6 w-6 text-white" />
+    <Link to={to} className="group flex h-full flex-col justify-between rounded-2xl border border-border/60 bg-card/70 p-4 transition-all duration-300 hover:-translate-y-1 hover:border-primary/35 hover:bg-card/90">
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="rounded-xl border border-border/60 bg-background/60 p-2.5 text-primary">
+            <Icon className="h-4 w-4" />
           </div>
-          <h2 className="text-xl font-bold text-foreground">{label}</h2>
+          <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform duration-300 group-hover:translate-x-1 group-hover:text-primary" />
         </div>
-        <p className="text-sm text-muted-foreground">{description}</p>
-        <div className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity">
-          <ArrowRight className="h-5 w-5 text-primary" />
+        <div>
+          <h3 className="text-base font-semibold text-foreground">{label}</h3>
+          <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p>
         </div>
       </div>
     </Link>
@@ -85,25 +221,22 @@ function ActionCard({ to, label, description, icon: Icon, gradient }: ActionCard
 }
 
 interface RecentDraftCardProps {
-  id: string;
   to: string;
   name: string;
   meta: string;
 }
 
-function RecentDraftCard({ id, to, name, meta }: RecentDraftCardProps) {
+function RecentDraftCard({ to, name, meta }: RecentDraftCardProps) {
   return (
-    <Link
-      key={id}
-      to={to}
-      className="group flex items-center justify-between p-4 rounded-xl border border-border/50 bg-card/50 hover:bg-accent/50 hover:border-primary/30 transition-all duration-200"
-    >
-      <div className="flex-1 min-w-0">
-        <div className="font-semibold text-foreground truncate mb-1">{name}</div>
-        <div className="text-sm text-muted-foreground truncate">{meta}</div>
+    <Link to={to} className="group flex items-center justify-between gap-4 rounded-2xl border border-border/60 bg-background/55 px-4 py-4 transition-all duration-300 hover:border-primary/35 hover:bg-background/80">
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-sm font-semibold text-foreground sm:text-base">{name}</div>
+        <div className="mt-1 truncate text-xs uppercase tracking-[0.18em] text-muted-foreground" style={{ fontFamily: '"IBM Plex Mono", monospace' }}>
+          {meta}
+        </div>
       </div>
-      <div className="p-2 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors opacity-0 group-hover:opacity-100">
-        <ArrowRight className="h-4 w-4 text-primary" />
+      <div className="rounded-xl border border-border/60 bg-card/75 p-2 text-muted-foreground transition-all duration-300 group-hover:border-primary/35 group-hover:text-primary">
+        <ArrowRight className="h-4 w-4" />
       </div>
     </Link>
   );
@@ -112,8 +245,8 @@ function RecentDraftCard({ id, to, name, meta }: RecentDraftCardProps) {
 export default function Home() {
   const { activeStepIndex, activeTourId, goToCurrentStep, isTourCompleted, restartTour, startTour } = useGuidedTour();
   const { data: statsData } = useQuery({
-    queryKey: ['drafts', 'stats'],
-    queryFn: () => api.getDrafts({ limit: 1 }),
+    queryKey: ['drafts', 'stats', RECENT_DRAFT_LIMIT],
+    queryFn: () => api.getDrafts({ limit: RECENT_DRAFT_LIMIT }),
   });
 
   const { data: templatesData } = useQuery({
@@ -130,342 +263,371 @@ export default function Home() {
 
   const upcomingUpdates = roadmapGroups
     .filter((group) => group.status !== 'implemented')
-    .slice(0, 4)
+    .slice(0, 3)
     .map((group) => ({
       id: group.id,
       title: group.title,
       summary: group.items[0],
-      ownerFile: group.ownerFiles[0],
     }));
 
+  const stats = statsData?.stats;
+  const recentDrafts = statsData?.drafts ?? [];
+  const currentRelease = releaseNotes[0] ?? null;
+  const completedTours = guidedTours.filter((tour) => isTourCompleted(tour.id)).length;
   const nextIncompleteTour = guidedTours.find((tour) => !isTourCompleted(tour.id)) ?? null;
   const activeTour = activeTourId ? getGuidedTour(activeTourId) : null;
   const activeTourStep = activeTour?.steps[activeStepIndex] ?? null;
 
   return (
-    <div className="space-y-12 pb-12">
-      {/* Hero Section */}
-      <section className="relative overflow-hidden rounded-3xl border border-border/50 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-        <div className="absolute inset-0 opacity-30">
-          <div className="absolute top-1/4 left-1/4 h-64 w-64 bg-primary/10 rounded-full blur-3xl" />
-          <div className="absolute bottom-1/4 right-1/4 h-96 w-96 bg-accent/10 rounded-full blur-3xl" />
+    <div className="space-y-10 pb-12">
+      <section className="home-panel home-grid-bg overflow-hidden rounded-[2rem] border border-border/60 px-6 py-7 sm:px-8 sm:py-9 xl:px-10">
+        <div className="pointer-events-none absolute inset-0 opacity-80">
+          <div className="home-orbit absolute -left-12 top-14 h-44 w-44 rounded-full border border-primary/25 bg-primary/10 blur-2xl" />
+          <div className="home-orbit absolute right-8 top-8 h-28 w-28 rounded-full border border-white/10 bg-white/10 blur-xl" />
+          <div className="absolute bottom-0 right-0 h-48 w-48 rounded-full bg-[color:color-mix(in_srgb,var(--app-accent)_18%,transparent)] blur-3xl" />
         </div>
 
-        <div className="relative text-center py-16 px-8">
-          <div className="mb-4">
-            <div className="inline-flex items-center gap-3 px-6 py-3 rounded-2xl bg-gradient-to-r from-primary to-accent shadow-2xl shadow-primary/20">
-              <Sparkles className="h-8 w-8 text-white animate-pulse" />
-              <span className="text-4xl font-bold text-white">Eidolon Simulacra</span>
-            </div>
-          </div>
-
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            Generate template-aware simulacra with blueprint templates, validation, and export.
-            <span className="block mt-2 text-primary">Start from one seed and compile a consistent set of assets.</span>
-          </p>
-
-          <div className="mt-8 flex items-center justify-center gap-2">
-            <Link
-              to="/generate"
-              className="inline-flex items-center gap-2 px-8 py-3 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
-            >
-              <Zap className="h-5 w-5" />
-              Start Generating
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Browser-Only Mode Notice */}
-      <section className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-5">
-        <div className="flex items-start gap-3">
-          <div className="mt-0.5 h-2.5 w-2.5 rounded-full bg-amber-400" />
-          <div>
-            <h2 className="text-sm font-semibold text-foreground">Browser-Only Mode</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              This workspace runs fully client-side. Drafts, templates, theme presets, and blueprint edits stay in the browser instead of syncing through a local API server.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* 2-Column Layout */}
-      <div className="grid gap-8 xl:grid-cols-[minmax(0,2fr)_minmax(340px,1fr)]">
-        {/* Left Column - Main Content */}
-        <div className="space-y-12">
-          {/* Stats Grid */}
-          <section>
-            <div className="flex items-center gap-3 mb-6">
-              <div className="h-8 w-1 rounded-full bg-gradient-to-r from-primary to-accent" />
-              <h2 className="text-2xl font-bold text-foreground">Quick Stats</h2>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <StatCard
-                icon={<FolderOpen className="h-6 w-6 text-white" />}
-                value={statsData?.stats?.total_drafts ?? '--'}
-                label="Characters"
-                gradient="bg-gradient-to-br from-violet-600 to-indigo-600"
-              />
-              <StatCard
-                icon={<FileText className="h-6 w-6 text-white" />}
-                value={templatesData?.length ?? '--'}
-                label="Templates"
-                gradient="bg-gradient-to-br from-cyan-600 to-blue-600"
-              />
-              <StatCard
-                icon={<Zap className="h-6 w-6 text-white" />}
-                value={statsData?.stats?.favorites ?? '--'}
-                label="Favorites"
-                gradient="bg-gradient-to-br from-amber-600 to-orange-600"
-              />
-            </div>
-          </section>
-
-          {/* Quick Actions Grid */}
-          <section>
-            <div className="flex items-center gap-3 mb-6">
-              <div className="h-8 w-1 rounded-full bg-gradient-to-r from-primary to-accent" />
-              <h2 className="text-2xl font-bold text-foreground">Quick Actions</h2>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {QUICK_ACTIONS.map((action) => (
-                <ActionCard key={action.to} {...action} />
-              ))}
-            </div>
-
-            <div className="mt-6 rounded-2xl border border-primary/20 bg-primary/5 p-6">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <h3 className="text-lg font-semibold text-foreground">New here?</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    The app now includes a Help Center and a guided starter path. Follow the checklist below if you want the safest path to a first usable draft.
-                  </p>
-                </div>
-                <Link
-                  to="/help"
-                  className="inline-flex items-center gap-2 rounded-lg border border-border/60 bg-card/70 px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:text-primary"
-                >
-                  Open Help Center
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </div>
-
-              <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                {gettingStartedSteps.slice(0, 3).map((step, index) => (
-                  <div key={step.id} className="rounded-xl border border-border/50 bg-background/40 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Step {index + 1}</p>
-                    <h4 className="mt-2 font-medium text-foreground">{step.title}</h4>
-                    <p className="mt-1 text-sm leading-6 text-muted-foreground">{step.description}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-
-          {/* More Actions */}
-          <section>
-            <div className="flex items-center gap-3 mb-6">
-              <div className="h-8 w-1 rounded-full bg-gradient-to-r from-primary to-accent" />
-              <h2 className="text-2xl font-bold text-foreground">More Actions</h2>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-3">
-              {MORE_ACTIONS.map((action) => (
-                <ActionCard key={action.to} {...action} />
-              ))}
-            </div>
-          </section>
-
-          {/* Recent Drafts */}
-          {statsData?.drafts && statsData.drafts.length > 0 && (
-            <section>
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="h-8 w-1 rounded-full bg-gradient-to-r from-primary to-accent" />
-                  <h2 className="text-2xl font-bold text-foreground">Recent Drafts</h2>
-                </div>
-                <Link
-                  to="/drafts"
-                  className="text-sm font-medium text-primary hover:text-primary/80 hover:underline"
-                >
-                  View all →
-                </Link>
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {statsData.drafts.slice(0, 6).map((draft: DraftMetadata) => (
-                  <RecentDraftCard
-                    id={draft.review_id}
-                    to={`/drafts/${encodeURIComponent(draft.review_id)}`}
-                    name={draft.character_name || draft.seed}
-                    meta={`${draft.template_name || 'V2/V3 Card'} • ${draft.mode || 'SFW'}`}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
-        </div>
-
-        {/* Right Column - Sidebar */}
-        <aside className="space-y-8">
-          {/* What's New */}
-          <section>
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="h-6 w-1 rounded-full bg-gradient-to-r from-primary to-accent" />
-                <h2 className="text-xl font-bold text-foreground">What's New</h2>
-              </div>
-              <span className="rounded-full border border-border/60 bg-card/70 px-2.5 py-1 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+        <div className="relative grid gap-8 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.9fr)] xl:items-start">
+          <div className="space-y-6">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="home-kicker">Browser-first character foundry</span>
+              <span className="rounded-full border border-border/60 bg-background/55 px-3 py-1 text-[11px] uppercase tracking-[0.24em] text-muted-foreground" style={{ fontFamily: '"IBM Plex Mono", monospace' }}>
                 v{__APP_VERSION__}
               </span>
             </div>
 
             <div className="space-y-4">
-              {releaseNotes.slice(0, 2).map((entry) => (
-                <article
-                  key={entry.version}
-                  className="relative overflow-hidden rounded-2xl border border-border/50 bg-gradient-to-br from-slate-900/95 via-slate-900/90 to-slate-800/90 p-5"
-                >
-                  <div className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-primary/10 blur-3xl" />
-                  <div className="relative space-y-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
-                        {entry.badge}
-                      </span>
-                      <span className="rounded-full border border-border/60 px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                        v{entry.version}
-                      </span>
-                    </div>
+              <h1 className="max-w-4xl text-4xl font-semibold tracking-tight text-foreground sm:text-5xl xl:text-6xl" style={{ fontFamily: '"Space Grotesk", sans-serif' }}>
+                One launch surface for blueprint-safe drafting, review, and export.
+              </h1>
+              <p className="max-w-3xl text-base leading-8 text-muted-foreground sm:text-lg">
+                The browser app is the product surface. Drafts, templates, help state, and theme customizations live in this browser profile, so Home should tell you what matters now and where to move next.
+              </p>
+            </div>
 
-                    <div>
-                      <h3 className="text-lg font-semibold text-foreground">{entry.headline}</h3>
-                      <p className="mt-1 text-sm leading-6 text-muted-foreground">{entry.summary}</p>
-                    </div>
+            <div className="flex flex-wrap gap-3">
+              <Link to="/generate" className="inline-flex items-center gap-2 rounded-2xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
+                <Zap className="h-4 w-4" />
+                Start a fresh draft
+              </Link>
+              <Link to="/drafts" className="inline-flex items-center gap-2 rounded-2xl border border-border/60 bg-background/55 px-5 py-3 text-sm font-semibold text-foreground transition-colors hover:border-primary/35 hover:text-primary">
+                <FolderOpen className="h-4 w-4" />
+                Open draft library
+              </Link>
+              <Link to="/settings" className="inline-flex items-center gap-2 rounded-2xl border border-border/60 bg-background/55 px-5 py-3 text-sm font-semibold text-foreground transition-colors hover:border-primary/35 hover:text-primary">
+                <Settings className="h-4 w-4" />
+                Configure provider
+              </Link>
+            </div>
 
-                    <div className="flex flex-wrap gap-2">
-                      {entry.links.slice(0, 2).map((link) => (
-                        <Link
-                          key={`${entry.version}-${link.to}`}
-                          to={link.to}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-card/70 px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:border-primary/40 hover:text-primary"
-                        >
-                          {link.label}
-                          <ArrowRight className="h-3 w-3" />
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                </article>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <MetricTile label="Drafts" value={stats?.total_drafts ?? '--'} tone="accent" />
+              <MetricTile label="Templates" value={templatesData?.length ?? '--'} />
+              <MetricTile label="Favorites" value={stats?.favorites ?? '--'} />
+            </div>
+          </div>
+
+          <div className="space-y-4 rounded-[1.75rem] border border-border/60 bg-card/70 p-5 backdrop-blur-sm">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="home-kicker">Operating model</p>
+                <h2 className="mt-2 text-2xl font-semibold text-foreground" style={{ fontFamily: '"Space Grotesk", sans-serif' }}>
+                  Current browser workspace
+                </h2>
+              </div>
+              <div className="rounded-2xl border border-primary/30 bg-primary/10 px-3 py-2 text-xs uppercase tracking-[0.18em] text-primary" style={{ fontFamily: '"IBM Plex Mono", monospace' }}>
+                Live
+              </div>
+            </div>
+
+            <div className="grid gap-3">
+              {[
+                'Home is the launchpad, not a splash page.',
+                'Templates decide structure before prompt polish matters.',
+                'Review and validation are normal steps, not failure recovery.',
+              ].map((item) => (
+                <div key={item} className="flex items-start gap-3 rounded-2xl border border-border/60 bg-background/50 px-4 py-3">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                  <p className="text-sm leading-6 text-foreground/90">{item}</p>
+                </div>
               ))}
             </div>
 
-            <Link
-              to="/whats-new"
-              className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-primary hover:text-primary/80 hover:underline"
-            >
-              Full release history →
+            <div className="rounded-[1.5rem] border border-border/60 bg-background/55 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.24em] text-muted-foreground" style={{ fontFamily: '"IBM Plex Mono", monospace' }}>
+                    Current release
+                  </p>
+                  <h3 className="mt-2 text-lg font-semibold text-foreground">
+                    {currentRelease?.headline ?? 'Release line available'}
+                  </h3>
+                </div>
+                <span className="rounded-full border border-border/60 px-2.5 py-1 text-xs text-muted-foreground">
+                  {currentRelease ? `v${currentRelease.version}` : `v${__APP_VERSION__}`}
+                </span>
+              </div>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                {currentRelease?.summary ?? 'Check What\'s New for the latest product changes and browser workflow notes.'}
+              </p>
+              <Link to="/whats-new" className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-primary hover:text-primary/80">
+                Read release notes
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="space-y-6">
+        <SectionHeader
+          eyebrow="Workflow lanes"
+          title="The page now behaves like an operating deck, not a static dashboard."
+          summary="The safe path is still the same: configure access, choose structure, generate, then review. The layout makes that order obvious without forcing a tutorial on people who already know the system."
+        />
+
+        <div className="grid gap-4 xl:grid-cols-4 md:grid-cols-2">
+          {WORKFLOW_LANES.map((lane) => (
+            <LaneCard key={lane.to} {...lane} />
+          ))}
+        </div>
+      </section>
+
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
+        <section className="home-panel rounded-[1.75rem] border border-border/60 p-6 sm:p-7">
+          <SectionHeader
+            eyebrow="Workspace snapshot"
+            title={recentDrafts.length > 0 ? 'Your recent draft queue is back in the foreground.' : 'No recent drafts yet. The first useful action is still clear.'}
+            summary={recentDrafts.length > 0
+              ? 'Recent work should be one click away. This section is intentionally narrow: reopen what matters, then move back into review instead of hunting through the side nav.'
+              : 'If this browser profile is clean, start in Settings or Generate. Once drafts exist, this area becomes the reopen queue.'}
+          />
+
+          {recentDrafts.length > 0 ? (
+            <div className="mt-6 grid gap-3">
+              {recentDrafts.map((draft: DraftMetadata) => (
+                <RecentDraftCard
+                  key={draft.review_id}
+                  to={`/drafts/${encodeURIComponent(draft.review_id)}`}
+                  name={draft.character_name || draft.seed}
+                  meta={`${draft.template_name || 'V2/V3 Card'} / ${draft.mode || 'SFW'}`}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="mt-6 rounded-[1.5rem] border border-dashed border-border/70 bg-background/40 p-6 text-sm leading-7 text-muted-foreground">
+              Generate a first draft or import one from Data Manager. Home will surface it here automatically once the library has content.
+            </div>
+          )}
+
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link to="/drafts" className="inline-flex items-center gap-2 rounded-2xl border border-border/60 bg-background/55 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary/35 hover:text-primary">
+              View full draft library
+              <ArrowRight className="h-4 w-4" />
             </Link>
+            <Link to="/data" className="inline-flex items-center gap-2 rounded-2xl border border-border/60 bg-background/55 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary/35 hover:text-primary">
+              Browser backup tools
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </section>
+
+        <aside className="space-y-6">
+          <section className="home-panel rounded-[1.75rem] border border-border/60 p-6">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="home-kicker">Guided path</p>
+                <h2 className="mt-2 text-2xl font-semibold text-foreground" style={{ fontFamily: '"Space Grotesk", sans-serif' }}>
+                  {activeTour && activeTourStep
+                    ? `Continue ${activeTour.title}`
+                    : nextIncompleteTour
+                      ? `Next up: ${nextIncompleteTour.title}`
+                      : 'All guided tours complete'}
+                </h2>
+              </div>
+              <span className="rounded-full border border-border/60 bg-background/60 px-3 py-1 text-xs uppercase tracking-[0.18em] text-muted-foreground" style={{ fontFamily: '"IBM Plex Mono", monospace' }}>
+                {completedTours}/{guidedTours.length}
+              </span>
+            </div>
+
+            <p className="mt-3 text-sm leading-7 text-muted-foreground">
+              {activeTour && activeTourStep
+                ? `Step ${activeStepIndex + 1} of ${activeTour.steps.length}. ${activeTourStep.description}`
+                : nextIncompleteTour
+                  ? nextIncompleteTour.summary
+                  : 'The walkthrough set is complete. Use Help Center or restart a tour if you want the structured path again.'}
+            </p>
+
+            <div className="mt-5 flex flex-wrap gap-3">
+              {activeTour ? (
+                <button
+                  type="button"
+                  onClick={goToCurrentStep}
+                  className="inline-flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+                >
+                  <PlayCircle className="h-4 w-4" />
+                  Resume current step
+                </button>
+              ) : nextIncompleteTour ? (
+                <button
+                  type="button"
+                  onClick={() => startTour(nextIncompleteTour.id)}
+                  className="inline-flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+                >
+                  <PlayCircle className="h-4 w-4" />
+                  Start next tour
+                </button>
+              ) : null}
+
+              {nextIncompleteTour ? (
+                <button
+                  type="button"
+                  onClick={() => restartTour(nextIncompleteTour.id)}
+                  className="inline-flex items-center gap-2 rounded-2xl border border-border/60 bg-background/55 px-4 py-2.5 text-sm font-semibold text-foreground transition-colors hover:border-primary/35 hover:text-primary"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Restart tour
+                </button>
+              ) : null}
+            </div>
+
+            <div className="mt-6 grid gap-3">
+              {gettingStartedSteps.slice(0, 3).map((step, index) => (
+                <Link key={step.id} to={step.to} className="rounded-2xl border border-border/60 bg-background/55 p-4 transition-colors hover:border-primary/35">
+                  <div className="flex items-center gap-2 text-xs uppercase tracking-[0.22em] text-muted-foreground" style={{ fontFamily: '"IBM Plex Mono", monospace' }}>
+                    <Target className="h-3.5 w-3.5 text-primary" />
+                    Step {index + 1}
+                  </div>
+                  <h3 className="mt-2 text-sm font-semibold text-foreground">{step.title}</h3>
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">{step.description}</p>
+                </Link>
+              ))}
+            </div>
           </section>
 
-          {/* Upcoming Updates */}
-          <section className="rounded-2xl border border-border/50 bg-card/60 p-5">
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <h3 className="text-lg font-semibold text-foreground">Upcoming Updates</h3>
-              <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+          <section className="rounded-[1.75rem] border border-border/60 bg-card/70 p-6 backdrop-blur-sm">
+            <OnboardingPlaceholder templateName={templatesData?.[0]?.name} />
+          </section>
+        </aside>
+      </div>
+
+      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
+        <div className="space-y-6">
+          <SectionHeader
+            eyebrow="Launch anywhere"
+            title="Secondary tools stay reachable, but they no longer compete with the main flow."
+            summary="These routes matter once you know why you are opening them. The grid keeps them visible without letting them overpower the structure-critical steps above."
+          />
+
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {EXPLORATION_ACTIONS.map((action) => (
+              <ActionLink key={action.to} {...action} />
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          <section className="home-panel rounded-[1.75rem] border border-border/60 p-6">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="home-kicker">Release signal</p>
+                <h2 className="mt-2 text-2xl font-semibold text-foreground" style={{ fontFamily: '"Space Grotesk", sans-serif' }}>
+                  What changed recently
+                </h2>
+              </div>
+              <span className="rounded-full border border-border/60 bg-background/55 px-3 py-1 text-xs uppercase tracking-[0.18em] text-muted-foreground" style={{ fontFamily: '"IBM Plex Mono", monospace' }}>
+                v{__APP_VERSION__}
+              </span>
+            </div>
+
+            <div className="mt-5 space-y-3">
+              {releaseNotes.slice(0, 2).map((entry) => (
+                <article key={entry.version} className="rounded-2xl border border-border/60 bg-background/50 p-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-full bg-primary/12 px-2 py-1 text-[11px] uppercase tracking-[0.18em] text-primary" style={{ fontFamily: '"IBM Plex Mono", monospace' }}>
+                      {entry.badge}
+                    </span>
+                    <span className="rounded-full border border-border/60 px-2 py-1 text-[11px] uppercase tracking-[0.18em] text-muted-foreground" style={{ fontFamily: '"IBM Plex Mono", monospace' }}>
+                      v{entry.version}
+                    </span>
+                  </div>
+                  <h3 className="mt-3 text-lg font-semibold text-foreground">{entry.headline}</h3>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">{entry.summary}</p>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section className="home-panel rounded-[1.75rem] border border-border/60 p-6">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="home-kicker">Roadmap pressure</p>
+                <h2 className="mt-2 text-2xl font-semibold text-foreground" style={{ fontFamily: '"Space Grotesk", sans-serif' }}>
+                  Upcoming updates
+                </h2>
+              </div>
+              <span className="rounded-full border border-border/60 bg-background/55 px-3 py-1 text-xs uppercase tracking-[0.18em] text-muted-foreground" style={{ fontFamily: '"IBM Plex Mono", monospace' }}>
                 Planned
               </span>
             </div>
 
-            <div className="space-y-3">
+            <div className="mt-5 space-y-3">
               {upcomingUpdates.map((update) => (
-                <div
-                  key={update.id}
-                  className="rounded-xl border border-border/50 bg-background/30 p-3"
-                >
-                  <h4 className="font-medium text-foreground text-sm">{update.title}</h4>
-                  <p className="mt-1 text-xs leading-5 text-muted-foreground">{update.summary}</p>
+                <div key={update.id} className="rounded-2xl border border-border/60 bg-background/50 p-4">
+                  <h3 className="text-sm font-semibold text-foreground sm:text-base">{update.title}</h3>
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">{update.summary}</p>
                 </div>
               ))}
             </div>
           </section>
+        </div>
+      </section>
 
-          {/* Guided Workflows */}
-          <section className="rounded-2xl border border-dashed border-border/60 bg-card/40 p-5">
-            <div className="mb-4 flex items-start justify-between gap-3">
-              <div>
-                <h3 className="text-lg font-semibold text-foreground">Guided Workflows</h3>
-                <p className="text-sm text-muted-foreground">
-                  First-run guidance and automations.
-                </p>
+      <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(340px,0.9fr)]">
+        <div className="home-panel rounded-[1.75rem] border border-border/60 p-6 sm:p-7">
+          <SectionHeader
+            eyebrow="Automation surface"
+            title="The home page still exposes guidance and automation, but in a calmer place."
+            summary="The previous version mixed onboarding, quick actions, news, and stats at the same visual weight. This revision separates the main operating path from optional helpers so the first decision is obvious."
+          />
+          <div className="mt-6">
+            <AutomationPlaceholder workflowName="draft validation queue" />
+          </div>
+        </div>
+
+        <div className="home-panel rounded-[1.75rem] border border-border/60 p-6">
+          <p className="home-kicker">Storage reality</p>
+          <h2 className="mt-2 text-2xl font-semibold text-foreground" style={{ fontFamily: '"Space Grotesk", sans-serif' }}>
+            Browser-local by default
+          </h2>
+          <p className="mt-3 text-sm leading-7 text-muted-foreground">
+            This build stores drafts, theme customizations, and help state in the browser profile unless you explicitly export, back up, or hand content to a provider during generation.
+          </p>
+
+          <div className="mt-5 space-y-3">
+            {[
+              'Back up before clearing site data or switching devices.',
+              'Use Data Manager when you need migration or recovery.',
+              'Treat exported backups and stored API keys as sensitive material.',
+            ].map((note) => (
+              <div key={note} className="rounded-2xl border border-border/60 bg-background/55 px-4 py-3 text-sm leading-6 text-foreground/90">
+                {note}
               </div>
-              <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                Live
-              </span>
-            </div>
+            ))}
+          </div>
 
-            <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
-              <div className="flex items-center gap-2 text-sm font-medium text-primary mb-2">
-                <Target className="h-4 w-4" />
-                Resume Help
-              </div>
-              <h4 className="font-semibold text-foreground">
-                {activeTour && activeTourStep
-                  ? `Continue ${activeTour.title}`
-                  : nextIncompleteTour
-                    ? `Next: ${nextIncompleteTour.title}`
-                    : 'All tours complete'}
-              </h4>
-              <p className="mt-1 text-sm leading-5 text-muted-foreground">
-                {activeTour && activeTourStep
-                  ? `Step ${activeStepIndex + 1} of ${activeTour.steps.length}`
-                  : nextIncompleteTour
-                    ? nextIncompleteTour.summary
-                    : 'You\'re caught up!'}
-              </p>
-
-              <div className="mt-3 flex flex-wrap gap-2">
-                {activeTour ? (
-                  <button
-                    type="button"
-                    onClick={goToCurrentStep}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-                  >
-                    <PlayCircle className="h-3.5 w-3.5" />
-                    Resume
-                  </button>
-                ) : nextIncompleteTour ? (
-                  <button
-                    type="button"
-                    onClick={() => startTour(nextIncompleteTour.id)}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-                  >
-                    <PlayCircle className="h-3.5 w-3.5" />
-                    Start
-                  </button>
-                ) : null}
-
-                {nextIncompleteTour && (
-                  <button
-                    type="button"
-                    onClick={() => restartTour(nextIncompleteTour.id)}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-background/50 px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:border-primary/40 hover:text-primary"
-                  >
-                    <RotateCcw className="h-3.5 w-3.5" />
-                    Restart
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <div className="mt-4 grid gap-3">
-              <OnboardingPlaceholder templateName={templatesData?.[0]?.name} />
-              <AutomationPlaceholder workflowName="draft validation queue" />
-            </div>
-          </section>
-        </aside>
-      </div>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link to="/data" className="inline-flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
+              Open Data Manager
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+            <Link to="/privacy" className="inline-flex items-center gap-2 rounded-2xl border border-border/60 bg-background/55 px-4 py-2.5 text-sm font-semibold text-foreground transition-colors hover:border-primary/35 hover:text-primary">
+              Read privacy details
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

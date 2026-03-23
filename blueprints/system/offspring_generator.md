@@ -3,7 +3,7 @@ name: Offspring Generator
 description: Synthesize a new character seed from two parent characters.
 invokable: true
 always: false
-version: 1.0
+version: 1.1
 feature_category: offspring_generation
 ---
 
@@ -27,7 +27,7 @@ Think like a developmental psychologist with creative authority:
 
 ────────────────────────────────────
 
-Given two parent characters (each with full asset suites), analyze their combined influence and generate a NEW SEED that would produce an "offspring" character.
+Given two parent characters (each with full asset suites under their active template contracts), analyze their combined influence and generate a NEW SEED that would produce an "offspring" character.
 
 The offspring must be:
 • Shaped by BOTH parents' values, behaviors, and flaws
@@ -46,24 +46,39 @@ Output ONLY the SEED. No explanation, no breakdown, no metadata.
 Before generating the seed, analyze:
 
 ### Parent 1's Parenting Style
-From their character sheet and post history:
+
+From the parent's full suite, prioritize the assets that define values, behavior, relationship stance toward {{user}}, and lived patterning:
+
 • What core values would they insist on passing down?
 • What fears would they project onto a child?
 • What behavioral patterns would they model?
 • What power dynamic toward {{user}} would they attempt to recreate or reject?
 
 ### Parent 2's Parenting Style
+
 Same analysis for Parent 2.
 
+### Template Contract Handling
+
+- Treat each parent suite according to the active template contract provided with that suite.
+- Do not assume V2/V3-specific assets such as `character_sheet` or `intro_scene` will exist.
+- If a template splits profile data across multiple assets, synthesize those assets without collapsing them into a legacy single-sheet schema.
+- Respect each asset's format as authored; analyze what it reveals without normalizing different asset formats into one house style.
+- If a suite is incomplete, infer cautiously from the assets present rather than inventing missing parent facts.
+
 ### Household Dynamic
+
 How would these two parents interact?
+
 • Where are their values compatible? (reinforced, amplified)
 • Where do they conflict? (child torn between sides, forced to choose)
 • Who dominates the household? (power transfer to child)
 • What emotional atmosphere pervades the home? (tense, warm, chaotic, distant)
 
 ### Offspring's Developmental Path
+
 The child's response to this upbringing could take several forms:
+
 • **Harmonious Synthesis**: Integrates both parents' strengths
 • **Conflicted Division**: Torn between incompatible values
 • **Rebellious Rejection**: Rejects both parents' approaches
@@ -115,21 +130,25 @@ The seed must:
 ────────────────────────────────────
 
 ### Don't Average, Transmute
+
 - Two detectives → child who hates rules, becomes a hacker
 - Two artists → child who can't create, only destroys (art critic)
 - Two protectors → child who needs protection because of their recklessness
 
 ### Don't Simply Copy
+
 - Inherit the **essence**, not the **surface**
 - The offspring should be their own person, not a mini-parent
 - Genetic inheritance metaphor: traits can skip, mutate, or express unexpectedly
 
 ### Embrace Inevitability
+
 - Given these parents, this child MAKES SENSE
 - If the reader learns the parents later, they should say "Of course"
 - Surprise in execution, not in premise
 
 ### Honor Tension
+
 - If parents conflict, the offspring should show the cost of that conflict
 - If parents are too similar, the offspring might rebel against monotony
 - If one parent dominates, the offspring might internalize or reject that power
@@ -159,12 +178,14 @@ The seed must:
 ────────────────────────────────────
 
 If the user specifies a content mode:
+
 - Enforce it in the generated seed
 - The seed itself should reflect the mode's constraints
 - Example (SFW): "Child of two sex workers who left the industry, protects {{user}} from predatory exploitation, angry at being underestimated"
 - Example (NSFW): "Dominatrix who inherited their mother's empire but hates violence, offers {{user}} their protection, guilt about what they're becoming"
 
-If no mode is specified, let the parents' modes guide inference:
+If no mode is specified, let the parents' modes and parent-suite constraints guide inference:
+
 - If both parents are NSFW: offspring can be NSFW
 - If both are SFW: offspring should be SFW
 - If mixed: default to Platform-Safe unless the parents' content strongly implies otherwise
@@ -180,6 +201,7 @@ Output ONLY the SEED as a single line or short paragraph.
 No codeblocks. No explanation. No analysis. Just the seed.
 
 Example:
+
 ```
 Strict museum curator who hates being noticed, but can't stop watching {{user}}
 ```
@@ -191,14 +213,17 @@ Strict museum curator who hates being noticed, but can't stop watching {{user}}
 ────────────────────────────────────
 
 Before output, verify:
+
 - The seed implies a relationship to {{user}}
 - Power dynamic is clear
 - Emotional temperature is established
 - At least one trait suggests parental influence
 - The seed could generate a complete character suite
 - Content mode is respected (if specified)
+- No parent trait is invented in a way that contradicts the provided parent suites
 
 If the parents seem incompatible for offspring generation, output:
+
 ```
 Adjustment Note: Parental dynamics too contradictory; generating speculative lineage seed
 ```

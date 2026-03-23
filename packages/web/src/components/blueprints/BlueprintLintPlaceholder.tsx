@@ -2,54 +2,10 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AlertTriangle, CheckCircle2, FileWarning, Loader2 } from 'lucide-react';
 import { api } from '@/lib/api';
+import { lintBlueprintContent } from './blueprintLint';
 
 export interface BlueprintLintPlaceholderProps {
   blueprintPath?: string;
-}
-
-interface BlueprintLintIssue {
-  severity: 'error' | 'warning';
-  message: string;
-}
-
-function lintBlueprintContent(content: string): BlueprintLintIssue[] {
-  const issues: BlueprintLintIssue[] = [];
-  const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
-
-  if (!frontmatterMatch) {
-    issues.push({ severity: 'warning', message: 'Missing YAML frontmatter block. Browser tools will fall back to heading-derived metadata.' });
-  } else {
-    const frontmatter = frontmatterMatch[1];
-    for (const field of ['name', 'description', 'version']) {
-      if (!new RegExp(`^${field}:`, 'm').test(frontmatter)) {
-        issues.push({ severity: 'warning', message: `Frontmatter is missing ${field}.` });
-      }
-    }
-  }
-
-  const checks: Array<[RegExp, string, BlueprintLintIssue['severity']]> = [
-    [/\{PLACEHOLDER\}|\{TITLE\}/g, 'Contains unresolved placeholder tokens.', 'error'],
-    [/\(\([^)]+\.\.\.[^)]+\)\)|\(\(\.\.\)\)/g, 'Contains unresolved weighted prompt slots.', 'error'],
-    [/\[(Name|Age|Content):?[^\]]*\]/g, 'Contains unresolved bracket placeholders.', 'warning'],
-    [/```[\s\S]*?```/g, 'ok', 'warning'],
-  ];
-
-  const hasCodeBlock = /```[\s\S]*?```/g.test(content);
-  if (!hasCodeBlock) {
-    issues.push({ severity: 'warning', message: 'No fenced example or output block detected.' });
-  }
-
-  for (const [pattern, message, severity] of checks.slice(0, 3)) {
-    if (pattern.test(content)) {
-      issues.push({ severity, message });
-    }
-  }
-
-  if (content.length < 200) {
-    issues.push({ severity: 'warning', message: 'Blueprint content is unusually short.' });
-  }
-
-  return issues;
 }
 
 export function BlueprintLintPlaceholder({
@@ -65,8 +21,12 @@ export function BlueprintLintPlaceholder({
     if (!data?.content) {
       return [];
     }
-    return lintBlueprintContent(data.content);
-  }, [data?.content]);
+    return lintBlueprintContent(data.content, {
+      category: data.category,
+      path: data.path,
+      featureCategory: data.feature_category,
+    });
+  }, [data]);
 
   const errorCount = issues.filter((issue) => issue.severity === 'error').length;
   const warningCount = issues.filter((issue) => issue.severity === 'warning').length;
@@ -76,7 +36,7 @@ export function BlueprintLintPlaceholder({
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="font-semibold text-foreground">Blueprint Lint</h3>
-          <p className="mt-2">Checks frontmatter and obvious unresolved placeholder issues for the selected blueprint.</p>
+          <p className="mt-2">Checks frontmatter and a small set of category-aware structural issues for the selected blueprint.</p>
           <p className="mt-2">Blueprint: {blueprintPath ?? 'unset'}</p>
         </div>
         {issues.length === 0 && data ? (

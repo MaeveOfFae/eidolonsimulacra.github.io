@@ -88,18 +88,41 @@ export default function Similarity() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Compare Characters</h1>
-        <p className="text-muted-foreground">
-          Analyze similarities and relationships between characters
-        </p>
-      </div>
+    <div className="app-page space-y-6 pb-12">
+      <section className="app-page-hero">
+        <div className="app-page-hero-grid">
+          <div className="space-y-4">
+            <p className="app-page-eyebrow">Comparative analysis</p>
+            <h1 className="app-page-title">Measure how two reviewed drafts align, clash, or reinforce each other.</h1>
+            <p className="app-page-summary">
+              Similarity analysis compares structural and thematic overlap between two characters, then optionally adds an LLM-assisted relationship read for story hooks, conflict areas, and synergy.
+            </p>
+          </div>
 
-      {/* Selection Section */}
-      <div className="grid gap-6 md:grid-cols-2">
+          <div className="app-panel-muted p-5">
+            <p className="app-page-eyebrow">Comparison state</p>
+            <div className="mt-4 app-page-metrics">
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">Drafts</p>
+                <div className="app-page-metric-value text-2xl">{draftsData?.drafts.length ?? 0}</div>
+              </div>
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">LLM Read</p>
+                <div className="app-page-metric-value text-2xl">{includeLLM ? 'On' : 'Off'}</div>
+              </div>
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">Result</p>
+                <div className="app-page-metric-value text-2xl">{result ? `${(result.overall_score * 100).toFixed(0)}%` : 'None'}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="app-panel space-y-6 p-6">
+        <div className="grid gap-6 md:grid-cols-2">
         {/* Character 1 */}
-        <div className="space-y-2">
+          <div className="space-y-2">
           <label className="text-sm font-medium">Character 1</label>
           <select
             value={character1}
@@ -116,7 +139,7 @@ export default function Similarity() {
         </div>
 
         {/* Character 2 */}
-        <div className="space-y-2">
+          <div className="space-y-2">
           <label className="text-sm font-medium">Character 2</label>
           <select
             value={character2}
@@ -131,37 +154,36 @@ export default function Similarity() {
             ))}
           </select>
         </div>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={includeLLM}
+              onChange={(e) => setIncludeLLM(e.target.checked)}
+              className="rounded border-input"
+            />
+            Include LLM-powered deep analysis
+          </label>
+
+          <button
+            onClick={handleCompare}
+            disabled={!character1 || !character2 || compareMutation.isPending}
+            className="ml-auto flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {compareMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <GitCompare className="h-4 w-4" />
+            )}
+            Compare
+          </button>
+        </div>
       </div>
 
-      {/* Options */}
-      <div className="flex items-center gap-4">
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={includeLLM}
-            onChange={(e) => setIncludeLLM(e.target.checked)}
-            className="rounded border-input"
-          />
-          Include LLM-powered deep analysis
-        </label>
-
-        <button
-          onClick={handleCompare}
-          disabled={!character1 || !character2 || compareMutation.isPending}
-          className="ml-auto flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {compareMutation.isPending ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <GitCompare className="h-4 w-4" />
-          )}
-          Compare
-        </button>
-      </div>
-
-      {/* Error */}
       {compareMutation.isError && (
-        <div className="rounded-lg border border-destructive bg-destructive/10 p-4 text-destructive flex items-center gap-2">
+        <div className="app-note flex items-center gap-2 border-destructive bg-destructive/10 p-4 text-destructive">
           <AlertCircle className="h-5 w-5" />
           {compareMutation.error?.message || 'Failed to compare characters'}
         </div>
@@ -171,7 +193,7 @@ export default function Similarity() {
       {result && (
         <div className="space-y-6">
           {/* Overview */}
-          <div className="rounded-lg border border-border bg-card p-6">
+          <div className="app-panel p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold">
                 {result.character1_name} vs {result.character2_name}
@@ -205,7 +227,7 @@ export default function Similarity() {
 
           {/* Commonalities & Differences */}
           <div className="grid gap-6 md:grid-cols-2">
-            <div className="rounded-lg border border-border bg-card p-6">
+            <div className="app-panel p-6">
               <h3 className="font-semibold mb-4 flex items-center gap-2">
                 <CheckCircle className="h-5 w-5 text-green-500" />
                 Commonalities
@@ -221,7 +243,7 @@ export default function Similarity() {
               )}
             </div>
 
-            <div className="rounded-lg border border-border bg-card p-6">
+            <div className="app-panel p-6">
               <h3 className="font-semibold mb-4 flex items-center gap-2">
                 <Users className="h-5 w-5 text-blue-500" />
                 Differences
@@ -240,7 +262,7 @@ export default function Similarity() {
 
           {/* Relationship Suggestions */}
           {result.relationship_suggestions.length > 0 && (
-            <div className="rounded-lg border border-border bg-card p-6">
+            <div className="app-panel p-6">
               <h3 className="font-semibold mb-4">Relationship Suggestions</h3>
               <ul className="space-y-2">
                 {result.relationship_suggestions.map((item, i) => (
@@ -252,14 +274,14 @@ export default function Similarity() {
 
           {result.llm_analysis && (
             <div className="grid gap-6 md:grid-cols-2">
-              <div className="rounded-lg border border-border bg-card p-6">
+              <div className="app-panel p-6">
                 <h3 className="font-semibold mb-4">LLM Relationship Read</h3>
                 <p className="whitespace-pre-wrap text-sm text-muted-foreground">
                   {result.llm_analysis.relationship_potential}
                 </p>
               </div>
 
-              <div className="rounded-lg border border-border bg-card p-6 space-y-4">
+              <div className="app-panel space-y-4 p-6">
                 <div>
                   <h3 className="font-semibold mb-2">Story Hooks</h3>
                   <ul className="space-y-2">
@@ -293,9 +315,8 @@ export default function Similarity() {
         </div>
       )}
 
-      {/* Empty state */}
       {!result && !compareMutation.isPending && (
-        <div className="rounded-lg border border-border bg-card p-8 text-center">
+        <div className="app-panel p-8 text-center">
           <GitCompare className="mx-auto h-12 w-12 text-muted-foreground" />
           <h3 className="mt-4 text-lg font-semibold">Select Two Characters</h3>
           <p className="text-muted-foreground">
@@ -304,8 +325,7 @@ export default function Similarity() {
         </div>
       )}
 
-      {/* Planned Similarity Tooling */}
-      <section className="rounded-lg border border-dashed border-border bg-card/50 p-5">
+      <section className="app-panel border-dashed p-5">
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
             <h2 className="text-lg font-semibold">Planned Similarity Tooling</h2>

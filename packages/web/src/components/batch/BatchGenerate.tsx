@@ -136,16 +136,38 @@ export default function BatchGenerate() {
   });
 
   return (
-    <div className="space-y-6 max-w-4xl">
-      <div>
-        <h1 className="text-3xl font-bold">Batch Generation</h1>
-        <p className="text-muted-foreground">
-          Generate multiple characters from a list of seeds
-        </p>
-      </div>
+    <div className="app-page max-w-5xl space-y-6 pb-12">
+      <section className="app-page-hero">
+        <div className="app-page-hero-grid">
+          <div className="space-y-4">
+            <p className="app-page-eyebrow">Parallel generation</p>
+            <h1 className="app-page-title">Queue multiple seeds and push them through the same template contract.</h1>
+            <p className="app-page-summary">
+              Batch generation is the throughput view for repeated seed work. Load a list, choose a mode and template, then monitor completions and failures without leaving the browser workflow.
+            </p>
+          </div>
 
-      {/* Seed Input */}
-      <div className="rounded-lg border border-border bg-card p-6 space-y-4">
+          <div className="app-panel-muted p-5">
+            <p className="app-page-eyebrow">Queue state</p>
+            <div className="mt-4 app-page-metrics">
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">Seeds</p>
+                <div className="app-page-metric-value text-2xl">{seeds.length}</div>
+              </div>
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">Mode</p>
+                <div className="app-page-metric-value text-2xl">{mode}</div>
+              </div>
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">Concurrency</p>
+                <div className="app-page-metric-value text-2xl">{parallel ? maxConcurrent : 1}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="app-panel space-y-4 p-6">
         <div className="flex items-center gap-2">
           <List className="h-5 w-5 text-primary" />
           <h2 className="text-lg font-semibold">Seeds</h2>
@@ -201,8 +223,7 @@ export default function BatchGenerate() {
         )}
       </div>
 
-      {/* Options */}
-      <div className="rounded-lg border border-border bg-card p-6 space-y-4">
+      <div className="app-panel space-y-4 p-6">
         <h2 className="text-lg font-semibold">Options</h2>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -276,9 +297,8 @@ export default function BatchGenerate() {
         </div>
       </div>
 
-      {/* Progress */}
       {jobs.length > 0 && (
-        <div className="rounded-lg border border-border bg-card p-6 space-y-4">
+        <div className="app-panel space-y-4 p-6">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">Progress</h2>
             <span className="text-sm text-muted-foreground">
@@ -342,7 +362,6 @@ export default function BatchGenerate() {
         </div>
       )}
 
-      {/* Action Buttons */}
       <div className="flex gap-4">
         {isRunning ? (
           <button
@@ -364,8 +383,7 @@ export default function BatchGenerate() {
         )}
       </div>
 
-      {/* Planned Batch Tooling */}
-      <section className="rounded-lg border border-dashed border-border bg-card/50 p-5">
+      <section className="app-panel border-dashed p-5">
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
             <h2 className="text-lg font-semibold">Planned Batch Tooling</h2>

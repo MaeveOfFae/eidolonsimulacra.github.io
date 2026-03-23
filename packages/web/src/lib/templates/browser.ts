@@ -36,6 +36,16 @@ interface BrowserBlueprint {
   feature_category?: FeatureCategory;
 }
 
+function sanitizeBlueprintSlug(name: string): string {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '_')
+    .replace(/[^a-z0-9_]/g, '')
+    .replace(/_+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
 function getAssetBlueprintKey(asset: { name: string; blueprint_file?: string }): string {
   return asset.blueprint_file ?? `${asset.name}.md`;
 }
@@ -124,6 +134,24 @@ export function getBlueprintOverrides(): Record<string, string> {
 
 export function saveBlueprintOverrides(overrides: Record<string, string>): void {
   writeStorage(BLUEPRINT_OVERRIDES_STORAGE_KEY, LEGACY_BLUEPRINT_OVERRIDES_STORAGE_KEYS, overrides);
+}
+
+export function isCustomBlueprintPath(path: string): boolean {
+  return path.startsWith('blueprints/custom/');
+}
+
+export function buildUniqueCustomBlueprintPath(name: string, excludePath?: string): string {
+  const slug = sanitizeBlueprintSlug(name) || 'custom_blueprint';
+  const catalog = getBlueprintCatalog();
+  let candidate = `blueprints/custom/${slug}.md`;
+  let suffix = 2;
+
+  while (candidate !== excludePath && catalog.has(candidate)) {
+    candidate = `blueprints/custom/${slug}_${suffix}.md`;
+    suffix += 1;
+  }
+
+  return candidate;
 }
 
 export function getBlueprintCatalog(): Map<string, BrowserBlueprint> {
@@ -333,7 +361,7 @@ export function inferCharacterDisplayNameForTemplate(
   const template = resolveTemplateDefinition(templateName);
   const preferredAssets = template
     ? getOrderedAssets(template).map((asset) => asset.name)
-    : ['character_sheet', 'char_basic_info'];
+    : ['character_sheet'];
 
   const displayName = inferCharacterDisplayNameFromAssets(assets, preferredAssets);
   return displayName ?? undefined;

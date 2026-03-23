@@ -8,8 +8,9 @@ import {
   MessageCircle,
   Send,
 } from 'lucide-react';
-import type { ChatMessage, HelpTopic, PageHelpEntry } from '@char-gen/shared';
+import type { ChatMessage } from '@char-gen/shared';
 import { api } from '@/lib/api';
+import type { HelpTopic, PageHelpEntry } from '@/lib/help';
 import { useAssistantContext } from './useAssistantContext';
 
 interface HelpTabProps {
