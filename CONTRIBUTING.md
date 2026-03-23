@@ -87,8 +87,8 @@ Notes:
 
 Relevant locations:
 
-- `blueprints/system/` for orchestrators
-- `blueprints/templates/` for template manifests and template-local asset blueprints
+- `blueprints/system/` for canonical system blueprints, including orchestrators and the seed generator
+- `blueprints/templates/` for template manifests and any truly template-specific blueprint files
 - `rules/` for repo constraints and workflow guidance
 - `presets/` for export preset definitions
 

@@ -22,12 +22,12 @@ export interface Blueprint {
 const BLUEPRINT_PATH_ALIASES: Record<string, string> = {
   rpbotgenerator: 'system/generator.md',
   offspring_generator: 'system/offspring_generator.md',
-  system_prompt: 'templates/official_v2v3/assets/system_prompt.md',
-  post_history: 'templates/official_v2v3/assets/post_history.md',
-  character_sheet: 'templates/official_v2v3/assets/character_sheet.md',
-  intro_scene: 'templates/official_v2v3/assets/intro_scene.md',
-  intro_page: 'templates/official_v2v3/assets/intro_page.md',
-  a1111: 'templates/official_v2v3/assets/a1111.md',
+  system_prompt: 'system/system_prompt.md',
+  post_history: 'system/post_history.md',
+  character_sheet: 'system/character_sheet.md',
+  intro_scene: 'system/intro_scene.md',
+  intro_page: 'system/intro_page.md',
+  a1111: 'system/a1111.md',
 };
 
 function resolveBlueprintPath(nameOrPath: string): string {

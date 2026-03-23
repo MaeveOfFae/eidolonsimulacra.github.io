@@ -1,7 +1,6 @@
 import type { SeedGenerationRequest } from '@char-gen/shared';
 
-import seedGenerationPrompt from '../../../../tools/generation/seed-gen.md?raw';
-import seedWorkflowPrompt from '../../../../rules/workflows/seed-gen-list.md?raw';
+import seedGenerationPrompt from '../../../../blueprints/system/seed_generator.md?raw';
 
 export interface SeedSuggestionPreset {
   id: string;
@@ -168,7 +167,7 @@ export function resolveSeedGenerationInput(request: SeedGenerationRequest): {
 }
 
 export function buildSeedGeneratorSystemPrompt(): string {
-  return `${seedGenerationPrompt.trim()}\n\n${seedWorkflowPrompt.trim()}`;
+  return seedGenerationPrompt.trim();
 }
 
 export function parseSeedGenerationResponse(content: string): string[] {

@@ -19,7 +19,7 @@ The repo is centered on a strict blueprint contract: start from one seed, genera
 
 ```text
 eidolon-simulacra/
-├── blueprints/          # Orchestrators, template manifests, template-local asset blueprints
+├── blueprints/          # System blueprints, template manifests, and examples
 ├── packages/
 │   ├── shared/          # Shared TS types, generation, parsing, export, template utilities
 │   ├── web/             # React 19 + Vite browser app
@@ -105,9 +105,10 @@ Notes:
 
 The generation system is template-driven.
 
-- System orchestrators live in `blueprints/system/`.
+- Canonical system prompts and orchestrators live in `blueprints/system/`.
 - Official templates live in `blueprints/templates/` and declare asset order with `depends_on` in `template.toml`.
 - Shared parsing utilities map fenced codeblocks back into asset files and run fatal contract checks for placeholders and format violations.
+- The browser Seed Generator now uses the canonical seed-generation blueprint in `blueprints/system/seed_generator.md`.
 - The default official template is still the six-asset V2/V3 flow, but the repo also supports template-specific asset graphs such as Aksho.
 
 If you are editing blueprints, start with `rules/60_blueprint_hard_rules.md` and `blueprints/README.md`.

@@ -8,7 +8,7 @@ name = "system_prompt"
 required = true
 depends_on = []
 description = "System-level behavioral instructions"
-blueprint_file = "assets/system_prompt.md"
+blueprint_file = "blueprints/system/system_prompt.md"
 
 [[assets]]
 name = "post_history"
@@ -17,7 +17,7 @@ depends_on = [
     "system_prompt",
 ]
 description = "Conversation context and relationship state"
-blueprint_file = "assets/post_history.md"
+blueprint_file = "blueprints/system/post_history.md"
 
 [[assets]]
 name = "character_sheet"
@@ -27,7 +27,7 @@ depends_on = [
     "post_history",
 ]
 description = "Structured character data"
-blueprint_file = "assets/character_sheet.md"
+blueprint_file = "blueprints/system/character_sheet.md"
 
 [[assets]]
 name = "intro_scene"
@@ -38,7 +38,7 @@ depends_on = [
     "character_sheet",
 ]
 description = "First interaction scenario"
-blueprint_file = "assets/intro_scene.md"
+blueprint_file = "blueprints/system/intro_scene.md"
 
 [[assets]]
 name = "intro_page"
@@ -47,7 +47,7 @@ depends_on = [
     "character_sheet",
 ]
 description = "Visual character introduction page"
-blueprint_file = "assets/intro_page.md"
+blueprint_file = "blueprints/system/intro_page.md"
 
 [[assets]]
 name = "a1111"
@@ -56,4 +56,4 @@ depends_on = [
     "character_sheet",
 ]
 description = "Stable Diffusion image generation prompt"
-blueprint_file = "assets/a1111.md"
+blueprint_file = "blueprints/system/a1111.md"

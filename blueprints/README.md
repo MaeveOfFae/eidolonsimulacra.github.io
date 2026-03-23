@@ -1,25 +1,32 @@
 # Blueprints
 
-This directory contains the official orchestrators, template manifests, template-local asset blueprints, and example blueprints used by the current template system.
+This directory contains the official system blueprints, template manifests, and example blueprints used by the current template system.
 
 ## Layout
 
 ```text
 blueprints/
-├── system/                    # Orchestrator blueprints
+├── system/                    # Canonical system blueprints
 │   ├── generator.md
-│   └── offspring_generator.md
-├── templates/                 # Template manifests and template-local blueprints
+│   ├── offspring_generator.md
+│   ├── seed_generator.md
+│   ├── system_prompt.md
+│   ├── post_history.md
+│   ├── character_sheet.md
+│   ├── intro_scene.md
+│   ├── intro_page.md
+│   └── a1111.md
+├── templates/                 # Template manifests
 │   ├── official_v2v3/
-│   │   ├── template.toml
-│   │   └── assets/
+│   │   └── template.toml
 └── examples/                  # Alternate/example blueprints
 ```
 
-Official asset blueprints now live under their template directories, for example:
+Official V2/V3 asset blueprints now live under `blueprints/system/` alongside the orchestrators.
 
-- `blueprints/templates/official_v2v3/assets/`
-- `blueprints/system/` for orchestrators like `generator.md`
+Template manifests reference these canonical system paths instead of maintaining template-local copies.
+
+The browser Seed Generator also uses `blueprints/system/seed_generator.md` as its canonical runtime prompt.
 
 ## Official Templates
 
@@ -45,7 +52,7 @@ Each template directory under `blueprints/templates/` contains a `template.toml`
 - template name and version
 - asset names
 - dependency order via `depends_on`
-- template-local blueprint files
+- blueprint file paths for each asset
 
 The built-in template currently lives under `blueprints/templates/official_v2v3/`.
 
@@ -57,6 +64,8 @@ When a template references blueprint files, resolution happens in this order:
 2. Relative path from the template directory
 3. Another blueprint under `blueprints/`
 4. Example blueprint under `blueprints/examples/`
+
+The seed generation workflow note at `rules/workflows/seed-gen-list.md` is operator guidance, not the runtime prompt source.
 
 Current starter examples under `blueprints/examples/` include:
 
@@ -81,5 +90,5 @@ Current starter examples under `blueprints/examples/` include:
 
 1. Create `blueprints/templates/<template_name>/template.toml`
 2. Declare assets and `depends_on` edges explicitly
-3. Add template-local blueprint files under `blueprints/templates/<template_name>/assets/`
+3. Point each asset at the appropriate blueprint file, typically under `blueprints/system/` unless the template needs a template-specific file
 4. Keep filenames and output formats aligned with the validator and export flow

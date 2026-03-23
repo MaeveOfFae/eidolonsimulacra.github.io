@@ -1,5 +1,7 @@
 # Seed List Generator
 
+Note: this file is workflow guidance for humans and assistants. The runtime seed-generation prompt used by the browser app now lives in `blueprints/system/seed_generator.md`.
+
 Goal: generate a list of unique seeds suitable for the current template-aware generation flow.
 
 1) Ask me for:
