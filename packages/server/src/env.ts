@@ -36,6 +36,14 @@ const envSchema = z.object({
 
   // CORS
   CORS_ORIGIN: z.string().default("*"),
+
+  // Rate limiting
+  RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(15 * 60 * 1000),
+  RATE_LIMIT_MAX: z.coerce.number().int().positive().default(300),
+  RATE_LIMIT_AUTH_MAX: z.coerce.number().int().positive().default(40),
+
+  // Proxy handling for accurate client IP detection behind reverse proxies
+  TRUST_PROXY: z.union([z.coerce.number().int().nonnegative(), z.string()]).default(1),
 });
 
 export type Env = z.infer<typeof envSchema>;

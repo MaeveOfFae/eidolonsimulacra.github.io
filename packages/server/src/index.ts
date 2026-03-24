@@ -25,6 +25,9 @@ import timelinesRoutes from "./routes/timelines.js";
 
 const app: Express = express();
 
+// Trust proxy (for accurate client IP detection behind reverse proxies)
+app.set("trust proxy", env.TRUST_PROXY);
+
 // Security middleware
 app.use(helmet({
   contentSecurityPolicy: env.NODE_ENV === "production",
@@ -39,21 +42,25 @@ app.use(cors({
   allowedHeaders: ["Content-Type", "Authorization"],
 }));
 
-// Rate limiting (more lenient in development)
+// Rate limiting (configurable via environment)
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: env.NODE_ENV === "production" ? 100 : 1000, // Higher limit in dev
+  windowMs: env.RATE_LIMIT_WINDOW_MS,
+  max: env.NODE_ENV === "production" ? env.RATE_LIMIT_MAX : Math.max(env.RATE_LIMIT_MAX, 1000),
   message: { error: "Too many requests, please try again later" },
   standardHeaders: true,
   legacyHeaders: false,
+  // Keep health/status checks out of global throttling to reduce false positives.
+  skip: (req) => req.path === "/api/health",
 });
 app.use("/api/", limiter);
 
 // Stricter rate limit for auth endpoints
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: env.NODE_ENV === "production" ? 20 : 100, // Higher limit in dev
+  windowMs: env.RATE_LIMIT_WINDOW_MS,
+  max: env.NODE_ENV === "production" ? env.RATE_LIMIT_AUTH_MAX : Math.max(env.RATE_LIMIT_AUTH_MAX, 100),
   message: { error: "Too many authentication attempts, please try again later" },
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 app.use("/api/auth/login", authLimiter);
 app.use("/api/auth/register", authLimiter);
@@ -62,9 +69,6 @@ app.use("/api/auth/register", authLimiter);
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(cookieParser());
-
-// Trust proxy (for rate limiting behind reverse proxy)
-app.set("trust proxy", 1);
 
 // =============================================================================
 // API Routes
