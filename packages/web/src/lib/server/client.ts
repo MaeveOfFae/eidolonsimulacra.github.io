@@ -66,7 +66,7 @@ class ServerClient {
     } catch (e) {
       console.error('Failed to load server config:', e);
     }
-    return { url: 'http://localhost:3001', enabled: false };
+    return { url: 'https://api.eidolonsimulacra.com', enabled: false };
   }
 
   private saveConfig(): void {

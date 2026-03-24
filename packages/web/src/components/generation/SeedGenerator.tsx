@@ -25,6 +25,7 @@ import {
 } from '../../lib/seed-generator.js';
 import { BlueprintPanel } from '../common/BlueprintPanel';
 import { getBlueprintsForFeature, resolveBlueprintForFeature, toBlueprintOptions } from '@/lib/blueprints/featureSelection';
+import { configManager } from '@/lib/config/manager';
 import {
   clearActiveSeedGeneratorSession,
   loadActiveSeedGeneratorSession,
@@ -61,7 +62,9 @@ export default function SeedGenerator() {
   const [blueprint, setBlueprint] = useState<Blueprint | null>(null);
   const [blueprintLoading, setBlueprintLoading] = useState(true);
   const [blueprintError, setBlueprintError] = useState<string | null>(null);
-  const [selectedBlueprintPath, setSelectedBlueprintPath] = useState<string>('blueprints/system/seed_generator.md');
+  const [selectedBlueprintPath, setSelectedBlueprintPath] = useState<string>(
+    () => configManager.getConfig().feature_blueprints?.seed_generation || 'blueprints/system/seed_generator.md'
+  );
   const [seedBlueprintOverride, setSeedBlueprintOverride] = useState<string | null>(null);
   const [availableBlueprints, setAvailableBlueprints] = useState<Array<{ name: string; label: string }>>([]);
 
@@ -76,7 +79,7 @@ export default function SeedGenerator() {
         const resolved = resolveBlueprintForFeature(
           list,
           PAGE_FEATURE_CATEGORY,
-          'blueprints/system/seed_generator.md'
+          selectedBlueprintPath
         );
 
         if (resolved) {
@@ -93,7 +96,7 @@ export default function SeedGenerator() {
         setBlueprintLoading(false);
       }
     })();
-  }, []);
+  }, [selectedBlueprintPath]);
   const seedMutation = useMutation({
     mutationFn: (request: SeedGenerationRunRequest) => api.generateSeeds(request),
     onSuccess: (data, variables) => {

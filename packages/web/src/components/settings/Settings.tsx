@@ -322,6 +322,13 @@ export default function Settings() {
     }));
   };
 
+  const handleEngineModeChange = (engineMode: NonNullable<Config['engine_mode']>) => {
+    setLocalConfig((previous) => ({
+      ...previous,
+      engine_mode: engineMode,
+    }));
+  };
+
   const handleModelSelect = (modelId: string) => {
     setLocalConfig((previous) => ({
       ...previous,
@@ -674,6 +681,37 @@ export default function Settings() {
               )}
 
               <div className="space-y-2">
+                <label className="text-sm font-medium">Engine Mode</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleEngineModeChange('auto')}
+                    className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
+                      (localConfig.engine_mode ?? 'auto') === 'auto'
+                        ? 'border-primary bg-primary/10 text-foreground'
+                        : 'border-border bg-background/50 hover:bg-accent'
+                    }`}
+                  >
+                    Auto
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleEngineModeChange('explicit')}
+                    className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
+                      (localConfig.engine_mode ?? 'auto') === 'explicit'
+                        ? 'border-primary bg-primary/10 text-foreground'
+                        : 'border-border bg-background/50 hover:bg-accent'
+                    }`}
+                  >
+                    Explicit
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Auto uses provider inference from the model ID. Explicit locks generation to the selected provider.
+                </p>
+              </div>
+
+              <div className="space-y-2">
                 <label className="text-sm font-medium">Provider</label>
                 <select
                   value={selectedProvider}
@@ -899,7 +937,7 @@ export default function Settings() {
           <div className="space-y-2">
             <label className="text-sm font-medium">Orchestration</label>
             <select
-              value={localConfig.feature_blueprints?.orchestration || 'generator'}
+              value={localConfig.feature_blueprints?.orchestration || 'blueprints/system/generator.md'}
               onChange={(e) => setLocalConfig((prev) => ({
                 ...prev,
                 feature_blueprints: {
@@ -909,7 +947,7 @@ export default function Settings() {
               }))}
               className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <option value="generator">Orchestrator (Default)</option>
+              <option value="blueprints/system/generator.md">Orchestrator (Default)</option>
               {featureBlueprintOptions.orchestration
                 .filter((option) => option.value !== 'blueprints/system/generator.md')
                 .map((option) => (
@@ -927,7 +965,7 @@ export default function Settings() {
           <div className="space-y-2">
             <label className="text-sm font-medium">Seed Generation</label>
             <select
-              value={localConfig.feature_blueprints?.seed_generation || 'seed_generator'}
+              value={localConfig.feature_blueprints?.seed_generation || 'blueprints/system/seed_generator.md'}
               onChange={(e) => setLocalConfig((prev) => ({
                 ...prev,
                 feature_blueprints: {
@@ -937,7 +975,7 @@ export default function Settings() {
               }))}
               className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <option value="seed_generator">Seed Generator (Default)</option>
+              <option value="blueprints/system/seed_generator.md">Seed Generator (Default)</option>
               {featureBlueprintOptions.seed_generation
                 .filter((option) => option.value !== 'blueprints/system/seed_generator.md')
                 .map((option) => (
@@ -955,7 +993,7 @@ export default function Settings() {
           <div className="space-y-2">
             <label className="text-sm font-medium">Offspring Generation</label>
             <select
-              value={localConfig.feature_blueprints?.offspring_generation || 'offspring_generator'}
+              value={localConfig.feature_blueprints?.offspring_generation || 'blueprints/system/offspring_generator.md'}
               onChange={(e) => setLocalConfig((prev) => ({
                 ...prev,
                 feature_blueprints: {
@@ -965,7 +1003,7 @@ export default function Settings() {
               }))}
               className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <option value="offspring_generator">Offspring Generator (Default)</option>
+              <option value="blueprints/system/offspring_generator.md">Offspring Generator (Default)</option>
               {featureBlueprintOptions.offspring_generation
                 .filter((option) => option.value !== 'blueprints/system/offspring_generator.md')
                 .map((option) => (
@@ -977,6 +1015,34 @@ export default function Settings() {
             </select>
             <p className="text-xs text-muted-foreground">
               Blueprint used for breeding characters.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Intro Scene Generation</label>
+            <select
+              value={localConfig.feature_blueprints?.intro_scene_generation || 'blueprints/system/intro_scene.md'}
+              onChange={(e) => setLocalConfig((prev) => ({
+                ...prev,
+                feature_blueprints: {
+                  ...prev.feature_blueprints,
+                  intro_scene_generation: e.target.value || undefined,
+                },
+              }))}
+              className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="blueprints/system/intro_scene.md">Intro Scene (Default)</option>
+              {featureBlueprintOptions.intro_scene_generation
+                .filter((option) => option.value !== 'blueprints/system/intro_scene.md')
+                .map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              <option value="">None (Built-in)</option>
+            </select>
+            <p className="text-xs text-muted-foreground">
+              Blueprint used by the More Intros tab when generating additional opener scenes.
             </p>
           </div>
 

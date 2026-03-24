@@ -20,6 +20,7 @@ import ApprovalWorkflowPlaceholder from './ApprovalWorkflowPlaceholder';
 import CheckpointSessionPlaceholder from './CheckpointSessionPlaceholder';
 import { BlueprintPanel } from '../common/BlueprintPanel';
 import { getBlueprintsForFeature, resolveBlueprintForFeature, toBlueprintOptions } from '@/lib/blueprints/featureSelection';
+import { configManager } from '@/lib/config/manager';
 
 type TabId = 'generate' | 'refine' | 'intros';
 
@@ -40,6 +41,15 @@ const FEATURE_PREFERRED_PATHS: Partial<Record<FeatureCategory, string>> = {
   intro_scene_generation: 'blueprints/system/intro_scene.md',
 };
 
+function getInitialGenerationBlueprintPaths(): Partial<Record<FeatureCategory, string>> {
+  const configured = configManager.getConfig().feature_blueprints;
+
+  return {
+    orchestration: configured?.orchestration || FEATURE_PREFERRED_PATHS.orchestration,
+    intro_scene_generation: configured?.intro_scene_generation || FEATURE_PREFERRED_PATHS.intro_scene_generation,
+  };
+}
+
 export default function Generation() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -54,10 +64,9 @@ export default function Generation() {
   const [blueprint, setBlueprint] = useState<Blueprint | null>(null);
   const [blueprintLoading, setBlueprintLoading] = useState(true);
   const [blueprintError, setBlueprintError] = useState<string | null>(null);
-  const [selectedBlueprintPaths, setSelectedBlueprintPaths] = useState<Partial<Record<FeatureCategory, string>>>({
-    orchestration: 'blueprints/system/generator.md',
-    intro_scene_generation: 'blueprints/system/intro_scene.md',
-  });
+  const [selectedBlueprintPaths, setSelectedBlueprintPaths] = useState<Partial<Record<FeatureCategory, string>>>(
+    () => getInitialGenerationBlueprintPaths()
+  );
   const [blueprintOverrides, setBlueprintOverrides] = useState<Partial<Record<FeatureCategory, string>>>({});
   const [availableBlueprints, setAvailableBlueprints] = useState<Array<{ name: string; label: string }>>([]);
 
@@ -110,7 +119,7 @@ export default function Generation() {
         setBlueprintLoading(false);
       }
     })();
-  }, [activeFeatureCategory]);
+  }, [activeFeatureCategory, selectedBlueprintPaths]);
 
   const { data: templates = [], isLoading: templatesLoading } = useQuery({
     queryKey: ['templates'],

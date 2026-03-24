@@ -24,6 +24,14 @@ const CONFIG_CHANGED_EVENT = 'eidolon:config-changed';
  */
 let sessionApiKeys: ApiKeys = {};
 
+const LEGACY_FEATURE_BLUEPRINT_PATHS: Record<string, string> = {
+  generator: 'blueprints/system/generator.md',
+  rpbotgenerator: 'blueprints/system/generator.md',
+  seed_generator: 'blueprints/system/seed_generator.md',
+  offspring_generator: 'blueprints/system/offspring_generator.md',
+  intro_scene: 'blueprints/system/intro_scene.md',
+};
+
 const CORRUPTED_API_KEY_PATTERNS = [
   /^window\.fetch:/i,
   /cannot convert value in record<bytestring/i,
@@ -101,6 +109,24 @@ function normalizeApiKeys(keys: ApiKeys): ApiKeys {
       .filter(([, key]) => typeof key === 'string' && key.length > 0)
   );
 }
+
+function normalizeFeatureBlueprintDefaults(
+  defaults?: FeatureBlueprintDefaults
+): FeatureBlueprintDefaults | undefined {
+  if (!defaults) {
+    return defaults;
+  }
+
+  return Object.fromEntries(
+    Object.entries(defaults).map(([feature, value]) => {
+      if (typeof value !== 'string' || value.length === 0) {
+        return [feature, value];
+      }
+
+      return [feature, LEGACY_FEATURE_BLUEPRINT_PATHS[value] ?? value];
+    })
+  ) as FeatureBlueprintDefaults;
+}
 let persistKeys = false;
 
 export interface ConfigManagerOptions {
@@ -157,7 +183,7 @@ export class ConfigManager {
       },
       feature_blueprints: {
         ...defaults.feature_blueprints,
-        ...(config.feature_blueprints ?? {}),
+        ...(normalizeFeatureBlueprintDefaults(config.feature_blueprints) ?? {}),
       },
     };
   }
@@ -226,13 +252,14 @@ export class ConfigManager {
       api_keys: {},
       batch: {
         max_concurrent: 3,
-        rate_limit_delay: 1000,
+        rate_limit_delay: 1,
       },
       help: createDefaultHelpState(),
       feature_blueprints: {
-        orchestration: 'generator',
-        seed_generation: 'seed_generator',
-        offspring_generation: 'offspring_generator',
+        orchestration: 'blueprints/system/generator.md',
+        seed_generation: 'blueprints/system/seed_generator.md',
+        offspring_generation: 'blueprints/system/offspring_generator.md',
+        intro_scene_generation: 'blueprints/system/intro_scene.md',
       },
     };
   }
@@ -411,6 +438,10 @@ export class ConfigManager {
       help: {
         ...this.getHelpState(),
         ...(updates.help ?? {}),
+      },
+      feature_blueprints: {
+        ...(this.config.feature_blueprints ?? {}),
+        ...(normalizeFeatureBlueprintDefaults(updates.feature_blueprints) ?? {}),
       },
     });
     this.saveConfig();

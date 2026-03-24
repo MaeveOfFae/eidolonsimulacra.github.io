@@ -219,7 +219,7 @@ export default function AuthPage() {
                         type="url"
                         value={serverUrl}
                         onChange={(e) => setServerUrl(e.target.value)}
-                        placeholder="http://localhost:3001"
+                        placeholder="https://api.eidolonsimulacra.com"
                         className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
                       />
                       <button

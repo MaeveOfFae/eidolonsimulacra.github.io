@@ -20,6 +20,7 @@ export interface Blueprint {
 }
 
 const BLUEPRINT_PATH_ALIASES: Record<string, string> = {
+  generator: 'system/generator.md',
   rpbotgenerator: 'system/generator.md',
   seed_generator: 'system/seed_generator.md',
   offspring_generator: 'system/offspring_generator.md',
@@ -69,9 +70,10 @@ export async function loadBlueprint(name: string, baseUrl: string = BLUEPRINT_RE
  * Default blueprints for each feature category
  */
 const DEFAULT_FEATURE_BLUEPRINTS: Partial<Record<FeatureCategory, string>> = {
-  orchestration: 'generator',
-  seed_generation: 'seed_generator',
-  offspring_generation: 'offspring_generator',
+  orchestration: 'blueprints/system/generator.md',
+  seed_generation: 'blueprints/system/seed_generator.md',
+  offspring_generation: 'blueprints/system/offspring_generator.md',
+  intro_scene_generation: 'blueprints/system/intro_scene.md',
 };
 
 /**

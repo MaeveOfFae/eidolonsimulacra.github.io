@@ -15,6 +15,7 @@ import { BlueprintPanel } from '../common/BlueprintPanel';
 import GenerationProgress from '../generation/GenerationProgress';
 import TraitInheritancePlaceholder from './TraitInheritancePlaceholder';
 import BreedingHistoryPlaceholder from './BreedingHistoryPlaceholder';
+import { configManager } from '@/lib/config/manager';
 
 type OffspringStage = 'idle' | 'loading_parents' | 'building_prompt' | 'generating' | 'review_seed' | 'generating_character' | 'saving' | 'complete' | 'cancelled' | 'error';
 
@@ -70,7 +71,9 @@ export default function Offspring() {
   const [blueprint, setBlueprint] = useState<Blueprint | null>(null);
   const [blueprintLoading, setBlueprintLoading] = useState(true);
   const [blueprintError, setBlueprintError] = useState<string | null>(null);
-  const [selectedBlueprintPath, setSelectedBlueprintPath] = useState<string>('blueprints/system/offspring_generator.md');
+  const [selectedBlueprintPath, setSelectedBlueprintPath] = useState<string>(
+    () => configManager.getConfig().feature_blueprints?.offspring_generation || 'blueprints/system/offspring_generator.md'
+  );
   const [offspringBlueprintOverride, setOffspringBlueprintOverride] = useState<string | null>(null);
   const [availableBlueprints, setAvailableBlueprints] = useState<Array<{ name: string; label: string }>>([]);
   const isGenerating = isGeneratingSeed || isRunningAssetWorkflow;
@@ -99,7 +102,7 @@ export default function Offspring() {
         const resolved = resolveBlueprintForFeature(
           list,
           PAGE_FEATURE_CATEGORY,
-          'blueprints/system/offspring_generator.md'
+          selectedBlueprintPath
         );
 
         if (resolved) {
@@ -116,7 +119,7 @@ export default function Offspring() {
         setBlueprintLoading(false);
       }
     })();
-  }, []);
+  }, [selectedBlueprintPath]);
 
   const getDraftMetadata = (draftId: string) => draftsData?.drafts.find((draft) => draft.review_id === draftId);
   const effectiveOffspringBlueprint = offspringBlueprintOverride ?? blueprint?.content;
