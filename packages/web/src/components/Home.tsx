@@ -45,7 +45,7 @@ const WORKFLOW_LANES = [
     eyebrow: 'Structure',
     title: 'Lock the asset graph',
     description: 'Templates decide which assets exist and how they export. Treat them as workflow contracts, not decorative presets.',
-    detail: 'Official V2/V3 and Aksho paths',
+    detail: 'Built-in V2/V3 and custom paths',
     icon: Layers,
   },
   {

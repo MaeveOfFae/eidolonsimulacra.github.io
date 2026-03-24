@@ -95,7 +95,7 @@ export const gettingStartedSteps: HelpGuideStep[] = [
   {
     id: 'template',
     title: 'Choose a template before you generate',
-    description: 'Templates define which assets are produced and what export structure must be preserved. Start with an official template before making custom ones.',
+    description: 'Templates define which assets are produced and what export structure must be preserved. Start with the built-in template before making custom ones.',
     to: '/templates',
     actionLabel: 'Review templates',
   },
@@ -131,7 +131,7 @@ export const helpTopics: HelpTopic[] = [
     bullets: [
       'Templates decide which files exist and in what order they depend on each other.',
       'Blueprints are stricter and can break parser-facing output if edited casually.',
-      'Use official templates first, then move to custom templates only after you understand review and export.',
+      'Use the built-in template first, then move to custom templates only after you understand review and export.',
     ],
     actions: [
       { label: 'Open templates', to: '/templates' },
@@ -242,7 +242,7 @@ export const guidedTours: GuidedTour[] = [
         to: '/templates',
         routeLabel: 'Templates',
         bullets: [
-          'Start with an official template unless you already understand custom template behavior.',
+          'Start with the built-in template unless you already understand custom template behavior.',
           'Template changes are structural, not cosmetic.',
         ],
       },
@@ -724,7 +724,7 @@ export const pageHelpEntries: PageHelpEntry[] = [
     title: 'Templates help',
     summary: 'Templates define which assets exist, how they depend on each other, and what export structure needs to remain valid.',
     keyActions: [
-      'Use official templates first so you understand the app’s baseline workflow.',
+      'Use the built-in template first so you understand the app’s baseline workflow.',
       'Treat template changes as structural decisions, not cosmetic ones.',
     ],
     pitfalls: [

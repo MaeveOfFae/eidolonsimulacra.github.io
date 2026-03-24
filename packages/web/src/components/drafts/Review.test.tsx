@@ -44,7 +44,7 @@ const draftResponse = {
     seed: 'test-seed',
     favorite: false,
     mode: 'NSFW',
-    template_name: 'Official V2/V3',
+    template_name: 'V2/V3 Card',
     tags: [],
     parent_drafts: [],
   },

@@ -251,7 +251,7 @@ export default function TemplateWizard({ open, onClose, initialData, templateNam
                     ? 'Dependencies are a hard contract'
                     : 'Review before you commit'}
               description={currentStep === 1
-                ? 'If you are new, prefer official templates first. Creating or editing a template changes the asset graph for generation, review, and export.'
+                ? 'If you are new, prefer the built-in template first. Creating or editing a template changes the asset graph for generation, review, and export.'
                 : currentStep === 2
                   ? 'Add only the assets you actually need. Every extra asset changes review scope and export expectations.'
                   : currentStep === 3

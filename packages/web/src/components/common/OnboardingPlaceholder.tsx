@@ -54,7 +54,7 @@ export function OnboardingPlaceholder({ templateName }: OnboardingPlaceholderPro
         <p className="mt-1 text-sm leading-6 text-muted-foreground">
           {templateName
             ? `${templateName} is available right now, so you can use it as your first walkthrough target.`
-            : 'Start with one of the official templates before trying custom template or blueprint work.'}
+            : 'Start with the built-in template before trying custom template or blueprint work.'}
         </p>
       </div>
 

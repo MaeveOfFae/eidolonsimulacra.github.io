@@ -93,7 +93,7 @@ export const roadmapGroups: RoadmapGroup[] = [
       'Visual dependency graph for template assets and generation order',
       'Template marketplace or import/export bundle format for sharing templates',
       'Template starter kits for common character-card formats and content styles',
-      'Template cloning flow for using an official template as a starting point for a custom one',
+      'Template cloning flow for using the built-in template as a starting point for a custom one',
       'Expanded template comparison workflow with cloning and migration-aware diffs',
       'Expanded blueprint linting dashboard for placeholder usage, dependency clarity, and output expectations',
       'Prompt experimentation lab for testing orchestrator and blueprint variants',

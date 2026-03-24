@@ -247,7 +247,7 @@ export default function Templates() {
         <InlineHelpTip
           tipId="templates-first-choice-tip"
           title="Choose a template before you generate"
-          description="Templates decide which assets exist. If you're new, start with an official template."
+          description="Templates decide which assets exist. If you're new, start with a built-in template."
           actionLabel={isTourCompleted(GETTING_STARTED_TOUR_ID) ? 'Replay Getting Started Tour' : 'Start Getting Started Tour'}
           onAction={() =>
             isTourCompleted(GETTING_STARTED_TOUR_ID)
@@ -262,7 +262,7 @@ export default function Templates() {
               <p className="app-page-eyebrow">Template management</p>
               <h1 className="app-page-title">Choose your asset graph</h1>
               <p className="app-page-summary">
-                Templates define which assets exist and how they export. Start with an official template or create a custom one.
+                Templates define which assets exist and how they export. Start with the built-in runtime template or create a custom one.
               </p>
               <div className="flex flex-wrap items-center gap-3">
                 <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-input px-4 py-2.5 text-sm font-medium hover:bg-accent">
