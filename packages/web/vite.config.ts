@@ -34,10 +34,52 @@ export default defineConfig({
     sourcemap: true,
     rollupOptions: {
       output: {
-        manualChunks: {
-          // Split vendor chunks for better caching
-          'react-vendor': ['react', 'react-dom'],
-          'router-vendor': ['react-router-dom'],
+        manualChunks(id) {
+          if (!id.includes('node_modules')) {
+            return undefined;
+          }
+
+          if (id.includes('/react-router') || id.includes('/@remix-run/')) {
+            return 'router-vendor';
+          }
+
+          if (id.includes('/react/') || id.includes('/react-dom/') || id.includes('/scheduler/')) {
+            return 'react-vendor';
+          }
+
+          if (id.includes('/@tanstack/react-query/')) {
+            return 'query-vendor';
+          }
+
+          if (id.includes('/react-markdown/') || id.includes('/remark-gfm/')) {
+            return 'markdown-vendor';
+          }
+
+          if (id.includes('/prismjs/') || id.includes('/react-simple-code-editor/')) {
+            return 'editor-vendor';
+          }
+
+          if (id.includes('/@radix-ui/')) {
+            return 'radix-vendor';
+          }
+
+          if (id.includes('/@dnd-kit/')) {
+            return 'dnd-vendor';
+          }
+
+          if (id.includes('/@anthropic-ai/sdk/')) {
+            return 'llm-vendor';
+          }
+
+          if (id.includes('/dexie/')) {
+            return 'storage-vendor';
+          }
+
+          if (id.includes('/zustand/') || id.includes('/clsx/') || id.includes('/tailwind-merge/') || id.includes('/class-variance-authority/')) {
+            return 'ui-utils-vendor';
+          }
+
+          return 'vendor';
         },
       },
     },

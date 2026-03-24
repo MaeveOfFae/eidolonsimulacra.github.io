@@ -1,6 +1,22 @@
 # Changelog
 
 
+## v3.0.12 - 2026-03-24
+
+### Templates and documentation update
+
+This release packages 12 recent commits focused on templates, documentation, and platform.
+
+### Highlights
+- Release v3.0.11 enhance blueprint path handling and improve changelog entries
+- Release v3.0.10 with updates to templates, documentation, and rate limiting; enhance environment configuration and proxy handling
+- Release v3.0.9 with updates to templates, documentation, and sync functionality; add new endpoints for draft synchronization and enhance error handling
+- Release v3.0.8 with updates to templates, platform, and documentation; normalize feature blueprint paths and add new engine mode settings
+- Update changelog for v3.0.7 with recent templates and platform enhancements; modify README and documentation for clarity on built-in templates
+
+### Links
+- [Open generation](/generate)
+- [Review templates](/templates)
 ## v3.0.11 - 2026-03-24
 
 ### Templates and documentation update
@@ -193,6 +209,7 @@ This release packages 12 recent commits focused on documentation, templates, and
 ### Links
 - [Open generation](/generate)
 - [Review templates](/templates)
+
 
 
 
