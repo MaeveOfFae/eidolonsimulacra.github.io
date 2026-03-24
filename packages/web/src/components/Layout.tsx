@@ -42,7 +42,9 @@ import ContextualHelpPanel from './common/ContextualHelpPanel';
 import HelpTab from './common/HelpTab';
 import GuidedTourOverlay from './common/GuidedTourOverlay';
 import { GuidedTourProvider } from './common/GuidedTourContext';
-import { serverClient, type SyncStatus, AUTH_STATE_CHANGED_EVENT } from '../lib/server/index.js';
+import { CONFIG_MANAGER_CHANGED_EVENT } from '../lib/config/manager';
+import { queueAutoSync } from '../lib/server/auto-sync.js';
+import { serverClient, type SyncStatus, AUTH_STATE_CHANGED_EVENT, triggerAutoSyncFlush } from '../lib/server/index.js';
 import { DraftListSidebar } from './drafts/DraftListSidebar';
 
 interface LayoutProps {
@@ -429,6 +431,11 @@ export default function Layout({ children }: LayoutProps) {
       try {
         const status = await serverClient.checkStatus();
         setAuthStatus(status);
+        
+        // If authentication just became available, flush any pending syncs
+        if (status.authenticated && status.connected) {
+          void triggerAutoSyncFlush();
+        }
       } catch {
         setAuthStatus({ connected: false, authenticated: false });
       }
@@ -451,6 +458,15 @@ export default function Layout({ children }: LayoutProps) {
     window.addEventListener(AUTH_STATE_CHANGED_EVENT, handleAuthChange);
     return () => window.removeEventListener(AUTH_STATE_CHANGED_EVENT, handleAuthChange);
   }, [checkAuthStatus]);
+
+  useEffect(() => {
+    const handleConfigChange = () => {
+      queueAutoSync('config');
+    };
+
+    window.addEventListener(CONFIG_MANAGER_CHANGED_EVENT, handleConfigChange);
+    return () => window.removeEventListener(CONFIG_MANAGER_CHANGED_EVENT, handleConfigChange);
+  }, []);
 
   useEffect(() => {
     setHelpOpen(false);

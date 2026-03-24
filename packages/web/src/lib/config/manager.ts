@@ -279,6 +279,7 @@ export class ConfigManager {
       delete sessionApiKeys[provider];
     }
     this.persistApiKeysIfNeeded();
+    dispatchConfigChangedEvent();
   }
 
   /**
@@ -290,6 +291,7 @@ export class ConfigManager {
       ...normalizeApiKeys(keys),
     };
     this.persistApiKeysIfNeeded();
+    dispatchConfigChangedEvent();
   }
 
   /**
@@ -298,6 +300,7 @@ export class ConfigManager {
   clearApiKey(provider: string): void {
     delete sessionApiKeys[provider];
     this.persistApiKeysIfNeeded();
+    dispatchConfigChangedEvent();
   }
 
   /**
@@ -306,6 +309,7 @@ export class ConfigManager {
   clearAllApiKeys(): void {
     sessionApiKeys = {};
     this.persistApiKeysIfNeeded();
+    dispatchConfigChangedEvent();
   }
 
   /**
