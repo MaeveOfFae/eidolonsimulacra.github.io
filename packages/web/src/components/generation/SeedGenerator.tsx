@@ -5,6 +5,7 @@ import { Sparkles, Loader2, ArrowRight, Copy, Check, RefreshCcw, Wand2, Star, Hi
 import type { SeedGenerationRequest } from '@char-gen/shared';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
 import { api } from '@/lib/api';
+import type { Blueprint } from '@char-gen/shared';
 import {
   DEFAULT_SEED_COUNT,
   buildSeedGenerationLines,
@@ -22,6 +23,7 @@ import {
   type SeedRunRecord,
   type SeedSuggestionPreset,
 } from '../../lib/seed-generator.js';
+import { BlueprintPanel } from '../common/BlueprintPanel';
 import {
   clearActiveSeedGeneratorSession,
   loadActiveSeedGeneratorSession,
@@ -33,6 +35,11 @@ const defaultPreset = pickSurpriseSeedPreset();
 function countNonEmptyLines(value: string): number {
   return value.split('\n').map((line) => line.trim()).filter(Boolean).length;
 }
+
+type SeedGenerationRunRequest = SeedGenerationRequest & {
+  blueprint_content?: string;
+  blueprint_path?: string;
+};
 
 export default function SeedGenerator() {
   const navigate = useNavigate();
@@ -49,9 +56,62 @@ export default function SeedGenerator() {
   const [restoredSeeds, setRestoredSeeds] = useState<string[]>(() => loadActiveSeedGeneratorSession()?.seeds ?? []);
   const restoredSessionRef = useRef(loadActiveSeedGeneratorSession());
   const presets = useMemo(() => getSeedSuggestionPresets(), []);
+  const [blueprint, setBlueprint] = useState<Blueprint | null>(null);
+  const [blueprintLoading, setBlueprintLoading] = useState(true);
+  const [blueprintError, setBlueprintError] = useState<string | null>(null);
+  const [selectedBlueprintPath, setSelectedBlueprintPath] = useState<string>('blueprints/system/seed_generator.md');
+  const [seedBlueprintOverride, setSeedBlueprintOverride] = useState<string | null>(null);
+  const [availableBlueprints, setAvailableBlueprints] = useState<Array<{ name: string; label: string }>>([]);
 
+  // Load the seed generator blueprint on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const exactPath = 'blueprints/system/seed_generator.md';
+        const list = await api.getBlueprints();
+        const allBlueprints = [
+          ...list.system,
+          ...list.core,
+          ...list.examples,
+          ...Object.values(list.templates).flat(),
+        ];
+
+        const options = allBlueprints
+          .filter((entry) => entry.path.includes('/seed_generator') || entry.name.toLowerCase().includes('seed'))
+          .map((entry) => ({ name: entry.path, label: entry.name || entry.path }));
+
+        if (options.length > 0) {
+          setAvailableBlueprints(options);
+        }
+
+        try {
+          const blueprintData = await api.getBlueprint(exactPath);
+          setBlueprint(blueprintData);
+          setSelectedBlueprintPath(blueprintData.path);
+          setBlueprintError(null);
+          return;
+        } catch {
+          const fallback = allBlueprints
+            .find((entry) => entry.path.endsWith('/seed_generator.md'));
+
+          if (fallback) {
+            setBlueprint(fallback);
+            setSelectedBlueprintPath(fallback.path);
+            setBlueprintError(null);
+          } else {
+            setBlueprintError('Seed generator blueprint could not be resolved from catalog.');
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load seed_generator blueprint:', error);
+        setBlueprintError('Failed to load seed generator blueprint.');
+      } finally {
+        setBlueprintLoading(false);
+      }
+    })();
+  }, []);
   const seedMutation = useMutation({
-    mutationFn: (request: SeedGenerationRequest) => api.generateSeeds(request),
+    mutationFn: (request: SeedGenerationRunRequest) => api.generateSeeds(request),
     onSuccess: (data, variables) => {
       setRestoredSeeds(data.seeds);
       const nextHistory = saveSeedRun({
@@ -111,11 +171,30 @@ export default function SeedGenerator() {
   );
 
   const favoriteSeeds = useMemo(() => new Set(favorites.map((entry) => entry.seed)), [favorites]);
+  const effectiveSeedBlueprint = seedBlueprintOverride ?? blueprint?.content;
+
+  const handleBlueprintSelect = async (path: string) => {
+    try {
+      const nextBlueprint = await api.getBlueprint(path);
+      setBlueprint(nextBlueprint);
+      setSelectedBlueprintPath(path);
+      setSeedBlueprintOverride(null);
+      setBlueprintError(null);
+    } catch (error) {
+      console.error('Failed to switch blueprint:', error);
+      setBlueprintError('Failed to switch selected blueprint.');
+    }
+  };
 
   const handleGenerate = () => {
     setResumeNotice(null);
     setRestoredSeeds([]);
-    seedMutation.mutate({ genre_lines: requestGenreLines, surprise_mode: false });
+    seedMutation.mutate({
+      genre_lines: requestGenreLines,
+      surprise_mode: false,
+      blueprint_content: effectiveSeedBlueprint,
+      blueprint_path: selectedBlueprintPath,
+    });
   };
 
   const handleSurprise = () => {
@@ -127,6 +206,8 @@ export default function SeedGenerator() {
     seedMutation.mutate({
       genre_lines: buildSeedGenerationLines(preset.genreLines, controls),
       surprise_mode: true,
+      blueprint_content: effectiveSeedBlueprint,
+      blueprint_path: selectedBlueprintPath,
     });
   };
 
@@ -254,6 +335,25 @@ export default function SeedGenerator() {
           Generate seed ideas from genre constraints. Pick a preset, edit lines, generate, then push to generation.
         </p>
       </div>
+
+      {blueprint && !blueprintLoading && (
+        <BlueprintPanel
+          blueprintName={selectedBlueprintPath}
+          blueprintContent={effectiveSeedBlueprint || blueprint.content}
+          title="Seed Generator Blueprint"
+          description={blueprint.description}
+          editable
+          availableBlueprints={availableBlueprints}
+          onBlueprintSelect={handleBlueprintSelect}
+          onContentChange={setSeedBlueprintOverride}
+        />
+      )}
+
+      {blueprintError && !blueprintLoading && (
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+          {blueprintError}
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
         <section className="rounded-lg border border-border bg-card p-6 space-y-3">

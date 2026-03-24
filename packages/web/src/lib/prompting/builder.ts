@@ -204,9 +204,10 @@ export async function buildAssetPrompt(
  * Build seed generation prompt
  */
 export async function buildSeedGenPrompt(
-  genreLines: string
+  genreLines: string,
+  blueprintContent?: string
 ): Promise<[system: string, user: string]> {
-  const systemPrompt = buildSeedGeneratorSystemPrompt();
+  const systemPrompt = blueprintContent?.trim() || buildSeedGeneratorSystemPrompt();
 
   return [systemPrompt, genreLines];
 }

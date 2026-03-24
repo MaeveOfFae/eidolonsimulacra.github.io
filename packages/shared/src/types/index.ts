@@ -308,6 +308,8 @@ export interface TemplateBlueprintContentsResponse {
 export interface SeedGenerationRequest {
   genre_lines: string;
   surprise_mode?: boolean;
+  blueprint_content?: string;
+  blueprint_path?: string;
 }
 
 export interface SeedGenerationResponse {

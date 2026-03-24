@@ -465,7 +465,7 @@ export class GenerationService {
   static async *generateSeeds(request: SeedGenerationRequest | string): AsyncIterable<GenerationProgress> {
     yield { type: 'status', stage: 'initializing' };
 
-    const resolvedRequest = typeof request === 'string'
+    const resolvedRequest: SeedGenerationRequest & { blueprint_content?: string } = typeof request === 'string'
       ? { genre_lines: request }
       : request;
     const { genreLines } = resolveSeedGenerationInput(resolvedRequest);
@@ -489,7 +489,10 @@ export class GenerationService {
     yield { type: 'status', stage: 'building_prompt' };
 
     // Build seed generation prompt
-    const [systemPrompt, userPrompt] = await buildSeedGenPrompt(genreLines);
+    const [systemPrompt, userPrompt] = await buildSeedGenPrompt(
+      genreLines,
+      resolvedRequest.blueprint_content
+    );
 
     yield { type: 'status', stage: 'generating' };
 
