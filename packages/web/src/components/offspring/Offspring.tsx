@@ -444,14 +444,14 @@ export default function Offspring() {
   const modes: ContentMode[] = ['SFW', 'NSFW', 'Platform-Safe', 'Auto'];
 
   return (
-    <div className="app-page max-w-5xl space-y-6 pb-12">
+    <div className="app-page max-w-5xl space-y-10 pb-12">
       <section className="app-page-hero">
         <div className="app-page-hero-grid">
           <div className="space-y-4">
-            <p className="app-page-eyebrow">Offspring synthesis</p>
-            <h1 className="app-page-title">Combine two reviewed drafts into a descendant character with inherited cues.</h1>
+            <p className="app-page-eyebrow">Character offspring</p>
+            <h1 className="app-page-title">Create a descendant from two characters</h1>
             <p className="app-page-summary">
-              Offspring generation first synthesizes a descendant seed from two parent drafts, then hands that reviewed seed into the same per-asset workflow used by the main generator.
+              Pick two parent drafts, synthesize offspring traits, then generate. The result inherits cues from both parents.
             </p>
           </div>
 

@@ -141,15 +141,15 @@ export default function Generation() {
   ];
 
   return (
-    <div className="app-page space-y-8 pb-12">
+    <div className="app-page space-y-12 pb-12">
       <section className="app-page-hero">
         <div className="app-page-hero-grid">
           <div className="space-y-5">
             <p className="app-page-eyebrow">Generation surface</p>
-            <div className="space-y-4">
-              <h1 className="app-page-title">Build a draft pack with the same structure-first workflow the new home page points to.</h1>
+            <div className="space-y-3">
+              <h1 className="app-page-title">Generate a character draft</h1>
               <p className="app-page-summary">
-                Set the template, lock the content mode, write one concrete seed, then generate. This page is the operational handoff from Home, not a separate visual language.
+                Pick a template, set content mode, write a seed, then generate.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -165,7 +165,7 @@ export default function Generation() {
           </div>
 
           <div className="app-panel-muted p-5">
-            <p className="app-page-eyebrow">Run profile</p>
+            <p className="app-page-eyebrow">Quick stats</p>
             <div className="mt-4 app-page-metrics">
               <div className="app-page-metric">
                 <p className="app-page-metric-label">Mode</p>
@@ -218,7 +218,7 @@ export default function Generation() {
         <>
         <div className="grid gap-6 lg:grid-cols-2">
         {/* Seed Input Section */}
-        <section className="space-y-4">
+        <section className="space-y-3">
           <InlineHelpTip
             tipId="generate-first-draft-tip"
             title="Start with one concrete idea"
@@ -273,7 +273,7 @@ export default function Generation() {
         </section>
 
         {/* Options Section */}
-        <section className="space-y-4">
+        <section className="space-y-3">
           <div className="app-panel p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2.5 rounded-xl bg-gradient-to-br from-violet-500 to-purple-500">
@@ -361,11 +361,11 @@ export default function Generation() {
       </div>
 
       <section className="app-panel p-6">
-        <div className="mb-4 flex items-start justify-between gap-4">
+        <div className="mb-5 flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-lg font-semibold">Planned Workflow Upgrades</h2>
+            <h2 className="text-lg font-semibold">Planned features</h2>
             <p className="text-sm text-muted-foreground">
-              These hooks mark where approval and checkpoint tooling will attach to the generation flow.
+              Approval workflows and checkpoints are coming.
             </p>
           </div>
           <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">

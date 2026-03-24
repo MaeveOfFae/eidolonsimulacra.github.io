@@ -59,11 +59,11 @@ export default function Validation() {
   }
 
   return (
-    <div className="app-page space-y-6 pb-12">
+    <div className="app-page space-y-10 pb-12">
       <InlineHelpTip
         tipId="validation-before-export-tip"
-        title="Validation is the last structural check before export"
-        description="Use this screen after meaningful edits or when a draft feels suspicious. It is faster to catch missing required sections here than after a bad export lands in another tool."
+        title="Validation is the last structural check"
+        description="Catch missing sections before export. It's faster to fix here than after export."
         actionLabel={isTourCompleted(VALIDATION_TOUR_ID) ? 'Replay Validation Tour' : 'Start Validation Tour'}
         onAction={() => (isTourCompleted(VALIDATION_TOUR_ID) ? restartTour(VALIDATION_TOUR_ID) : startTour(VALIDATION_TOUR_ID))}
       />
@@ -71,9 +71,9 @@ export default function Validation() {
         <div className="app-page-hero-grid">
           <div className="space-y-4">
             <p className="app-page-eyebrow">Structural checks</p>
-            <h1 className="app-page-title">Use validation as a normal review gate, not a panic button.</h1>
+            <h1 className="app-page-title">Catch issues before export</h1>
             <p className="app-page-summary">
-              Run browser-side validation against a saved draft or an IndexedDB-backed draft path before export. This page exists to catch structural drift while the fix is still cheap.
+              Validate a draft against its template structure. Run this before export to check for missing sections or structural errors.
             </p>
           </div>
 
@@ -94,13 +94,13 @@ export default function Validation() {
       </section>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <section className="app-panel space-y-4 p-6">
+        <section className="app-panel space-y-3 p-6">
           <div className="flex items-center gap-2">
             <FolderSearch className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold">Validate Directory</h2>
+            <h2 className="text-lg font-semibold">Validate path</h2>
           </div>
           <p className="text-sm text-muted-foreground">
-            Use a saved draft path like drafts/&lt;review_id&gt; or paste a review ID directly.
+            Paste a draft path or review ID.
           </p>
           <input
             type="text"
@@ -115,17 +115,17 @@ export default function Validation() {
             className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {validatePathMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-            Validate Path
+            Validate
           </button>
         </section>
 
-        <section data-tour-anchor="validation-draft-panel" className="app-panel space-y-4 p-6">
+        <section data-tour-anchor="validation-draft-panel" className="app-panel space-y-3 p-6">
           <div className="flex items-center gap-2">
             <ShieldAlert className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold">Validate Saved Draft</h2>
+            <h2 className="text-lg font-semibold">Validate draft</h2>
           </div>
           <p className="text-sm text-muted-foreground">
-            Pick an existing draft by review ID and run the browser validator against its current saved assets.
+            Pick a draft from your library.
           </p>
           <select
             value={selectedDraftId}

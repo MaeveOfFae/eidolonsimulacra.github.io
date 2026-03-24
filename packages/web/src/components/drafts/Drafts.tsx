@@ -82,11 +82,11 @@ export default function Drafts() {
   }
 
   return (
-    <div className="app-page space-y-6 pb-12">
+    <div className="app-page space-y-10 pb-12">
       <InlineHelpTip
         tipId="drafts-library-tip"
         title="Use the library as a review queue"
-        description="Select drafts from the sidebar to compare and review. Use filters to find specific characters quickly."
+        description="Select drafts to compare and review. Use filters to find characters quickly."
         actionLabel={isTourCompleted(DRAFT_LIBRARY_TOUR_ID) ? 'Replay Draft Library Tour' : 'Start Draft Library Tour'}
         onAction={() => (isTourCompleted(DRAFT_LIBRARY_TOUR_ID) ? restartTour(DRAFT_LIBRARY_TOUR_ID) : startTour(DRAFT_LIBRARY_TOUR_ID))}
       />
@@ -94,9 +94,9 @@ export default function Drafts() {
         <div className="app-page-hero-grid">
           <div className="space-y-4">
             <p className="app-page-eyebrow">Draft library</p>
-            <h1 className="app-page-title">Treat saved drafts like an active review queue, not a dead archive.</h1>
+            <h1 className="app-page-title">Your active review queue</h1>
             <p className="app-page-summary">
-              Reopen work, compare candidates, push data to sync when you need it, and move the best draft into full review. This is where Home hands off after generation.
+              Reopen work, compare candidates, validate, then export. This is where you manage character drafts.
             </p>
             <div className="flex flex-wrap gap-3">
               <Link to="/generate" className="inline-flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90">

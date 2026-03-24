@@ -483,14 +483,14 @@ export default function Settings() {
   const currentModel = localConfig.model || '';
 
   return (
-    <div className="app-page space-y-8 pb-8">
+    <div className="app-page space-y-10 pb-8">
       <section className="app-page-hero">
         <div className="app-page-hero-grid">
           <div className="space-y-4">
-            <p className="app-page-eyebrow">Runtime controls</p>
-            <h1 className="app-page-title">Configure the browser runtime before you blame generation, review, or export.</h1>
+            <p className="app-page-eyebrow">Runtime configuration</p>
+            <h1 className="app-page-title">Configure the browser</h1>
             <p className="app-page-summary">
-              Provider access, model routing, batch defaults, theme presets, help state, and browser-local persistence are all controlled here. This page should feel like part of the same operating deck as Home.
+              Set up API keys, choose a model, configure themes, and manage browser-local storage here.
             </p>
           </div>
 
@@ -516,7 +516,7 @@ export default function Settings() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* API Keys Section */}
-        <section className="lg:col-span-2 space-y-4">
+        <section className="lg:col-span-2 space-y-3">
 
         <div className="app-note border-amber-500/30 bg-amber-500/10 p-4 text-sm">
           <div className="font-semibold text-foreground">Browser-only persistence</div>

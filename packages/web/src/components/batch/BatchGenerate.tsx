@@ -224,14 +224,14 @@ export default function BatchGenerate() {
   });
 
   return (
-    <div className="app-page max-w-5xl space-y-6 pb-12">
+    <div className="app-page max-w-5xl space-y-10 pb-12">
       <section className="app-page-hero">
         <div className="app-page-hero-grid">
           <div className="space-y-4">
-            <p className="app-page-eyebrow">Parallel generation</p>
-            <h1 className="app-page-title">Queue multiple seeds and push them through the same template contract.</h1>
+            <p className="app-page-eyebrow">Batch generation</p>
+            <h1 className="app-page-title">Generate multiple characters at once</h1>
             <p className="app-page-summary">
-              Batch generation is the throughput view for repeated seed work. Load a list, choose a mode and template, then monitor completions and failures without leaving the browser workflow.
+              Queue seeds, set mode and template, then monitor progress. Great for throughput-focused work.
             </p>
           </div>
 
@@ -255,7 +255,7 @@ export default function BatchGenerate() {
         </div>
       </section>
 
-      <div className="app-panel space-y-4 p-6">
+      <div className="app-panel space-y-3 p-6">
         <div className="flex items-center gap-2">
           <List className="h-5 w-5 text-primary" />
           <h2 className="text-lg font-semibold">Seeds</h2>

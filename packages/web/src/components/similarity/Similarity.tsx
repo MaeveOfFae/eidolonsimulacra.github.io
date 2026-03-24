@@ -88,7 +88,7 @@ export default function Similarity() {
   }
 
   return (
-    <div className="app-page space-y-6 pb-12">
+    <div className="app-page space-y-10 pb-12">
       <section className="app-page-hero">
         <div className="app-page-hero-grid">
           <div className="space-y-4">

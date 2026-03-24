@@ -231,7 +231,7 @@ export default function Templates() {
         </Suspense>
       )}
 
-      <div className="app-page space-y-6 pb-12">
+      <div className="app-page space-y-10 pb-12">
         {feedback && (
           <div
             className={`app-note p-4 text-sm ${
@@ -247,7 +247,7 @@ export default function Templates() {
         <InlineHelpTip
           tipId="templates-first-choice-tip"
           title="Choose a template before you generate"
-          description="Templates decide which assets exist and how review and export behave. If you are new, start with an official template instead of creating one from scratch."
+          description="Templates decide which assets exist. If you're new, start with an official template."
           actionLabel={isTourCompleted(GETTING_STARTED_TOUR_ID) ? 'Replay Getting Started Tour' : 'Start Getting Started Tour'}
           onAction={() =>
             isTourCompleted(GETTING_STARTED_TOUR_ID)
@@ -259,10 +259,10 @@ export default function Templates() {
         <section className="app-page-hero">
           <div className="app-page-hero-grid">
             <div className="space-y-4">
-              <p className="app-page-eyebrow">Template contracts</p>
-              <h1 className="app-page-title">Choose or edit the asset graph before you ask the model for content.</h1>
+              <p className="app-page-eyebrow">Template management</p>
+              <h1 className="app-page-title">Choose your asset graph</h1>
               <p className="app-page-summary">
-                Templates define which assets exist, how they depend on each other, and what export expects. This page controls the structural layer for the browser workflow.
+                Templates define which assets exist and how they export. Start with an official template or create a custom one.
               </p>
               <div className="flex flex-wrap items-center gap-3">
                 <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-input px-4 py-2.5 text-sm font-medium hover:bg-accent">

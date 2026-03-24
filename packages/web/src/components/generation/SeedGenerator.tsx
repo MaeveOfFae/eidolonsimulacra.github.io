@@ -247,22 +247,22 @@ export default function SeedGenerator() {
   }, [genreLines, seedMutation.isPending, seeds.length]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold">Seed Generator</h1>
         <p className="text-muted-foreground">
-          Generate compiler-ready seed lines from genre constraints, then push any result directly into the character generator.
+          Generate seed ideas from genre constraints. Pick a preset, edit lines, generate, then push to generation.
         </p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
-        <section className="rounded-lg border border-border bg-card p-6 space-y-4">
+        <section className="rounded-lg border border-border bg-card p-6 space-y-3">
           <div className="space-y-3">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <label className="text-sm font-medium">Starting Presets</label>
+                <label className="text-sm font-medium">Select preset</label>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Load a grounded constraint set, then edit the lines before generating.
+                  Edit the lines, then generate seeds.
                 </p>
               </div>
               <button
