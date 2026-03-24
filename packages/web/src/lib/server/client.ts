@@ -171,8 +171,16 @@ class ServerClient {
       credentials: 'include', // Include cookies for refresh token
     });
 
-    // Handle token expiration
-    if (response.status === 401 && retry && endpoint !== '/api/auth/refresh') {
+    // Handle token expiration for authenticated endpoints only.
+    // Login/register can legitimately return 401 and should not trigger refresh.
+    const shouldAttemptRefresh =
+      response.status === 401
+      && retry
+      && endpoint !== '/api/auth/refresh'
+      && endpoint !== '/api/auth/login'
+      && endpoint !== '/api/auth/register';
+
+    if (shouldAttemptRefresh) {
       try {
         await this.refreshAccessToken();
         // Retry the original request with new token

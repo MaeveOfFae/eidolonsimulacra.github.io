@@ -364,7 +364,7 @@ export default function DataManager() {
         <div className="border-b border-border p-4">
           <h2 className="text-lg font-semibold">Import Data</h2>
           <p className="text-sm text-muted-foreground">
-            Restore your data from a previously exported JSON file.
+            Restore your data from a previously exported backup file.
           </p>
         </div>
         <div className="space-y-3 p-4">
@@ -374,7 +374,7 @@ export default function DataManager() {
               <div>
                 <h3 className="font-medium">Import Drafts</h3>
                 <p className="text-xs text-muted-foreground">
-                  Merge drafts from a backup file
+                  Merge drafts from JSON backup or combined markdown export
                 </p>
               </div>
             </div>
@@ -388,7 +388,7 @@ export default function DataManager() {
             <input
               ref={importInputRef}
               type="file"
-              accept="application/json"
+              accept="application/json,.json,text/markdown,.md,text/plain,.txt"
               onChange={handleImportDrafts}
               className="hidden"
             />

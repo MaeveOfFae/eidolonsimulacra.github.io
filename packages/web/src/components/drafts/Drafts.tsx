@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, type ChangeEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { FolderOpen } from 'lucide-react';
+import { FolderOpen, Upload, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { api } from '@/lib/api';
 import SyncControls from '../common/SyncControls';
 import { DraftStorage } from '@/lib/storage/draft-db';
@@ -16,6 +16,8 @@ import { VersionHistoryPanel } from './VersionHistoryPanel';
 export default function Drafts() {
   const [leftDraftId, setLeftDraftId] = useState<string>('');
   const [rightDraftId, setRightDraftId] = useState<string>('');
+  const [notice, setNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const importInputRef = useRef<HTMLInputElement | null>(null);
   const { isTourCompleted, restartTour, startTour } = useGuidedTour();
   const queryClient = useQueryClient();
 
@@ -58,6 +60,27 @@ export default function Drafts() {
 
   const hasDrafts = data?.drafts.length > 0;
 
+  async function handleImportDrafts(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    try {
+      const text = await file.text();
+      await DraftStorage.import(text);
+      await queryClient.invalidateQueries({ queryKey: ['drafts'] });
+      setNotice({ type: 'success', message: `Imported drafts from ${file.name}` });
+    } catch (error) {
+      setNotice({
+        type: 'error',
+        message: error instanceof Error ? error.message : 'Draft import failed',
+      });
+    }
+
+    event.target.value = '';
+  }
+
   return (
     <div className="app-page space-y-6 pb-12">
       <InlineHelpTip
@@ -82,6 +105,21 @@ export default function Drafts() {
               <Link to="/validation" className="inline-flex items-center gap-2 rounded-2xl border border-border/60 bg-background/55 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary/35 hover:text-primary">
                 Validation
               </Link>
+              <button
+                type="button"
+                onClick={() => importInputRef.current?.click()}
+                className="inline-flex items-center gap-2 rounded-2xl border border-border/60 bg-background/55 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary/35 hover:text-primary"
+              >
+                <Upload className="h-4 w-4" />
+                Upload drafts
+              </button>
+              <input
+                ref={importInputRef}
+                type="file"
+                accept="application/json,.json,text/markdown,.md,text/plain,.txt"
+                onChange={handleImportDrafts}
+                className="hidden"
+              />
             </div>
           </div>
 
@@ -104,6 +142,28 @@ export default function Drafts() {
           </div>
         </div>
       </section>
+
+      {notice && (
+        <div className={`app-note flex items-start gap-3 px-4 py-3 ${
+          notice.type === 'success'
+            ? 'border-green-500/50 bg-green-500/10 text-green-700 dark:text-green-400'
+            : 'border-destructive/50 bg-destructive/10 text-destructive'
+        }`}>
+          {notice.type === 'success' ? (
+            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
+          ) : (
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
+          )}
+          <span className="text-sm">{notice.message}</span>
+          <button
+            type="button"
+            onClick={() => setNotice(null)}
+            className="ml-auto opacity-50 hover:opacity-100"
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       {/* Stats */}
       {data?.stats && (

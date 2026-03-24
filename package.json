@@ -1,6 +1,6 @@
 {
   "name": "eidolon-simulacra",
-  "version": "2.1.4",
+  "version": "3.0.0",
   "private": true,
   "description": "Eidolon Simulacra - Modern web application for generating RPG characters",
   "scripts": {
@@ -25,6 +25,8 @@
     "docker:dev:down": "docker compose -f docker-compose.dev.yml down",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
+    "docker:server:up": "docker compose up -d postgres server",
+    "docker:server:down": "docker compose stop server postgres",
     "lint": "turbo run lint",
     "test": "turbo run test",
     "clean": "turbo run clean",

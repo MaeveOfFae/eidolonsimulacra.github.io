@@ -51,6 +51,147 @@ const DRAFT_DB_SCHEMA = {
   tags: '++id, tag, draftId',
 } as const;
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function createImportedReviewId(): string {
+  return `imported-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function coerceDraftMetadata(raw: unknown, fallbackSeed: string): DraftMetadata {
+  const source = isRecord(raw) ? raw : {};
+  const review_id = typeof source.review_id === 'string' && source.review_id.trim().length > 0
+    ? source.review_id
+    : createImportedReviewId();
+  const seed = typeof source.seed === 'string' && source.seed.trim().length > 0
+    ? source.seed
+    : fallbackSeed;
+
+  const metadata: DraftMetadata = {
+    review_id,
+    seed,
+    favorite: Boolean(source.favorite),
+  };
+
+  if (typeof source.mode === 'string') metadata.mode = source.mode as DraftMetadata['mode'];
+  if (typeof source.model === 'string') metadata.model = source.model;
+  if (typeof source.created === 'string') metadata.created = source.created;
+  if (typeof source.modified === 'string') metadata.modified = source.modified;
+  if (Array.isArray(source.tags)) metadata.tags = source.tags.filter((tag): tag is string => typeof tag === 'string');
+  if (typeof source.genre === 'string') metadata.genre = source.genre;
+  if (typeof source.notes === 'string') metadata.notes = source.notes;
+  if (typeof source.character_name === 'string') metadata.character_name = source.character_name;
+  if (typeof source.template_name === 'string') metadata.template_name = source.template_name;
+  if (Array.isArray(source.parent_drafts)) {
+    metadata.parent_drafts = source.parent_drafts.filter((id): id is string => typeof id === 'string');
+  }
+  if (typeof source.offspring_type === 'string') metadata.offspring_type = source.offspring_type;
+
+  return metadata;
+}
+
+function coerceDraft(value: unknown, fallbackSeed = 'Imported draft'): Draft | null {
+  if (!isRecord(value) || !isRecord(value.assets)) {
+    return null;
+  }
+
+  const assets: Record<string, string> = {};
+  for (const [assetName, content] of Object.entries(value.assets)) {
+    if (typeof content === 'string') {
+      assets[assetName] = content;
+    }
+  }
+
+  if (Object.keys(assets).length === 0) {
+    return null;
+  }
+
+  const metadata = coerceDraftMetadata(value.metadata, fallbackSeed);
+  const path = typeof value.path === 'string' && value.path.trim().length > 0
+    ? value.path
+    : metadata.review_id;
+
+  return { metadata, assets, path };
+}
+
+function parseJsonDraftPayload(data: unknown): Draft[] {
+  if (Array.isArray(data)) {
+    return data.map((entry) => coerceDraft(entry)).filter((entry): entry is Draft => entry !== null);
+  }
+
+  if (!isRecord(data)) {
+    return [];
+  }
+
+  if (Array.isArray(data.drafts)) {
+    return data.drafts.map((entry) => coerceDraft(entry)).filter((entry): entry is Draft => entry !== null);
+  }
+
+  const single = coerceDraft(data);
+  return single ? [single] : [];
+}
+
+function normalizeAssetHeading(heading: string): string {
+  return heading.trim().toLowerCase().replace(/\s+/g, '_');
+}
+
+function parseMarkdownDraftPayload(markdown: string): Draft[] {
+  const titleMatch = markdown.match(/^#\s+(.+)$/m);
+  const fallbackSeed = titleMatch?.[1]?.trim() || 'Imported draft';
+  const headingRegex = /^##\s+(.+)$/gm;
+  const headings: Array<{ title: string; start: number; bodyStart: number }> = [];
+
+  let match: RegExpExecArray | null;
+  while ((match = headingRegex.exec(markdown)) !== null) {
+    headings.push({
+      title: match[1].trim(),
+      start: match.index,
+      bodyStart: headingRegex.lastIndex,
+    });
+  }
+
+  if (headings.length === 0) {
+    return [];
+  }
+
+  const assets: Record<string, string> = {};
+  let metadataSource: unknown = undefined;
+
+  for (let index = 0; index < headings.length; index += 1) {
+    const current = headings[index];
+    const next = headings[index + 1];
+    const rawBody = markdown.slice(current.bodyStart, next ? next.start : markdown.length);
+    const body = rawBody.replace(/^\n+/, '').trimEnd();
+    if (!body) {
+      continue;
+    }
+
+    if (current.title.trim().toLowerCase() === 'metadata') {
+      try {
+        metadataSource = JSON.parse(body);
+      } catch {
+        // Ignore malformed metadata blocks and still import asset content.
+      }
+      continue;
+    }
+
+    const assetName = normalizeAssetHeading(current.title);
+    assets[assetName] = body;
+  }
+
+  if (Object.keys(assets).length === 0) {
+    return [];
+  }
+
+  const metadata = coerceDraftMetadata(metadataSource, fallbackSeed);
+  return [{
+    path: metadata.review_id,
+    metadata,
+    assets,
+  }];
+}
+
 /**
  * Draft database
  */
@@ -468,18 +609,30 @@ export class DraftStorage {
   }
 
   /**
-   * Import drafts from JSON
+   * Import drafts from JSON or markdown draft bundles.
    */
-  static async import(json: string): Promise<void> {
+  static async import(raw: string): Promise<void> {
     await this.ensureReady();
 
-    const data = JSON.parse(json);
-
-    if (!data.drafts || !Array.isArray(data.drafts)) {
-      throw new Error('Invalid export format');
+    const trimmed = raw.trim();
+    if (!trimmed) {
+      throw new Error('Import file is empty');
     }
 
-    for (const draft of data.drafts) {
+    let drafts: Draft[] = [];
+
+    try {
+      const jsonData = JSON.parse(trimmed);
+      drafts = parseJsonDraftPayload(jsonData);
+    } catch {
+      drafts = parseMarkdownDraftPayload(raw);
+    }
+
+    if (drafts.length === 0) {
+      throw new Error('Invalid draft import format. Supported: exported drafts JSON and combined markdown draft files.');
+    }
+
+    for (const draft of drafts) {
       await this.saveDraft(draft);
     }
   }

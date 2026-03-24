@@ -1,15 +1,10 @@
 # Caddyfile for Eidolon Character Generator
 # Replace 'your-domain.com' with your actual domain
 
-your-domain.com {
+api.eidolonsimulacra.com {
     # API requests go to the backend server
     handle /api/* {
-        reverse_proxy server:3001
-    }
-
-    # All other requests go to the frontend
-    handle {
-        reverse_proxy web:80
+        reverse_proxy 127.0.0.1:3001
     }
 
     # Enable gzip compression
