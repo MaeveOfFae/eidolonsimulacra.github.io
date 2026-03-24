@@ -1,6 +1,22 @@
 # Changelog
 
 
+## v3.0.5 - 2026-03-24
+
+### Templates and platform update
+
+This release packages 12 recent commits focused on templates, platform, and themes.
+
+### Highlights
+- Release v3.0.4 with updates to templates, platform, and new auto-sync features
+- Update blueprints with new feature categories and enhancements
+- Release v3.0.2 with platform and template updates, including new blueprint handling and UI enhancements
+- Update UI text and spacing across multiple components
+- Update server Docker configuration and add health checks
+
+### Links
+- [Open generation](/generate)
+- [Review templates](/templates)
 ## v3.0.4 - 2026-03-24
 
 ### Templates and platform update
@@ -81,6 +97,7 @@ This release packages 12 recent commits focused on documentation, templates, and
 ### Links
 - [Open generation](/generate)
 - [Review templates](/templates)
+
 
 
 

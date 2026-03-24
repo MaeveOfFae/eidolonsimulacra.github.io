@@ -8,9 +8,9 @@ The repo is centered on a strict blueprint contract: start from one seed, genera
 
 - Browser-only workflow for day-to-day use. Drafts, templates, blueprint edits, and theme choices stay in browser storage.
 - Direct LLM provider integration from the client via the shared engine layer.
-- Two official template families in the repo:
+- One built-in runtime template is currently loaded from `blueprints/templates/`:
   - `V2/V3 Card` with `system_prompt`, `post_history`, `character_sheet`, `intro_scene`, `intro_page`, and `a1111`
-  - `Official Aksho` with the split eight-asset flow from `system_prompt` through `initial_message`
+- Aksho reference material is checked in under `dev/official_aksho/`, but it is not currently loaded as a built-in browser template manifest.
 - Shared parser and validator utilities for fenced-codeblock generation output.
 - Export helpers and preset definitions for raw asset packs and platform-specific formats.
 - Rule and workflow documentation under `rules/` for generation constraints, content modes, and blueprint hygiene.
@@ -20,6 +20,7 @@ The repo is centered on a strict blueprint contract: start from one seed, genera
 ```text
 eidolon-simulacra/
 ├── blueprints/          # System blueprints, template manifests, and examples
+├── dev/                 # Reference and in-progress template material
 ├── packages/
 │   ├── shared/          # Shared TS types, generation, parsing, export, template utilities
 │   ├── web/             # React 19 + Vite browser app
@@ -106,10 +107,10 @@ Notes:
 The generation system is template-driven.
 
 - Canonical system prompts and orchestrators live in `blueprints/system/`.
-- Official templates live in `blueprints/templates/` and declare asset order with `depends_on` in `template.toml`.
+- Built-in runtime templates live in `blueprints/templates/` and declare asset order with `depends_on` in `template.toml`.
 - Shared parsing utilities map fenced codeblocks back into asset files and run fatal contract checks for placeholders and format violations.
 - The browser Seed Generator now uses the canonical seed-generation blueprint in `blueprints/system/seed_generator.md`.
-- The default official template is still the six-asset V2/V3 flow, but the repo also supports template-specific asset graphs such as Aksho.
+- The default built-in template is the six-asset V2/V3 flow. Aksho reference files currently live under `dev/official_aksho/` rather than the runtime template catalog.
 
 If you are editing blueprints, start with `rules/60_blueprint_hard_rules.md` and `blueprints/README.md`.
 

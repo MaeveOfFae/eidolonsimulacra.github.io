@@ -108,11 +108,11 @@ export default function Blueprints() {
     const coreBlueprints = data.core.filter((blueprint) => !blueprint.path.startsWith('blueprints/custom/'));
 
     return [
-      { title: 'Core Blueprints', blueprints: coreBlueprints, icon: <BookOpen className="h-5 w-5 text-primary" /> },
+      { title: 'Root Blueprints', blueprints: coreBlueprints, icon: <BookOpen className="h-5 w-5 text-primary" /> },
       { title: 'System Blueprints', blueprints: data.system, icon: <FileJson className="h-5 w-5 text-primary" /> },
       { title: 'Custom Blueprints', blueprints: customBlueprints, icon: <Edit3 className="h-5 w-5 text-primary" /> },
       {
-        title: 'Template Blueprints',
+        title: 'Template-Scoped Blueprints',
         blueprints: Object.values(data.templates).flat(),
         icon: <Package className="h-5 w-5 text-primary" />,
       },
@@ -174,9 +174,9 @@ export default function Blueprints() {
         <div className="app-page-hero-grid">
           <div className="space-y-4">
             <p className="app-page-eyebrow">Blueprint source control</p>
-            <h1 className="app-page-title">Browse the parser-facing blueprint layer and keep risky edits isolated.</h1>
+            <h1 className="app-page-title">Inspect the live blueprint catalog without confusing it with template manifests.</h1>
             <p className="app-page-summary">
-              This is the advanced contract surface behind generation structure. Use it when you need to inspect or fork blueprint behavior, not for routine template or draft editing.
+              This screen lists Markdown blueprint files from the browser catalog: system prompts, example assets, template-scoped blueprint files, and any custom copies saved under blueprints/custom. Template manifests and asset graphs still belong in Templates.
             </p>
             <button
               onClick={() => setCreateDialogOpen(true)}
@@ -207,13 +207,34 @@ export default function Blueprints() {
         </div>
       </section>
 
+      <section className="grid gap-3 lg:grid-cols-3">
+        <div className="app-panel-muted p-4">
+          <p className="text-sm font-medium text-foreground">What belongs here</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Markdown blueprint sources that drive generation behavior or provide reusable examples.
+          </p>
+        </div>
+        <div className="app-panel-muted p-4">
+          <p className="text-sm font-medium text-foreground">What does not</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Template TOML manifests, asset dependency design, and routine draft editing. Use Templates for those.
+          </p>
+        </div>
+        <div className="app-panel-muted p-4">
+          <p className="text-sm font-medium text-foreground">Safe workflow</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Duplicate or create a custom blueprint first, then edit the copy so parser-facing defaults stay intact.
+          </p>
+        </div>
+      </section>
+
       <div data-tour-anchor="blueprints-search" className="relative max-w-xl">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <input
           type="text"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search blueprints by name, description, or path"
+          placeholder="Search blueprint files by name, description, or path"
           className="w-full rounded-md border border-input bg-background py-2 pl-10 pr-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
       </div>
@@ -223,7 +244,7 @@ export default function Blueprints() {
           <div>
             <h2 className="text-lg font-semibold">Blueprint Tools</h2>
             <p className="text-sm text-muted-foreground">
-              Linting and sandbox preview are available now for fast browser-only blueprint checks.
+              Linting and sandbox preview run against the selected blueprint file so you can test edits before wiring them into a template.
             </p>
           </div>
           <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">

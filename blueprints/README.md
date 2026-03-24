@@ -1,6 +1,6 @@
 # Blueprints
 
-This directory contains the official system blueprints, template manifests, and example blueprints used by the current template system.
+This directory contains the system blueprints, runtime template manifests, and example blueprints used by the current browser template system.
 
 ## Layout
 
@@ -22,7 +22,7 @@ blueprints/
 └── examples/                  # Alternate/example blueprints
 ```
 
-Official V2/V3 asset blueprints now live under `blueprints/system/` alongside the orchestrators.
+Official V2/V3 asset blueprints live under `blueprints/system/` alongside the orchestrators.
 
 Template manifests reference these canonical system paths instead of maintaining template-local copies.
 
@@ -30,7 +30,7 @@ The browser Seed Generator also uses `blueprints/system/seed_generator.md` as it
 
 ## Official Templates
 
-The repo currently carries one official template family.
+The checked-in runtime template catalog currently carries one built-in template family under `blueprints/templates/`.
 
 ### V2/V3 Card
 
@@ -45,6 +45,14 @@ This remains the default official template used by the browser generation flow. 
 
 `suno` is not part of the current official default.
 
+## Related Reference Material
+
+The repo also contains Aksho reference material under `dev/official_aksho/`.
+
+- That folder includes its own `template.toml` plus template-local asset blueprints.
+- It is useful for reference or future integration work.
+- It is not the current built-in browser template manifest loaded from `blueprints/templates/`.
+
 ## Template Manifests
 
 Each template directory under `blueprints/templates/` contains a `template.toml` manifest describing:
@@ -54,7 +62,7 @@ Each template directory under `blueprints/templates/` contains a `template.toml`
 - dependency order via `depends_on`
 - blueprint file paths for each asset
 
-The built-in template currently lives under `blueprints/templates/official_v2v3/`.
+The built-in runtime template currently lives under `blueprints/templates/official_v2v3/`.
 
 ## Resolution Order
 
@@ -85,6 +93,7 @@ Current starter examples under `blueprints/examples/` include:
 - Treat the orchestrator and template manifests as part of the generation contract
 - Check `rules/60_blueprint_hard_rules.md` before changing official blueprint formats
 - The browser app is currently client-side, but the blueprint contract still needs to stay strict because shared parsing and validation code depends on it
+- If you are editing Aksho reference files under `dev/official_aksho/`, do not describe them as active built-in runtime assets unless the implementation is wired up first
 
 ## Adding a Template
 
