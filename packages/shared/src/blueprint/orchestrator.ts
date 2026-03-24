@@ -27,13 +27,13 @@ export interface OrchestratorOptions {
 }
 
 /**
- * Get the official template definition.
+ * Get the built-in template definition.
  */
 export function getOfficialTemplate(): Template {
   return {
     name: 'V2/V3 Card',
     version: '3.1',
-    description: 'Official character card template with 6 standard assets',
+    description: 'Built-in character card template with 6 standard assets',
     is_official: true,
     assets: [
       {

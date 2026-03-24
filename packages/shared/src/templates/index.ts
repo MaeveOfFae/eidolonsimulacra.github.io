@@ -9,12 +9,12 @@ export type AssetDefinition = TypesAssetDefinition;
 export type Template = TypesTemplate;
 
 /**
- * Official V2/V3 Card template
+ * Built-in V2/V3 Card template
  */
 export const OFFICIAL_TEMPLATE: Template = {
   name: 'V2/V3 Card',
   version: '3.1',
-  description: 'Official character card template with 6 standard assets',
+  description: 'Built-in character card template with 6 standard assets',
   is_official: true,
   assets: [
     {

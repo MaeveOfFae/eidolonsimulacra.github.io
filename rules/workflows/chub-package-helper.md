@@ -15,7 +15,7 @@ Goal: prepare Chub-facing fields and ensure greeting/alternates follow Chub form
 3) Greetings:
    - produce one initial message sourced from the active draft's opener asset
    - for `V2/V3 Card`, that usually means `intro_scene`
-   - for `Official Aksho`, that usually means `initial_message`
+   - for Aksho reference material, that usually means `initial_message`
    - if alternate greetings requested:
      - each alternate MUST start with ```"<START>"```
 

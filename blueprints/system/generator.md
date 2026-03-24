@@ -286,7 +286,7 @@ Every character should have:
 
 ## Invocation Protocol
 
-Fallback official template order when no active template contract is provided:
+Fallback built-in template order when no active template contract is provided:
 
 system_prompt
 post_history

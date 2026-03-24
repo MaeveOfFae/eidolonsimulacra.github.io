@@ -1,10 +1,10 @@
 # Generate Full Suite from Seed
 
-Goal: compile one seed into a complete template-specific asset suite using the official orchestrator and the selected template's asset blueprints.
+Goal: compile one seed into a complete template-specific asset suite using the built-in orchestrator and the selected template's asset blueprints.
 
 1) Ask me for:
    - seed (one line)
-   - template: default to `V2/V3 Card` unless I specify another official or custom template
+   - template: default to `V2/V3 Card` unless I specify another template or custom template
    - mode (optional): `SFW`, `NSFW`, `Platform-Safe`, or `Auto`
    - output target:
      a) asset codeblocks only
@@ -20,7 +20,7 @@ Goal: compile one seed into a complete template-specific asset suite using the o
 
 4) Compile assets in the template's declared dependency order.
    - For `V2/V3 Card`, that is `system_prompt -> post_history -> character_sheet -> intro_scene -> intro_page -> a1111`
-   - For `Official Aksho`, that is `system_prompt -> char_basic_info -> char_physical -> char_clothing -> char_personality -> char_background -> post_history -> initial_message`
+   - For Aksho reference material, that is `system_prompt -> char_basic_info -> char_physical -> char_clothing -> char_personality -> char_background -> post_history -> initial_message`
    - Do not hardcode `suno` into the default flow.
    - Output only the asset codeblocks plus an `Adjustment Note` block if the orchestrator requires it.
 

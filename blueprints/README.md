@@ -22,19 +22,19 @@ blueprints/
 └── examples/                  # Alternate/example blueprints
 ```
 
-Official V2/V3 asset blueprints live under `blueprints/system/` alongside the orchestrators.
+The built-in V2/V3 asset blueprints live under `blueprints/system/` alongside the orchestrators.
 
 Template manifests reference these canonical system paths instead of maintaining template-local copies.
 
 The browser Seed Generator also uses `blueprints/system/seed_generator.md` as its canonical runtime prompt.
 
-## Official Templates
+## Built-in Runtime Templates
 
 The checked-in runtime template catalog currently carries one built-in template family under `blueprints/templates/`.
 
 ### V2/V3 Card
 
-This remains the default official template used by the browser generation flow. Its asset set is:
+This remains the default built-in template used by the browser generation flow. Its asset set is:
 
 1. `system_prompt`
 2. `post_history`
