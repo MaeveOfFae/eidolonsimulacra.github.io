@@ -80,6 +80,14 @@ export default function Generation() {
     return null;
   }, [activeTab]);
 
+  const selectedBlueprintPathForActiveFeature = useMemo(() => {
+    if (!activeFeatureCategory) {
+      return undefined;
+    }
+
+    return selectedBlueprintPaths[activeFeatureCategory] || FEATURE_PREFERRED_PATHS[activeFeatureCategory];
+  }, [activeFeatureCategory, selectedBlueprintPaths]);
+
   useEffect(() => {
     if (!activeFeatureCategory) {
       setBlueprint(null);
@@ -99,15 +107,21 @@ export default function Generation() {
         const resolved = resolveBlueprintForFeature(
           list,
           activeFeatureCategory,
-          selectedBlueprintPaths[activeFeatureCategory] || FEATURE_PREFERRED_PATHS[activeFeatureCategory]
+          selectedBlueprintPathForActiveFeature
         );
 
         if (resolved) {
           setBlueprint(resolved);
-          setSelectedBlueprintPaths((previous) => ({
-            ...previous,
-            [activeFeatureCategory]: resolved.path,
-          }));
+          setSelectedBlueprintPaths((previous) => {
+            if (previous[activeFeatureCategory] === resolved.path) {
+              return previous;
+            }
+
+            return {
+              ...previous,
+              [activeFeatureCategory]: resolved.path,
+            };
+          });
           setBlueprintError(null);
         } else {
           setBlueprintError('Blueprint could not be resolved from feature_category metadata.');
@@ -119,7 +133,7 @@ export default function Generation() {
         setBlueprintLoading(false);
       }
     })();
-  }, [activeFeatureCategory, selectedBlueprintPaths]);
+  }, [activeFeatureCategory, selectedBlueprintPathForActiveFeature]);
 
   const { data: templates = [], isLoading: templatesLoading } = useQuery({
     queryKey: ['templates'],
