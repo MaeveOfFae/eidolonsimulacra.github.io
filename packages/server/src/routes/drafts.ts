@@ -94,6 +94,78 @@ router.get("/tags", async (req: Request, res: Response): Promise<void> => {
   res.json({ tags: uniqueTags });
 });
 
+// =============================================================================
+// Sync Endpoints (for client sync functionality)
+// =============================================================================
+
+// GET /list - List all drafts for sync
+router.get(
+  "/list",
+  authenticateToken,
+  async (req: Request, res: Response): Promise<void> => {
+    const userId = req.user!.userId
+    const drafts = await prisma.draft.findMany({
+      where: { userId },
+      orderBy: { updatedAt: "desc" },
+    })
+    res.json({ drafts })
+  }
+)
+
+// GET /pull - Pull all drafts for sync
+router.get(
+  "/pull",
+  authenticateToken,
+  async (req: Request, res: Response): Promise<void> => {
+    const userId = req.user!.userId
+    const drafts = await prisma.draft.findMany({
+      where: { userId },
+      orderBy: { updatedAt: "desc" },
+    })
+    res.json({ drafts })
+  }
+)
+
+// POST /push - Push drafts to server
+router.post(
+  "/push",
+  authenticateToken,
+  validateBody(z.object({
+    drafts: z.array(z.record(z.unknown())),
+  })),
+  async (req: Request, res: Response): Promise<void> => {
+    const userId = req.user!.userId
+    const { drafts } = req.body as { drafts: Record<string, unknown>[] }
+    const results: Array<{ reviewId: string; status: string }> = []
+
+    for (const draftData of drafts) {
+      try {
+        const reviewId = draftData.reviewId as string
+        const existing = await prisma.draft.findFirst({
+          where: { userId, reviewId },
+        })
+
+        if (existing) {
+          await prisma.draft.update({
+            where: { id: existing.id },
+            data: draftData as unknown as Prisma.DraftUpdateInput,
+          })
+          results.push({ reviewId, status: "updated" })
+        } else {
+          await prisma.draft.create({
+            data: { ...draftData, userId } as unknown as Prisma.DraftCreateInput,
+          })
+          results.push({ reviewId, status: "created" })
+        }
+      } catch {
+        results.push({ reviewId: draftData.reviewId as string, status: "error" })
+      }
+    }
+
+    res.json({ results })
+  }
+)
+
 // GET /:id - Get draft by ID
 router.get("/:id", validateParams(draftParamsSchema), async (req: Request, res: Response): Promise<void> => {
   const userId = req.user!.userId;
@@ -178,78 +250,6 @@ router.delete("/:id", validateParams(draftParamsSchema), async (req: Request, re
 
     await prisma.draft.delete({ where: { id } })
     res.json({ message: "Draft deleted" })
-  }
-)
-
-// =============================================================================
-// Sync Endpoints (for client sync functionality)
-// =============================================================================
-
-// GET /list - List all drafts for sync
-router.get(
-  "/list",
-  authenticateToken,
-  async (req: Request, res: Response): Promise<void> => {
-    const userId = req.user!.userId
-    const drafts = await prisma.draft.findMany({
-      where: { userId },
-      orderBy: { updatedAt: "desc" },
-    })
-    res.json({ drafts })
-  }
-)
-
-// GET /pull - Pull all drafts for sync
-router.get(
-  "/pull",
-  authenticateToken,
-  async (req: Request, res: Response): Promise<void> => {
-    const userId = req.user!.userId
-    const drafts = await prisma.draft.findMany({
-      where: { userId },
-      orderBy: { updatedAt: "desc" },
-    })
-    res.json({ drafts })
-  }
-)
-
-// POST /push - Push drafts to server
-router.post(
-  "/push",
-  authenticateToken,
-  validateBody(z.object({
-    drafts: z.array(z.record(z.unknown())),
-  })),
-  async (req: Request, res: Response): Promise<void> => {
-    const userId = req.user!.userId
-    const { drafts } = req.body as { drafts: Record<string, unknown>[] }
-    const results: Array<{ reviewId: string; status: string }> = []
-
-    for (const draftData of drafts) {
-      try {
-        const reviewId = draftData.reviewId as string
-        const existing = await prisma.draft.findFirst({
-          where: { userId, reviewId },
-        })
-
-        if (existing) {
-          await prisma.draft.update({
-            where: { id: existing.id },
-            data: draftData as unknown as Prisma.DraftUpdateInput,
-          })
-          results.push({ reviewId, status: "updated" })
-        } else {
-          await prisma.draft.create({
-            data: { ...draftData, userId } as unknown as Prisma.DraftCreateInput,
-          })
-          results.push({ reviewId, status: "created" })
-        }
-      } catch {
-        results.push({ reviewId: draftData.reviewId as string, status: "error" })
-      }
-    }
-
-    res.json({ results })
   }
 )
 

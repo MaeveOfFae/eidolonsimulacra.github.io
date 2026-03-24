@@ -93,9 +93,17 @@ async function syncDrafts(): Promise<void> {
       }))
   );
 
-  await serverClient.syncDrafts('push', {
+  const pushResult = await serverClient.syncDrafts('push', {
     drafts: localDrafts.map(mapDraftForSync),
-  });
+  }) as { results?: Array<{ reviewId: string; status: string }> };
+
+  const failedReviewIds = (pushResult.results || [])
+    .filter((entry) => entry.status === 'error')
+    .map((entry) => entry.reviewId);
+
+  if (failedReviewIds.length > 0) {
+    throw new Error(`Remote draft sync failed for: ${failedReviewIds.join(', ')}`);
+  }
 }
 
 async function syncThemes(): Promise<void> {

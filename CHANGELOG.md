@@ -1,6 +1,22 @@
 # Changelog
 
 
+## v3.0.9 - 2026-03-24
+
+### Templates and documentation update
+
+This release packages 12 recent commits focused on templates, documentation, and platform.
+
+### Highlights
+- Release v3.0.8 with updates to templates, platform, and documentation; normalize feature blueprint paths and add new engine mode settings
+- Update changelog for v3.0.7 with recent templates and platform enhancements; modify README and documentation for clarity on built-in templates
+- Release v3.0.6 with updates to templates, platform, and UI enhancements
+- Update changelog and release notes for v3.0.5, including template and platform enhancements
+- Release v3.0.4 with updates to templates, platform, and new auto-sync features
+
+### Links
+- [Open generation](/generate)
+- [Review templates](/templates)
 ## v3.0.8 - 2026-03-24
 
 ### Templates and platform update
@@ -145,6 +161,7 @@ This release packages 12 recent commits focused on documentation, templates, and
 ### Links
 - [Open generation](/generate)
 - [Review templates](/templates)
+
 
 
 
