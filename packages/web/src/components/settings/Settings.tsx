@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Save,
   CheckCircle2,
@@ -32,6 +33,7 @@ import { GETTING_STARTED_TOUR_ID } from '@/lib/help';
 import InlineHelpTip from '../common/InlineHelpTip';
 import { useGuidedTour } from '../common/GuidedTourContext';
 import ServerSettings from './ServerSettings';
+import { getBlueprintsForFeature } from '@/lib/blueprints/featureSelection';
 
 const ALL_PROVIDERS = ['openai', 'google', 'openrouter', 'anthropic', 'deepseek', 'zai', 'moonshot', 'ollama'] as const;
 type Provider = typeof ALL_PROVIDERS[number];
@@ -104,6 +106,35 @@ export default function Settings() {
   const [modelsLoading, setModelsLoading] = useState(false);
   const [modelsNotice, setModelsNotice] = useState<string | null>(null);
   const { isTourCompleted, restartTour, startTour } = useGuidedTour();
+  const { data: blueprintList } = useQuery({
+    queryKey: ['settings-blueprints'],
+    queryFn: () => api.getBlueprints(),
+  });
+
+  const featureBlueprintOptions = useMemo(() => {
+    if (!blueprintList) {
+      return {
+        orchestration: [],
+        seed_generation: [],
+        offspring_generation: [],
+        intro_scene_generation: [],
+        validation: [],
+        similarity: [],
+      } as Record<FeatureCategory, Array<{ value: string; label: string }>>;
+    }
+
+    const buildOptions = (feature: FeatureCategory) => getBlueprintsForFeature(blueprintList, feature)
+      .map((entry) => ({ value: entry.path, label: entry.name || entry.path }));
+
+    return {
+      orchestration: buildOptions('orchestration'),
+      seed_generation: buildOptions('seed_generation'),
+      offspring_generation: buildOptions('offspring_generation'),
+      intro_scene_generation: buildOptions('intro_scene_generation'),
+      validation: buildOptions('validation'),
+      similarity: buildOptions('similarity'),
+    } as Record<FeatureCategory, Array<{ value: string; label: string }>>;
+  }, [blueprintList]);
 
   // Load config from client-side manager
   useEffect(() => {
@@ -866,23 +897,58 @@ export default function Settings() {
 
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
-            <label className="text-sm font-medium">Character Generation</label>
+            <label className="text-sm font-medium">Orchestration</label>
             <select
-              value={localConfig.feature_blueprints?.character_generation || 'generator'}
+              value={localConfig.feature_blueprints?.orchestration || 'generator'}
               onChange={(e) => setLocalConfig((prev) => ({
                 ...prev,
                 feature_blueprints: {
                   ...prev.feature_blueprints,
-                  character_generation: e.target.value || undefined,
+                  orchestration: e.target.value || undefined,
                 },
               }))}
               className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <option value="generator">Orchestrator (Default)</option>
+              {featureBlueprintOptions.orchestration
+                .filter((option) => option.value !== 'blueprints/system/generator.md')
+                .map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               <option value="">None (Built-in)</option>
             </select>
             <p className="text-xs text-muted-foreground">
-              Blueprint used for generating new characters from seeds.
+              Blueprint used for the orchestrator on the Generate New tab.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Seed Generation</label>
+            <select
+              value={localConfig.feature_blueprints?.seed_generation || 'seed_generator'}
+              onChange={(e) => setLocalConfig((prev) => ({
+                ...prev,
+                feature_blueprints: {
+                  ...prev.feature_blueprints,
+                  seed_generation: e.target.value || undefined,
+                },
+              }))}
+              className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="seed_generator">Seed Generator (Default)</option>
+              {featureBlueprintOptions.seed_generation
+                .filter((option) => option.value !== 'blueprints/system/seed_generator.md')
+                .map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              <option value="">None (Built-in)</option>
+            </select>
+            <p className="text-xs text-muted-foreground">
+              Blueprint used for generating seed batches from genre lines.
             </p>
           </div>
 
@@ -900,6 +966,13 @@ export default function Settings() {
               className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <option value="offspring_generator">Offspring Generator (Default)</option>
+              {featureBlueprintOptions.offspring_generation
+                .filter((option) => option.value !== 'blueprints/system/offspring_generator.md')
+                .map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               <option value="">None (Built-in)</option>
             </select>
             <p className="text-xs text-muted-foreground">
@@ -921,6 +994,11 @@ export default function Settings() {
               className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <option value="">Built-in Validation (Default)</option>
+              {featureBlueprintOptions.validation.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
             <p className="text-xs text-muted-foreground">
               Blueprint for character validation checks.
@@ -941,6 +1019,11 @@ export default function Settings() {
               className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <option value="">Built-in Analysis (Default)</option>
+              {featureBlueprintOptions.similarity.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
             <p className="text-xs text-muted-foreground">
               Blueprint for comparing character relationships.

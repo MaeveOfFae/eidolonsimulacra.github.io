@@ -4,6 +4,7 @@ description: Generate a concise but complete character sheet using the Character
 invokable: true
 always: false
 version: 3.2
+feature_category: generation
 ---
 
 # Blueprint Agent

@@ -4,6 +4,7 @@ description: Minimal starter blueprint for relationship-state and ongoing behavi
 invokable: true
 always: false
 version: 1.0
+feature_category: generation
 ---
 
 # Blueprint Agent

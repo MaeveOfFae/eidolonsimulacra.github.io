@@ -23,14 +23,18 @@ export type ContentMode = 'SFW' | 'NSFW' | 'Platform-Safe' | 'Auto';
 
 // Feature categories for blueprints
 export type FeatureCategory =
-  | 'character_generation'
+  | 'orchestration'
+  | 'seed_generation'
   | 'offspring_generation'
+  | 'intro_scene_generation'
   | 'validation'
   | 'similarity';
 
 export interface FeatureBlueprintDefaults {
-  character_generation?: string;
+  orchestration?: string;
+  seed_generation?: string;
   offspring_generation?: string;
+  intro_scene_generation?: string;
   validation?: string;
   similarity?: string;
 }
@@ -466,6 +470,7 @@ export interface OffspringRequest {
   seed?: string;
   mode: ContentMode;
   template?: string;
+  blueprint_override?: string;
 }
 
 // ============================================================================

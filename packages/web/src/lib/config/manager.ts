@@ -230,7 +230,8 @@ export class ConfigManager {
       },
       help: createDefaultHelpState(),
       feature_blueprints: {
-        character_generation: 'generator',
+        orchestration: 'generator',
+        seed_generation: 'seed_generator',
         offspring_generation: 'offspring_generator',
       },
     };

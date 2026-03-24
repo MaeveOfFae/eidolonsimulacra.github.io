@@ -4,6 +4,7 @@ description: Starter blueprint for an opening scene that invites response withou
 invokable: true
 always: false
 version: 1.0
+feature_category: intro_scene_generation
 ---
 
 # Blueprint Agent

@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Sparkles, Zap, BookOpen, XCircle, Loader2, Edit3, MessageSquarePlus } from 'lucide-react';
-import type { ContentMode, GenerationComplete, Template } from '@char-gen/shared';
+import type { ContentMode, FeatureCategory, GenerationComplete, Template } from '@char-gen/shared';
 import { api } from '@/lib/api';
 import { GETTING_STARTED_TOUR_ID } from '@/lib/help';
 import type { Blueprint } from '@char-gen/shared';
@@ -19,6 +19,7 @@ import IntroGenerator from './IntroGenerator';
 import ApprovalWorkflowPlaceholder from './ApprovalWorkflowPlaceholder';
 import CheckpointSessionPlaceholder from './CheckpointSessionPlaceholder';
 import { BlueprintPanel } from '../common/BlueprintPanel';
+import { getBlueprintsForFeature, resolveBlueprintForFeature, toBlueprintOptions } from '@/lib/blueprints/featureSelection';
 
 type TabId = 'generate' | 'refine' | 'intros';
 
@@ -34,6 +35,11 @@ const TABS: Tab[] = [
   { id: 'intros', label: 'More Intros', icon: MessageSquarePlus },
 ];
 
+const FEATURE_PREFERRED_PATHS: Partial<Record<FeatureCategory, string>> = {
+  orchestration: 'blueprints/system/generator.md',
+  intro_scene_generation: 'blueprints/system/intro_scene.md',
+};
+
 export default function Generation() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -48,57 +54,63 @@ export default function Generation() {
   const [blueprint, setBlueprint] = useState<Blueprint | null>(null);
   const [blueprintLoading, setBlueprintLoading] = useState(true);
   const [blueprintError, setBlueprintError] = useState<string | null>(null);
-  const [selectedBlueprintPath, setSelectedBlueprintPath] = useState<string>('blueprints/system/generator.md');
-  const [generationBlueprintOverride, setGenerationBlueprintOverride] = useState<string | null>(null);
+  const [selectedBlueprintPaths, setSelectedBlueprintPaths] = useState<Partial<Record<FeatureCategory, string>>>({
+    orchestration: 'blueprints/system/generator.md',
+    intro_scene_generation: 'blueprints/system/intro_scene.md',
+  });
+  const [blueprintOverrides, setBlueprintOverrides] = useState<Partial<Record<FeatureCategory, string>>>({});
   const [availableBlueprints, setAvailableBlueprints] = useState<Array<{ name: string; label: string }>>([]);
 
-  // Load the generator blueprint on mount
+  const activeFeatureCategory = useMemo<FeatureCategory | null>(() => {
+    if (activeTab === 'generate') {
+      return 'orchestration';
+    }
+    if (activeTab === 'intros') {
+      return 'intro_scene_generation';
+    }
+    return null;
+  }, [activeTab]);
+
   useEffect(() => {
+    if (!activeFeatureCategory) {
+      setBlueprint(null);
+      setAvailableBlueprints([]);
+      setBlueprintError(null);
+      setBlueprintLoading(false);
+      return;
+    }
+
+    setBlueprintLoading(true);
     (async () => {
       try {
-        const exactPath = 'blueprints/system/generator.md';
         const list = await api.getBlueprints();
-        const allBlueprints = [
-          ...list.system,
-          ...list.core,
-          ...list.examples,
-          ...Object.values(list.templates).flat(),
-        ];
+        const matching = getBlueprintsForFeature(list, activeFeatureCategory);
+        setAvailableBlueprints(toBlueprintOptions(matching));
 
-        const options = allBlueprints
-          .filter((entry) => entry.path.endsWith('/generator.md') || entry.name.toLowerCase().includes('generator'))
-          .map((entry) => ({ name: entry.path, label: entry.name || entry.path }));
+        const resolved = resolveBlueprintForFeature(
+          list,
+          activeFeatureCategory,
+          selectedBlueprintPaths[activeFeatureCategory] || FEATURE_PREFERRED_PATHS[activeFeatureCategory]
+        );
 
-        if (options.length > 0) {
-          setAvailableBlueprints(options);
-        }
-
-        try {
-          const blueprintData = await api.getBlueprint(exactPath);
-          setBlueprint(blueprintData);
-          setSelectedBlueprintPath(blueprintData.path);
+        if (resolved) {
+          setBlueprint(resolved);
+          setSelectedBlueprintPaths((previous) => ({
+            ...previous,
+            [activeFeatureCategory]: resolved.path,
+          }));
           setBlueprintError(null);
-          return;
-        } catch {
-          const fallback = allBlueprints
-            .find((entry) => entry.path.endsWith('/generator.md'));
-
-          if (fallback) {
-            setBlueprint(fallback);
-            setSelectedBlueprintPath(fallback.path);
-            setBlueprintError(null);
-          } else {
-            setBlueprintError('Generation blueprint could not be resolved from catalog.');
-          }
+        } else {
+          setBlueprintError('Blueprint could not be resolved from feature_category metadata.');
         }
       } catch (error) {
-        console.error('Failed to load generator blueprint:', error);
-        setBlueprintError('Failed to load generation blueprint.');
+        console.error('Failed to load page blueprint:', error);
+        setBlueprintError('Failed to load page blueprint.');
       } finally {
         setBlueprintLoading(false);
       }
     })();
-  }, []);
+  }, [activeFeatureCategory]);
 
   const { data: templates = [], isLoading: templatesLoading } = useQuery({
     queryKey: ['templates'],
@@ -196,20 +208,48 @@ export default function Generation() {
     { value: 'Auto', label: 'Auto Detect', color: 'from-slate-500 to-gray-500' },
   ];
 
-  const effectiveGenerationBlueprint = generationBlueprintOverride ?? blueprint?.content;
+  const selectedBlueprintPath = activeFeatureCategory ? selectedBlueprintPaths[activeFeatureCategory] || '' : '';
+  const activeBlueprintOverride = activeFeatureCategory ? blueprintOverrides[activeFeatureCategory] : undefined;
+  const effectiveGenerationBlueprint = activeBlueprintOverride ?? blueprint?.content;
 
   const handleBlueprintSelect = async (path: string) => {
+    if (!activeFeatureCategory) {
+      return;
+    }
+
     try {
       const nextBlueprint = await api.getBlueprint(path);
       setBlueprint(nextBlueprint);
-      setSelectedBlueprintPath(path);
-      setGenerationBlueprintOverride(null);
+      setSelectedBlueprintPaths((previous) => ({
+        ...previous,
+        [activeFeatureCategory]: path,
+      }));
+      setBlueprintOverrides((previous) => {
+        const next = { ...previous };
+        delete next[activeFeatureCategory];
+        return next;
+      });
       setBlueprintError(null);
     } catch (error) {
       console.error('Failed to switch blueprint:', error);
       setBlueprintError('Failed to switch selected blueprint.');
     }
   };
+
+  const handleBlueprintContentChange = (content: string) => {
+    if (!activeFeatureCategory) {
+      return;
+    }
+
+    setBlueprintOverrides((previous) => ({
+      ...previous,
+      [activeFeatureCategory]: content,
+    }));
+  };
+
+  const blueprintPanelTitle = activeFeatureCategory === 'intro_scene_generation'
+    ? 'Intro Scene Blueprint'
+    : 'Orchestration Blueprint';
 
   return (
     <div className="app-page space-y-12 pb-12">
@@ -259,20 +299,20 @@ export default function Generation() {
         </div>
       </section>
 
-      {blueprint && !blueprintLoading && (
+      {activeFeatureCategory && blueprint && !blueprintLoading && (
         <BlueprintPanel
           blueprintName={selectedBlueprintPath}
           blueprintContent={effectiveGenerationBlueprint || blueprint.content}
-          title="Generation Blueprint"
+          title={blueprintPanelTitle}
           description={blueprint.description}
           editable
           availableBlueprints={availableBlueprints}
           onBlueprintSelect={handleBlueprintSelect}
-          onContentChange={setGenerationBlueprintOverride}
+          onContentChange={handleBlueprintContentChange}
         />
       )}
 
-      {blueprintError && !blueprintLoading && (
+      {activeFeatureCategory && blueprintError && !blueprintLoading && (
         <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
           {blueprintError}
         </div>
@@ -303,7 +343,7 @@ export default function Generation() {
       {activeTab === 'refine' ? (
         <DraftRefiner templates={templates} />
       ) : activeTab === 'intros' ? (
-        <IntroGenerator templates={templates} />
+        <IntroGenerator templates={templates} blueprintContent={effectiveGenerationBlueprint} />
       ) : (
         <>
         <div className="grid gap-6 lg:grid-cols-2">

@@ -4,6 +4,7 @@ description: Generate batches of compressed, compiler-ready character seeds from
 invokable: true
 always: false
 version: 1.0
+feature_category: seed_generation
 ---
 
 # Seed Generation Engine
@@ -36,13 +37,12 @@ Example:
 romance: realism, slow-burn, power-imbalance
 sci-fi: grounded, intimacy, AI-adjacent
 fantasy: low-magic, domestic, emotionally messy
-```
 
 ## Multi-Genre Handling
 
 If multiple genre lines are provided and no control tag overrides this:
 
-- Output a single mixed batch of `count` seeds.
+feature_category: seed_generation
 - Ensure every provided genre line is represented by at least 2 seeds when count allows.
 - Apply each line's tags locally to the seeds that belong to that genre. Do not smear every tag onto every seed.
 

@@ -4,6 +4,7 @@ description: Generate a concise relationship context and behavior modifier layer
 invokable: true
 always: false
 version: 3.2
+feature_category: generation
 ---
 
 # Blueprint Agent

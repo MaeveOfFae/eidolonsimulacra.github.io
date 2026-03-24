@@ -2,14 +2,16 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { Baby, Loader2, Users, CheckCircle, Square } from 'lucide-react';
-import type { ContentMode, GenerationComplete, Template } from '@char-gen/shared';
+import type { Blueprint, ContentMode, FeatureCategory, GenerationComplete, Template } from '@char-gen/shared';
 import { api } from '@/lib/api';
+import { getBlueprintsForFeature, resolveBlueprintForFeature, toBlueprintOptions } from '@/lib/blueprints/featureSelection';
 import {
   clearActiveOffspringSession,
   loadActiveOffspringSession,
   saveActiveOffspringSession,
 } from '@/lib/services/generation-session';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
+import { BlueprintPanel } from '../common/BlueprintPanel';
 import GenerationProgress from '../generation/GenerationProgress';
 import TraitInheritancePlaceholder from './TraitInheritancePlaceholder';
 import BreedingHistoryPlaceholder from './BreedingHistoryPlaceholder';
@@ -25,6 +27,8 @@ const OFFSPRING_STAGES: Array<{ key: Exclude<OffspringStage, 'idle' | 'error'>; 
   { key: 'saving', label: 'Save Draft', detail: 'Writing the offspring draft and lineage metadata to storage.' },
   { key: 'complete', label: 'Complete', detail: 'Offspring draft is ready for review.' },
 ];
+
+const PAGE_FEATURE_CATEGORY: FeatureCategory = 'offspring_generation';
 
 function getStageIndex(stage: OffspringStage): number {
   const index = OFFSPRING_STAGES.findIndex((entry) => entry.key === stage);
@@ -63,6 +67,12 @@ export default function Offspring() {
   const [error, setError] = useState<string | null>(null);
   const [resumeNotice, setResumeNotice] = useState<string | null>(null);
   const [stage, setStage] = useState<OffspringStage>('idle');
+  const [blueprint, setBlueprint] = useState<Blueprint | null>(null);
+  const [blueprintLoading, setBlueprintLoading] = useState(true);
+  const [blueprintError, setBlueprintError] = useState<string | null>(null);
+  const [selectedBlueprintPath, setSelectedBlueprintPath] = useState<string>('blueprints/system/offspring_generator.md');
+  const [offspringBlueprintOverride, setOffspringBlueprintOverride] = useState<string | null>(null);
+  const [availableBlueprints, setAvailableBlueprints] = useState<Array<{ name: string; label: string }>>([]);
   const isGenerating = isGeneratingSeed || isRunningAssetWorkflow;
   const restoredSessionRef = useRef(loadActiveOffspringSession());
 
@@ -79,7 +89,37 @@ export default function Offspring() {
     queryFn: () => api.getTemplates(),
   });
 
+  useEffect(() => {
+    (async () => {
+      try {
+        const list = await api.getBlueprints();
+        const matching = getBlueprintsForFeature(list, PAGE_FEATURE_CATEGORY);
+        setAvailableBlueprints(toBlueprintOptions(matching));
+
+        const resolved = resolveBlueprintForFeature(
+          list,
+          PAGE_FEATURE_CATEGORY,
+          'blueprints/system/offspring_generator.md'
+        );
+
+        if (resolved) {
+          setBlueprint(resolved);
+          setSelectedBlueprintPath(resolved.path);
+          setBlueprintError(null);
+        } else {
+          setBlueprintError('Offspring blueprint could not be resolved from feature_category metadata.');
+        }
+      } catch (loadError) {
+        console.error('Failed to load offspring blueprint:', loadError);
+        setBlueprintError('Failed to load offspring blueprint.');
+      } finally {
+        setBlueprintLoading(false);
+      }
+    })();
+  }, []);
+
   const getDraftMetadata = (draftId: string) => draftsData?.drafts.find((draft) => draft.review_id === draftId);
+  const effectiveOffspringBlueprint = offspringBlueprintOverride ?? blueprint?.content;
 
   const selectedTemplate = templates.find((availableTemplate: Template) => availableTemplate.name === template);
 
@@ -217,6 +257,7 @@ export default function Offspring() {
         parent2_id: parent2,
         mode,
         template,
+        blueprint_override: effectiveOffspringBlueprint,
       });
 
       abortRef.current = () => stream.abort();
@@ -367,6 +408,19 @@ export default function Offspring() {
     setResumeNotice(null);
   };
 
+  const handleBlueprintSelect = async (path: string) => {
+    try {
+      const nextBlueprint = await api.getBlueprint(path);
+      setBlueprint(nextBlueprint);
+      setSelectedBlueprintPath(path);
+      setOffspringBlueprintOverride(null);
+      setBlueprintError(null);
+    } catch (switchError) {
+      console.error('Failed to switch offspring blueprint:', switchError);
+      setBlueprintError('Failed to switch selected offspring blueprint.');
+    }
+  };
+
   const handleStartAssetWorkflow = () => {
     if (!offspringSeed?.trim()) {
       setError('Offspring seed is empty. Generate or edit a seed before continuing.');
@@ -478,6 +532,25 @@ export default function Offspring() {
           </div>
         </div>
       </section>
+
+      {blueprint && !blueprintLoading && (
+        <BlueprintPanel
+          blueprintName={selectedBlueprintPath}
+          blueprintContent={effectiveOffspringBlueprint || blueprint.content}
+          title="Offspring Blueprint"
+          description={blueprint.description}
+          editable
+          availableBlueprints={availableBlueprints}
+          onBlueprintSelect={handleBlueprintSelect}
+          onContentChange={setOffspringBlueprintOverride}
+        />
+      )}
+
+      {blueprintError && !blueprintLoading && (
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+          {blueprintError}
+        </div>
+      )}
 
       <div className="grid gap-6 md:grid-cols-2">
         <div className="app-panel p-6">

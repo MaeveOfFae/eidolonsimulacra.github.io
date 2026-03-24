@@ -4,6 +4,7 @@ description: Starter blueprint for a clean Markdown character intro page.
 invokable: true
 always: false
 version: 1.0
+feature_category: generation
 ---
 
 # Intro Page

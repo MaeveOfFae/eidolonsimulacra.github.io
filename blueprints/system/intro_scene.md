@@ -4,6 +4,7 @@ description: Generate an engaging, unhurried entry scene that initiates interact
 invokable: true
 always: false
 version: 3.2
+feature_category: intro_scene_generation
 ---
 
 # You are the Blueprint Agent

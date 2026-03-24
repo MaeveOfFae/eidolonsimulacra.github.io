@@ -26,6 +26,7 @@ import type { Draft, Template } from '@char-gen/shared';
 
 interface IntroGeneratorProps {
   templates: Template[];
+  blueprintContent?: string;
 }
 
 interface SavedIntro {
@@ -116,7 +117,7 @@ const exportIntrosAsJson = (
   URL.revokeObjectURL(url);
 };
 
-export default function IntroGenerator({ templates }: IntroGeneratorProps) {
+export default function IntroGenerator({ templates, blueprintContent }: IntroGeneratorProps) {
   const [selectedDraftId, setSelectedDraftId] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatingContent, setGeneratingContent] = useState('');
@@ -252,13 +253,24 @@ export default function IntroGenerator({ templates }: IntroGeneratorProps) {
     try {
       let fullContent = '';
 
-      for await (const progress of GenerationService.generateAsset({
-        seed: enhancedSeed,
-        mode: draft.metadata.mode,
-        template: draft.metadata.template_name,
-        asset_name: 'intro_scene',
-        prior_assets: priorAssets,
-      })) {
+      const stream = blueprintContent?.trim()
+        ? GenerationService.previewBlueprint({
+            seed: enhancedSeed,
+            mode: draft.metadata.mode,
+            template: draft.metadata.template_name,
+            asset_name: 'intro_scene',
+            prior_assets: priorAssets,
+            blueprint_content: blueprintContent,
+          })
+        : GenerationService.generateAsset({
+            seed: enhancedSeed,
+            mode: draft.metadata.mode,
+            template: draft.metadata.template_name,
+            asset_name: 'intro_scene',
+            prior_assets: priorAssets,
+          });
+
+      for await (const progress of stream) {
         if (progress.type === 'chunk' && progress.content) {
           fullContent += progress.content;
           setGeneratingContent(fullContent);

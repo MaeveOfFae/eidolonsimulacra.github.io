@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Sparkles, Loader2, ArrowRight, Copy, Check, RefreshCcw, Wand2, Star, History } from 'lucide-react';
-import type { SeedGenerationRequest } from '@char-gen/shared';
+import type { FeatureCategory, SeedGenerationRequest } from '@char-gen/shared';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
 import { api } from '@/lib/api';
 import type { Blueprint } from '@char-gen/shared';
@@ -24,6 +24,7 @@ import {
   type SeedSuggestionPreset,
 } from '../../lib/seed-generator.js';
 import { BlueprintPanel } from '../common/BlueprintPanel';
+import { getBlueprintsForFeature, resolveBlueprintForFeature, toBlueprintOptions } from '@/lib/blueprints/featureSelection';
 import {
   clearActiveSeedGeneratorSession,
   loadActiveSeedGeneratorSession,
@@ -31,6 +32,7 @@ import {
 } from '@/lib/services/generation-session';
 
 const defaultPreset = pickSurpriseSeedPreset();
+const PAGE_FEATURE_CATEGORY: FeatureCategory = 'seed_generation';
 
 function countNonEmptyLines(value: string): number {
   return value.split('\n').map((line) => line.trim()).filter(Boolean).length;
@@ -67,40 +69,22 @@ export default function SeedGenerator() {
   useEffect(() => {
     (async () => {
       try {
-        const exactPath = 'blueprints/system/seed_generator.md';
         const list = await api.getBlueprints();
-        const allBlueprints = [
-          ...list.system,
-          ...list.core,
-          ...list.examples,
-          ...Object.values(list.templates).flat(),
-        ];
+        const matching = getBlueprintsForFeature(list, PAGE_FEATURE_CATEGORY);
+        setAvailableBlueprints(toBlueprintOptions(matching));
 
-        const options = allBlueprints
-          .filter((entry) => entry.path.includes('/seed_generator') || entry.name.toLowerCase().includes('seed'))
-          .map((entry) => ({ name: entry.path, label: entry.name || entry.path }));
+        const resolved = resolveBlueprintForFeature(
+          list,
+          PAGE_FEATURE_CATEGORY,
+          'blueprints/system/seed_generator.md'
+        );
 
-        if (options.length > 0) {
-          setAvailableBlueprints(options);
-        }
-
-        try {
-          const blueprintData = await api.getBlueprint(exactPath);
-          setBlueprint(blueprintData);
-          setSelectedBlueprintPath(blueprintData.path);
+        if (resolved) {
+          setBlueprint(resolved);
+          setSelectedBlueprintPath(resolved.path);
           setBlueprintError(null);
-          return;
-        } catch {
-          const fallback = allBlueprints
-            .find((entry) => entry.path.endsWith('/seed_generator.md'));
-
-          if (fallback) {
-            setBlueprint(fallback);
-            setSelectedBlueprintPath(fallback.path);
-            setBlueprintError(null);
-          } else {
-            setBlueprintError('Seed generator blueprint could not be resolved from catalog.');
-          }
+        } else {
+          setBlueprintError('Seed generator blueprint could not be resolved from feature_category metadata.');
         }
       } catch (error) {
         console.error('Failed to load seed_generator blueprint:', error);

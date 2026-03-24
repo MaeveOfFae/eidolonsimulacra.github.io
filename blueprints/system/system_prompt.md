@@ -4,6 +4,7 @@ description: Generate a concise role system prompt using the Character System Pr
 invokable: true
 always: false
 version: 3.2
+feature_category: generation
 ---
 
 # Blueprint Agent

@@ -4,6 +4,7 @@ description: Starter blueprint for a parser-friendly character sheet with explic
 invokable: true
 always: false
 version: 1.0
+feature_category: generation
 ---
 
 # Blueprint Agent

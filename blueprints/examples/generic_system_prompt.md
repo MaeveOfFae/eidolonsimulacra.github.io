@@ -4,6 +4,7 @@ description: Minimal starter blueprint for a concise in-character system prompt.
 invokable: true
 always: false
 version: 1.0
+feature_category: generation
 ---
 
 # Blueprint Agent

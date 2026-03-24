@@ -21,6 +21,7 @@ export interface Blueprint {
 
 const BLUEPRINT_PATH_ALIASES: Record<string, string> = {
   rpbotgenerator: 'system/generator.md',
+  seed_generator: 'system/seed_generator.md',
   offspring_generator: 'system/offspring_generator.md',
   system_prompt: 'system/system_prompt.md',
   post_history: 'system/post_history.md',
@@ -31,7 +32,7 @@ const BLUEPRINT_PATH_ALIASES: Record<string, string> = {
 };
 
 function resolveBlueprintPath(nameOrPath: string): string {
-  const normalized = nameOrPath.replace(/^\/+/, '');
+  const normalized = nameOrPath.replace(/^\/+/, '').replace(/^blueprints\//, '');
 
   if (normalized.endsWith('.md')) {
     return normalized;
@@ -68,7 +69,8 @@ export async function loadBlueprint(name: string, baseUrl: string = BLUEPRINT_RE
  * Default blueprints for each feature category
  */
 const DEFAULT_FEATURE_BLUEPRINTS: Partial<Record<FeatureCategory, string>> = {
-  character_generation: 'generator',
+  orchestration: 'generator',
+  seed_generation: 'seed_generator',
   offspring_generation: 'offspring_generator',
 };
 

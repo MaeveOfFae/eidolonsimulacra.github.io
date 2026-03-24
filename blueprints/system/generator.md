@@ -4,7 +4,7 @@ description: Compile a full suite of character assets from a single seed.
 invokable: true
 always: false
 version: 3.2
-feature_category: character_generation
+feature_category: orchestration
 ---
 
 # Generator Orchestrator

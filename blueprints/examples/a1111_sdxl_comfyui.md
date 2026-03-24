@@ -2,6 +2,9 @@
 name: A1111_SDXL_ComfyUI
 description: SDXL-first modular prompt blueprint compatible with AUTOMATIC1111 and ComfyUI.
 version: 4.0
+invokable: true
+always: false
+feature_category: generation
 ---
 
 # SDXL Prompt Blueprint (AUTOMATIC1111 + ComfyUI)

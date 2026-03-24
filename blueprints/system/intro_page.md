@@ -4,6 +4,7 @@ description: Generate a character intro page with Markdown.
 invokable: true
 always: false
 version: 3.2
+feature_category: generation
 ---
 
 # Intro Page

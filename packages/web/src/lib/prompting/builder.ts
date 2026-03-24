@@ -8,7 +8,6 @@ import type {
   ContentMode,
   Template,
 } from '@char-gen/shared';
-import { buildSeedGeneratorSystemPrompt } from '../seed-generator.js';
 import {
   loadBlueprint,
   resolveFeatureBlueprint,
@@ -142,7 +141,7 @@ export async function buildOrchestratorPrompt(
   additionalInstructions: string[] = []
 ): Promise<[system: string, user: string]> {
   // Load orchestrator blueprint - respects settings and override
-  let orchestrator = await resolveFeatureBlueprint('character_generation', blueprintOverride, baseUrl);
+  let orchestrator = await resolveFeatureBlueprint('orchestration', blueprintOverride, baseUrl);
 
   if (template && template.assets.length > 0) {
     orchestrator += buildTemplateOverrideSection(template);
@@ -207,7 +206,7 @@ export async function buildSeedGenPrompt(
   genreLines: string,
   blueprintContent?: string
 ): Promise<[system: string, user: string]> {
-  const systemPrompt = blueprintContent?.trim() || buildSeedGeneratorSystemPrompt();
+  const systemPrompt = blueprintContent?.trim() || await resolveFeatureBlueprint('seed_generation');
 
   return [systemPrompt, genreLines];
 }

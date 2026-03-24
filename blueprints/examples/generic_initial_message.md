@@ -4,6 +4,7 @@ description: Starter blueprint for a first message or opening post addressed to 
 invokable: true
 always: false
 version: 1.0
+feature_category: intro_scene_generation
 ---
 
 # Blueprint Agent
