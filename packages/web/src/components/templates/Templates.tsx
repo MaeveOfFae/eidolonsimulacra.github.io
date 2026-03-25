@@ -16,10 +16,7 @@ import {
 } from 'lucide-react';
 import type { AssetDefinition, CreateTemplateRequest, Template } from '@char-gen/shared';
 import { api } from '@/lib/api';
-import { GETTING_STARTED_TOUR_ID } from '@/lib/help';
 import { saveDownload } from '../../utils/download';
-import InlineHelpTip from '../common/InlineHelpTip';
-import { useGuidedTour } from '../common/GuidedTourContext';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
 import TemplateComparisonPanel from './TemplateComparisonPanel';
 import TemplateMigrationPlaceholder from './TemplateMigrationPlaceholder';
@@ -44,7 +41,6 @@ export default function Templates() {
   const [editingTemplateData, setEditingTemplateData] = useState<CreateTemplateRequest | null>(null);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [validationResults, setValidationResults] = useState<Record<string, { errors: string[]; warnings: string[] }>>({});
-  const { isTourCompleted, restartTour, startTour } = useGuidedTour();
   const queryClient = useQueryClient();
 
   const { data: templates, isLoading, error } = useQuery({
@@ -244,25 +240,13 @@ export default function Templates() {
           </div>
         )}
 
-        <InlineHelpTip
-          tipId="templates-first-choice-tip"
-          title="Choose a template before you generate"
-          description="Templates decide which assets exist. If you're new, start with a built-in template."
-          actionLabel={isTourCompleted(GETTING_STARTED_TOUR_ID) ? 'Replay Getting Started Tour' : 'Start Getting Started Tour'}
-          onAction={() =>
-            isTourCompleted(GETTING_STARTED_TOUR_ID)
-              ? restartTour(GETTING_STARTED_TOUR_ID)
-              : startTour(GETTING_STARTED_TOUR_ID)
-          }
-        />
-
         <section className="app-page-hero">
           <div className="app-page-hero-grid">
             <div className="space-y-4">
-              <p className="app-page-eyebrow">Template management</p>
-              <h1 className="app-page-title">Choose your asset graph</h1>
+              <p className="app-page-eyebrow">Templates</p>
+              <h1 className="app-page-title">Manage templates</h1>
               <p className="app-page-summary">
-                Templates define which assets exist and how they export. Start with the built-in runtime template or create a custom one.
+                Each template defines the asset set, order, and export contract.
               </p>
               <div className="flex flex-wrap items-center gap-3">
                 <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-input px-4 py-2.5 text-sm font-medium hover:bg-accent">
@@ -285,7 +269,7 @@ export default function Templates() {
             </div>
 
             <div className="app-panel-muted p-5">
-              <p className="app-page-eyebrow">Catalog state</p>
+              <p className="app-page-eyebrow">Library</p>
               <div className="mt-4 app-page-metrics">
                 <div className="app-page-metric">
                   <p className="app-page-metric-label">Templates</p>
@@ -320,7 +304,7 @@ export default function Templates() {
                       <span className="font-medium text-foreground">{template.name}</span>
                       {template.is_official && <Star className="h-4 w-4 fill-yellow-500 text-yellow-500" />}
                     </div>
-                    <p className="text-sm text-muted-foreground">{template.description || `${template.assets.length} assets`}</p>
+                    <p className="text-sm text-muted-foreground">{template.description || `${template.assets.length} assets in flow`}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -343,7 +327,7 @@ export default function Templates() {
                           <div className="flex items-center gap-2">
                             <span className={asset.required ? 'text-primary' : 'text-muted-foreground'}>{asset.name}</span>
                             {asset.depends_on.length > 0 && (
-                              <span className="text-xs text-muted-foreground">(depends: {asset.depends_on.join(', ')})</span>
+                              <span className="text-xs text-muted-foreground">depends on {asset.depends_on.join(', ')}</span>
                             )}
                           </div>
                           <div className="flex items-center gap-2">
@@ -447,7 +431,7 @@ export default function Templates() {
           <div className="app-panel p-8 text-center">
             <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
             <h3 className="mt-4 text-lg font-semibold">No templates yet</h3>
-            <p className="text-muted-foreground">Create your first template to customize character generation</p>
+            <p className="text-muted-foreground">Create one to define a custom generation flow.</p>
             <div className="mt-6 text-left">
               <TemplateMigrationPlaceholder templateName="first template" />
             </div>
@@ -457,12 +441,12 @@ export default function Templates() {
         <section className="app-panel p-5">
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
-              <h2 className="text-lg font-semibold">Template Tooling</h2>
+              <h2 className="text-lg font-semibold">Compare templates</h2>
               <p className="text-sm text-muted-foreground">
-                Template comparison is live now for structural diffs. Migration guidance is still staged here until draft-level migration flows exist.
+                Check ordering and contract differences before switching flows.
               </p>
             </div>
-            <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-300">Partial</span>
+            <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-300">Advanced</span>
           </div>
 
           <div className="grid gap-4 lg:grid-cols-2">

@@ -4,15 +4,12 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Sparkles, Zap, BookOpen, XCircle, Loader2, Edit3, MessageSquarePlus } from 'lucide-react';
 import type { ContentMode, FeatureCategory, GenerationComplete, Template } from '@char-gen/shared';
 import { api } from '@/lib/api';
-import { GETTING_STARTED_TOUR_ID } from '@/lib/help';
 import type { Blueprint } from '@char-gen/shared';
 import {
   clearActiveGenerationSession,
   loadActiveGenerationSession,
 } from '@/lib/services/generation-session';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
-import InlineHelpTip from '../common/InlineHelpTip';
-import { useGuidedTour } from '../common/GuidedTourContext';
 import GenerationProgress from './GenerationProgress';
 import DraftRefiner from './DraftRefiner';
 import IntroGenerator from './IntroGenerator';
@@ -31,9 +28,9 @@ interface Tab {
 }
 
 const TABS: Tab[] = [
-  { id: 'generate', label: 'Generate New', icon: Sparkles },
+  { id: 'generate', label: 'New Draft', icon: Sparkles },
   { id: 'refine', label: 'Refine Draft', icon: Edit3 },
-  { id: 'intros', label: 'More Intros', icon: MessageSquarePlus },
+  { id: 'intros', label: 'Intros', icon: MessageSquarePlus },
 ];
 
 const FEATURE_PREFERRED_PATHS: Partial<Record<FeatureCategory, string>> = {
@@ -60,7 +57,6 @@ export default function Generation() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [resumeNotice, setResumeNotice] = useState<string | null>(null);
-  const { isTourCompleted, restartTour, startTour } = useGuidedTour();
   const [blueprint, setBlueprint] = useState<Blueprint | null>(null);
   const [blueprintLoading, setBlueprintLoading] = useState(true);
   const [blueprintError, setBlueprintError] = useState<string | null>(null);
@@ -279,11 +275,11 @@ export default function Generation() {
       <section className="app-page-hero">
         <div className="app-page-hero-grid">
           <div className="space-y-5">
-            <p className="app-page-eyebrow">Generation surface</p>
+            <p className="app-page-eyebrow">Generate</p>
             <div className="space-y-3">
-              <h1 className="app-page-title">Generate a character draft</h1>
+              <h1 className="app-page-title">Build a draft</h1>
               <p className="app-page-summary">
-                Pick a template, set content mode, write a seed, then generate.
+                Set the seed, pick the template, then run the pass.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -299,23 +295,23 @@ export default function Generation() {
           </div>
 
           <div className="app-panel-muted p-5">
-            <p className="app-page-eyebrow">Quick stats</p>
+            <p className="app-page-eyebrow">Current setup</p>
             <div className="mt-4 app-page-metrics">
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">Template</p>
+                <div className="app-page-metric-value text-lg sm:text-2xl">{template || 'Pending'}</div>
+              </div>
               <div className="app-page-metric">
                 <p className="app-page-metric-label">Mode</p>
                 <div className="app-page-metric-value text-2xl">{mode}</div>
               </div>
               <div className="app-page-metric">
-                <p className="app-page-metric-label">Templates</p>
-                <div className="app-page-metric-value text-2xl">{templates.length}</div>
-              </div>
-              <div className="app-page-metric">
-                <p className="app-page-metric-label">Selected</p>
-                <div className="app-page-metric-value text-lg sm:text-2xl">{template || 'Pending'}</div>
-              </div>
-              <div className="app-page-metric">
                 <p className="app-page-metric-label">Assets</p>
                 <div className="app-page-metric-value text-2xl">{selectedTemplate?.assets.length ?? '--'}</div>
+              </div>
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">Available</p>
+                <div className="app-page-metric-value text-2xl">{templates.length}</div>
               </div>
             </div>
           </div>
@@ -372,13 +368,6 @@ export default function Generation() {
         <div className="grid gap-6 lg:grid-cols-2">
         {/* Seed Input Section */}
         <section className="space-y-3">
-          <InlineHelpTip
-            tipId="generate-first-draft-tip"
-            title="Start with one concrete idea"
-            description="Choose the template before you overwork the seed. A short but specific concept plus the right template gives better first drafts than a long unfocused paragraph."
-            actionLabel={isTourCompleted(GETTING_STARTED_TOUR_ID) ? 'Run Getting Started Tour again' : 'Run Getting Started Tour'}
-            onAction={() => (isTourCompleted(GETTING_STARTED_TOUR_ID) ? restartTour(GETTING_STARTED_TOUR_ID) : startTour(GETTING_STARTED_TOUR_ID))}
-          />
           <div data-tour-anchor="generation-seed" className="app-panel p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500">
@@ -387,7 +376,7 @@ export default function Generation() {
               <div>
                 <h2 className="text-xl font-bold">Seed</h2>
                 <p className="text-sm text-muted-foreground">
-                  The core concept for your character
+                  Start with one compact premise.
                 </p>
               </div>
             </div>
@@ -435,7 +424,7 @@ export default function Generation() {
               <div>
                 <h2 className="text-xl font-bold">Options</h2>
                 <p className="text-sm text-muted-foreground">
-                  Configure generation parameters
+                  Pick the mode and template.
                 </p>
               </div>
             </div>
@@ -516,9 +505,9 @@ export default function Generation() {
       <section className="app-panel p-6">
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-lg font-semibold">Planned features</h2>
+            <h2 className="text-lg font-semibold">Approval tooling</h2>
             <p className="text-sm text-muted-foreground">
-              Approval workflows and checkpoints are coming.
+              Review checkpoints are staged here while the full workflow lands.
             </p>
           </div>
           <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">

@@ -78,7 +78,7 @@ export function TemplateComparisonPanel({
             <GitCompare className="h-4 w-4 text-primary" />
             Template Comparison
           </h3>
-          <p className="mt-2">Compare asset sets, dependency contracts, and blueprint paths between two templates.</p>
+          <p className="mt-2">Compare asset sets, dependency contracts, and blueprint paths.</p>
         </div>
         <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
           Live
@@ -117,7 +117,7 @@ export function TemplateComparisonPanel({
 
       {!comparison ? (
         <div className="mt-4 rounded-md border border-border p-3">
-          Select two templates to unlock structural comparison.
+          Select two templates to compare their structure.
         </div>
       ) : (
         <div className="mt-4 space-y-3">

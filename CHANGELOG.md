@@ -1,6 +1,22 @@
 # Changelog
 
 
+## v3.0.18 - 2026-03-25
+
+### Platform and UI update
+
+This release packages 12 recent commits focused on platform, UI, and themes.
+
+### Highlights
+- Clean up layout and drafts components by removing unused imports and enhancing UI text
+- Simplify layout component by removing unused footer links and enhancing button styles
+- Implement utility panel with dynamic shortcuts and page help integration
+- Update version to 3.0.17 and enhance release notes with highlights and links
+- Add synchronization events for themes and drafts with query invalidation
+
+### Links
+- [Open generation](/generate)
+- [Review templates](/templates)
 ## v3.0.17 - 2026-03-25
 
 ### Platform and themes update
@@ -289,6 +305,7 @@ This release packages 12 recent commits focused on documentation, templates, and
 ### Links
 - [Open generation](/generate)
 - [Review templates](/templates)
+
 
 
 
