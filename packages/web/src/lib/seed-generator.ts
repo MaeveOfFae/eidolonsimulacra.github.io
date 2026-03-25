@@ -39,9 +39,21 @@ const SEED_HISTORY_STORAGE_KEY = 'eidolon.web.seedGenerator.history';
 const LEGACY_SEED_HISTORY_STORAGE_KEYS = ['bpui.web.seedGenerator.history'];
 const SEED_FAVORITES_STORAGE_KEY = 'eidolon.web.seedGenerator.favorites';
 const LEGACY_SEED_FAVORITES_STORAGE_KEYS = ['bpui.web.seedGenerator.favorites'];
+const SEED_FAVORITES_SYNC_STATE_STORAGE_KEY = 'eidolon.web.seedGenerator.favorites.syncState';
 const MAX_SEED_HISTORY = 12;
 export const DEFAULT_SEED_COUNT = 12;
 export const SEED_FAVORITES_CHANGED_EVENT = 'seed-favorites-changed';
+
+interface FavoriteSeedSyncState {
+  lastChangedAt?: string;
+  lastSyncedAt?: string;
+}
+
+interface WriteFavoriteSeedsOptions {
+  markChanged?: boolean;
+  markSynced?: boolean;
+  timestamp?: string;
+}
 
 function readStorage<T>(keys: string | readonly string[], fallback: T): T {
   if (typeof window === 'undefined') {
@@ -137,13 +149,28 @@ function normalizeFavoriteSeeds(records: readonly unknown[]): FavoriteSeedRecord
   });
 }
 
-function favoriteSeedTimestamp(record: FavoriteSeedRecord): number {
-  return Date.parse(record.lastUsedAt ?? record.addedAt);
+function readFavoriteSeedSyncState(): FavoriteSeedSyncState {
+  return readStorage<FavoriteSeedSyncState>(SEED_FAVORITES_SYNC_STATE_STORAGE_KEY, {});
 }
 
-function writeFavoriteSeeds(favorites: FavoriteSeedRecord[]): FavoriteSeedRecord[] {
+function writeFavoriteSeedSyncState(state: FavoriteSeedSyncState): void {
+  writeStorage(SEED_FAVORITES_SYNC_STATE_STORAGE_KEY, [], state);
+}
+
+function writeFavoriteSeeds(favorites: FavoriteSeedRecord[], options: WriteFavoriteSeedsOptions = {}): FavoriteSeedRecord[] {
+  const { markChanged = true, markSynced = false, timestamp = new Date().toISOString() } = options;
   const normalized = normalizeFavoriteSeeds(favorites);
   writeStorage(SEED_FAVORITES_STORAGE_KEY, LEGACY_SEED_FAVORITES_STORAGE_KEYS, normalized);
+
+  const nextSyncState = readFavoriteSeedSyncState();
+  if (markChanged) {
+    nextSyncState.lastChangedAt = timestamp;
+  }
+  if (markSynced) {
+    nextSyncState.lastSyncedAt = timestamp;
+  }
+  writeFavoriteSeedSyncState(nextSyncState);
+
   emitFavoriteSeedsChanged(normalized);
   return normalized;
 }
@@ -292,22 +319,30 @@ export function replaceFavoriteSeeds(favorites: readonly FavoriteSeedRecord[]): 
   return writeFavoriteSeeds([...favorites]);
 }
 
-export function mergeFavoriteSeeds(favorites: readonly FavoriteSeedRecord[]): FavoriteSeedRecord[] {
-  const merged = new Map<string, FavoriteSeedRecord>();
+export function replaceFavoriteSeedsFromServer(favorites: readonly FavoriteSeedRecord[]): FavoriteSeedRecord[] {
+  return writeFavoriteSeeds([...favorites], {
+    markChanged: false,
+    markSynced: true,
+  });
+}
 
-  for (const record of [...getFavoriteSeeds(), ...favorites]) {
-    const normalized = normalizeFavoriteSeedRecord(record);
-    if (!normalized) {
-      continue;
-    }
+export function markFavoriteSeedsSynced(timestamp = new Date().toISOString()): void {
+  const nextSyncState = readFavoriteSeedSyncState();
+  nextSyncState.lastSyncedAt = timestamp;
+  writeFavoriteSeedSyncState(nextSyncState);
+}
 
-    const existing = merged.get(normalized.seed);
-    if (!existing || favoriteSeedTimestamp(normalized) >= favoriteSeedTimestamp(existing)) {
-      merged.set(normalized.seed, normalized);
-    }
+export function favoriteSeedsNeedSync(): boolean {
+  const { lastChangedAt, lastSyncedAt } = readFavoriteSeedSyncState();
+  if (!lastChangedAt) {
+    return false;
   }
 
-  return writeFavoriteSeeds(Array.from(merged.values()));
+  if (!lastSyncedAt) {
+    return true;
+  }
+
+  return Date.parse(lastChangedAt) > Date.parse(lastSyncedAt);
 }
 
 export async function hydrateFavoriteSeedsFromServer(): Promise<FavoriteSeedRecord[] | null> {
@@ -320,13 +355,20 @@ export async function hydrateFavoriteSeedsFromServer(): Promise<FavoriteSeedReco
     return null;
   }
 
+  if (favoriteSeedsNeedSync()) {
+    const favorites = getFavoriteSeeds();
+    await serverClient.syncSeeds('push', { seeds: favorites });
+    markFavoriteSeedsSynced();
+    return favorites;
+  }
+
   const payload = await serverClient.syncSeeds('pull') as { seeds?: SyncedSeedRecord[] };
   const favorites = parseFavoriteSeedsPayload(payload);
   if (!favorites) {
     return null;
   }
 
-  return mergeFavoriteSeeds(favorites);
+  return replaceFavoriteSeedsFromServer(favorites);
 }
 
 export function isFavoriteSeed(seed: string): boolean {

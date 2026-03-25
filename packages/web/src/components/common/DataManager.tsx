@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { DraftStorage } from '../../lib/storage/draft-db.js';
 import { configManager } from '../../lib/config/manager.js';
-import { getFavoriteSeeds, mergeFavoriteSeeds, parseFavoriteSeedsPayload, replaceFavoriteSeeds } from '../../lib/seed-generator.js';
+import { getFavoriteSeeds, parseFavoriteSeedsPayload, replaceFavoriteSeeds, replaceFavoriteSeedsFromServer } from '../../lib/seed-generator.js';
 import { queueAutoSync } from '../../lib/server/auto-sync.js';
 import { saveBlobDownload } from '../../utils/download';
 import SyncControls from './SyncControls';
@@ -288,7 +288,7 @@ export default function DataManager() {
               onApplyData={async (data) => {
                 const favorites = parseFavoriteSeedsPayload(data);
                 if (favorites) {
-                  mergeFavoriteSeeds(favorites);
+                  replaceFavoriteSeedsFromServer(favorites);
                   await loadStats();
                 }
               }}

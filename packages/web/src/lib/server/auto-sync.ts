@@ -2,7 +2,7 @@ import type { Draft, ThemePreset } from '@char-gen/shared';
 import { configManager } from '../config/manager.js';
 import { parseBlueprintFrontmatter } from '../prompting/blueprint.js';
 import { DraftStorage } from '../storage/draft-db.js';
-import { getFavoriteSeeds } from '../seed-generator.js';
+import { getFavoriteSeeds, markFavoriteSeedsSynced } from '../seed-generator.js';
 import {
   getBlueprintOverrides,
   getOriginalBlueprintContent,
@@ -198,6 +198,8 @@ async function syncSeeds(): Promise<void> {
   await serverClient.syncSeeds('push', {
     seeds: favorites,
   });
+
+  markFavoriteSeedsSynced();
 }
 
 async function syncBlueprints(): Promise<void> {
