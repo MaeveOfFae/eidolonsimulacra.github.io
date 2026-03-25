@@ -3,6 +3,8 @@
  * Handles authentication and data synchronization with the backend server
  */
 
+import type { Draft, DraftMetadata } from '@char-gen/shared';
+
 // Types
 export interface ServerConfig {
   url: string;
@@ -39,6 +41,74 @@ const ACCESS_TOKEN_KEY = 'server-access-token';
 
 // Custom event for auth state changes
 export const AUTH_STATE_CHANGED_EVENT = 'auth-state-changed';
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function normalizeDraftMode(value: unknown): DraftMetadata['mode'] | undefined {
+  return value === 'SFW' || value === 'NSFW' || value === 'Platform-Safe' || value === 'Auto'
+    ? value
+    : undefined;
+}
+
+function optionalString(value: unknown): string | undefined {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function normalizeDraftForSync(draft: Draft) {
+  const normalizedAssets = Object.fromEntries(
+    Object.entries(draft.assets).filter((entry): entry is [string, string] => {
+      const [assetName, content] = entry;
+      return typeof assetName === 'string' && assetName.length > 0 && typeof content === 'string';
+    })
+  );
+
+  return {
+    reviewId: optionalString(draft.metadata.review_id) ?? draft.path,
+    seed: optionalString(draft.metadata.seed) ?? draft.path,
+    mode: normalizeDraftMode(draft.metadata.mode),
+    model: optionalString(draft.metadata.model),
+    characterName: optionalString(draft.metadata.character_name),
+    templateName: optionalString(draft.metadata.template_name),
+    genre: optionalString(draft.metadata.genre),
+    notes: optionalString(draft.metadata.notes),
+    favorite: Boolean(draft.metadata.favorite),
+    tags: Array.isArray(draft.metadata.tags)
+      ? draft.metadata.tags.filter((tag): tag is string => typeof tag === 'string' && tag.trim().length > 0)
+      : [],
+    offspringType: optionalString(draft.metadata.offspring_type),
+    parentDraftIds: Array.isArray(draft.metadata.parent_drafts)
+      ? draft.metadata.parent_drafts.filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
+      : undefined,
+    assets: normalizedAssets,
+  };
+}
+
+function normalizeDraftPushPayload(data: unknown): unknown {
+  if (!isRecord(data)) {
+    return data;
+  }
+
+  if (Array.isArray(data.drafts) && data.drafts.every((entry) => isRecord(entry) && isRecord(entry.metadata) && isRecord(entry.assets))) {
+    return {
+      drafts: (data.drafts as Draft[]).map(normalizeDraftForSync),
+    };
+  }
+
+  if (isRecord(data.metadata) && isRecord(data.assets)) {
+    return {
+      drafts: [normalizeDraftForSync(data as Draft)],
+    };
+  }
+
+  return data;
+}
 
 /**
  * Server client singleton
@@ -395,9 +465,10 @@ class ServerClient {
   async syncDrafts(action: 'pull' | 'push' | 'list', data?: unknown): Promise<unknown> {
     const isPush = action === 'push';
     const endpoint = isPush ? '/api/sync/drafts/push' : '/api/sync/drafts';
+    const requestData = isPush ? normalizeDraftPushPayload(data) : data;
     const response = await this.request(endpoint, {
       method: isPush ? 'POST' : 'GET',
-      body: isPush ? JSON.stringify(data) : undefined,
+      body: isPush ? JSON.stringify(requestData) : undefined,
     });
 
     if (!response.ok) {
