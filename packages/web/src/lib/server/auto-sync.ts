@@ -96,6 +96,11 @@ function getRemoteBlueprintPath(path: string): string {
   return `blueprints/overrides/${path.replace(/^blueprints\//, '')}`;
 }
 
+function isUuid(value: string | undefined): value is string {
+  return typeof value === 'string'
+    && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
 async function syncDrafts(): Promise<void> {
   const [localDrafts, remoteResponse] = await Promise.all([
     DraftStorage.getAllDrafts(),
@@ -120,9 +125,16 @@ async function syncDrafts(): Promise<void> {
   await Promise.all(
     remoteDrafts
       .filter((draft) => !localReviewIds.has(draft.reviewId))
-      .map((draft) => serverClient.deleteRemoteDraft(draft.id).catch((error) => {
-        console.warn(`Failed to delete remote draft ${draft.reviewId}:`, error);
-      }))
+      .map((draft) => {
+        if (!isUuid(draft.id)) {
+          console.warn(`Skipping remote draft delete for ${draft.reviewId}: server returned non-UUID id.`);
+          return Promise.resolve();
+        }
+
+        return serverClient.deleteRemoteDraft(draft.id).catch((error) => {
+          console.warn(`Failed to delete remote draft ${draft.reviewId}:`, error);
+        });
+      })
   );
 }
 
