@@ -439,6 +439,11 @@ export default function Layout({ children }: LayoutProps) {
   // Centralized auth status check function
   const checkAuthStatus = useCallback(async () => {
     if (serverClient.isEnabled()) {
+      if (!serverClient.hasAccessToken()) {
+        setAuthStatus({ connected: true, authenticated: false });
+        return;
+      }
+
       try {
         const status = await serverClient.checkStatus();
         setAuthStatus(status);

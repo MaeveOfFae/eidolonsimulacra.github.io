@@ -1,6 +1,22 @@
 # Changelog
 
 
+## v3.0.17 - 2026-03-25
+
+### Platform and themes update
+
+This release packages 12 recent commits focused on platform, themes, and runtime.
+
+### Highlights
+- Add synchronization events for themes and drafts with query invalidation
+- Update font loading strategy by moving font imports to HTML
+- Enhance favorite seeds synchronization with new state management and server updates
+- Implement seeds management with CRUD operations and sync functionality
+- Enhance error handling in draft sync process to include error messages
+
+### Links
+- [Open generation](/generate)
+- [Review templates](/templates)
 ## v3.0.16 - 2026-03-25
 
 ### Platform and runtime update
@@ -273,6 +289,7 @@ This release packages 12 recent commits focused on documentation, templates, and
 ### Links
 - [Open generation](/generate)
 - [Review templates](/templates)
+
 
 
 

@@ -16,9 +16,27 @@ export interface ReleaseNoteEntry {
 // Generated and maintained by tools/generation/generate-release-notes.mjs.
 export const releaseNotes: ReleaseNoteEntry[] = [
   {
-    version: '3.0.16',
+    version: '3.0.17',
     releasedOn: '2026-03-25',
     badge: 'Current release',
+    headline: 'Platform and themes update',
+    summary: 'This release packages 12 recent commits focused on platform, themes, and runtime.',
+    highlights: [
+      'Add synchronization events for themes and drafts with query invalidation',
+      'Update font loading strategy by moving font imports to HTML',
+      'Enhance favorite seeds synchronization with new state management and server updates',
+      'Implement seeds management with CRUD operations and sync functionality',
+      'Enhance error handling in draft sync process to include error messages',
+    ],
+    links: [
+      { label: 'Open generation', to: '/generate' },
+      { label: 'Review templates', to: '/templates' },
+    ],
+  },
+  {
+    version: '3.0.16',
+    releasedOn: '2026-03-25',
+    badge: 'Previous release',
     headline: 'Platform and runtime update',
     summary: 'This release packages 12 recent commits focused on platform and runtime.',
     highlights: [

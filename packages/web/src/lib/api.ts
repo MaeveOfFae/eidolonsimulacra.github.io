@@ -1727,7 +1727,7 @@ export class EidolonBrowserAPI {
     }
 
     this.themesSyncPromise = (async () => {
-      if (!serverClient.isEnabled()) {
+      if (!serverClient.isEnabled() || !serverClient.hasAccessToken()) {
         return false;
       }
 
@@ -1802,7 +1802,7 @@ export class EidolonBrowserAPI {
     }
 
     this.draftsSyncPromise = (async () => {
-      if (!serverClient.isEnabled()) {
+      if (!serverClient.isEnabled() || !serverClient.hasAccessToken()) {
         return false;
       }
 

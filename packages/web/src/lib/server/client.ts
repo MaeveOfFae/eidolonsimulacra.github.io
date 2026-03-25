@@ -173,6 +173,10 @@ class ServerClient {
     return this.config.enabled && !!this.config.url;
   }
 
+  hasAccessToken(): boolean {
+    return Boolean(this.accessToken);
+  }
+
   // ===========================================================================
   // Token Management
   // ===========================================================================
@@ -430,9 +434,41 @@ class ServerClient {
     }
   }
 
+  private isConnectivityError(error: unknown): boolean {
+    if (error instanceof TypeError) {
+      return true;
+    }
+
+    if (!(error instanceof Error)) {
+      return false;
+    }
+
+    return /failed to fetch|networkerror|network error|load failed/i.test(error.message);
+  }
+
   private async computeStatus(): Promise<SyncStatus> {
     try {
-      // Check health
+      if (this.hasAccessToken()) {
+        try {
+          const user = await this.getCurrentUser();
+          return { connected: true, authenticated: true, user };
+        } catch (error) {
+          if (this.isConnectivityError(error)) {
+            return {
+              connected: false,
+              authenticated: false,
+              error: error instanceof Error ? error.message : 'Unknown error',
+            };
+          }
+
+          return {
+            connected: true,
+            authenticated: false,
+            error: error instanceof Error ? error.message : 'Authentication failed',
+          };
+        }
+      }
+
       const healthResponse = await fetch(`${this.config.url}/api/health`, {
         method: 'GET',
       });
@@ -441,21 +477,7 @@ class ServerClient {
         return { connected: false, authenticated: false, error: 'Server unreachable' };
       }
 
-      // Check authentication
-      if (!this.getAccessToken()) {
-        return { connected: true, authenticated: false };
-      }
-
-      try {
-        const user = await this.getCurrentUser();
-        return { connected: true, authenticated: true, user };
-      } catch (e) {
-        return {
-          connected: true,
-          authenticated: false,
-          error: e instanceof Error ? e.message : 'Authentication failed',
-        };
-      }
+      return { connected: true, authenticated: false };
     } catch (e) {
       return {
         connected: false,
