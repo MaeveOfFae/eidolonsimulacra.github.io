@@ -171,6 +171,23 @@ function parseJsonDraftPayload(data: unknown): Draft[] {
   return single ? [single] : [];
 }
 
+function isRecognizedDraftJsonPayload(data: unknown): boolean {
+  if (Array.isArray(data)) {
+    return true;
+  }
+
+  if (!isRecord(data)) {
+    return false;
+  }
+
+  return Array.isArray(data.drafts)
+    || isRecord(data.draft)
+    || isRecord(data.assets)
+    || isRecord(data.metadata)
+    || typeof data.reviewId === 'string'
+    || typeof data.review_id === 'string';
+}
+
 function normalizeAssetHeading(heading: string): string {
   return heading.trim().toLowerCase().replace(/\s+/g, '_');
 }
@@ -663,15 +680,20 @@ export class DraftStorage {
     }
 
     let drafts: Draft[] = [];
+    let recognizedJsonPayload = false;
 
     try {
       const jsonData = JSON.parse(trimmed);
+      recognizedJsonPayload = isRecognizedDraftJsonPayload(jsonData);
       drafts = parseJsonDraftPayload(jsonData);
     } catch {
       drafts = parseMarkdownDraftPayload(raw);
     }
 
     if (drafts.length === 0) {
+      if (recognizedJsonPayload) {
+        return { imported: 0, remapped: 0 };
+      }
       throw new Error('Invalid draft import format. Supported: exported drafts JSON and combined markdown draft files.');
     }
 
