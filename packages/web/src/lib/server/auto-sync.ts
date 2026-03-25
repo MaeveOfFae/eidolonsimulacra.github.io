@@ -19,14 +19,11 @@ interface QueueAutoSyncOptions {
 const CUSTOM_THEMES_STORAGE_KEY = 'eidolon.web.themes.custom';
 const LEGACY_CUSTOM_THEMES_STORAGE_KEYS = ['bpui.web.themes.custom'];
 const AUTO_SYNC_DELAY_MS = 900;
-const AUTO_SYNC_HEARTBEAT_INTERVAL_MS = 30000; // Check every 30 seconds
 
 const pendingDomains = new Set<AutoSyncDomain>();
 
 let autoSyncTimer: ReturnType<typeof setTimeout> | null = null;
-let autoSyncHeartbeat: ReturnType<typeof setInterval> | null = null;
 let activeFlush: Promise<void> | null = null;
-let isInitialized = false;
 
 function readCustomThemes(): ThemePreset[] {
   if (typeof window === 'undefined') {
@@ -288,43 +285,10 @@ async function flushPendingAutoSync(): Promise<void> {
   }
 }
 
-/**
- * Initialize the auto-sync heartbeat to periodically check for pending syncs.
- * This should be called once when the app loads to ensure syncs don't stall.
- */
-function initializeAutoSyncHeartbeat(): void {
-  if (isInitialized || typeof window === 'undefined') {
-    return;
-  }
-
-  isInitialized = true;
-
-  // Start periodic heartbeat to check for stuck pending syncs
-  autoSyncHeartbeat = setInterval(() => {
-    // If there are pending syncs and no active flush/timer, schedule a flush
-    if (pendingDomains.size > 0 && !autoSyncTimer && !activeFlush) {
-      void flushPendingAutoSync();
-    }
-  }, AUTO_SYNC_HEARTBEAT_INTERVAL_MS);
-
-  // Clean up on page unload
-  if (typeof window !== 'undefined') {
-    window.addEventListener('pagehide', () => {
-      if (autoSyncHeartbeat) {
-        clearInterval(autoSyncHeartbeat);
-        autoSyncHeartbeat = null;
-      }
-    });
-  }
-}
-
 export function queueAutoSync(
   domains: AutoSyncDomain | AutoSyncDomain[],
   options: QueueAutoSyncOptions = {}
 ): void {
-  // Initialize heartbeat on first call
-  initializeAutoSyncHeartbeat();
-
   const nextDomains = Array.isArray(domains) ? domains : [domains];
   nextDomains.forEach((domain) => pendingDomains.add(domain));
 
@@ -350,7 +314,5 @@ export function queueAutoSync(
  * to immediately push pending data when needed.
  */
 export function triggerAutoSyncFlush(): Promise<void> {
-  // Initialize heartbeat on first call
-  initializeAutoSyncHeartbeat();
   return flushPendingAutoSync();
 }
