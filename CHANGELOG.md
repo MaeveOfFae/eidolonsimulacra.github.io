@@ -1,6 +1,22 @@
 # Changelog
 
 
+## v3.0.14 - 2026-03-25
+
+### Platform and documentation update
+
+This release packages 12 recent commits focused on platform, documentation, and templates.
+
+### Highlights
+- Update draft sync endpoints to unify API calls and improve error handling
+- Validate UUIDs before deleting remote drafts to prevent errors
+- Remove auto-sync heartbeat logic and related initialization to simplify sync process
+- Enhance ServerClient with status caching and rate limiting for improved sync performance
+- Improve draft synchronization logic by refining endpoint handling and adding retry conditions
+
+### Links
+- [Open generation](/generate)
+- [Review templates](/templates)
 ## v3.0.13 - 2026-03-25
 
 ### Templates and documentation update
@@ -225,6 +241,7 @@ This release packages 12 recent commits focused on documentation, templates, and
 ### Links
 - [Open generation](/generate)
 - [Review templates](/templates)
+
 
 
 

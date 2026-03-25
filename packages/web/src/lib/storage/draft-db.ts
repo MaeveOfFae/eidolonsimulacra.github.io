@@ -77,11 +77,17 @@ function getUniqueReviewId(usedIds: Set<string>): string {
 
 function coerceDraftMetadata(raw: unknown, fallbackSeed: string): DraftMetadata {
   const source = isRecord(raw) ? raw : {};
-  const review_id = typeof source.review_id === 'string' && source.review_id.trim().length > 0
+  const reviewIdValue = typeof source.review_id === 'string'
     ? source.review_id
+    : typeof source.reviewId === 'string'
+      ? source.reviewId
+      : '';
+  const review_id = reviewIdValue.trim().length > 0
+    ? reviewIdValue
     : createImportedReviewId();
-  const seed = typeof source.seed === 'string' && source.seed.trim().length > 0
-    ? source.seed
+  const seedValue = typeof source.seed === 'string' ? source.seed : '';
+  const seed = seedValue.trim().length > 0
+    ? seedValue
     : fallbackSeed;
 
   const metadata: DraftMetadata = {
@@ -93,16 +99,26 @@ function coerceDraftMetadata(raw: unknown, fallbackSeed: string): DraftMetadata 
   metadata.mode = coerceContentMode(source.mode);
   if (typeof source.model === 'string') metadata.model = source.model;
   if (typeof source.created === 'string') metadata.created = source.created;
+  else if (typeof source.createdAt === 'string') metadata.created = source.createdAt;
   if (typeof source.modified === 'string') metadata.modified = source.modified;
+  else if (typeof source.updatedAt === 'string') metadata.modified = source.updatedAt;
   if (Array.isArray(source.tags)) metadata.tags = source.tags.filter((tag): tag is string => typeof tag === 'string');
   if (typeof source.genre === 'string') metadata.genre = source.genre;
   if (typeof source.notes === 'string') metadata.notes = source.notes;
   if (typeof source.character_name === 'string') metadata.character_name = source.character_name;
+  else if (typeof source.characterName === 'string') metadata.character_name = source.characterName;
   if (typeof source.template_name === 'string') metadata.template_name = source.template_name;
-  if (Array.isArray(source.parent_drafts)) {
-    metadata.parent_drafts = source.parent_drafts.filter((id): id is string => typeof id === 'string');
+  else if (typeof source.templateName === 'string') metadata.template_name = source.templateName;
+  const parentDraftsValue = Array.isArray(source.parent_drafts)
+    ? source.parent_drafts
+    : Array.isArray(source.parentDraftIds)
+      ? source.parentDraftIds
+      : null;
+  if (parentDraftsValue) {
+    metadata.parent_drafts = parentDraftsValue.filter((id): id is string => typeof id === 'string');
   }
   if (typeof source.offspring_type === 'string') metadata.offspring_type = source.offspring_type;
+  else if (typeof source.offspringType === 'string') metadata.offspring_type = source.offspringType;
 
   return metadata;
 }
@@ -123,9 +139,11 @@ function coerceDraft(value: unknown, fallbackSeed = 'Imported draft'): Draft | n
     return null;
   }
 
-  const metadata = coerceDraftMetadata(value.metadata, fallbackSeed);
+  const metadata = coerceDraftMetadata(isRecord(value.metadata) ? value.metadata : value, fallbackSeed);
   const path = typeof value.path === 'string' && value.path.trim().length > 0
     ? value.path
+    : typeof value.reviewId === 'string' && value.reviewId.trim().length > 0
+      ? value.reviewId
     : metadata.review_id;
 
   return { metadata, assets, path };
@@ -142,6 +160,11 @@ function parseJsonDraftPayload(data: unknown): Draft[] {
 
   if (Array.isArray(data.drafts)) {
     return data.drafts.map((entry) => coerceDraft(entry)).filter((entry): entry is Draft => entry !== null);
+  }
+
+  if (isRecord(data.draft)) {
+    const singleDraft = coerceDraft(data.draft);
+    return singleDraft ? [singleDraft] : [];
   }
 
   const single = coerceDraft(data);

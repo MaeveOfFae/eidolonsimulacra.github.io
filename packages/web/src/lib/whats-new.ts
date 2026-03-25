@@ -16,9 +16,27 @@ export interface ReleaseNoteEntry {
 // Generated and maintained by tools/generation/generate-release-notes.mjs.
 export const releaseNotes: ReleaseNoteEntry[] = [
   {
-    version: '3.0.13',
+    version: '3.0.14',
     releasedOn: '2026-03-25',
     badge: 'Current release',
+    headline: 'Platform and documentation update',
+    summary: 'This release packages 12 recent commits focused on platform, documentation, and templates.',
+    highlights: [
+      'Update draft sync endpoints to unify API calls and improve error handling',
+      'Validate UUIDs before deleting remote drafts to prevent errors',
+      'Remove auto-sync heartbeat logic and related initialization to simplify sync process',
+      'Enhance ServerClient with status caching and rate limiting for improved sync performance',
+      'Improve draft synchronization logic by refining endpoint handling and adding retry conditions',
+    ],
+    links: [
+      { label: 'Open generation', to: '/generate' },
+      { label: 'Review templates', to: '/templates' },
+    ],
+  },
+  {
+    version: '3.0.13',
+    releasedOn: '2026-03-25',
+    badge: 'Previous release',
     headline: 'Templates and documentation update',
     summary: 'This release packages 12 recent commits focused on templates and documentation.',
     highlights: [
