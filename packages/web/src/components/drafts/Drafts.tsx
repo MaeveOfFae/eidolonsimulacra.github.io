@@ -5,7 +5,6 @@ import { FolderOpen, Upload, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { api } from '@/lib/api';
 import SyncControls from '../common/SyncControls';
 import { DraftStorage } from '@/lib/storage/draft-db';
-import InlineHelpTip from '../common/InlineHelpTip';
 import { useGuidedTour } from '../common/GuidedTourContext';
 import { DRAFT_LIBRARY_TOUR_ID } from '@/lib/help';
 import { LibraryCollectionsPlaceholder } from './LibraryCollectionsPlaceholder';
@@ -86,20 +85,13 @@ export default function Drafts() {
 
   return (
     <div className="app-page space-y-10 pb-12">
-      <InlineHelpTip
-        tipId="drafts-library-tip"
-        title="Use the library as a review queue"
-        description="Select drafts to compare and review. Use filters to find characters quickly."
-        actionLabel={isTourCompleted(DRAFT_LIBRARY_TOUR_ID) ? 'Replay Draft Library Tour' : 'Start Draft Library Tour'}
-        onAction={() => (isTourCompleted(DRAFT_LIBRARY_TOUR_ID) ? restartTour(DRAFT_LIBRARY_TOUR_ID) : startTour(DRAFT_LIBRARY_TOUR_ID))}
-      />
       <section className="app-page-hero">
         <div className="app-page-hero-grid">
           <div className="space-y-4">
             <p className="app-page-eyebrow">Draft library</p>
-            <h1 className="app-page-title">Your active review queue</h1>
+            <h1 className="app-page-title">Review current work</h1>
             <p className="app-page-summary">
-              Reopen work, compare candidates, validate, then export. This is where you manage character drafts.
+              Reopen drafts, compare them, and move the best ones forward.
             </p>
             <div className="flex flex-wrap gap-3">
               <Link to="/generate" className="inline-flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
@@ -123,6 +115,13 @@ export default function Drafts() {
                 onChange={handleImportDrafts}
                 className="hidden"
               />
+              <button
+                type="button"
+                onClick={() => (isTourCompleted(DRAFT_LIBRARY_TOUR_ID) ? restartTour(DRAFT_LIBRARY_TOUR_ID) : startTour(DRAFT_LIBRARY_TOUR_ID))}
+                className="inline-flex items-center gap-2 rounded-2xl border border-border/60 bg-background/55 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary/35 hover:text-primary"
+              >
+                {isTourCompleted(DRAFT_LIBRARY_TOUR_ID) ? 'Replay tour' : 'Start tour'}
+              </button>
             </div>
           </div>
 
@@ -168,27 +167,6 @@ export default function Drafts() {
         </div>
       )}
 
-      {/* Stats */}
-      {data?.stats && (
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div className="app-panel-muted p-4">
-            <div className="text-2xl font-bold">{data.stats.total_drafts}</div>
-            <div className="text-sm text-muted-foreground">Total Drafts</div>
-          </div>
-          <div className="app-panel-muted p-4">
-            <div className="text-2xl font-bold">{data.stats.favorites}</div>
-            <div className="text-sm text-muted-foreground">Favorites</div>
-          </div>
-          <div className="app-panel-muted p-4">
-            <div className="text-2xl font-bold">
-              {Object.keys(data.stats.by_genre).length}
-            </div>
-            <div className="text-sm text-muted-foreground">Genres</div>
-          </div>
-        </div>
-      )}
-
-      {/* Server Sync */}
       <div className="app-panel p-4">
         <SyncControls
           dataType="drafts"
@@ -229,9 +207,9 @@ export default function Drafts() {
         <section data-tour-anchor="drafts-workbench" className="app-panel p-5">
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
-              <h2 className="text-lg font-semibold">Draft Workbench</h2>
+              <h2 className="text-lg font-semibold">Workbench</h2>
               <p className="text-sm text-muted-foreground">
-                Select drafts from the sidebar to compare and review. Use the filters to find specific characters.
+                Compare drafts and inspect the active one.
               </p>
             </div>
             <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">

@@ -21,7 +21,6 @@ import { configManager, isInvalidApiKeyValue, normalizeApiKeyValue } from '../..
 import { queueAutoSync } from '../../lib/server/auto-sync.js';
 import { createEngine, MODEL_SUGGESTIONS } from '../../lib/llm/factory.js';
 import { GETTING_STARTED_TOUR_ID } from '@/lib/help';
-import InlineHelpTip from '../common/InlineHelpTip';
 import { useGuidedTour } from '../common/GuidedTourContext';
 import ServerSettings from './ServerSettings';
 import { getBlueprintsForFeature } from '@/lib/blueprints/featureSelection';
@@ -363,9 +362,9 @@ export default function Settings() {
         <div className="app-page-hero-grid">
           <div className="space-y-4">
             <p className="app-page-eyebrow">Runtime configuration</p>
-            <h1 className="app-page-title">Configure the browser</h1>
+            <h1 className="app-page-title">Settings</h1>
             <p className="app-page-summary">
-              Set up API keys, choose a model, and manage browser-local settings here.
+              API keys, model choice, and runtime defaults.
             </p>
           </div>
 
@@ -392,20 +391,6 @@ export default function Settings() {
       <div className="grid gap-6 lg:grid-cols-3">
         {/* API Keys Section */}
         <section className="lg:col-span-2 space-y-3">
-
-        <div className="app-note border-amber-500/30 bg-amber-500/10 p-4 text-sm">
-          <div className="font-semibold text-foreground">Browser-only persistence</div>
-          <p className="mt-1 text-muted-foreground">
-            Settings, API keys, drafts, templates, themes, and blueprint overrides are stored locally in this browser profile. No backend service is required for the web app runtime.
-          </p>
-        </div>
-          <InlineHelpTip
-            tipId="settings-provider-tip"
-            title="Most early generation failures start here"
-            description="Pick the provider you actually use, enter its key, then confirm the model. If direct OpenAI browser calls are blocked, switch to OpenRouter or your own relay instead of retrying blindly."
-            actionLabel={isTourCompleted(GETTING_STARTED_TOUR_ID) ? 'Replay provider setup tour step' : 'Run Getting Started Tour'}
-            onAction={() => (isTourCompleted(GETTING_STARTED_TOUR_ID) ? restartTour(GETTING_STARTED_TOUR_ID) : startTour(GETTING_STARTED_TOUR_ID))}
-          />
           <div data-tour-anchor="settings-api-keys" className="app-panel p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2 rounded-xl bg-gradient-to-br from-primary to-accent">
@@ -413,9 +398,7 @@ export default function Settings() {
               </div>
               <div>
                 <h2 className="text-xl font-bold">API Keys</h2>
-                <p className="text-sm text-muted-foreground">
-                  Keys stay in browser and are sent with each request.
-                </p>
+                <p className="text-sm text-muted-foreground">Stored in this browser profile.</p>
               </div>
             </div>
 
@@ -434,7 +417,7 @@ export default function Settings() {
             {persistKeys && (
               <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-3">
                 <p className="text-sm text-amber-900 dark:text-amber-100">
-                  Warning: API keys are stored in localStorage. Clearing browser data will remove them. Use with caution on shared devices.
+                  Stored in localStorage. Use caution on shared devices.
                 </p>
               </div>
             )}
@@ -498,9 +481,7 @@ export default function Settings() {
               </div>
               <div>
                 <h2 className="text-xl font-bold">Model</h2>
-                <p className="text-sm text-muted-foreground">
-                  Choose your preferred LLM provider and model.
-                </p>
+                <p className="text-sm text-muted-foreground">Provider and model selection.</p>
               </div>
             </div>
 
@@ -543,9 +524,6 @@ export default function Settings() {
                     Explicit
                   </button>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Auto uses provider inference from the model ID. Explicit locks generation to the selected provider.
-                </p>
               </div>
 
               <div className="space-y-2">
@@ -579,9 +557,9 @@ export default function Settings() {
                 </select>
                 <p className="text-xs text-muted-foreground mt-1">
                   {modelsLoading
-                    ? 'Loading models from provider API...'
+                    ? 'Loading models...'
                     : availableModels.length > 0
-                      ? `Loaded ${availableModels.length} models from ${selectedProvider}.`
+                      ? `Loaded ${availableModels.length} models.`
                       : 'Showing built-in suggestions.'}
                 </p>
                 {modelsNotice && (
@@ -600,9 +578,6 @@ export default function Settings() {
                   placeholder="e.g., openrouter/openai/gpt-4o-mini"
                   className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Use format: provider/model-name
-                </p>
               </div>
 
               <div className="space-y-2">
@@ -624,9 +599,6 @@ export default function Settings() {
                   placeholder="e.g., https://your-proxy.example.com/v1"
                   className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Override the default API endpoint for the selected provider. Useful for proxies, relays, or self-hosted models.
-                </p>
               </div>
 
               <div className="space-y-2">
@@ -651,9 +623,6 @@ export default function Settings() {
                     )}
                   </button>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Optional API key for your custom proxy if it requires authentication.
-                </p>
               </div>
             </div>
 
@@ -687,19 +656,6 @@ export default function Settings() {
             </div>
           </div>
 
-          {/* Quick Save Button */}
-          <div className="flex items-center gap-3 pt-2">
-            <button
-              onClick={() => void updateConfig()}
-              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary to-accent px-6 py-2.5 text-sm font-semibold text-primary-foreground hover:from-primary/90 hover:to-accent/90 transition-all duration-200 shadow-lg shadow-primary/20"
-            >
-              <Save className="h-4 w-4" />
-              Save Settings
-            </button>
-            {themeNotice && (
-              <span className="text-sm text-green-600 dark:text-green-400">{themeNotice}</span>
-            )}
-          </div>
         </section>
       </div>
 
@@ -764,9 +720,7 @@ export default function Settings() {
           </div>
           <div>
             <h2 className="text-xl font-bold">Feature Blueprint Defaults</h2>
-            <p className="text-sm text-muted-foreground">
-              Select default blueprints for each generation feature. Create custom blueprints in the Blueprint Editor.
-            </p>
+            <p className="text-sm text-muted-foreground">Choose default blueprints per feature.</p>
           </div>
         </div>
 
@@ -949,9 +903,7 @@ export default function Settings() {
           </div>
           <div>
             <h2 className="text-xl font-bold">Server Sync</h2>
-            <p className="text-sm text-muted-foreground">
-              Connect to a self-hosted server to sync data across devices.
-            </p>
+            <p className="text-sm text-muted-foreground">Optional cross-device sync.</p>
           </div>
         </div>
         <ServerSettings />
@@ -964,9 +916,7 @@ export default function Settings() {
           </div>
           <div>
             <h2 className="text-xl font-bold">Help and Tutorials</h2>
-            <p className="text-sm text-muted-foreground">
-              Control the first-run guide and inline help surfaces.
-            </p>
+            <p className="text-sm text-muted-foreground">Guide and help preferences.</p>
           </div>
         </div>
 

@@ -5,17 +5,11 @@ import {
   Sparkles,
   FolderOpen,
   FileText,
-  GitCompare,
   Baby,
   GitBranch,
   Settings,
   Menu,
   X,
-  Layers,
-  BookOpen,
-  Dice1,
-  ShieldCheck,
-  Palette,
   Info,
   CircleHelp,
   LogIn,
@@ -65,14 +59,8 @@ interface TraySection {
 const navItems = [
   { path: '/', label: 'Home', icon: Home },
   { path: '/generate', label: 'Generate', icon: Sparkles },
-  { path: '/seed-generator', label: 'Seed Generator', icon: Dice1 },
-  { path: '/batch', label: 'Batch', icon: Layers },
-  { path: '/validation', label: 'Validation', icon: ShieldCheck },
-  { path: '/similarity', label: 'Compare', icon: GitCompare },
   { path: '/drafts', label: 'Drafts', icon: FolderOpen },
   { path: '/templates', label: 'Templates', icon: FileText },
-  { path: '/blueprints', label: 'Blueprints', icon: BookOpen },
-  { path: '/themes', label: 'Theme Studio', icon: Palette },
   { path: '/settings', label: 'Settings', icon: Settings },
 ];
 
@@ -371,12 +359,15 @@ export default function Layout({ children }: LayoutProps) {
 
     return [{
       id: 'general',
-      title: 'Page Tray',
-      emptyLabel: 'No page-specific items available.',
+      title: 'Shortcuts',
+      emptyLabel: 'No shortcuts available.',
       items: [
-        { id: 'nav-home', label: 'Home', to: '/' },
-        { id: 'nav-drafts', label: 'Drafts', description: `${draftsCount} saved`, to: '/drafts' },
-        { id: 'nav-settings', label: 'Settings', to: '/settings' },
+        { id: 'nav-seeds', label: 'Seed Generator', to: '/seed-generator' },
+        { id: 'nav-validation', label: 'Validation', to: '/validation' },
+        { id: 'nav-batch', label: 'Batch', to: '/batch' },
+        { id: 'nav-compare', label: 'Compare', to: '/similarity' },
+        { id: 'nav-blueprints', label: 'Blueprints', to: '/blueprints' },
+        { id: 'nav-themes', label: 'Theme Studio', to: '/themes' },
       ],
     }];
   }, [location.pathname, draftsData?.drafts, draftsCount, reviewDraftId, reviewDraft?.assets, templatesData, themesData, blueprintsData, seedsCount]);
