@@ -1534,6 +1534,11 @@ function createDownload(content: string, filename: string, type: string): Downlo
   };
 }
 
+function escapeAssetContentForMarkdownBundle(content: string): string {
+  // Prevent in-body markdown headings from being parsed as top-level asset sections on re-import.
+  return content.replace(/^##/gm, '\\##');
+}
+
 async function generateWithCurrentConfig(messages: ChatMessage[]): Promise<AsyncIterable<{ content?: string; done?: boolean }>> {
   const config = configManager.getConfig();
   const apiKeys = configManager.getApiKeys();
@@ -2471,7 +2476,7 @@ export class EidolonBrowserAPI {
 
     if (preset === 'text') {
       const content = Object.entries(draft.assets)
-        .map(([assetName, value]) => `## ${assetName}\n\n${value}`)
+        .map(([assetName, value]) => `## ${assetName}\n\n${escapeAssetContentForMarkdownBundle(value)}`)
         .join('\n\n');
       return createDownload(content, `${fileBase}.txt`, 'text/plain');
     }
@@ -2480,7 +2485,7 @@ export class EidolonBrowserAPI {
       const sections = [
         `# ${draft.metadata.character_name || draft.metadata.seed}`,
         includeMetadata ? `## Metadata\n\n${JSON.stringify(draft.metadata, null, 2)}` : '',
-        ...Object.entries(draft.assets).map(([assetName, value]) => `## ${assetName}\n\n${value}`),
+        ...Object.entries(draft.assets).map(([assetName, value]) => `## ${assetName}\n\n${escapeAssetContentForMarkdownBundle(value)}`),
       ].filter(Boolean);
       return createDownload(sections.join('\n\n'), `${fileBase}.md`, 'text/markdown');
     }

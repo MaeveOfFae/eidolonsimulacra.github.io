@@ -40,6 +40,16 @@ const worldQuerySchema = z.object({
   includePublic: z.enum(["true", "false"]).optional(),
 });
 
+const pushWorldSchema = z.object({
+  name: z.string().min(1).max(255),
+  description: z.string().optional(),
+  genre: z.string().optional(),
+  setting: z.string().optional(),
+  notes: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  isPublic: z.boolean().optional(),
+});
+
 // GET / - List worlds
 router.get(
   "/",
@@ -418,34 +428,51 @@ router.post(
   "/push",
   authenticateToken,
   validateBody(z.object({
-    worlds: z.array(z.record(z.unknown())),
+    worlds: z.array(pushWorldSchema),
   })),
   async (req: Request, res: Response): Promise<void> => {
     const userId = req.user!.userId;
-    const { worlds } = req.body as { worlds: Record<string, unknown>[] };
+    const { worlds } = req.body as { worlds: Array<z.infer<typeof pushWorldSchema>> };
     const results: Array<{ id?: string; name: string; status: string }> = [];
 
     for (const worldData of worlds) {
       try {
-        const name = worldData.name as string;
+        const name = worldData.name;
         const existing = await prisma.world.findFirst({
           where: { userId, name },
         });
 
+        const worldWriteData = {
+          name: worldData.name,
+          description: worldData.description,
+          genre: worldData.genre,
+          setting: worldData.setting,
+          notes: worldData.notes,
+          tags: worldData.tags ?? [],
+          isPublic: worldData.isPublic ?? false,
+        };
+
         if (existing) {
           await prisma.world.update({
             where: { id: existing.id },
-            data: worldData as unknown as Prisma.WorldUpdateInput,
+            data: {
+              description: worldWriteData.description,
+              genre: worldWriteData.genre,
+              setting: worldWriteData.setting,
+              notes: worldWriteData.notes,
+              tags: worldWriteData.tags,
+              isPublic: worldWriteData.isPublic,
+            },
           });
           results.push({ id: existing.id, name, status: "updated" });
         } else {
           const created = await prisma.world.create({
-            data: { ...worldData, userId } as unknown as Prisma.WorldCreateInput,
+            data: { ...worldWriteData, userId },
           });
           results.push({ id: created.id, name, status: "created" });
         }
       } catch {
-        results.push({ name: worldData.name as string, status: "error" });
+        results.push({ name: worldData.name, status: "error" });
       }
     }
 

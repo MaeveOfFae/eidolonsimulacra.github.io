@@ -85,14 +85,6 @@ async function syncDrafts(): Promise<void> {
   const localReviewIds = new Set(localDrafts.map((draft) => draft.metadata.review_id));
   const remoteDrafts = remoteResponse.drafts || [];
 
-  await Promise.all(
-    remoteDrafts
-      .filter((draft) => !localReviewIds.has(draft.reviewId))
-      .map((draft) => serverClient.deleteRemoteDraft(draft.id).catch((error) => {
-        console.warn(`Failed to delete remote draft ${draft.reviewId}:`, error);
-      }))
-  );
-
   const pushResult = await serverClient.syncDrafts('push', {
     drafts: localDrafts.map(mapDraftForSync),
   }) as { results?: Array<{ reviewId: string; status: string }> };
@@ -104,6 +96,14 @@ async function syncDrafts(): Promise<void> {
   if (failedReviewIds.length > 0) {
     throw new Error(`Remote draft sync failed for: ${failedReviewIds.join(', ')}`);
   }
+
+  await Promise.all(
+    remoteDrafts
+      .filter((draft) => !localReviewIds.has(draft.reviewId))
+      .map((draft) => serverClient.deleteRemoteDraft(draft.id).catch((error) => {
+        console.warn(`Failed to delete remote draft ${draft.reviewId}:`, error);
+      }))
+  );
 }
 
 async function syncThemes(): Promise<void> {
@@ -111,14 +111,6 @@ async function syncThemes(): Promise<void> {
   const remoteResponse = await serverClient.listRemoteThemes();
   const remoteThemes = remoteResponse.themes || [];
   const localThemeNames = new Set(localThemes.map((theme) => theme.name));
-
-  await Promise.all(
-    remoteThemes
-      .filter((theme) => !theme.isBuiltin && !localThemeNames.has(theme.name))
-      .map((theme) => serverClient.deleteRemoteTheme(theme.name).catch((error) => {
-        console.warn(`Failed to delete remote theme ${theme.name}:`, error);
-      }))
-  );
 
   await serverClient.syncThemes('push', {
     themes: localThemes.map((theme) => ({
@@ -131,6 +123,14 @@ async function syncThemes(): Promise<void> {
       colors: theme.colors,
     })),
   });
+
+  await Promise.all(
+    remoteThemes
+      .filter((theme) => !theme.isBuiltin && !localThemeNames.has(theme.name))
+      .map((theme) => serverClient.deleteRemoteTheme(theme.name).catch((error) => {
+        console.warn(`Failed to delete remote theme ${theme.name}:`, error);
+      }))
+  );
 }
 
 async function syncTemplates(): Promise<void> {
@@ -138,14 +138,6 @@ async function syncTemplates(): Promise<void> {
   const remoteResponse = await serverClient.listRemoteTemplates();
   const remoteTemplates = remoteResponse.templates || [];
   const localNames = new Set(localRecords.map((record) => record.template.name));
-
-  await Promise.all(
-    remoteTemplates
-      .filter((template) => !template.isOfficial && !localNames.has(template.name))
-      .map((template) => serverClient.deleteRemoteTemplate(template.name).catch((error) => {
-        console.warn(`Failed to delete remote template ${template.name}:`, error);
-      }))
-  );
 
   await serverClient.syncTemplates('push', {
     templates: localRecords.map((record) => ({
@@ -157,6 +149,14 @@ async function syncTemplates(): Promise<void> {
       blueprintContent: record.blueprint_contents,
     })),
   });
+
+  await Promise.all(
+    remoteTemplates
+      .filter((template) => !template.isOfficial && !localNames.has(template.name))
+      .map((template) => serverClient.deleteRemoteTemplate(template.name).catch((error) => {
+        console.warn(`Failed to delete remote template ${template.name}:`, error);
+      }))
+  );
 }
 
 async function syncBlueprints(): Promise<void> {
@@ -167,6 +167,23 @@ async function syncBlueprints(): Promise<void> {
   const remoteResponse = await serverClient.listRemoteBlueprints();
   const remoteBlueprints = remoteResponse.blueprints || [];
 
+  if (entries.length > 0) {
+    await serverClient.syncBlueprints('push', {
+      blueprints: entries.map(([path, content]) => {
+        const metadata = parseBlueprintFrontmatter(content);
+        return {
+          path: getRemoteBlueprintPath(path),
+          name: metadata.name,
+          description: metadata.description,
+          invokable: metadata.invokable,
+          version: metadata.version,
+          category: 'custom' as const,
+          content,
+        };
+      }),
+    });
+  }
+
   await Promise.all(
     remoteBlueprints
       .filter((blueprint) => !blueprint.isBuiltin && !expectedRemotePaths.has(blueprint.path))
@@ -174,25 +191,6 @@ async function syncBlueprints(): Promise<void> {
         console.warn(`Failed to delete remote blueprint ${blueprint.path}:`, error);
       }))
   );
-
-  if (entries.length === 0) {
-    return;
-  }
-
-  await serverClient.syncBlueprints('push', {
-    blueprints: entries.map(([path, content]) => {
-      const metadata = parseBlueprintFrontmatter(content);
-      return {
-        path: getRemoteBlueprintPath(path),
-        name: metadata.name,
-        description: metadata.description,
-        invokable: metadata.invokable,
-        version: metadata.version,
-        category: 'custom' as const,
-        content,
-      };
-    }),
-  });
 }
 
 async function syncConfig(): Promise<void> {

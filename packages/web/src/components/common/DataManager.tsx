@@ -101,11 +101,14 @@ export default function DataManager() {
 
     try {
       const text = await file.text();
-      await DraftStorage.import(text);
+      const result = await DraftStorage.import(text);
       queueAutoSync('drafts');
       await loadStats();
 
-      setNotice({ type: 'success', message: `Imported drafts from ${file.name}` });
+      const remapMessage = result.remapped > 0
+        ? ` (${result.remapped} review IDs remapped to avoid overwrite)`
+        : '';
+      setNotice({ type: 'success', message: `Imported ${result.imported} drafts from ${file.name}${remapMessage}` });
     } catch (error) {
       setNotice({ type: 'error', message: error instanceof Error ? error.message : 'Import failed' });
     }
@@ -253,7 +256,7 @@ export default function DataManager() {
               onGetLocalData={async () => JSON.parse(await DraftStorage.exportAll())}
               onApplyData={async (data) => {
                 if (data && typeof data === 'object' && 'drafts' in data) {
-                  await DraftStorage.import(JSON.stringify(data));
+                  await DraftStorage.import(JSON.stringify(data), { conflictStrategy: 'merge' });
                   await loadStats();
                 }
               }}

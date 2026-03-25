@@ -59,6 +59,22 @@ function createImportedReviewId(): string {
   return `imported-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function coerceContentMode(value: unknown): DraftMetadata['mode'] | undefined {
+  if (value !== 'SFW' && value !== 'NSFW' && value !== 'Platform-Safe' && value !== 'Auto') {
+    return undefined;
+  }
+
+  return value;
+}
+
+function getUniqueReviewId(usedIds: Set<string>): string {
+  let candidate = createImportedReviewId();
+  while (usedIds.has(candidate)) {
+    candidate = createImportedReviewId();
+  }
+  return candidate;
+}
+
 function coerceDraftMetadata(raw: unknown, fallbackSeed: string): DraftMetadata {
   const source = isRecord(raw) ? raw : {};
   const review_id = typeof source.review_id === 'string' && source.review_id.trim().length > 0
@@ -74,7 +90,7 @@ function coerceDraftMetadata(raw: unknown, fallbackSeed: string): DraftMetadata 
     favorite: Boolean(source.favorite),
   };
 
-  if (typeof source.mode === 'string') metadata.mode = source.mode as DraftMetadata['mode'];
+  metadata.mode = coerceContentMode(source.mode);
   if (typeof source.model === 'string') metadata.model = source.model;
   if (typeof source.created === 'string') metadata.created = source.created;
   if (typeof source.modified === 'string') metadata.modified = source.modified;
@@ -162,7 +178,7 @@ function parseMarkdownDraftPayload(markdown: string): Draft[] {
     const current = headings[index];
     const next = headings[index + 1];
     const rawBody = markdown.slice(current.bodyStart, next ? next.start : markdown.length);
-    const body = rawBody.replace(/^\n+/, '').trimEnd();
+    const body = rawBody.replace(/^\n+/, '').trimEnd().replace(/^\\##/gm, '##');
     if (!body) {
       continue;
     }
@@ -611,8 +627,12 @@ export class DraftStorage {
   /**
    * Import drafts from JSON or markdown draft bundles.
    */
-  static async import(raw: string): Promise<void> {
+  static async import(
+    raw: string,
+    options: { conflictStrategy?: 'remap' | 'merge' } = {}
+  ): Promise<{ imported: number; remapped: number }> {
     await this.ensureReady();
+    const conflictStrategy = options.conflictStrategy ?? 'remap';
 
     const trimmed = raw.trim();
     if (!trimmed) {
@@ -632,9 +652,48 @@ export class DraftStorage {
       throw new Error('Invalid draft import format. Supported: exported drafts JSON and combined markdown draft files.');
     }
 
-    for (const draft of drafts) {
-      await this.saveDraft(draft);
+    const existingMetadata = await this.getAllMetadata();
+    const usedIds = new Set(existingMetadata.map((metadata) => metadata.review_id));
+    const idRemap = new Map<string, string>();
+    let remapped = 0;
+
+    const normalizedDrafts = drafts.map((draft) => {
+      const sourceId = draft.metadata.review_id;
+      let targetId = sourceId;
+
+      if (conflictStrategy === 'remap' && usedIds.has(targetId)) {
+        targetId = getUniqueReviewId(usedIds);
+      }
+
+      usedIds.add(targetId);
+
+      if (targetId !== sourceId) {
+        remapped += 1;
+        idRemap.set(sourceId, targetId);
+      }
+
+      return {
+        ...draft,
+        path: targetId,
+        metadata: {
+          ...draft.metadata,
+          review_id: targetId,
+        },
+      };
+    });
+
+    for (const draft of normalizedDrafts) {
+      const parentDrafts = draft.metadata.parent_drafts?.map((parentId) => idRemap.get(parentId) || parentId);
+      await this.saveDraft({
+        ...draft,
+        metadata: {
+          ...draft.metadata,
+          parent_drafts: parentDrafts,
+        },
+      });
     }
+
+    return { imported: normalizedDrafts.length, remapped };
   }
 
   /**

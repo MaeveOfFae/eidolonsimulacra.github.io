@@ -27,6 +27,22 @@ const createDraftSchema = z.object({
 
 const updateDraftSchema = createDraftSchema.partial();
 
+const pushDraftSchema = z.object({
+  reviewId: z.string(),
+  seed: z.string(),
+  mode: z.enum(["SFW", "NSFW", "Platform-Safe", "Auto"]).optional(),
+  model: z.string().optional(),
+  characterName: z.string().optional(),
+  templateName: z.string().optional(),
+  genre: z.string().optional(),
+  notes: z.string().optional(),
+  favorite: z.boolean().optional(),
+  tags: z.array(z.string()).optional(),
+  offspringType: z.string().optional(),
+  assets: z.record(z.string()),
+  parentDraftIds: z.array(z.string()).optional(),
+});
+
 const draftQuerySchema = z.object({
   search: z.string().optional(),
   tags: z.string().optional(),
@@ -131,16 +147,32 @@ router.post(
   "/push",
   authenticateToken,
   validateBody(z.object({
-    drafts: z.array(z.record(z.unknown())),
+    drafts: z.array(pushDraftSchema),
   })),
   async (req: Request, res: Response): Promise<void> => {
     const userId = req.user!.userId
-    const { drafts } = req.body as { drafts: Record<string, unknown>[] }
+    const { drafts } = req.body as { drafts: Array<z.infer<typeof pushDraftSchema>> }
     const results: Array<{ reviewId: string; status: string }> = []
 
     for (const draftData of drafts) {
       try {
-        const reviewId = draftData.reviewId as string
+        const reviewId = draftData.reviewId
+        const draftWriteData: Prisma.DraftUncheckedCreateInput = {
+          userId,
+          reviewId: draftData.reviewId,
+          seed: draftData.seed,
+          mode: draftData.mode ?? "Auto",
+          model: draftData.model,
+          characterName: draftData.characterName,
+          templateName: draftData.templateName,
+          genre: draftData.genre,
+          notes: draftData.notes,
+          favorite: draftData.favorite ?? false,
+          tags: draftData.tags ?? [],
+          offspringType: draftData.offspringType,
+          assets: draftData.assets,
+        }
+
         const existing = await prisma.draft.findFirst({
           where: { userId, reviewId },
         })
@@ -148,12 +180,24 @@ router.post(
         if (existing) {
           await prisma.draft.update({
             where: { id: existing.id },
-            data: draftData as unknown as Prisma.DraftUpdateInput,
+            data: {
+              seed: draftWriteData.seed,
+              mode: draftWriteData.mode,
+              model: draftWriteData.model,
+              characterName: draftWriteData.characterName,
+              templateName: draftWriteData.templateName,
+              genre: draftWriteData.genre,
+              notes: draftWriteData.notes,
+              favorite: draftWriteData.favorite,
+              tags: draftWriteData.tags,
+              offspringType: draftWriteData.offspringType,
+              assets: draftWriteData.assets,
+            },
           })
           results.push({ reviewId, status: "updated" })
         } else {
           await prisma.draft.create({
-            data: { ...draftData, userId } as unknown as Prisma.DraftCreateInput,
+            data: draftWriteData,
           })
           results.push({ reviewId, status: "created" })
         }

@@ -335,8 +335,8 @@ class ServerClient {
 
   async syncDrafts(action: 'pull' | 'push' | 'list', data?: unknown): Promise<unknown> {
     const response = await this.request(`/api/sync/drafts/${action}`, {
-      method: action === 'list' ? 'GET' : 'POST',
-      body: action !== 'list' ? JSON.stringify(data) : undefined,
+      method: action === 'push' ? 'POST' : 'GET',
+      body: action === 'push' ? JSON.stringify(data) : undefined,
     });
 
     if (!response.ok) {
@@ -375,8 +375,8 @@ class ServerClient {
 
   async syncThemes(action: 'pull' | 'push' | 'list', data?: unknown): Promise<unknown> {
     const response = await this.request(`/api/sync/themes/${action}`, {
-      method: action === 'list' ? 'GET' : 'POST',
-      body: action !== 'list' ? JSON.stringify(data) : undefined,
+      method: action === 'push' ? 'POST' : 'GET',
+      body: action === 'push' ? JSON.stringify(data) : undefined,
     });
 
     if (!response.ok) {
@@ -415,8 +415,8 @@ class ServerClient {
 
   async syncTemplates(action: 'pull' | 'push' | 'list', data?: unknown): Promise<unknown> {
     const response = await this.request(`/api/sync/templates/${action}`, {
-      method: action === 'list' ? 'GET' : 'POST',
-      body: action !== 'list' ? JSON.stringify(data) : undefined,
+      method: action === 'push' ? 'POST' : 'GET',
+      body: action === 'push' ? JSON.stringify(data) : undefined,
     });
 
     if (!response.ok) {
@@ -540,8 +540,8 @@ class ServerClient {
 
   async syncBlueprints(action: 'pull' | 'push' | 'list', data?: unknown): Promise<unknown> {
     const response = await this.request(`/api/sync/blueprints/${action}`, {
-      method: action === 'list' ? 'GET' : 'POST',
-      body: action !== 'list' ? JSON.stringify(data) : undefined,
+      method: action === 'push' ? 'POST' : 'GET',
+      body: action === 'push' ? JSON.stringify(data) : undefined,
     });
 
     if (!response.ok) {
@@ -663,8 +663,8 @@ class ServerClient {
 
   async syncWorlds(action: 'pull' | 'push', data?: unknown): Promise<unknown> {
     const response = await this.request(`/api/sync/worlds/${action}`, {
-      method: 'POST',
-      body: JSON.stringify(data),
+      method: action === 'push' ? 'POST' : 'GET',
+      body: action === 'push' ? JSON.stringify(data) : undefined,
     });
 
     if (!response.ok) {
@@ -749,8 +749,8 @@ class ServerClient {
 
   async syncTimelines(action: 'pull' | 'push', data?: unknown): Promise<unknown> {
     const response = await this.request(`/api/sync/timelines/${action}`, {
-      method: 'POST',
-      body: JSON.stringify(data),
+      method: action === 'push' ? 'POST' : 'GET',
+      body: action === 'push' ? JSON.stringify(data) : undefined,
     });
 
     if (!response.ok) {

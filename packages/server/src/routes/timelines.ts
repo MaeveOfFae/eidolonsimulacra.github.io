@@ -39,6 +39,16 @@ const timelineQuerySchema = z.object({
   tags: z.string().optional(),
 });
 
+const pushTimelineSchema = z.object({
+  id: z.string().uuid().optional(),
+  worldId: z.string().uuid(),
+  name: z.string().min(1).max(255),
+  description: z.string().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+});
+
 // GET / - List timelines
 router.get(
   "/",
@@ -462,17 +472,35 @@ router.post(
   "/push",
   authenticateToken,
   validateBody(z.object({
-    timelines: z.array(z.record(z.unknown())),
+    timelines: z.array(pushTimelineSchema),
   })),
   async (req: Request, res: Response): Promise<void> => {
     const userId = req.user!.userId;
-    const { timelines } = req.body as { timelines: Record<string, unknown>[] };
+    const { timelines } = req.body as { timelines: Array<z.infer<typeof pushTimelineSchema>> };
     const results: Array<{ id?: string; name: string; status: string }> = [];
 
     for (const timelineData of timelines) {
       try {
-        const id = timelineData.id as string | undefined;
-        const name = timelineData.name as string;
+        const id = timelineData.id;
+        const name = timelineData.name;
+
+        const world = await prisma.world.findFirst({
+          where: { id: timelineData.worldId, userId },
+          select: { id: true },
+        });
+        if (!world) {
+          results.push({ id, name, status: "error" });
+          continue;
+        }
+
+        const timelineWriteData = {
+          worldId: timelineData.worldId,
+          name: timelineData.name,
+          description: timelineData.description,
+          startDate: timelineData.startDate,
+          endDate: timelineData.endDate,
+          tags: timelineData.tags ?? [],
+        };
 
         if (id) {
           const existing = await prisma.timeline.findFirst({
@@ -481,7 +509,14 @@ router.post(
           if (existing) {
             await prisma.timeline.update({
               where: { id },
-              data: timelineData as unknown as Prisma.TimelineUpdateInput,
+              data: {
+                worldId: timelineWriteData.worldId,
+                name: timelineWriteData.name,
+                description: timelineWriteData.description,
+                startDate: timelineWriteData.startDate,
+                endDate: timelineWriteData.endDate,
+                tags: timelineWriteData.tags,
+              },
             });
             results.push({ id, name, status: "updated" });
             continue;
@@ -489,11 +524,11 @@ router.post(
         }
 
         const created = await prisma.timeline.create({
-          data: { ...timelineData, userId } as unknown as Prisma.TimelineCreateInput,
+          data: { ...timelineWriteData, userId },
         });
         results.push({ id: created.id, name, status: "created" });
       } catch {
-        results.push({ name: (timelineData as { name?: string }).name ?? "unknown", status: "error" });
+        results.push({ name: timelineData.name ?? "unknown", status: "error" });
       }
     }
 

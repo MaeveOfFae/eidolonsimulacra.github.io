@@ -1,6 +1,22 @@
 # Changelog
 
 
+## v3.0.13 - 2026-03-25
+
+### Templates and documentation update
+
+This release packages 12 recent commits focused on templates and documentation.
+
+### Highlights
+- Modified: blueprints/system/a1111.md modified: blueprints/system/a1111_old.md
+- Update A1111 blueprint to compact bracketed format; enhance prompt structure and clarity
+- Release v3.0.12 with updates to templates, documentation, and platform; enhance changelog and versioning details
+- Release v3.0.11 enhance blueprint path handling and improve changelog entries
+- Release v3.0.10 with updates to templates, documentation, and rate limiting; enhance environment configuration and proxy handling
+
+### Links
+- [Open generation](/generate)
+- [Review templates](/templates)
 ## v3.0.12 - 2026-03-24
 
 ### Templates and documentation update
@@ -209,6 +225,7 @@ This release packages 12 recent commits focused on documentation, templates, and
 ### Links
 - [Open generation](/generate)
 - [Review templates](/templates)
+
 
 
 

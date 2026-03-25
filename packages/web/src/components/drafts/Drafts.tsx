@@ -68,9 +68,12 @@ export default function Drafts() {
 
     try {
       const text = await file.text();
-      await DraftStorage.import(text);
+      const result = await DraftStorage.import(text);
       await queryClient.invalidateQueries({ queryKey: ['drafts'] });
-      setNotice({ type: 'success', message: `Imported drafts from ${file.name}` });
+      const remapMessage = result.remapped > 0
+        ? ` (${result.remapped} review IDs remapped to avoid overwriting existing drafts)`
+        : '';
+      setNotice({ type: 'success', message: `Imported ${result.imported} drafts from ${file.name}${remapMessage}` });
     } catch (error) {
       setNotice({
         type: 'error',
@@ -193,7 +196,7 @@ export default function Drafts() {
           onGetLocalData={async () => JSON.parse(await DraftStorage.exportAll())}
           onApplyData={async (data) => {
             if (data && typeof data === 'object' && 'drafts' in data) {
-              await DraftStorage.import(JSON.stringify(data));
+              await DraftStorage.import(JSON.stringify(data), { conflictStrategy: 'merge' });
               queryClient.invalidateQueries({ queryKey: ['drafts'] });
             }
           }}
