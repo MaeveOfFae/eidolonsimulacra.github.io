@@ -16,10 +16,8 @@ import {
   Dice1,
   ShieldCheck,
   Palette,
-  Scale,
   Info,
   CircleHelp,
-  Mail,
   LogIn,
   User,
   Users,
@@ -87,21 +85,6 @@ const worldsSubmenuItems = [
   { path: '/worlds', label: 'Worlds', icon: Globe },
   { path: '/timelines', label: 'Timeline', icon: GitBranch },
   { path: '/events', label: 'Events', icon: Calendar },
-];
-
-const footerLinks = [
-  { path: '/about', label: 'About', icon: Info },
-  { path: '/help', label: 'Help', icon: BookOpen },
-  { path: '/whats-new', label: 'What\'s New', icon: Info },
-  { path: '/terms', label: 'Terms', icon: Scale },
-  { path: '/privacy', label: 'Privacy', icon: ShieldCheck },
-  { path: '/license', label: 'License', icon: FileText },
-  { path: '/security', label: 'Security', icon: ShieldCheck },
-  { path: '/code-of-conduct', label: 'Conduct', icon: BookOpen },
-];
-
-const externalFooterLinks = [
-  { href: 'mailto:contact@eidolonsimulacra.com?subject=Bug%20Report%20or%20Security%20Issue', label: 'Contact', icon: Mail },
 ];
 
 interface NavItemProps {
@@ -624,60 +607,29 @@ export default function Layout({ children }: LayoutProps) {
               </div>
             )}
 
-            <div className="border-t border-border/50 px-4 py-4">
-              <div className="mb-3">
-                <p className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
-                  Support
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Back Eidolon Simulacra on Ko-fi.
-                </p>
-              </div>
-              <div className="rounded-xl border border-border/60 bg-background/80 p-3 shadow-sm">
-                <a
-                  href="https://ko-fi.com/maeveoffae"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex w-full items-center justify-center rounded-lg bg-[#72a4f2] px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-                >
-                  Support me on Ko-fi
-                </a>
-              </div>
-            </div>
-
-            {/* Footer */}
             <div className="border-t border-border/50 p-4">
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-muted-foreground">
-                  Web • No backend required
-                </p>
+              <div className="grid grid-cols-3 gap-2">
                 <Link
                   to="/settings"
-                  className="text-xs text-muted-foreground hover:text-primary transition-colors"
+                  onClick={() => setSidebarOpen(false)}
+                  className="rounded-lg border border-border/60 bg-background/60 px-3 py-2 text-center text-xs font-medium text-muted-foreground transition-colors hover:border-primary/35 hover:text-primary"
                 >
                   Settings
                 </Link>
-              </div>
-              <div className="mt-3 flex flex-wrap gap-x-3 gap-y-2 text-xs text-muted-foreground">
-                {footerLinks.map((item) => (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    className="hover:text-primary transition-colors"
-                    onClick={() => setSidebarOpen(false)}
-                  >
-                    {item.label}
-                  </Link>
-                ))}
-                {externalFooterLinks.map((item) => (
-                  <a
-                    key={item.href}
-                    href={item.href}
-                    className="hover:text-primary transition-colors"
-                  >
-                    {item.label}
-                  </a>
-                ))}
+                <Link
+                  to="/help"
+                  onClick={() => setSidebarOpen(false)}
+                  className="rounded-lg border border-border/60 bg-background/60 px-3 py-2 text-center text-xs font-medium text-muted-foreground transition-colors hover:border-primary/35 hover:text-primary"
+                >
+                  Help
+                </Link>
+                <Link
+                  to="/about"
+                  onClick={() => setSidebarOpen(false)}
+                  className="rounded-lg border border-border/60 bg-background/60 px-3 py-2 text-center text-xs font-medium text-muted-foreground transition-colors hover:border-primary/35 hover:text-primary"
+                >
+                  About
+                </Link>
               </div>
             </div>
           </div>
@@ -704,7 +656,7 @@ export default function Layout({ children }: LayoutProps) {
           </header>
 
           {/* Page content */}
-          <div className="mx-auto max-w-[1600px] p-6 lg:p-8">
+          <div className="mx-auto max-w-[1360px] p-5 lg:p-6">
             {children}
           </div>
         </main>
@@ -719,10 +671,10 @@ export default function Layout({ children }: LayoutProps) {
         <button
           type="button"
           onClick={() => setTrayOpen(true)}
-          className="fixed bottom-24 right-4 z-20 inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/95 px-4 py-3 text-sm font-medium text-foreground shadow-xl shadow-black/20 backdrop-blur-md transition-colors hover:border-primary/40 hover:text-primary"
+          className="fixed bottom-24 right-4 z-20 inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/95 px-3 py-3 text-sm font-medium text-foreground shadow-xl shadow-black/20 backdrop-blur-md transition-colors hover:border-primary/40 hover:text-primary sm:px-4"
         >
           <DynamicIcon className="h-4 w-4" />
-          Panel
+          <span className="hidden sm:inline">Workspace</span>
         </button>
         <aside
           className={cn(
@@ -735,7 +687,7 @@ export default function Layout({ children }: LayoutProps) {
             <div className="flex items-center justify-between border-b border-border/40 px-4 py-3">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">Utility Panel</p>
-                <p className="mt-1 text-sm text-muted-foreground">Page-specific shortcuts, draft context, and roadmap updates.</p>
+                <p className="mt-1 text-sm text-muted-foreground">Shortcuts, context, and current work.</p>
               </div>
               <button
                 type="button"
