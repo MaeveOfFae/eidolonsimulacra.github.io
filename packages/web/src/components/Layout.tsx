@@ -31,10 +31,10 @@ import {
   Layers as DynamicIcon,
   HelpCircle,
 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { helpTopics, resolvePageHelp } from '../lib/help';
 import { roadmapGroups } from '../lib/roadmap';
-import { api } from '../lib/api';
+import { api, DRAFTS_SYNCED_EVENT } from '../lib/api';
 import { getFavoriteSeeds, SEED_FAVORITES_CHANGED_EVENT } from '../lib/seed-generator';
 import { cn } from '../utils/cn';
 import { AssistantContextProvider } from './common/AssistantContext';
@@ -222,6 +222,7 @@ function CollapsibleSubmenu({
 
 export default function Layout({ children }: LayoutProps) {
   const location = useLocation();
+  const queryClient = useQueryClient();
   const reviewMatch = location.pathname.match(/^\/drafts\/([^/]+)$/);
   const reviewDraftId = reviewMatch ? decodeURIComponent(reviewMatch[1]) : null;
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -270,6 +271,17 @@ export default function Layout({ children }: LayoutProps) {
   // Get favorite seeds count (synchronously from localStorage)
   const [seedsCount, setSeedsCount] = useState(() => getFavoriteSeeds().length);
   const draftsCount = draftsData?.drafts?.length ?? 0;
+
+  useEffect(() => {
+    const handleDraftsSynced = () => {
+      void queryClient.invalidateQueries({ queryKey: ['drafts'] });
+    };
+
+    window.addEventListener(DRAFTS_SYNCED_EVENT, handleDraftsSynced);
+    return () => {
+      window.removeEventListener(DRAFTS_SYNCED_EVENT, handleDraftsSynced);
+    };
+  }, [queryClient]);
 
   const traySections = useMemo<TraySection[]>(() => {
     if (location.pathname.startsWith('/drafts')) {

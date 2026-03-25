@@ -125,6 +125,8 @@ type BlueprintPreviewResponse = GenerateAssetResponse & {
 };
 
 const CUSTOM_THEMES_STORAGE_KEY = 'eidolon.web.themes.custom';
+export const THEMES_SYNCED_EVENT = 'eidolon:themes-synced';
+export const DRAFTS_SYNCED_EVENT = 'eidolon:drafts-synced';
 
 function parseBlueprintMetadata(path: string, content: string): {
   name: string;
@@ -1286,6 +1288,14 @@ function getAllThemes(): ThemePreset[] {
   return [...builtinThemes, ...getCustomThemes()];
 }
 
+function dispatchBrowserSyncEvent(eventName: string): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.dispatchEvent(new CustomEvent(eventName));
+}
+
 function buildDraftListResponse(
   metadata: DraftMetadata[],
   total: number,
@@ -1556,6 +1566,10 @@ async function generateWithCurrentConfig(messages: ChatMessage[]): Promise<Async
 }
 
 export class EidolonBrowserAPI {
+  private themesSyncPromise: Promise<boolean> | null = null;
+
+  private draftsSyncPromise: Promise<boolean> | null = null;
+
   private async fetchOpenAICompatibleModels(
     provider: string,
     apiKey: string,
@@ -1670,6 +1684,14 @@ export class EidolonBrowserAPI {
     return getBrowserConfig();
   }
 
+  getConfigSnapshot(): Config {
+    return getBrowserConfig();
+  }
+
+  getThemesSnapshot(): ThemePreset[] {
+    return getAllThemes();
+  }
+
   async updateConfig(config: Partial<Config>): Promise<Config> {
     const nextConfig = { ...config };
     if (config.api_keys) {
@@ -1699,53 +1721,184 @@ export class EidolonBrowserAPI {
     return engine.testConnection();
   }
 
-  async getThemes(): Promise<ThemePreset[]> {
-    // Try to sync from server first if authenticated
-    if (serverClient.isEnabled()) {
-      try {
-        const status = await serverClient.checkStatus();
-        if (status.authenticated) {
-          const { themes: serverThemes } = await serverClient.syncThemes('pull') as { themes: Array<{
-            name: string;
-            displayName?: string;
-            description?: string;
-            author?: string;
-            tags: string[];
-            basedOn?: string;
-            isBuiltin: boolean;
-            colors: ThemePreset['colors'];
-          }> };
-
-          // Merge server themes with local storage (only non-builtin)
-          const localThemes = getCustomThemes();
-          for (const serverTheme of serverThemes) {
-            if (!serverTheme.isBuiltin) {
-              const existingIndex = localThemes.findIndex(t => t.name === serverTheme.name);
-              const theme: ThemePreset = {
-                name: serverTheme.name,
-                display_name: serverTheme.displayName || serverTheme.name,
-                description: serverTheme.description || '',
-                author: serverTheme.author || '',
-                tags: serverTheme.tags,
-                based_on: serverTheme.basedOn || '',
-                is_builtin: false,
-                colors: serverTheme.colors,
-              };
-              if (existingIndex >= 0) {
-                localThemes[existingIndex] = theme;
-              } else {
-                localThemes.push(theme);
-              }
-            }
-          }
-          saveCustomThemes(localThemes);
-        }
-      } catch (e) {
-        console.warn('Failed to sync themes from server:', e);
-      }
+  private async syncThemesFromServer(): Promise<boolean> {
+    if (this.themesSyncPromise) {
+      return this.themesSyncPromise;
     }
 
-    return getAllThemes();
+    this.themesSyncPromise = (async () => {
+      if (!serverClient.isEnabled()) {
+        return false;
+      }
+
+      try {
+        const status = await serverClient.checkStatus();
+        if (!status.authenticated) {
+          return false;
+        }
+
+        const { themes: serverThemes } = await serverClient.syncThemes('pull') as { themes: Array<{
+          name: string;
+          displayName?: string;
+          description?: string;
+          author?: string;
+          tags: string[];
+          basedOn?: string;
+          isBuiltin: boolean;
+          colors: ThemePreset['colors'];
+        }> };
+
+        const localThemes = getCustomThemes();
+        let didChange = false;
+
+        for (const serverTheme of serverThemes) {
+          if (serverTheme.isBuiltin) {
+            continue;
+          }
+
+          const theme: ThemePreset = {
+            name: serverTheme.name,
+            display_name: serverTheme.displayName || serverTheme.name,
+            description: serverTheme.description || '',
+            author: serverTheme.author || '',
+            tags: serverTheme.tags,
+            based_on: serverTheme.basedOn || '',
+            is_builtin: false,
+            colors: serverTheme.colors,
+          };
+
+          const existingIndex = localThemes.findIndex((candidate) => candidate.name === serverTheme.name);
+          if (existingIndex >= 0) {
+            if (JSON.stringify(localThemes[existingIndex]) !== JSON.stringify(theme)) {
+              localThemes[existingIndex] = theme;
+              didChange = true;
+            }
+          } else {
+            localThemes.push(theme);
+            didChange = true;
+          }
+        }
+
+        if (didChange) {
+          saveCustomThemes(localThemes);
+          dispatchBrowserSyncEvent(THEMES_SYNCED_EVENT);
+        }
+
+        return didChange;
+      } catch (error) {
+        console.warn('Failed to sync themes from server:', error);
+        return false;
+      } finally {
+        this.themesSyncPromise = null;
+      }
+    })();
+
+    return this.themesSyncPromise;
+  }
+
+  private async syncDraftsFromServer(): Promise<boolean> {
+    if (this.draftsSyncPromise) {
+      return this.draftsSyncPromise;
+    }
+
+    this.draftsSyncPromise = (async () => {
+      if (!serverClient.isEnabled()) {
+        return false;
+      }
+
+      try {
+        const status = await serverClient.checkStatus();
+        if (!status.authenticated) {
+          return false;
+        }
+
+        const { drafts: serverDrafts } = await serverClient.syncDrafts('pull') as { drafts: Array<{
+          id: string;
+          reviewId: string;
+          seed: string;
+          mode: string;
+          model?: string;
+          characterName?: string;
+          templateName?: string;
+          genre?: string;
+          notes?: string;
+          favorite: boolean;
+          tags: string[];
+          offspringType?: string;
+          assets: Record<string, string>;
+          createdAt: string;
+          updatedAt: string;
+        }> };
+
+        let didChange = false;
+
+        for (const serverDraft of serverDrafts) {
+          const local = await DraftStorage.getDraft(serverDraft.reviewId);
+          if (!local) {
+            await DraftStorage.saveDraft({
+              path: serverDraft.reviewId,
+              metadata: {
+                review_id: serverDraft.reviewId,
+                seed: serverDraft.seed,
+                mode: serverDraft.mode as 'SFW' | 'NSFW' | 'Platform-Safe' | 'Auto',
+                model: serverDraft.model,
+                character_name: serverDraft.characterName,
+                template_name: serverDraft.templateName,
+                genre: serverDraft.genre,
+                notes: serverDraft.notes,
+                favorite: serverDraft.favorite,
+                tags: serverDraft.tags,
+                offspring_type: serverDraft.offspringType,
+              },
+              assets: serverDraft.assets,
+            });
+            didChange = true;
+            continue;
+          }
+
+          const localTime = new Date(local.metadata.modified || 0).getTime();
+          const serverTime = new Date(serverDraft.updatedAt).getTime();
+          if (serverTime > localTime) {
+            await DraftStorage.saveDraft({
+              path: local.path,
+              metadata: {
+                ...local.metadata,
+                seed: serverDraft.seed,
+                mode: serverDraft.mode as 'SFW' | 'NSFW' | 'Platform-Safe' | 'Auto',
+                model: serverDraft.model,
+                character_name: serverDraft.characterName,
+                template_name: serverDraft.templateName,
+                genre: serverDraft.genre,
+                notes: serverDraft.notes,
+                favorite: serverDraft.favorite,
+                tags: serverDraft.tags,
+                offspring_type: serverDraft.offspringType,
+              },
+              assets: serverDraft.assets,
+            });
+            didChange = true;
+          }
+        }
+
+        if (didChange) {
+          dispatchBrowserSyncEvent(DRAFTS_SYNCED_EVENT);
+        }
+
+        return didChange;
+      } catch (error) {
+        console.warn('Failed to sync drafts from server:', error);
+        return false;
+      } finally {
+        this.draftsSyncPromise = null;
+      }
+    })();
+
+    return this.draftsSyncPromise;
+  }
+
+  async getThemes(): Promise<ThemePreset[]> {
+    void this.syncThemesFromServer();
+    return this.getThemesSnapshot();
   }
 
   async createTheme(theme: ThemePresetCreate): Promise<ThemePreset> {
@@ -2068,83 +2221,8 @@ export class EidolonBrowserAPI {
   }
 
   async getDrafts(filters?: DraftFilters): Promise<DraftListResponse> {
-    // Try to sync from server first if authenticated
-    if (serverClient.isEnabled()) {
-      try {
-        const status = await serverClient.checkStatus();
-        if (status.authenticated) {
-          const { drafts: serverDrafts } = await serverClient.syncDrafts('pull') as { drafts: Array<{
-            id: string;
-            reviewId: string;
-            seed: string;
-            mode: string;
-            model?: string;
-            characterName?: string;
-            templateName?: string;
-            genre?: string;
-            notes?: string;
-            favorite: boolean;
-            tags: string[];
-            offspringType?: string;
-            assets: Record<string, string>;
-            createdAt: string;
-            updatedAt: string;
-          }> };
-
-          // Merge server drafts with local storage
-          for (const serverDraft of serverDrafts) {
-            const local = await DraftStorage.getDraft(serverDraft.reviewId);
-            if (!local) {
-              // Create local copy from server
-              await DraftStorage.saveDraft({
-                path: serverDraft.reviewId,
-                metadata: {
-                  review_id: serverDraft.reviewId,
-                  seed: serverDraft.seed,
-                  mode: serverDraft.mode as 'SFW' | 'NSFW' | 'Platform-Safe' | 'Auto',
-                  model: serverDraft.model,
-                  character_name: serverDraft.characterName,
-                  template_name: serverDraft.templateName,
-                  genre: serverDraft.genre,
-                  notes: serverDraft.notes,
-                  favorite: serverDraft.favorite,
-                  tags: serverDraft.tags,
-                  offspring_type: serverDraft.offspringType,
-                },
-                assets: serverDraft.assets,
-              });
-            } else {
-              // Compare updatedAt and keep newer version
-              const localTime = new Date(local.metadata.modified || 0).getTime();
-              const serverTime = new Date(serverDraft.updatedAt).getTime();
-              if (serverTime > localTime) {
-                await DraftStorage.saveDraft({
-                  path: local.path,
-                  metadata: {
-                    ...local.metadata,
-                    seed: serverDraft.seed,
-                    mode: serverDraft.mode as 'SFW' | 'NSFW' | 'Platform-Safe' | 'Auto',
-                    model: serverDraft.model,
-                    character_name: serverDraft.characterName,
-                    template_name: serverDraft.templateName,
-                    genre: serverDraft.genre,
-                    notes: serverDraft.notes,
-                    favorite: serverDraft.favorite,
-                    tags: serverDraft.tags,
-                    offspring_type: serverDraft.offspringType,
-                  },
-                  assets: serverDraft.assets,
-                });
-              }
-            }
-          }
-        }
-      } catch (e) {
-        console.warn('Failed to sync drafts from server:', e);
-      }
-    }
-
     const allMetadata = await DraftStorage.getAllMetadata();
+    void this.syncDraftsFromServer();
     const filtered = applyDraftFilters(allMetadata, filters);
     return buildDraftListResponse(filtered, filtered.length, allMetadata);
   }
