@@ -36,6 +36,7 @@ model User {
   blueprints       Blueprint[]
   worlds           World[]
   timelines        Timeline[]
+  savedSeeds       SavedSeed[]
 
   @@map("users")
 }
@@ -160,6 +161,23 @@ model Template {
 
   @@unique([name]) // Template names must be unique globally
   @@map("templates")
+}
+
+model SavedSeed {
+  id         String   @id @default(uuid())
+  userId     String
+  seed       String
+  addedAt    DateTime
+  lastUsedAt DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, seed])
+  @@index([userId])
+  @@index([addedAt(sort: Desc)])
+  @@map("saved_seeds")
 }
 
 // =============================================================================

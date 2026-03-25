@@ -2,6 +2,7 @@ import type { Draft, ThemePreset } from '@char-gen/shared';
 import { configManager } from '../config/manager.js';
 import { parseBlueprintFrontmatter } from '../prompting/blueprint.js';
 import { DraftStorage } from '../storage/draft-db.js';
+import { getFavoriteSeeds } from '../seed-generator.js';
 import {
   getBlueprintOverrides,
   getOriginalBlueprintContent,
@@ -10,7 +11,7 @@ import {
 } from '../templates/browser.js';
 import { serverClient } from './client.js';
 
-export type AutoSyncDomain = 'drafts' | 'themes' | 'templates' | 'blueprints' | 'config';
+export type AutoSyncDomain = 'drafts' | 'themes' | 'templates' | 'seeds' | 'blueprints' | 'config';
 
 interface QueueAutoSyncOptions {
   immediate?: boolean;
@@ -191,6 +192,14 @@ async function syncTemplates(): Promise<void> {
   );
 }
 
+async function syncSeeds(): Promise<void> {
+  const favorites = getFavoriteSeeds();
+
+  await serverClient.syncSeeds('push', {
+    seeds: favorites,
+  });
+}
+
 async function syncBlueprints(): Promise<void> {
   const overrides = getBlueprintOverrides();
   const entries = Object.entries(overrides);
@@ -242,6 +251,9 @@ async function syncDomain(domain: AutoSyncDomain): Promise<void> {
       return;
     case 'templates':
       await syncTemplates();
+      return;
+    case 'seeds':
+      await syncSeeds();
       return;
     case 'blueprints':
       await syncBlueprints();

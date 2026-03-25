@@ -35,7 +35,7 @@ import { useQuery } from '@tanstack/react-query';
 import { helpTopics, resolvePageHelp } from '../lib/help';
 import { roadmapGroups } from '../lib/roadmap';
 import { api } from '../lib/api';
-import { getFavoriteSeeds } from '../lib/seed-generator';
+import { getFavoriteSeeds, SEED_FAVORITES_CHANGED_EVENT } from '../lib/seed-generator';
 import { cn } from '../utils/cn';
 import { AssistantContextProvider } from './common/AssistantContext';
 import ContextualHelpPanel from './common/ContextualHelpPanel';
@@ -268,8 +268,7 @@ export default function Layout({ children }: LayoutProps) {
   });
 
   // Get favorite seeds count (synchronously from localStorage)
-  const favoriteSeeds = useMemo(() => getFavoriteSeeds(), []);
-  const seedsCount = favoriteSeeds.length;
+  const [seedsCount, setSeedsCount] = useState(() => getFavoriteSeeds().length);
   const draftsCount = draftsData?.drafts?.length ?? 0;
 
   const traySections = useMemo<TraySection[]>(() => {
@@ -466,6 +465,19 @@ export default function Layout({ children }: LayoutProps) {
 
     window.addEventListener(CONFIG_MANAGER_CHANGED_EVENT, handleConfigChange);
     return () => window.removeEventListener(CONFIG_MANAGER_CHANGED_EVENT, handleConfigChange);
+  }, []);
+
+  useEffect(() => {
+    const refreshSeedCount = () => {
+      setSeedsCount(getFavoriteSeeds().length);
+    };
+
+    window.addEventListener(SEED_FAVORITES_CHANGED_EVENT, refreshSeedCount);
+    window.addEventListener('storage', refreshSeedCount);
+    return () => {
+      window.removeEventListener(SEED_FAVORITES_CHANGED_EVENT, refreshSeedCount);
+      window.removeEventListener('storage', refreshSeedCount);
+    };
   }, []);
 
   useEffect(() => {

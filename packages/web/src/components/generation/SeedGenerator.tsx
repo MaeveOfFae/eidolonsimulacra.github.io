@@ -12,8 +12,10 @@ import {
   getFavoriteSeeds,
   getSeedRunHistory,
   getSeedSuggestionPresets,
+  hydrateFavoriteSeedsFromServer,
   markSeedUsed,
   pickSurpriseSeedPreset,
+  SEED_FAVORITES_CHANGED_EVENT,
   sanitizeSeedCount,
   saveSeedRun,
   toggleFavoriteSeed,
@@ -23,6 +25,7 @@ import {
   type SeedRunRecord,
   type SeedSuggestionPreset,
 } from '../../lib/seed-generator.js';
+import { queueAutoSync } from '../../lib/server/auto-sync.js';
 import { BlueprintPanel } from '../common/BlueprintPanel';
 import { getBlueprintsForFeature, resolveBlueprintForFeature, toBlueprintOptions } from '@/lib/blueprints/featureSelection';
 import { configManager } from '@/lib/config/manager';
@@ -139,6 +142,36 @@ export default function SeedGenerator() {
     restoredSessionRef.current = null;
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const syncFavorites = async () => {
+      try {
+        const syncedFavorites = await hydrateFavoriteSeedsFromServer();
+        if (!cancelled && syncedFavorites) {
+          setFavorites(syncedFavorites);
+        }
+      } catch (error) {
+        console.warn('Failed to hydrate favorite seeds from server:', error);
+      }
+    };
+
+    void syncFavorites();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleFavoriteSeedsChanged = () => {
+      setFavorites(getFavoriteSeeds());
+    };
+
+    window.addEventListener(SEED_FAVORITES_CHANGED_EVENT, handleFavoriteSeedsChanged);
+    return () => window.removeEventListener(SEED_FAVORITES_CHANGED_EVENT, handleFavoriteSeedsChanged);
+  }, []);
+
   useAssistantScreenContext({
     genre_input_preview: genreLines.slice(0, 400),
     genre_line_count: inputLineCount,
@@ -228,7 +261,11 @@ export default function SeedGenerator() {
   };
 
   const handleUseSeed = (seed: string) => {
-    setFavorites(markSeedUsed(seed));
+    const nextFavorites = markSeedUsed(seed);
+    setFavorites(nextFavorites);
+    if (nextFavorites.some((entry) => entry.seed === seed)) {
+      queueAutoSync('seeds');
+    }
     navigate('/generate', { state: { seed } });
   };
 
@@ -244,6 +281,7 @@ export default function SeedGenerator() {
 
   const handleToggleFavorite = (seed: string) => {
     setFavorites(toggleFavoriteSeed(seed));
+    queueAutoSync('seeds');
   };
 
   const handleUseHistoryEntry = (entry: SeedRunRecord) => {

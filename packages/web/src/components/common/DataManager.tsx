@@ -17,12 +17,14 @@ import {
 } from 'lucide-react';
 import { DraftStorage } from '../../lib/storage/draft-db.js';
 import { configManager } from '../../lib/config/manager.js';
+import { getFavoriteSeeds, mergeFavoriteSeeds, parseFavoriteSeedsPayload, replaceFavoriteSeeds } from '../../lib/seed-generator.js';
 import { queueAutoSync } from '../../lib/server/auto-sync.js';
 import { saveBlobDownload } from '../../utils/download';
 import SyncControls from './SyncControls';
 
 interface DataStats {
   drafts: number;
+  seeds: number;
   apiKeys: number;
   configExists: boolean;
 }
@@ -51,6 +53,7 @@ export default function DataManager() {
 
       setStats({
         drafts: drafts.length,
+        seeds: getFavoriteSeeds().length,
         apiKeys: apiKeys.length,
         configExists: !!config,
       });
@@ -141,9 +144,10 @@ export default function DataManager() {
       await Promise.all([
         DraftStorage.clearAll(),
         Promise.resolve(configManager.clearAll()),
+        Promise.resolve(replaceFavoriteSeeds([])),
       ]);
 
-      queueAutoSync(['drafts', 'config'], { immediate: true });
+      queueAutoSync(['drafts', 'seeds', 'config'], { immediate: true });
 
       await loadStats();
       setNotice({ type: 'success', message: 'All data cleared successfully' });
@@ -173,6 +177,10 @@ export default function DataManager() {
               <div className="app-page-metric">
                 <p className="app-page-metric-label">Drafts</p>
                 <div className="app-page-metric-value text-2xl">{stats?.drafts ?? 0}</div>
+              </div>
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">Seeds</p>
+                <div className="app-page-metric-value text-2xl">{stats?.seeds ?? 0}</div>
               </div>
               <div className="app-page-metric">
                 <p className="app-page-metric-label">API Keys</p>
@@ -208,7 +216,7 @@ export default function DataManager() {
 
       {/* Stats */}
       {stats && (
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-4">
           <div className="app-panel p-4">
             <div className="flex items-center gap-2">
               <Database className="h-5 w-5 text-primary" />
@@ -216,6 +224,14 @@ export default function DataManager() {
             </div>
             <p className="text-2xl font-bold mt-2">{stats.drafts}</p>
             <p className="text-xs text-muted-foreground mt-1">Stored locally</p>
+          </div>
+          <div className="app-panel p-4">
+            <div className="flex items-center gap-2">
+              <Cloud className="h-5 w-5 text-primary" />
+              <h3 className="font-semibold">Seeds</h3>
+            </div>
+            <p className="text-2xl font-bold mt-2">{stats.seeds}</p>
+            <p className="text-xs text-muted-foreground mt-1">Favorite seeds saved</p>
           </div>
           <div className="app-panel p-4">
             <div className="flex items-center gap-2">
@@ -257,6 +273,22 @@ export default function DataManager() {
               onApplyData={async (data) => {
                 if (data && typeof data === 'object' && 'drafts' in data) {
                   await DraftStorage.import(JSON.stringify(data), { conflictStrategy: 'merge' });
+                  await loadStats();
+                }
+              }}
+            />
+          </div>
+
+          <div>
+            <h3 className="font-medium mb-2">Favorite Seeds</h3>
+            <SyncControls
+              dataType="seeds"
+              label="Favorite seeds"
+              onGetLocalData={() => ({ seeds: getFavoriteSeeds() })}
+              onApplyData={async (data) => {
+                const favorites = parseFavoriteSeedsPayload(data);
+                if (favorites) {
+                  mergeFavoriteSeeds(favorites);
                   await loadStats();
                 }
               }}

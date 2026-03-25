@@ -1,4 +1,5 @@
 import type { SeedGenerationRequest } from '@char-gen/shared';
+import { serverClient, type SyncedSeedRecord } from './server/client.js';
 
 import seedGenerationPrompt from '../../../../blueprints/system/seed_generator.md?raw';
 
@@ -40,6 +41,7 @@ const SEED_FAVORITES_STORAGE_KEY = 'eidolon.web.seedGenerator.favorites';
 const LEGACY_SEED_FAVORITES_STORAGE_KEYS = ['bpui.web.seedGenerator.favorites'];
 const MAX_SEED_HISTORY = 12;
 export const DEFAULT_SEED_COUNT = 12;
+export const SEED_FAVORITES_CHANGED_EVENT = 'seed-favorites-changed';
 
 function readStorage<T>(keys: string | readonly string[], fallback: T): T {
   if (typeof window === 'undefined') {
@@ -78,6 +80,72 @@ function writeStorage<T>(key: string, legacyKeys: readonly string[], value: T): 
 
   window.localStorage.setItem(key, JSON.stringify(value));
   legacyKeys.forEach((legacyKey) => window.localStorage.removeItem(legacyKey));
+}
+
+function emitFavoriteSeedsChanged(favorites: FavoriteSeedRecord[]): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.dispatchEvent(new CustomEvent(SEED_FAVORITES_CHANGED_EVENT, {
+    detail: { count: favorites.length },
+  }));
+}
+
+function toIsoString(value: unknown): string | undefined {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+}
+
+function normalizeFavoriteSeedRecord(value: unknown): FavoriteSeedRecord | null {
+  if (typeof value !== 'object' || value === null) {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  const seed = typeof record.seed === 'string' ? record.seed.trim() : '';
+  if (!seed) {
+    return null;
+  }
+
+  const addedAt = toIsoString(record.addedAt) ?? new Date().toISOString();
+  const lastUsedAt = toIsoString(record.lastUsedAt);
+
+  return lastUsedAt ? { seed, addedAt, lastUsedAt } : { seed, addedAt };
+}
+
+function normalizeFavoriteSeeds(records: readonly unknown[]): FavoriteSeedRecord[] {
+  const deduped = new Map<string, FavoriteSeedRecord>();
+
+  for (const record of records) {
+    const normalized = normalizeFavoriteSeedRecord(record);
+    if (!normalized) {
+      continue;
+    }
+
+    deduped.set(normalized.seed, normalized);
+  }
+
+  return Array.from(deduped.values()).sort((left, right) => {
+    const leftTime = Date.parse(left.lastUsedAt ?? left.addedAt);
+    const rightTime = Date.parse(right.lastUsedAt ?? right.addedAt);
+    return rightTime - leftTime;
+  });
+}
+
+function favoriteSeedTimestamp(record: FavoriteSeedRecord): number {
+  return Date.parse(record.lastUsedAt ?? record.addedAt);
+}
+
+function writeFavoriteSeeds(favorites: FavoriteSeedRecord[]): FavoriteSeedRecord[] {
+  const normalized = normalizeFavoriteSeeds(favorites);
+  writeStorage(SEED_FAVORITES_STORAGE_KEY, LEGACY_SEED_FAVORITES_STORAGE_KEYS, normalized);
+  emitFavoriteSeedsChanged(normalized);
+  return normalized;
 }
 
 const SURPRISE_PRESETS: SeedSuggestionPreset[] = [
@@ -199,7 +267,66 @@ export function saveSeedRun(record: Omit<SeedRunRecord, 'id' | 'createdAt'>): Se
 }
 
 export function getFavoriteSeeds(): FavoriteSeedRecord[] {
-  return readStorage<FavoriteSeedRecord[]>([SEED_FAVORITES_STORAGE_KEY, ...LEGACY_SEED_FAVORITES_STORAGE_KEYS], []);
+  const stored = readStorage<FavoriteSeedRecord[]>([SEED_FAVORITES_STORAGE_KEY, ...LEGACY_SEED_FAVORITES_STORAGE_KEYS], []);
+  return normalizeFavoriteSeeds(stored);
+}
+
+export function parseFavoriteSeedsPayload(data: unknown): FavoriteSeedRecord[] | null {
+  if (Array.isArray(data)) {
+    return normalizeFavoriteSeeds(data);
+  }
+
+  if (typeof data !== 'object' || data === null) {
+    return null;
+  }
+
+  const record = data as { seeds?: SyncedSeedRecord[] };
+  if (!Array.isArray(record.seeds)) {
+    return null;
+  }
+
+  return normalizeFavoriteSeeds(record.seeds);
+}
+
+export function replaceFavoriteSeeds(favorites: readonly FavoriteSeedRecord[]): FavoriteSeedRecord[] {
+  return writeFavoriteSeeds([...favorites]);
+}
+
+export function mergeFavoriteSeeds(favorites: readonly FavoriteSeedRecord[]): FavoriteSeedRecord[] {
+  const merged = new Map<string, FavoriteSeedRecord>();
+
+  for (const record of [...getFavoriteSeeds(), ...favorites]) {
+    const normalized = normalizeFavoriteSeedRecord(record);
+    if (!normalized) {
+      continue;
+    }
+
+    const existing = merged.get(normalized.seed);
+    if (!existing || favoriteSeedTimestamp(normalized) >= favoriteSeedTimestamp(existing)) {
+      merged.set(normalized.seed, normalized);
+    }
+  }
+
+  return writeFavoriteSeeds(Array.from(merged.values()));
+}
+
+export async function hydrateFavoriteSeedsFromServer(): Promise<FavoriteSeedRecord[] | null> {
+  if (!serverClient.isEnabled()) {
+    return null;
+  }
+
+  const status = await serverClient.checkStatus();
+  if (!status.authenticated) {
+    return null;
+  }
+
+  const payload = await serverClient.syncSeeds('pull') as { seeds?: SyncedSeedRecord[] };
+  const favorites = parseFavoriteSeedsPayload(payload);
+  if (!favorites) {
+    return null;
+  }
+
+  return mergeFavoriteSeeds(favorites);
 }
 
 export function isFavoriteSeed(seed: string): boolean {
@@ -212,8 +339,7 @@ export function toggleFavoriteSeed(seed: string): FavoriteSeedRecord[] {
 
   if (index >= 0) {
     const nextFavorites = favorites.filter((entry) => entry.seed !== seed);
-    writeStorage(SEED_FAVORITES_STORAGE_KEY, LEGACY_SEED_FAVORITES_STORAGE_KEYS, nextFavorites);
-    return nextFavorites;
+    return writeFavoriteSeeds(nextFavorites);
   }
 
   const nextFavorites = [
@@ -223,8 +349,7 @@ export function toggleFavoriteSeed(seed: string): FavoriteSeedRecord[] {
     },
     ...favorites,
   ];
-  writeStorage(SEED_FAVORITES_STORAGE_KEY, LEGACY_SEED_FAVORITES_STORAGE_KEYS, nextFavorites);
-  return nextFavorites;
+  return writeFavoriteSeeds(nextFavorites);
 }
 
 export function markSeedUsed(seed: string): FavoriteSeedRecord[] {
@@ -233,6 +358,5 @@ export function markSeedUsed(seed: string): FavoriteSeedRecord[] {
   const nextFavorites = favorites.map((entry) => (
     entry.seed === seed ? { ...entry, lastUsedAt: now } : entry
   ));
-  writeStorage(SEED_FAVORITES_STORAGE_KEY, LEGACY_SEED_FAVORITES_STORAGE_KEYS, nextFavorites);
-  return nextFavorites;
+  return writeFavoriteSeeds(nextFavorites);
 }

@@ -18,7 +18,7 @@ import { serverClient, type SyncStatus } from '../../lib/server/index.js';
 
 interface SyncControlsProps {
   /** Type of data to sync */
-  dataType: 'drafts' | 'themes' | 'templates' | 'config';
+  dataType: 'drafts' | 'themes' | 'templates' | 'seeds' | 'config';
   /** Callback to get local data for push */
   onGetLocalData?: () => Promise<unknown> | unknown;
   /** Callback to apply pulled data */

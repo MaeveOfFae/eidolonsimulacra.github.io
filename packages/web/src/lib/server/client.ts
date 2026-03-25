@@ -35,6 +35,12 @@ export interface SyncStatus {
   error?: string;
 }
 
+export interface SyncedSeedRecord {
+  seed: string;
+  addedAt: string;
+  lastUsedAt?: string;
+}
+
 // Storage keys
 const SERVER_CONFIG_KEY = 'server-config';
 const ACCESS_TOKEN_KEY = 'server-access-token';
@@ -594,6 +600,22 @@ class ServerClient {
     return response.json();
   }
 
+  async syncSeeds(action: 'pull' | 'push' | 'list', data?: unknown): Promise<unknown> {
+    const isPush = action === 'push';
+    const endpoint = isPush ? '/api/sync/seeds/push' : '/api/sync/seeds';
+    const response = await this.request(endpoint, {
+      method: isPush ? 'POST' : 'GET',
+      body: isPush ? JSON.stringify(data) : undefined,
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || `Failed to ${action} seeds`);
+    }
+
+    return response.json();
+  }
+
   async listRemoteTemplates(): Promise<{ templates: Array<{ name: string; isOfficial?: boolean }> }> {
     const response = await this.request('/api/sync/templates/list', {
       method: 'GET',
@@ -676,7 +698,7 @@ class ServerClient {
   }
 
   // Generic sync method that routes to the correct endpoints
-  async sync(dataType: 'drafts' | 'themes' | 'templates' | 'blueprints' | 'worlds' | 'timelines', action: 'pull' | 'push' | 'list', data?: unknown): Promise<unknown> {
+  async sync(dataType: 'drafts' | 'themes' | 'templates' | 'seeds' | 'blueprints' | 'worlds' | 'timelines', action: 'pull' | 'push' | 'list', data?: unknown): Promise<unknown> {
     switch (dataType) {
       case 'drafts':
         return this.syncDrafts(action, data);
@@ -684,6 +706,8 @@ class ServerClient {
         return this.syncThemes(action, data);
       case 'templates':
         return this.syncTemplates(action, data);
+      case 'seeds':
+        return this.syncSeeds(action, data);
       case 'blueprints':
         return this.syncBlueprints(action, data);
       case 'worlds':

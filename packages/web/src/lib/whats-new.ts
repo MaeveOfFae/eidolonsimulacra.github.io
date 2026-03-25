@@ -16,9 +16,45 @@ export interface ReleaseNoteEntry {
 // Generated and maintained by tools/generation/generate-release-notes.mjs.
 export const releaseNotes: ReleaseNoteEntry[] = [
   {
-    version: '3.0.14',
+    version: '3.0.16',
     releasedOn: '2026-03-25',
     badge: 'Current release',
+    headline: 'Platform and runtime update',
+    summary: 'This release packages 12 recent commits focused on platform and runtime.',
+    highlights: [
+      'Enhance error handling in draft sync process to include error messages',
+      'Correct draft normalization in sync payload to handle single draft objects',
+      'Implement draft normalization functions for improved sync payload handling',
+      'Add function to recognize valid draft JSON payloads for improved import handling',
+      'Update version to 3.0.14 and enhance release notes with recent changes',
+    ],
+    links: [
+      { label: 'Open generation', to: '/generate' },
+      { label: 'Review templates', to: '/templates' },
+    ],
+  },
+  {
+    version: '3.0.15',
+    releasedOn: '2026-03-25',
+    badge: 'Previous release',
+    headline: 'Platform and runtime update',
+    summary: 'This release packages 12 recent commits focused on platform and runtime.',
+    highlights: [
+      'Enhance error handling in draft sync process to include error messages',
+      'Correct draft normalization in sync payload to handle single draft objects',
+      'Implement draft normalization functions for improved sync payload handling',
+      'Add function to recognize valid draft JSON payloads for improved import handling',
+      'Update version to 3.0.14 and enhance release notes with recent changes',
+    ],
+    links: [
+      { label: 'Open generation', to: '/generate' },
+      { label: 'Review templates', to: '/templates' },
+    ],
+  },
+  {
+    version: '3.0.14',
+    releasedOn: '2026-03-25',
+    badge: 'Previous release',
     headline: 'Platform and documentation update',
     summary: 'This release packages 12 recent commits focused on platform, documentation, and templates.',
     highlights: [

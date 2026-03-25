@@ -1,6 +1,38 @@
 # Changelog
 
 
+## v3.0.16 - 2026-03-25
+
+### Platform and runtime update
+
+This release packages 12 recent commits focused on platform and runtime.
+
+### Highlights
+- Enhance error handling in draft sync process to include error messages
+- Correct draft normalization in sync payload to handle single draft objects
+- Implement draft normalization functions for improved sync payload handling
+- Add function to recognize valid draft JSON payloads for improved import handling
+- Update version to 3.0.14 and enhance release notes with recent changes
+
+### Links
+- [Open generation](/generate)
+- [Review templates](/templates)
+## v3.0.15 - 2026-03-25
+
+### Platform and runtime update
+
+This release packages 12 recent commits focused on platform and runtime.
+
+### Highlights
+- Enhance error handling in draft sync process to include error messages
+- Correct draft normalization in sync payload to handle single draft objects
+- Implement draft normalization functions for improved sync payload handling
+- Add function to recognize valid draft JSON payloads for improved import handling
+- Update version to 3.0.14 and enhance release notes with recent changes
+
+### Links
+- [Open generation](/generate)
+- [Review templates](/templates)
 ## v3.0.14 - 2026-03-25
 
 ### Platform and documentation update
@@ -241,6 +273,8 @@ This release packages 12 recent commits focused on documentation, templates, and
 ### Links
 - [Open generation](/generate)
 - [Review templates](/templates)
+
+
 
 
 
