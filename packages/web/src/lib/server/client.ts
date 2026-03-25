@@ -334,9 +334,11 @@ class ServerClient {
   // ===========================================================================
 
   async syncDrafts(action: 'pull' | 'push' | 'list', data?: unknown): Promise<unknown> {
-    const response = await this.request(`/api/sync/drafts/${action}`, {
-      method: action === 'push' ? 'POST' : 'GET',
-      body: action === 'push' ? JSON.stringify(data) : undefined,
+    const isPush = action === 'push';
+    const endpoint = isPush ? '/api/sync/drafts/push' : '/api/sync/drafts/list';
+    const response = await this.request(endpoint, {
+      method: isPush ? 'POST' : 'GET',
+      body: isPush ? JSON.stringify(data) : undefined,
     });
 
     if (!response.ok) {
@@ -364,6 +366,7 @@ class ServerClient {
       }
 
       const shouldRetryWithList = action === 'pull'
+        && endpoint !== '/api/sync/drafts/list'
         && (response.status === 404 || (response.status === 400 && errorCode === 'Validation failed'));
 
       if (shouldRetryWithList) {
