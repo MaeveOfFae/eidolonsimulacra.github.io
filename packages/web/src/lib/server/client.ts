@@ -47,6 +47,10 @@ class ServerClient {
   private config: ServerConfig;
   private accessToken: string | null = null;
   private refreshPromise: Promise<string> | null = null;
+  private statusPromise: Promise<SyncStatus> | null = null;
+  private cachedStatus: SyncStatus | null = null;
+  private statusCacheExpiresAt = 0;
+  private rateLimitedUntil = 0;
 
   constructor() {
     this.config = this.loadConfig();
@@ -71,6 +75,7 @@ class ServerClient {
 
   private saveConfig(): void {
     localStorage.setItem(SERVER_CONFIG_KEY, JSON.stringify(this.config));
+    this.invalidateStatusCache();
   }
 
   getConfig(): ServerConfig {
@@ -80,6 +85,11 @@ class ServerClient {
   setConfig(config: Partial<ServerConfig>): void {
     this.config = { ...this.config, ...config };
     this.saveConfig();
+  }
+
+  private invalidateStatusCache(): void {
+    this.cachedStatus = null;
+    this.statusCacheExpiresAt = 0;
   }
 
   isEnabled(): boolean {
@@ -93,11 +103,13 @@ class ServerClient {
   private setAccessToken(token: string): void {
     this.accessToken = token;
     localStorage.setItem(ACCESS_TOKEN_KEY, token);
+    this.invalidateStatusCache();
   }
 
   private clearAccessToken(): void {
     this.accessToken = null;
     localStorage.removeItem(ACCESS_TOKEN_KEY);
+    this.invalidateStatusCache();
   }
 
   private notifyAuthStateChanged(): void {
@@ -170,6 +182,20 @@ class ServerClient {
       headers,
       credentials: 'include', // Include cookies for refresh token
     });
+
+    if (response.status === 429) {
+      const retryAfterHeader = response.headers.get('retry-after');
+      const resetHeader = response.headers.get('ratelimit-reset');
+      const retryAfterSeconds = retryAfterHeader ? Number.parseInt(retryAfterHeader, 10) : Number.NaN;
+      const resetSeconds = resetHeader ? Number.parseInt(resetHeader, 10) : Number.NaN;
+      const waitSeconds = Number.isFinite(retryAfterSeconds)
+        ? retryAfterSeconds
+        : Number.isFinite(resetSeconds)
+          ? resetSeconds
+          : 60;
+
+      this.rateLimitedUntil = Date.now() + (Math.max(waitSeconds, 1) * 1000);
+    }
 
     // Handle token expiration for authenticated endpoints only.
     // Login/register can legitimately return 401 and should not trigger refresh.
@@ -295,6 +321,39 @@ class ServerClient {
       return { connected: false, authenticated: false };
     }
 
+    const now = Date.now();
+    if (this.cachedStatus && now < this.statusCacheExpiresAt) {
+      return this.cachedStatus;
+    }
+
+    if (this.statusPromise) {
+      return this.statusPromise;
+    }
+
+    if (now < this.rateLimitedUntil) {
+      const fallbackStatus = this.cachedStatus ?? {
+        connected: true,
+        authenticated: Boolean(this.getAccessToken()),
+      };
+      return {
+        ...fallbackStatus,
+        error: 'Rate limited. Retrying status check soon.',
+      };
+    }
+
+    this.statusPromise = this.computeStatus();
+
+    try {
+      const status = await this.statusPromise;
+      this.cachedStatus = status;
+      this.statusCacheExpiresAt = Date.now() + 15_000;
+      return status;
+    } finally {
+      this.statusPromise = null;
+    }
+  }
+
+  private async computeStatus(): Promise<SyncStatus> {
     try {
       // Check health
       const healthResponse = await fetch(`${this.config.url}/api/health`, {

@@ -444,10 +444,10 @@ export default function Layout({ children }: LayoutProps) {
     }
   }, []);
 
-  // Check auth status on mount and when location changes
+  // Check auth status on mount. Login/logout already re-check through auth events.
   useEffect(() => {
     void checkAuthStatus();
-  }, [location.pathname, checkAuthStatus]);
+  }, [checkAuthStatus]);
 
   // Listen for auth state changes (login/logout)
   useEffect(() => {
