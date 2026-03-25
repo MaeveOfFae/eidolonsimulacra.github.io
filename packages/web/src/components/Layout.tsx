@@ -29,7 +29,6 @@ import {
   Calendar,
   ChevronRight as TrayChevronRight,
   Layers as DynamicIcon,
-  HelpCircle,
 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { helpTopics, resolvePageHelp } from '../lib/help';
@@ -39,7 +38,6 @@ import { getFavoriteSeeds, SEED_FAVORITES_CHANGED_EVENT } from '../lib/seed-gene
 import { cn } from '../utils/cn';
 import { AssistantContextProvider } from './common/AssistantContext';
 import ContextualHelpPanel from './common/ContextualHelpPanel';
-import HelpTab from './common/HelpTab';
 import GuidedTourOverlay from './common/GuidedTourOverlay';
 import { GuidedTourProvider } from './common/GuidedTourContext';
 import { CONFIG_MANAGER_CHANGED_EVENT } from '../lib/config/manager';
@@ -226,11 +224,12 @@ export default function Layout({ children }: LayoutProps) {
   const reviewMatch = location.pathname.match(/^\/drafts\/([^/]+)$/);
   const reviewDraftId = reviewMatch ? decodeURIComponent(reviewMatch[1]) : null;
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [trayOpen, setTrayOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [authStatus, setAuthStatus] = useState<SyncStatus | null>(null);
   const [charactersExpanded, setCharactersExpanded] = useState(false);
   const [worldsExpanded, setWorldsExpanded] = useState(false);
-  const [trayTab, setTrayTab] = useState<'help' | 'dynamic' | 'whats-new'>('help');
+  const [trayTab, setTrayTab] = useState<'dynamic' | 'whats-new'>('dynamic');
   const pageHelp = useMemo(() => resolvePageHelp(location.pathname), [location.pathname]);
   const relatedTopics = useMemo(
     () => helpTopics.filter((topic) => pageHelp?.relatedTopicIds.includes(topic.id)),
@@ -498,6 +497,7 @@ export default function Layout({ children }: LayoutProps) {
   }, []);
 
   useEffect(() => {
+    setTrayOpen(false);
     setHelpOpen(false);
   }, [location.pathname]);
 
@@ -510,6 +510,13 @@ export default function Layout({ children }: LayoutProps) {
           <div
             className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
             onClick={() => setSidebarOpen(false)}
+          />
+        )}
+
+        {trayOpen && (
+          <div
+            className="fixed inset-0 z-30 bg-black/45 backdrop-blur-sm"
+            onClick={() => setTrayOpen(false)}
           />
         )}
 
@@ -709,23 +716,55 @@ export default function Layout({ children }: LayoutProps) {
             onClose={() => setHelpOpen(false)}
           />
         )}
-        <aside className="app-sidebar hidden w-80 flex-col border-l border-border/60 xl:flex">
-          <div className="sticky top-0 z-10 border-b border-border/60 bg-card/80 backdrop-blur">
-            {/* Tab buttons */}
-            <div className="flex border-b border-border/40">
+        <button
+          type="button"
+          onClick={() => setTrayOpen(true)}
+          className="fixed bottom-24 right-4 z-20 inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/95 px-4 py-3 text-sm font-medium text-foreground shadow-xl shadow-black/20 backdrop-blur-md transition-colors hover:border-primary/40 hover:text-primary"
+        >
+          <DynamicIcon className="h-4 w-4" />
+          Panel
+        </button>
+        <aside
+          className={cn(
+            'fixed right-0 top-0 z-40 flex h-dvh w-full max-w-md flex-col border-l border-border/60 bg-card/95 shadow-2xl backdrop-blur-md transition-transform duration-300 ease-out',
+            trayOpen ? 'translate-x-0' : 'translate-x-full'
+          )}
+          aria-hidden={!trayOpen}
+        >
+          <div className="sticky top-0 z-10 border-b border-border/60 bg-card/90 backdrop-blur">
+            <div className="flex items-center justify-between border-b border-border/40 px-4 py-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">Utility Panel</p>
+                <p className="mt-1 text-sm text-muted-foreground">Page-specific shortcuts, draft context, and roadmap updates.</p>
+              </div>
               <button
                 type="button"
-                onClick={() => setTrayTab('help')}
-                className={cn(
-                  'flex-1 flex items-center justify-center gap-2 px-4 py-3 text-xs font-medium transition-colors',
-                  trayTab === 'help'
-                    ? 'border-b-2 border-primary text-primary'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
+                onClick={() => setTrayOpen(false)}
+                className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
               >
-                <HelpCircle className="h-3.5 w-3.5" />
-                Help
+                <X className="h-5 w-5" />
               </button>
+            </div>
+            {pageHelp && (
+              <div className="border-b border-border/40 px-4 py-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTrayOpen(false);
+                    setHelpOpen(true);
+                  }}
+                  className="flex w-full items-center justify-between gap-3 rounded-lg border border-border/60 bg-background/60 px-3 py-2.5 text-left transition-colors hover:border-primary/40 hover:text-primary"
+                >
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">Page Help</p>
+                    <p className="mt-1 truncate text-sm font-medium text-foreground">{pageHelp.title}</p>
+                  </div>
+                  <CircleHelp className="h-4 w-4 shrink-0" />
+                </button>
+              </div>
+            )}
+
+            <div className="flex border-b border-border/40">
               <button
                 type="button"
                 onClick={() => setTrayTab('dynamic')}
@@ -754,10 +793,8 @@ export default function Layout({ children }: LayoutProps) {
               </button>
             </div>
           </div>
-          <div className="flex-1 overflow-hidden">
-            {trayTab === 'help' ? (
-              <HelpTab pageHelp={pageHelp} relatedTopics={relatedTopics} />
-            ) : trayTab === 'dynamic' ? (
+          <div className="flex-1 overflow-y-auto p-4">
+            {trayTab === 'dynamic' ? (
               location.pathname.startsWith('/drafts') ? (
                 <DraftListSidebar
                   drafts={draftsData?.drafts || []}
@@ -790,6 +827,7 @@ export default function Layout({ children }: LayoutProps) {
                   ))}
                   <Link
                     to="/whats-new"
+                    onClick={() => setTrayOpen(false)}
                     className="flex items-center justify-center gap-2 rounded-lg border border-border/60 bg-background/50 px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:text-primary"
                   >
                     View Full Roadmap
@@ -831,6 +869,7 @@ export default function Layout({ children }: LayoutProps) {
                               <Link
                                 key={item.id}
                                 to={item.to}
+                                onClick={() => setTrayOpen(false)}
                                 className="flex items-center gap-2 rounded-lg border border-border/70 bg-background/70 px-3 py-2 transition-colors hover:border-primary/40 hover:bg-accent/40"
                               >
                                 {content}
