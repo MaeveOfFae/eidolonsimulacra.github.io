@@ -102,8 +102,9 @@ function normalizeDraftPushPayload(data: unknown): unknown {
   }
 
   if (isRecord(data.metadata) && isRecord(data.assets)) {
+    const singleDraft = data as unknown as Draft;
     return {
-      drafts: [normalizeDraftForSync(data as Draft)],
+      drafts: [normalizeDraftForSync(singleDraft)],
     };
   }
 
