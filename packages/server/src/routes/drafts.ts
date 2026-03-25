@@ -152,7 +152,7 @@ router.post(
   async (req: Request, res: Response): Promise<void> => {
     const userId = req.user!.userId
     const { drafts } = req.body as { drafts: Array<z.infer<typeof pushDraftSchema>> }
-    const results: Array<{ reviewId: string; status: string }> = []
+    const results: Array<{ reviewId: string; status: string; error?: string }> = []
 
     for (const draftData of drafts) {
       try {
@@ -201,8 +201,10 @@ router.post(
           })
           results.push({ reviewId, status: "created" })
         }
-      } catch {
-        results.push({ reviewId: draftData.reviewId as string, status: "error" })
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Unknown draft sync error"
+        console.error(`Draft sync failed for ${draftData.reviewId}:`, error)
+        results.push({ reviewId: draftData.reviewId as string, status: "error", error: message })
       }
     }
 

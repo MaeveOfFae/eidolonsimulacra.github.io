@@ -112,14 +112,14 @@ async function syncDrafts(): Promise<void> {
 
   const pushResult = await serverClient.syncDrafts('push', {
     drafts: localDrafts.map(mapDraftForSync),
-  }) as { results?: Array<{ reviewId: string; status: string }> };
+  }) as { results?: Array<{ reviewId: string; status: string; error?: string }> };
 
-  const failedReviewIds = (pushResult.results || [])
+  const failedDraftMessages = (pushResult.results || [])
     .filter((entry) => entry.status === 'error')
-    .map((entry) => entry.reviewId);
+    .map((entry) => entry.error ? `${entry.reviewId} (${entry.error})` : entry.reviewId);
 
-  if (failedReviewIds.length > 0) {
-    throw new Error(`Remote draft sync failed for: ${failedReviewIds.join(', ')}`);
+  if (failedDraftMessages.length > 0) {
+    throw new Error(`Remote draft sync failed for: ${failedDraftMessages.join(', ')}`);
   }
 
   await Promise.all(
