@@ -50,20 +50,43 @@ function readCustomThemes(): ThemePreset[] {
 }
 
 function mapDraftForSync(draft: Draft) {
+  const mode = draft.metadata.mode;
+  const normalizedMode = mode === 'SFW' || mode === 'NSFW' || mode === 'Platform-Safe' || mode === 'Auto'
+    ? mode
+    : undefined;
+  const toOptionalString = (value: unknown): string | undefined => {
+    if (typeof value !== 'string') {
+      return undefined;
+    }
+
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  };
+  const normalizedAssets = Object.fromEntries(
+    Object.entries(draft.assets).filter((entry): entry is [string, string] => {
+      const [assetName, content] = entry;
+      return typeof assetName === 'string' && assetName.length > 0 && typeof content === 'string';
+    })
+  );
+
   return {
-    reviewId: draft.metadata.review_id,
-    seed: draft.metadata.seed,
-    mode: draft.metadata.mode,
-    model: draft.metadata.model,
-    characterName: draft.metadata.character_name,
-    templateName: draft.metadata.template_name,
-    genre: draft.metadata.genre,
-    notes: draft.metadata.notes,
-    favorite: draft.metadata.favorite,
-    tags: draft.metadata.tags || [],
-    offspringType: draft.metadata.offspring_type,
-    parentDraftIds: draft.metadata.parent_drafts,
-    assets: draft.assets,
+    reviewId: toOptionalString(draft.metadata.review_id) ?? draft.path,
+    seed: toOptionalString(draft.metadata.seed) ?? draft.path,
+    mode: normalizedMode,
+    model: toOptionalString(draft.metadata.model),
+    characterName: toOptionalString(draft.metadata.character_name),
+    templateName: toOptionalString(draft.metadata.template_name),
+    genre: toOptionalString(draft.metadata.genre),
+    notes: toOptionalString(draft.metadata.notes),
+    favorite: Boolean(draft.metadata.favorite),
+    tags: Array.isArray(draft.metadata.tags)
+      ? draft.metadata.tags.filter((tag): tag is string => typeof tag === 'string' && tag.trim().length > 0)
+      : [],
+    offspringType: toOptionalString(draft.metadata.offspring_type),
+    parentDraftIds: Array.isArray(draft.metadata.parent_drafts)
+      ? draft.metadata.parent_drafts.filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
+      : undefined,
+    assets: normalizedAssets,
   };
 }
 

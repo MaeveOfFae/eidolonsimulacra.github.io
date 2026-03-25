@@ -344,9 +344,21 @@ class ServerClient {
       let errorCode: string | null = null;
 
       try {
-        const error = await response.json() as { error?: string };
+        const error = await response.json() as {
+          error?: string;
+          details?: Record<string, string[] | undefined>;
+        };
         errorMessage = error.error || errorMessage;
         errorCode = error.error || null;
+
+        if (error.details) {
+          const detailText = Object.entries(error.details)
+            .flatMap(([field, messages]) => (messages || []).map((message) => `${field}: ${message}`))
+            .join('; ');
+          if (detailText) {
+            errorMessage = `${errorMessage} (${detailText})`;
+          }
+        }
       } catch {
         // Leave the fallback message in place when the server does not return JSON.
       }
