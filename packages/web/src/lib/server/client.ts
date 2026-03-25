@@ -340,8 +340,29 @@ class ServerClient {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || `Failed to ${action} drafts`);
+      let errorMessage = `Failed to ${action} drafts`;
+      let errorCode: string | null = null;
+
+      try {
+        const error = await response.json() as { error?: string };
+        errorMessage = error.error || errorMessage;
+        errorCode = error.error || null;
+      } catch {
+        // Leave the fallback message in place when the server does not return JSON.
+      }
+
+      const shouldRetryWithList = action === 'pull'
+        && (response.status === 404 || (response.status === 400 && errorCode === 'Validation failed'));
+
+      if (shouldRetryWithList) {
+        try {
+          return await this.listRemoteDrafts();
+        } catch {
+          // Surface the original pull failure if the compatibility retry also fails.
+        }
+      }
+
+      throw new Error(errorMessage);
     }
 
     return response.json();
