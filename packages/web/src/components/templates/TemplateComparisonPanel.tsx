@@ -80,7 +80,7 @@ export function TemplateComparisonPanel({
           </h3>
           <p className="mt-2">Compare asset sets, dependency contracts, and blueprint paths.</p>
         </div>
-        <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+        <span className="app-pill app-pill-muted hidden sm:inline-flex">
           Live
         </span>
       </div>
@@ -121,7 +121,7 @@ export function TemplateComparisonPanel({
         </div>
       ) : (
         <div className="mt-4 space-y-3">
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 text-xs">
+          <div className="grid gap-3 grid-cols-2 xl:grid-cols-4 text-xs">
             <div className="rounded-md border border-border p-3">
               <div className="font-medium text-foreground">Shared assets</div>
               <div className="mt-1">{comparison.shared.length}</div>
@@ -162,19 +162,19 @@ export function TemplateComparisonPanel({
           <div className="grid gap-3 lg:grid-cols-3">
             <div className="rounded-md border border-border p-3">
               <div className="font-medium text-foreground">Left only</div>
-              <div className="mt-2 space-y-1 text-xs">
+              <div className="mt-2 break-words space-y-1 text-xs">
                 {comparison.leftOnly.length === 0 ? 'None' : comparison.leftOnly.join(', ')}
               </div>
             </div>
             <div className="rounded-md border border-border p-3">
               <div className="font-medium text-foreground">Right only</div>
-              <div className="mt-2 space-y-1 text-xs">
+              <div className="mt-2 break-words space-y-1 text-xs">
                 {comparison.rightOnly.length === 0 ? 'None' : comparison.rightOnly.join(', ')}
               </div>
             </div>
             <div className="rounded-md border border-border p-3">
               <div className="font-medium text-foreground">Changed shared assets</div>
-              <div className="mt-2 space-y-1 text-xs">
+              <div className="mt-2 break-words space-y-1 text-xs">
                 {comparison.changedShared.length === 0 ? 'None' : comparison.changedShared.join(', ')}
               </div>
             </div>

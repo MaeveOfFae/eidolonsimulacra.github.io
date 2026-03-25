@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Star, Download, Trash2, Edit3, Check, X, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Star, Download, Trash2, Edit3, Check, X, ShieldCheck, ChevronDown } from 'lucide-react';
 import { api } from '@/lib/api';
 import { getGuidedTour, REVIEW_EXPORT_TOUR_ID } from '@/lib/help';
 import ExportModal from '../common/ExportModal';
 import ChatPanel from '../common/ChatPanel';
-import InlineHelpTip from '../common/InlineHelpTip';
 import { useGuidedTour } from '../common/GuidedTourContext';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
 import ReviewChecklistPanel from './ReviewChecklistPanel';
@@ -23,7 +22,7 @@ export default function Review() {
   const [editContent, setEditContent] = useState('');
   const [tourManagedExportModal, setTourManagedExportModal] = useState(false);
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
-  const { activeStepIndex, activeTourId, isTourCompleted, restartTour, startTour } = useGuidedTour();
+  const { activeStepIndex, activeTourId } = useGuidedTour();
   const queryClient = useQueryClient();
 
   const reviewId = decodeURIComponent(id || '');
@@ -185,18 +184,10 @@ export default function Review() {
   const assetNames = Object.keys(draft.assets);
 
   return (
-    <div className="app-page space-y-6 pb-12">
-      <InlineHelpTip
-        tipId="review-export-tip"
-        title="Validate before you export"
-        description="Review is where you catch missing sections, unresolved placeholders, and cross-asset drift. Export only after the draft reads coherently across more than one asset."
-        actionLabel={isTourCompleted(REVIEW_EXPORT_TOUR_ID) ? 'Replay Review and Export Tour' : 'Start Review and Export Tour'}
-        onAction={() => (isTourCompleted(REVIEW_EXPORT_TOUR_ID) ? restartTour(REVIEW_EXPORT_TOUR_ID) : startTour(REVIEW_EXPORT_TOUR_ID))}
-      />
-
+    <div className="app-page space-y-5 pb-10 sm:space-y-6 sm:pb-12">
       <section className="app-page-hero">
         <div className="app-page-hero-grid">
-          <div className="space-y-3">
+          <div className="space-y-2.5 sm:space-y-3">
             <Link
               to="/drafts"
               className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
@@ -204,20 +195,20 @@ export default function Review() {
               <ArrowLeft className="h-4 w-4" />
               Back to Drafts
             </Link>
-            <p className="app-page-eyebrow">Draft review</p>
+            <p className="app-page-eyebrow">Review</p>
             {isEditingName ? (
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                 <input
                   value={editName}
                   onChange={(event) => setEditName(event.target.value)}
                   placeholder="Character name"
-                  className="min-w-[18rem] rounded-xl border border-input bg-background px-3 py-2 text-2xl font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="w-full min-w-0 rounded-xl border border-input bg-background px-3 py-2 text-xl font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-w-[18rem] sm:text-2xl"
                   style={{ fontFamily: '"Space Grotesk", sans-serif' }}
                 />
                 <button
                   onClick={handleSaveName}
                   disabled={updateMetadata.isPending}
-                  className="inline-flex items-center gap-1 rounded-xl bg-primary px-3 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                  className="inline-flex items-center justify-center gap-1 rounded-xl bg-primary px-3 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                 >
                   <Check className="h-4 w-4" />
                   Save Name
@@ -225,14 +216,14 @@ export default function Review() {
                 <button
                   onClick={handleCancelNameEdit}
                   disabled={updateMetadata.isPending}
-                  className="inline-flex items-center gap-1 rounded-xl border border-input bg-background px-3 py-2 text-sm hover:bg-accent disabled:opacity-50"
+                  className="inline-flex items-center justify-center gap-1 rounded-xl border border-input bg-background px-3 py-2 text-sm hover:bg-accent disabled:opacity-50"
                 >
                   <X className="h-4 w-4" />
                   Cancel
                 </button>
               </div>
             ) : (
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                 <h1 className="app-page-title text-[clamp(2rem,4vw,3.4rem)]">
                   {draft.metadata.character_name || draft.metadata.seed}
                 </h1>
@@ -248,7 +239,7 @@ export default function Review() {
             <p className="app-page-summary max-w-4xl">{draft.metadata.seed}</p>
           </div>
 
-          <div className="app-panel-muted p-5">
+          <div className="app-panel-muted p-4 sm:p-5">
             <p className="app-page-eyebrow">Draft state</p>
             <div className="mt-4 app-page-metrics">
               <div className="app-page-metric">
@@ -265,18 +256,18 @@ export default function Review() {
               </div>
             </div>
 
-            <div data-tour-anchor="review-actions" className="mt-5 flex flex-wrap gap-2">
+            <div data-tour-anchor="review-actions" className="mt-4 grid grid-cols-2 gap-2 sm:mt-5 sm:flex sm:flex-wrap">
               <button
                 onClick={() => validateDraft.mutate()}
                 data-tour-anchor="review-validate"
-                className="inline-flex items-center gap-2 rounded-xl border border-input bg-background px-3 py-2 text-sm hover:bg-accent"
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-input bg-background px-3 py-2 text-sm hover:bg-accent sm:justify-start"
               >
                 <ShieldCheck className="h-4 w-4" />
                 Validate
               </button>
               <button
                 onClick={() => toggleFavorite.mutate()}
-                className="inline-flex items-center gap-2 rounded-xl border border-input bg-background px-3 py-2 text-sm hover:bg-accent"
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-input bg-background px-3 py-2 text-sm hover:bg-accent sm:justify-start"
               >
                 <Star className={`h-4 w-4 ${draft.metadata.favorite ? 'fill-yellow-500 text-yellow-500' : ''}`} />
                 {draft.metadata.favorite ? 'Favorited' : 'Favorite'}
@@ -287,14 +278,14 @@ export default function Review() {
                   setShowExportModal(true);
                 }}
                 data-tour-anchor="review-export"
-                className="inline-flex items-center gap-2 rounded-xl border border-input bg-background px-3 py-2 text-sm hover:bg-accent"
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-input bg-background px-3 py-2 text-sm hover:bg-accent sm:justify-start"
               >
                 <Download className="h-4 w-4" />
                 Export
               </button>
               <button
                 onClick={() => setShowDeleteModal(true)}
-                className="inline-flex items-center gap-2 rounded-xl border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive hover:bg-destructive/20"
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive hover:bg-destructive/20 sm:justify-start"
               >
                 <Trash2 className="h-4 w-4" />
                 Delete
@@ -304,24 +295,24 @@ export default function Review() {
         </div>
       </section>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-1.5 sm:gap-2">
         {draft.metadata.mode && (
-          <span className="rounded-full bg-primary/10 px-3 py-1 text-sm text-primary">
+          <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs text-primary sm:px-3 sm:text-sm">
             {draft.metadata.mode}
           </span>
         )}
         {draft.metadata.template_name && (
-          <span className="rounded-full bg-secondary px-3 py-1 text-sm">
+          <span className="rounded-full bg-secondary px-2.5 py-1 text-xs sm:px-3 sm:text-sm">
             {draft.metadata.template_name}
           </span>
         )}
         {draft.metadata.genre && (
-          <span className="rounded-full bg-muted px-3 py-1 text-sm">
+          <span className="rounded-full bg-muted px-2.5 py-1 text-xs sm:px-3 sm:text-sm">
             {draft.metadata.genre}
           </span>
         )}
         {draft.metadata.tags?.map((tag) => (
-          <span key={tag} className="rounded-full bg-muted px-3 py-1 text-sm">
+          <span key={tag} className="rounded-full bg-muted px-2.5 py-1 text-xs sm:px-3 sm:text-sm">
             {tag}
           </span>
         ))}
@@ -334,44 +325,42 @@ export default function Review() {
       )}
 
       {draft.metadata.parent_drafts && draft.metadata.parent_drafts.length > 0 && (
-        <div className="app-panel p-4">
-          <h3 className="mb-2 text-sm font-medium">Lineage</h3>
-          <p className="text-sm text-muted-foreground">
+        <div className="app-note px-4 py-3 text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">Lineage:</span>{' '}
             Offspring of: {draft.metadata.parent_drafts.join(' + ')}
-          </p>
         </div>
       )}
 
-      <div data-tour-anchor="review-assets" className="space-y-4">
+      <div data-tour-anchor="review-assets" className="space-y-2.5 sm:space-y-3">
         {assetNames.map((assetName) => (
-          <div key={assetName} className="space-y-2">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold capitalize" style={{ fontFamily: '"Space Grotesk", sans-serif' }}>
+          <div key={assetName} className="space-y-1.5">
+            <div className="flex items-start justify-between gap-3">
+              <h2 className="text-base font-semibold capitalize" style={{ fontFamily: '"Space Grotesk", sans-serif' }}>
                 {assetName.replace(/_/g, ' ')}
               </h2>
               {editingAsset !== assetName && (
                 <button
                   onClick={() => handleEditAsset(assetName)}
-                  className="inline-flex items-center gap-1 rounded-xl border border-input bg-background px-2 py-1 text-xs hover:bg-accent"
+                  className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-input bg-background px-2 py-1 text-xs hover:bg-accent"
                 >
                   <Edit3 className="h-3 w-3" />
                   Edit
                 </button>
               )}
             </div>
-            <div className="app-panel p-4">
+            <div className="app-panel p-2.5 sm:p-3">
               {editingAsset === assetName ? (
                 <div className="space-y-3">
                   <textarea
                     value={editContent}
                     onChange={(event) => setEditContent(event.target.value)}
-                    className="w-full min-h-[200px] rounded-xl border border-input bg-background p-3 text-sm font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="w-full min-h-[160px] rounded-xl border border-input bg-background p-3 text-sm font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-[180px]"
                   />
-                  <div className="flex gap-2">
+                  <div className="flex flex-col gap-2 sm:flex-row">
                     <button
                       onClick={handleSaveAsset}
                       disabled={saveAsset.isPending}
-                      className="inline-flex items-center gap-1 rounded-xl bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                      className="inline-flex items-center justify-center gap-1 rounded-xl bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                     >
                       {saveAsset.isPending ? (
                         <span className="animate-spin">⏳</span>
@@ -382,7 +371,7 @@ export default function Review() {
                     </button>
                     <button
                       onClick={handleCancelEdit}
-                      className="inline-flex items-center gap-1 rounded-xl border border-input bg-background px-3 py-1.5 text-sm hover:bg-accent"
+                      className="inline-flex items-center justify-center gap-1 rounded-xl border border-input bg-background px-3 py-1.5 text-sm hover:bg-accent"
                     >
                       <X className="h-4 w-4" />
                       Cancel
@@ -390,7 +379,7 @@ export default function Review() {
                   </div>
                 </div>
               ) : (
-                <pre className="whitespace-pre-wrap text-sm font-mono">
+                <pre className="overflow-x-auto whitespace-pre-wrap text-xs leading-5 font-mono sm:leading-6">
                   {draft.assets[assetName]}
                 </pre>
               )}
@@ -399,24 +388,25 @@ export default function Review() {
         ))}
       </div>
 
-      <section className="app-panel p-5">
-        <div className="mb-4 flex items-start justify-between gap-4">
+      <details className="app-panel group p-4 sm:p-5">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-4">
           <div>
-            <h2 className="text-lg font-semibold">Review Tooling</h2>
+            <h2 className="text-lg font-semibold">Review aids</h2>
             <p className="text-sm text-muted-foreground">
-              The checklist and local version activity are live now. Restore points and true revision diffs are still planned.
+              Checklist and local activity panels.
             </p>
           </div>
-          <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-300">
-            Partial
+          <span className="app-pill app-pill-muted">
+            Secondary
+            <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" />
           </span>
-        </div>
+        </summary>
 
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
           <ReviewChecklistPanel draftId={reviewId} />
           <VersionHistoryPanel draftId={reviewId} />
         </div>
-      </section>
+      </details>
 
       {showExportModal && (
         <ExportModal

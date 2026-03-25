@@ -1,14 +1,23 @@
-import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Clock, Plus, RefreshCw, Calendar, GitBranch, AlertTriangle } from 'lucide-react';
+import { Clock, GitBranch } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
 import GenerationHistoryPanel from './GenerationHistoryPanel';
-import EventTimelinePlaceholder from './EventTimelinePlaceholder';
-import ContinuityAssistantPlaceholder from './ContinuityAssistantPlaceholder';
+
+const PLANNED_TIMELINE_MODULES = [
+  {
+    name: 'Event timeline',
+    status: 'Staged',
+    description: 'World event storage, ordering, and editing are not live in the current browser flow.',
+  },
+  {
+    name: 'Continuity assistant',
+    status: 'Staged',
+    description: 'Conflict detection still needs dedicated timeline data beyond saved draft branches.',
+  },
+];
 
 export default function Timelines() {
-  const [selectedWorld, setSelectedWorld] = useState<string | null>(null);
   const { data } = useQuery({
     queryKey: ['drafts', 'timelines'],
     queryFn: () => api.getDrafts(),
@@ -19,7 +28,7 @@ export default function Timelines() {
   const generationCount = drafts.length;
 
   useAssistantScreenContext({
-    selected_world: selectedWorld,
+    selected_world: null,
     timeline_count: branchCount,
     event_count: 0,
     conflict_count: 0,
@@ -31,9 +40,12 @@ export default function Timelines() {
         <div className="app-page-hero-grid">
           <div className="space-y-4">
             <p className="app-page-eyebrow">Chronology layer</p>
-            <h1 className="app-page-title">Track generation history, continuity pressure, and world chronology across the draft graph.</h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="app-page-title">Track generation history across the saved draft graph.</h1>
+              <span className="app-pill app-pill-muted">Partial</span>
+            </div>
             <p className="app-page-summary">
-              Generation history is live from the saved draft graph. World events and continuity tooling are still staged behind the broader timeline surface.
+              Generation history is live from saved drafts. Event editing and continuity tooling are still staged until the app has dedicated timeline data.
             </p>
           </div>
           <div className="app-panel-muted p-5">
@@ -56,89 +68,41 @@ export default function Timelines() {
         </div>
       </section>
 
-      <div className="flex items-center gap-2">
-        <button
-          className="inline-flex items-center gap-2 rounded-2xl border border-input px-4 py-2.5 text-sm font-medium hover:bg-accent"
-          disabled
-        >
-          <RefreshCw className="h-4 w-4" />
-          Refresh
-        </button>
-        <button
-          className="inline-flex cursor-not-allowed items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground opacity-50"
-          disabled
-        >
-          <Plus className="h-4 w-4" />
-          Add Event
-        </button>
+      <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+        <GenerationHistoryPanel drafts={drafts} />
+
+        <section className="app-panel border-dashed p-5">
+          <div className="mb-4 flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-semibold">Staged timeline modules</h2>
+              <p className="text-sm text-muted-foreground">
+                The live chronology view currently stops at draft history. These modules stay hidden from the main workflow until their data layer exists.
+              </p>
+            </div>
+            <span className="app-pill app-pill-muted">Not live</span>
+          </div>
+
+          <div className="space-y-3">
+            {PLANNED_TIMELINE_MODULES.map((module) => (
+              <article key={module.name} className="rounded-lg border border-border bg-background/60 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground">{module.name}</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">{module.description}</p>
+                  </div>
+                  <span className="app-pill app-pill-muted">{module.status}</span>
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <div className="mt-4 rounded-lg border border-dashed border-border bg-background/40 p-4 text-sm text-muted-foreground">
+            {generationCount === 0
+              ? 'Generate and save drafts first. Timeline history only becomes useful once there is branch data to inspect.'
+              : 'Saved drafts already populate the history panel. Event and conflict tooling should stay out of the way until the underlying timeline model is real.'}
+          </div>
+        </section>
       </div>
-
-      <div className="grid gap-4 sm:grid-cols-4">
-        <div className="app-panel p-4">
-          <div className="flex items-center gap-2">
-            <GitBranch className="h-4 w-4 text-muted-foreground" />
-            <span className="text-2xl font-bold">{branchCount}</span>
-          </div>
-          <div className="text-sm text-muted-foreground">Lineage Branches</div>
-        </div>
-        <div className="app-panel p-4">
-          <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-            <span className="text-2xl font-bold">0</span>
-          </div>
-          <div className="text-sm text-muted-foreground">Events</div>
-        </div>
-        <div className="app-panel p-4">
-          <div className="flex items-center gap-2">
-            <Clock className="h-4 w-4 text-muted-foreground" />
-            <span className="text-2xl font-bold">{generationCount}</span>
-          </div>
-          <div className="text-sm text-muted-foreground">Generations</div>
-        </div>
-        <div className="app-panel p-4">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-            <span className="text-2xl font-bold">0</span>
-          </div>
-          <div className="text-sm text-muted-foreground">Conflicts</div>
-        </div>
-      </div>
-
-      <div className="app-panel p-8 text-center">
-        <Clock className="mx-auto h-12 w-12 text-muted-foreground" />
-        <h3 className="mt-4 text-lg font-semibold">{generationCount === 0 ? 'No Timeline Data' : 'Timeline Shell Ready'}</h3>
-        <p className="text-muted-foreground">
-          {generationCount === 0
-            ? 'Generate characters and create worlds to start building your timeline.'
-            : 'Saved drafts now feed the generation history view. World events and continuity analysis still need dedicated timeline data.'}
-        </p>
-      </div>
-
-      <section className="app-panel border-dashed p-5">
-        <div className="mb-4 flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-semibold">Timeline Tooling</h2>
-            <p className="text-sm text-muted-foreground">
-              Generation history is live now from saved drafts. Event and continuity tooling remain staged here.
-            </p>
-          </div>
-          <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-300">
-            Partial
-          </span>
-        </div>
-
-        <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
-          <GenerationHistoryPanel drafts={drafts} />
-          <EventTimelinePlaceholder
-            worldId={selectedWorld ?? undefined}
-            eventCount={0}
-          />
-          <ContinuityAssistantPlaceholder
-            worldId={selectedWorld ?? undefined}
-            conflictCount={0}
-          />
-        </div>
-      </section>
     </div>
   );
 }

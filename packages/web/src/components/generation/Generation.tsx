@@ -13,8 +13,6 @@ import { useAssistantScreenContext } from '../common/useAssistantContext';
 import GenerationProgress from './GenerationProgress';
 import DraftRefiner from './DraftRefiner';
 import IntroGenerator from './IntroGenerator';
-import ApprovalWorkflowPlaceholder from './ApprovalWorkflowPlaceholder';
-import CheckpointSessionPlaceholder from './CheckpointSessionPlaceholder';
 import { BlueprintPanel } from '../common/BlueprintPanel';
 import { getBlueprintsForFeature, resolveBlueprintForFeature, toBlueprintOptions } from '@/lib/blueprints/featureSelection';
 import { configManager } from '@/lib/config/manager';
@@ -271,10 +269,10 @@ export default function Generation() {
     : 'Orchestration Blueprint';
 
   return (
-    <div className="app-page space-y-12 pb-12">
+    <div className="app-page space-y-8 pb-10 sm:space-y-12 sm:pb-12">
       <section className="app-page-hero">
         <div className="app-page-hero-grid">
-          <div className="space-y-5">
+          <div className="space-y-4 sm:space-y-5">
             <p className="app-page-eyebrow">Generate</p>
             <div className="space-y-3">
               <h1 className="app-page-title">Build a draft</h1>
@@ -282,19 +280,19 @@ export default function Generation() {
                 Set the seed, pick the template, then run the pass.
               </p>
             </div>
-            <div className="flex flex-wrap gap-3">
-              <Link to="/templates" className="inline-flex items-center gap-2 rounded-2xl border border-border/60 bg-background/55 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary/35 hover:text-primary">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-3">
+              <Link to="/templates" className="inline-flex items-center justify-center gap-2 rounded-2xl border border-border/60 bg-background/55 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary/35 hover:text-primary sm:justify-start">
                 <BookOpen className="h-4 w-4" />
                 Review templates
               </Link>
-              <Link to="/seed-generator" className="inline-flex items-center gap-2 rounded-2xl border border-border/60 bg-background/55 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary/35 hover:text-primary">
+              <Link to="/seed-generator" className="inline-flex items-center justify-center gap-2 rounded-2xl border border-border/60 bg-background/55 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary/35 hover:text-primary sm:justify-start">
                 <Zap className="h-4 w-4" />
                 Open seed generator
               </Link>
             </div>
           </div>
 
-          <div className="app-panel-muted p-5">
+          <div className="app-panel-muted p-4 sm:p-5">
             <p className="app-page-eyebrow">Current setup</p>
             <div className="mt-4 app-page-metrics">
               <div className="app-page-metric">
@@ -338,8 +336,8 @@ export default function Generation() {
       )}
 
       {/* Tab Navigation */}
-      <div className="flex justify-center">
-        <div className="app-tab-group">
+      <div className="flex overflow-x-auto pb-1 sm:justify-center">
+        <div className="app-tab-group min-w-max">
           {TABS.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -365,16 +363,16 @@ export default function Generation() {
         <IntroGenerator templates={templates} blueprintContent={effectiveGenerationBlueprint} />
       ) : (
         <>
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
         {/* Seed Input Section */}
         <section className="space-y-3">
-          <div data-tour-anchor="generation-seed" className="app-panel p-6">
-            <div className="flex items-center gap-3 mb-4">
+          <div data-tour-anchor="generation-seed" className="app-panel p-4 sm:p-6">
+            <div className="mb-3 flex items-center gap-3 sm:mb-4">
               <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500">
                 <Zap className="h-5 w-5 text-white" />
               </div>
               <div>
-                <h2 className="text-xl font-bold">Seed</h2>
+                <h2 className="text-lg font-bold sm:text-xl">Seed</h2>
                 <p className="text-sm text-muted-foreground">
                   Start with one compact premise.
                 </p>
@@ -387,7 +385,7 @@ export default function Generation() {
                 value={seed}
                 onChange={(e) => setSeed(e.target.value)}
                 placeholder="e.g., a lonely space pirate searching for redemption"
-                className="mt-1.5 min-h-32 w-full rounded-xl border border-border bg-background/50 px-4 py-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
+                className="mt-1.5 min-h-28 w-full rounded-xl border border-border bg-background/50 px-4 py-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none sm:min-h-32"
               />
               <div className="flex items-center gap-2">
                 <Link
@@ -416,13 +414,13 @@ export default function Generation() {
 
         {/* Options Section */}
         <section className="space-y-3">
-          <div className="app-panel p-6">
-            <div className="flex items-center gap-3 mb-4">
+          <div className="app-panel p-4 sm:p-6">
+            <div className="mb-3 flex items-center gap-3 sm:mb-4">
               <div className="p-2.5 rounded-xl bg-gradient-to-br from-violet-500 to-purple-500">
                 <BookOpen className="h-5 w-5 text-white" />
               </div>
               <div>
-                <h2 className="text-xl font-bold">Options</h2>
+                <h2 className="text-lg font-bold sm:text-xl">Options</h2>
                 <p className="text-sm text-muted-foreground">
                   Pick the mode and template.
                 </p>
@@ -442,7 +440,7 @@ export default function Generation() {
                         type="button"
                         onClick={() => setMode(option.value)}
                         disabled={isGenerating}
-                        className={`relative overflow-hidden rounded-xl p-3 text-left transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed ${
+                        className={`relative overflow-hidden rounded-xl px-3 py-2.5 text-left text-sm transition-all duration-200 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed sm:p-3 sm:text-base sm:hover:scale-105 ${
                           isSelected
                             ? `bg-gradient-to-br ${option.color} text-white shadow-lg`
                             : 'bg-background/50 border border-border/50 hover:border-border'
@@ -467,7 +465,7 @@ export default function Generation() {
                   value={template}
                   onChange={(e) => setTemplate(e.target.value)}
                   disabled={templatesLoading || templates.length === 0 || isGenerating}
-                  className="w-full rounded-xl border border-border bg-background/50 px-4 py-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full rounded-xl border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 disabled:cursor-not-allowed sm:py-3"
                 >
                   {templates.length === 0 ? (
                     <option value="">No templates available</option>
@@ -493,7 +491,7 @@ export default function Generation() {
               onClick={handleGenerate}
               disabled={isGenerating || !seed.trim() || templates.length === 0}
               data-tour-anchor="generation-submit"
-              className="w-full mt-4 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary to-accent px-6 py-3.5 text-sm font-semibold text-primary-foreground hover:from-primary/90 hover:to-accent/90 transition-all duration-200 shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary to-accent px-6 py-3 text-sm font-semibold text-primary-foreground transition-all duration-200 shadow-lg shadow-primary/20 hover:from-primary/90 hover:to-accent/90 disabled:cursor-not-allowed disabled:opacity-50 sm:py-3.5"
             >
               <Sparkles className="h-5 w-5" />
               {isGenerating ? 'Generating...' : 'Generate Character'}
@@ -501,31 +499,6 @@ export default function Generation() {
           </div>
         </section>
       </div>
-
-      <section className="app-panel p-6">
-        <div className="mb-5 flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-semibold">Approval tooling</h2>
-            <p className="text-sm text-muted-foreground">
-              Review checkpoints are staged here while the full workflow lands.
-            </p>
-          </div>
-          <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-            Planned
-          </span>
-        </div>
-
-        <div className="grid gap-4 lg:grid-cols-2">
-          <ApprovalWorkflowPlaceholder
-            templateName={selectedTemplate?.name || template || undefined}
-            assetCount={selectedTemplate?.assets.length}
-          />
-          <CheckpointSessionPlaceholder
-            reviewId={undefined}
-            resumeFromAsset={selectedTemplate?.assets[0]?.name}
-          />
-        </div>
-      </section>
 
       {/* Progress Overlay */}
       {isGenerating && (

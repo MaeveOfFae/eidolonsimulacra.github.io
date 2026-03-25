@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { GitCompare, Loader2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { DraftMetadata } from '@char-gen/shared';
+import { cn } from '../../utils/cn';
 
 export interface DraftComparisonPanelProps {
   leftDraftId?: string;
@@ -202,7 +203,14 @@ export function DraftComparisonPanel({
                         key={asset}
                         type="button"
                         onClick={() => setSelectedAsset(asset)}
-                        className={`rounded-full px-2 py-0.5 text-xs ${selectedAsset === asset ? 'bg-primary text-primary-foreground' : isDifferent ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300' : 'bg-muted text-muted-foreground'}`}
+                        className={cn(
+                          'app-pill transition-colors',
+                          selectedAsset === asset
+                            ? 'app-pill-emerald'
+                            : isDifferent
+                              ? 'app-pill-amber'
+                              : 'app-pill-muted'
+                        )}
                       >
                         {asset}
                       </button>

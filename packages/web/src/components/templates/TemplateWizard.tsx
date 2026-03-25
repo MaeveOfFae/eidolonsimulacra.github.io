@@ -3,7 +3,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { X, ChevronLeft, ChevronRight, Loader2, CheckCircle2 } from 'lucide-react';
 import type { CreateTemplateRequest, AssetDefinition, Template } from '@char-gen/shared';
 import { api } from '@/lib/api';
-import InlineHelpTip from '../common/InlineHelpTip';
 import BasicInfoStep from './wizard/BasicInfoStep';
 import AssetSelectionStep from './wizard/AssetSelectionStep';
 import DependenciesStep from './wizard/DependenciesStep';
@@ -166,10 +165,10 @@ export default function TemplateWizard({ open, onClose, initialData, templateNam
   if (!open) return null;
 
   const stepTitles: Record<Step, string> = {
-    1: 'Basic Information',
-    2: 'Asset Selection',
+    1: 'Basics',
+    2: 'Assets',
     3: 'Dependencies',
-    4: 'Review & Create',
+    4: 'Review',
   };
 
   return (
@@ -184,7 +183,7 @@ export default function TemplateWizard({ open, onClose, initialData, templateNam
           <div>
             <h2 className="text-lg font-semibold">{forkMode ? 'Create Template Copy' : isEditMode ? 'Edit Template' : 'Create Template'}</h2>
             <p className="text-sm text-muted-foreground">
-              Step {currentStep} of 4: {stepTitles[currentStep]}
+              Step {currentStep} of 4 · {stepTitles[currentStep]}
             </p>
           </div>
           {!created && (
@@ -236,28 +235,8 @@ export default function TemplateWizard({ open, onClose, initialData, templateNam
 
           {forkMode && (
             <div className="mb-4 rounded-lg border border-blue-500/40 bg-blue-500/10 p-4 text-sm text-blue-700 dark:text-blue-300">
-              You are editing a built-in template. Saving will create a personal copy in local storage or your synced account instead of changing the default template.
+              Built-in templates are copied on save. The original stays unchanged.
             </div>
-          )}
-
-          {!created && (
-            <InlineHelpTip
-              tipId={`template-wizard-step-${currentStep}`}
-              title={currentStep === 1
-                ? 'This wizard is an advanced surface'
-                : currentStep === 2
-                  ? 'Asset order affects the whole template'
-                  : currentStep === 3
-                    ? 'Dependencies are a hard contract'
-                    : 'Review before you commit'}
-              description={currentStep === 1
-                ? 'If you are new, prefer the built-in template first. Creating or editing a template changes the asset graph for generation, review, and export.'
-                : currentStep === 2
-                  ? 'Add only the assets you actually need. Every extra asset changes review scope and export expectations.'
-                  : currentStep === 3
-                    ? 'Dependencies must reflect upstream facts correctly. If an asset depends on the wrong thing, downstream output quality and structure can drift.'
-                    : 'Use the final review step to catch naming, versioning, and structure mistakes before saving the template.'}
-            />
           )}
 
           {created ? (
@@ -270,7 +249,7 @@ export default function TemplateWizard({ open, onClose, initialData, templateNam
                 {createdTemplate?.name}
               </p>
               <p className="text-sm text-muted-foreground">
-                Closing in a moment...
+                Closing shortly...
               </p>
             </div>
           ) : (
@@ -343,7 +322,7 @@ export default function TemplateWizard({ open, onClose, initialData, templateNam
                 </>
               ) : (
                 <>
-                  Next Step
+                  Next
                   <ChevronRight className="h-4 w-4" />
                 </>
               )}

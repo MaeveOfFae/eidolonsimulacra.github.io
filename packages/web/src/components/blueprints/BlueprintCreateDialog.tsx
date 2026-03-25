@@ -148,14 +148,14 @@ Expected output structure
           <button
             onClick={onClose}
             disabled={isCreating}
-            className="px-4 py-2 text-sm font-medium rounded-md border border-input hover:bg-accent disabled:opacity-50"
+            className="app-button app-button-secondary"
           >
             Cancel
           </button>
           <button
             onClick={() => void handleCreate()}
             disabled={isCreating || !name.trim()}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            className="app-button app-button-primary"
           >
             {isCreating && <Loader2 className="h-4 w-4 animate-spin" />}
             {isCreating ? 'Creating...' : 'Create Blueprint'}

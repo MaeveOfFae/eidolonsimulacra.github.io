@@ -214,7 +214,10 @@ export default function AssetDesignerDialog({
               <div className="space-y-2">
                 {/* Browse Option */}
                 <button
-                  onClick={() => setBlueprintSource('browse')}
+                  onClick={() => {
+                    setBlueprintSource('browse');
+                    setShowBlueprintBrowser(true);
+                  }}
                   className={cn(
                     'w-full flex items-center gap-3 p-3 rounded-lg border transition-colors text-left',
                     blueprintSource === 'browse'
@@ -229,17 +232,9 @@ export default function AssetDesignerDialog({
                       {selectedBlueprint ? `Selected: ${selectedBlueprint.name}` : 'Select from available blueprints'}
                     </div>
                   </div>
-                  {blueprintSource === 'browse' && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowBlueprintBrowser(true);
-                      }}
-                      className="rounded bg-primary text-primary-foreground px-3 py-1 text-xs hover:bg-primary/90"
-                    >
-                      Browse
-                    </button>
-                  )}
+                  <span className="app-button app-button-secondary !px-3 !py-1.5 !text-xs">
+                    Browse
+                  </span>
                 </button>
 
                 {/* Custom Option */}
@@ -337,14 +332,14 @@ export default function AssetDesignerDialog({
           <div className="flex justify-end gap-2 p-4 border-t border-border">
             <button
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium rounded-md border border-input hover:bg-accent"
+              className="app-button app-button-secondary"
             >
               Cancel
             </button>
             <button
               onClick={handleSave}
               disabled={!name.trim()}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              className="app-button app-button-primary"
             >
               <Check className="h-4 w-4" />
               {asset ? 'Update' : 'Add'} Asset

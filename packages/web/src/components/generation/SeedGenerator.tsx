@@ -524,14 +524,14 @@ export default function SeedGenerator() {
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <span className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
+              <span className="app-pill app-pill-muted">
                 {seeds.length} seeds
               </span>
               <button
                 type="button"
                 onClick={handleCopyAll}
                 disabled={seeds.length === 0}
-                className="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-xs font-medium hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+                className="app-button app-button-secondary !px-3 !py-2 !text-xs"
               >
                 {copiedSeed === '__all__' ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                 {copiedSeed === '__all__' ? 'Copied All' : 'Copy All'}
@@ -551,24 +551,24 @@ export default function SeedGenerator() {
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button
                       onClick={() => handleUseSeed(seed)}
-                      className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+                      className="app-button app-button-primary !px-3 !py-2 !text-xs"
                     >
                       Use In Generate
                       <ArrowRight className="h-3.5 w-3.5" />
                     </button>
                     <button
                       onClick={() => handleCopySeed(seed)}
-                      className="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-xs font-medium hover:bg-accent"
+                      className="app-button app-button-secondary !px-3 !py-2 !text-xs"
                     >
                       {copiedSeed === seed ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
                       {copiedSeed === seed ? 'Copied' : 'Copy'}
                     </button>
                     <button
                       onClick={() => handleToggleFavorite(seed)}
-                      className={`inline-flex items-center gap-2 rounded-md border px-3 py-2 text-xs font-medium ${
+                      className={`app-button !px-3 !py-2 !text-xs ${
                         favoriteSeeds.has(seed)
-                          ? 'border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-300'
-                          : 'border-input hover:bg-accent'
+                          ? 'border border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-300'
+                          : 'app-button-secondary'
                       }`}
                     >
                       <Star className={`h-3.5 w-3.5 ${favoriteSeeds.has(seed) ? 'fill-current' : ''}`} />
@@ -599,13 +599,13 @@ export default function SeedGenerator() {
                         <div className="mt-2 flex flex-wrap gap-2">
                           <button
                             onClick={() => handleUseSeed(entry.seed)}
-                            className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+                            className="app-button app-button-primary !px-3 !py-2 !text-xs"
                           >
                             Use
                           </button>
                           <button
                             onClick={() => handleToggleFavorite(entry.seed)}
-                            className="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-xs font-medium hover:bg-accent"
+                            className="app-button app-button-secondary !px-3 !py-2 !text-xs"
                           >
                             Remove
                           </button>
@@ -638,7 +638,7 @@ export default function SeedGenerator() {
                           <span className="text-xs text-muted-foreground">
                             {new Date(entry.createdAt).toLocaleString()}
                           </span>
-                          <span className="rounded-full bg-muted px-2 py-1 text-[11px] text-muted-foreground">
+                          <span className="app-pill app-pill-muted !px-2 !py-1 !text-[11px]">
                             {entry.request.count} seeds • {entry.request.coverageMode}
                           </span>
                         </div>

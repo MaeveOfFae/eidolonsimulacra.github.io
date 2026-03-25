@@ -59,10 +59,9 @@ export function VersionHistoryPanel({
             <GitCommitHorizontal className="h-4 w-4 text-primary" />
             Version Activity
           </h3>
-          <p className="mt-2">Current draft timestamps and recent asset touches pulled from browser storage.</p>
-          <p className="mt-2">Draft: {draftId ?? 'unset'} · Asset: {assetName ?? 'all assets'}</p>
+          <p className="mt-1">Recent timestamps and asset touches from browser storage.</p>
         </div>
-        <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+        <span className="app-pill app-pill-muted">
           Local
         </span>
       </div>
@@ -76,7 +75,7 @@ export function VersionHistoryPanel({
 
       {!draftId ? (
         <div className="mt-4 rounded-md border border-border p-3">
-          Select a draft to inspect local edit activity.
+          Select a draft to inspect activity.
         </div>
       ) : null}
 
@@ -116,7 +115,7 @@ export function VersionHistoryPanel({
                 {assetActivity.map((row) => {
                   const content = draft.assets[row.assetName] || '';
                   return (
-                    <div key={`${row.assetName}-${row.createdAt}`} className="flex items-start justify-between gap-3 rounded-md border border-border bg-background/60 p-3">
+                    <div key={`${row.assetName}-${row.createdAt}`} className="flex items-start justify-between gap-3 rounded-md border border-border bg-background/60 px-3 py-2.5">
                       <div>
                         <div className="font-medium text-foreground">{row.assetName}</div>
                         <div className="mt-1 text-xs text-muted-foreground">
@@ -134,7 +133,7 @@ export function VersionHistoryPanel({
           </div>
 
           <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300">
-            Restore points and true revision diffs are still planned. This panel currently reflects the latest local draft state and last-touched asset timestamps.
+            Restore points and true diffs are still planned.
           </div>
         </div>
       )}

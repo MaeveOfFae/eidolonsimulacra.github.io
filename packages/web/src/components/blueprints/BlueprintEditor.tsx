@@ -426,7 +426,7 @@ export default function BlueprintEditor() {
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-bold">{displayName}</h1>
               {hasOverride && (
-                <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">
+                <span className="app-pill app-pill-amber !px-2 !py-1 !text-[11px]">
                   Edited
                 </span>
               )}
@@ -443,7 +443,7 @@ export default function BlueprintEditor() {
           {hasOverride && originalContent && (
             <button
               onClick={() => setShowDiff(true)}
-              className="inline-flex items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm hover:bg-accent"
+              className="app-button app-button-secondary"
               title="Compare with original"
             >
               <GitCompare className="h-4 w-4" />
@@ -452,7 +452,7 @@ export default function BlueprintEditor() {
           )}
           <button
             onClick={() => setShowPreview(!showPreview)}
-            className="inline-flex items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm hover:bg-accent"
+            className="app-button app-button-secondary"
           >
             {showPreview ? <Edit3 className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             {showPreview ? 'Hide Preview' : 'Show Preview'}
@@ -460,7 +460,7 @@ export default function BlueprintEditor() {
           <button
             onClick={() => void handleDuplicate()}
             disabled={isProcessing}
-            className="inline-flex items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm hover:bg-accent disabled:opacity-50"
+            className="app-button app-button-secondary"
             title="Duplicate blueprint"
           >
             <Copy className="h-4 w-4" />
@@ -468,7 +468,7 @@ export default function BlueprintEditor() {
           {hasOverride && (
             <button
               onClick={() => setShowConfirmDialog('reset')}
-              className="inline-flex items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm hover:bg-accent"
+              className="app-button app-button-secondary"
               title="Reset to original"
             >
               <RotateCcw className="h-4 w-4" />
@@ -477,7 +477,7 @@ export default function BlueprintEditor() {
           <button
             onClick={handleSave}
             disabled={!modified || isSaving}
-            className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            className="app-button app-button-primary"
           >
             <Save className="h-4 w-4" />
             {isSaving ? 'Saving...' : saveCreatesCopy ? 'Save Copy' : 'Save'}
@@ -554,8 +554,8 @@ export default function BlueprintEditor() {
             </div>
 
             <div className="mt-4 flex flex-wrap gap-2 text-xs">
-              <span className="rounded-full bg-muted px-2.5 py-1 text-muted-foreground">{lintErrorCount} errors</span>
-              <span className="rounded-full bg-muted px-2.5 py-1 text-muted-foreground">{lintWarningCount} warnings</span>
+              <span className="app-pill app-pill-muted">{lintErrorCount} errors</span>
+              <span className="app-pill app-pill-muted">{lintWarningCount} warnings</span>
             </div>
 
             {lintIssues.length === 0 ? (
@@ -647,7 +647,7 @@ export default function BlueprintEditor() {
             <div className="flex justify-end gap-2 p-4 border-t border-border">
               <button
                 onClick={() => setShowDiff(false)}
-                className="px-4 py-2 text-sm font-medium rounded-md border border-input hover:bg-accent"
+                className="app-button app-button-secondary"
               >
                 Close
               </button>
@@ -656,7 +656,7 @@ export default function BlueprintEditor() {
                   setShowDiff(false);
                   setShowConfirmDialog('reset');
                 }}
-                className="px-4 py-2 text-sm font-medium rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                className="app-button app-button-destructive"
               >
                 Reset to Original
               </button>
@@ -682,14 +682,14 @@ export default function BlueprintEditor() {
               <button
                 onClick={() => setShowConfirmDialog(null)}
                 disabled={isProcessing}
-                className="px-4 py-2 text-sm font-medium rounded-md border border-input hover:bg-accent disabled:opacity-50"
+                className="app-button app-button-secondary"
               >
                 Cancel
               </button>
               <button
                 onClick={showConfirmDialog === 'reset' ? handleReset : handleDelete}
                 disabled={isProcessing}
-                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
+                className="app-button app-button-destructive"
               >
                 {isProcessing && <Loader2 className="h-4 w-4 animate-spin" />}
                 {isProcessing ? 'Processing...' : showConfirmDialog === 'reset' ? 'Reset' : 'Delete'}

@@ -5,9 +5,21 @@ import { GitBranch, Loader2, RefreshCw, ArrowRight, Users } from 'lucide-react';
 import type { LineageNode } from '@char-gen/shared';
 import { api } from '@/lib/api';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
-import TimelinePlaceholder from './TimelinePlaceholder';
-import AncestryVisualizationPlaceholder from './AncestryVisualizationPlaceholder';
-import LineageExportPlaceholder from './LineageExportPlaceholder';
+
+const PLANNED_LINEAGE_MODULES = [
+  {
+    name: 'Timeline projection',
+    description: 'A lineage-aware chronology view is still staged and should wait for real timeline storage.',
+  },
+  {
+    name: 'Ancestry visualization',
+    description: 'Large graph visualization is not live yet and does not need to compete with the current tree inspector.',
+  },
+  {
+    name: 'Lineage export',
+    description: 'Export formats for lineage trees remain staged until the graph shape and output contract settle.',
+  },
+];
 
 function NodeCard({
   node,
@@ -35,7 +47,7 @@ function NodeCard({
             {node.mode ? ` • ${node.mode}` : ''}
           </div>
         </div>
-        <span className="rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground">
+        <span className="app-pill app-pill-muted !px-2 !py-1 !text-[11px]">
           {node.child_ids.length} children
         </span>
       </div>
@@ -144,7 +156,7 @@ export default function Lineage() {
             </p>
             <button
               onClick={() => void refetch()}
-              className="inline-flex items-center gap-2 rounded-2xl border border-input px-4 py-2.5 text-sm font-medium hover:bg-accent"
+              className="app-button app-button-secondary"
             >
               <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
               Refresh
@@ -321,7 +333,7 @@ export default function Lineage() {
               <div className="flex flex-wrap gap-3">
                 <Link
                   to={`/drafts/${encodeURIComponent(selectedNode.review_id)}`}
-                  className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground hover:bg-primary/90"
+                  className="app-button app-button-primary"
                 >
                   View Draft
                   <ArrowRight className="h-4 w-4" />
@@ -329,14 +341,14 @@ export default function Lineage() {
                 {selectedNode.parent_ids.length >= 2 && (
                   <Link
                     to={`/similarity?character1=${encodeURIComponent(selectedNode.parent_ids[0])}&character2=${encodeURIComponent(selectedNode.parent_ids[1])}`}
-                    className="inline-flex items-center gap-2 rounded-md border border-input px-4 py-2 font-medium hover:bg-accent"
+                    className="app-button app-button-secondary"
                   >
                     Compare Parents
                   </Link>
                 )}
                 <Link
                   to="/offspring"
-                  className="inline-flex items-center gap-2 rounded-md border border-input px-4 py-2 font-medium hover:bg-accent"
+                  className="app-button app-button-secondary"
                 >
                   Generate More Offspring
                 </Link>
@@ -346,33 +358,29 @@ export default function Lineage() {
         </section>
       </div>
 
-      {/* Planned Lineage Tooling */}
       <section className="app-panel border-dashed p-5">
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-lg font-semibold">Planned Lineage Tooling</h2>
+            <h2 className="text-lg font-semibold">Staged lineage modules</h2>
             <p className="text-sm text-muted-foreground">
-              These placeholders mark where timeline, ancestry visualization, and export features will attach.
+              The live lineage inspector is already useful on its own. Additional visualization and export features stay staged here until they have real behavior.
             </p>
           </div>
-          <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-            Planned
-          </span>
+          <span className="app-pill app-pill-muted">Not live</span>
         </div>
 
         <div className="grid gap-4 lg:grid-cols-3">
-          <TimelinePlaceholder
-            rootDraftId={data?.roots[0]}
-          />
-          <AncestryVisualizationPlaceholder
-            characterId={selectedNode?.id}
-            ancestorCount={selectedNode?.num_ancestors}
-            maxGeneration={data?.max_generation}
-          />
-          <LineageExportPlaceholder
-            rootId={data?.roots[0]}
-            format="JSON"
-          />
+          {PLANNED_LINEAGE_MODULES.map((module) => (
+            <article key={module.name} className="rounded-lg border border-border bg-background/60 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">{module.name}</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">{module.description}</p>
+                </div>
+                <span className="app-pill app-pill-muted">Staged</span>
+              </div>
+            </article>
+          ))}
         </div>
       </section>
     </div>

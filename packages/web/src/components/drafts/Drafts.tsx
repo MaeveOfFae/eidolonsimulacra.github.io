@@ -212,7 +212,7 @@ export default function Drafts() {
                 Compare drafts and inspect the active one.
               </p>
             </div>
-            <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+            <span className="app-pill app-pill-muted">
               {data?.drafts.length} drafts
             </span>
           </div>

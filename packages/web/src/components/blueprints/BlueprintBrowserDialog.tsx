@@ -250,11 +250,11 @@ export default function BlueprintBrowserDialog({
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  <span className="text-xs px-2 py-1 rounded bg-secondary">
+                  <span className="app-pill app-pill-muted !px-2 !py-1 !text-[11px]">
                     v{selectedBlueprint.version}
                   </span>
                   {selectedBlueprint.invokable && (
-                    <span className="text-xs px-2 py-1 rounded bg-primary/20 text-primary">
+                    <span className="app-pill app-pill-emerald !px-2 !py-1 !text-[11px]">
                       Invokable
                     </span>
                   )}
@@ -299,14 +299,14 @@ export default function BlueprintBrowserDialog({
           <div className="flex gap-2">
             <button
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium rounded-md border border-input hover:bg-accent"
+              className="app-button app-button-secondary"
             >
               Cancel
             </button>
             <button
               onClick={handleConfirm}
               disabled={!selectedBlueprint || isExistingAsset(selectedBlueprint)}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              className="app-button app-button-primary"
             >
               <Check className="h-4 w-4" />
               Select Blueprint

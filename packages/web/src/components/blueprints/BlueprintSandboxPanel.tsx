@@ -139,10 +139,10 @@ export function BlueprintSandboxPanel({
             Blueprint Sandbox
           </h3>
           <p className="mt-2">
-            Run a browser-only preview against the selected blueprint without saving a draft.
+            Run a preview against the selected blueprint without saving a draft.
           </p>
         </div>
-        <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+        <span className="app-pill app-pill-muted">
           Live
         </span>
       </div>
@@ -202,7 +202,7 @@ export function BlueprintSandboxPanel({
           className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-          {isRunning ? 'Running Preview' : 'Run Preview'}
+          {isRunning ? 'Running' : 'Run Preview'}
         </button>
         <button
           onClick={handleReset}
@@ -228,7 +228,7 @@ export function BlueprintSandboxPanel({
             <span className="text-xs text-muted-foreground">No draft save</span>
           </div>
           <pre className="max-h-72 overflow-auto whitespace-pre-wrap break-words text-xs text-foreground">
-            {streamedContent || 'Run a preview to inspect the generated asset output.'}
+            {streamedContent || 'Run a preview to inspect the generated output.'}
           </pre>
         </div>
 
@@ -237,7 +237,7 @@ export function BlueprintSandboxPanel({
             System Prompt
           </summary>
           <pre className="mt-3 max-h-64 overflow-auto whitespace-pre-wrap break-words text-xs text-foreground">
-            {preview?.system_prompt || 'The composed system prompt will appear here after a preview run.'}
+            {preview?.system_prompt || 'The composed system prompt appears here after a preview run.'}
           </pre>
         </details>
 
@@ -246,14 +246,10 @@ export function BlueprintSandboxPanel({
             User Prompt
           </summary>
           <pre className="mt-3 max-h-64 overflow-auto whitespace-pre-wrap break-words text-xs text-foreground">
-            {preview?.user_prompt || 'The composed user prompt will appear here after a preview run.'}
+            {preview?.user_prompt || 'The composed user prompt appears here after a preview run.'}
           </pre>
         </details>
       </div>
-
-      <p className="mt-3 text-xs text-muted-foreground">
-        TODO: add prior-asset context sets so downstream blueprint previews can be exercised against higher-tier outputs.
-      </p>
     </section>
   );
 }

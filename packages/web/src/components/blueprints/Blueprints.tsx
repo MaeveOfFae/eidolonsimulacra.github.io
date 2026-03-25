@@ -4,9 +4,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { BookOpen, FileJson, Lightbulb, Package, Search, Edit3, RotateCcw, Copy, Trash2, MoreVertical, Plus } from 'lucide-react';
 import type { Blueprint } from '@char-gen/shared';
 import { api } from '@/lib/api';
-import { BLUEPRINTS_SAFETY_TOUR_ID } from '@/lib/help';
-import InlineHelpTip from '../common/InlineHelpTip';
-import { useGuidedTour } from '../common/GuidedTourContext';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
 import BlueprintLintPanel from './BlueprintLintPanel';
 import BlueprintSandboxPanel from './BlueprintSandboxPanel';
@@ -28,7 +25,6 @@ export default function Blueprints() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const queryClient = useQueryClient();
-  const { isTourCompleted, restartTour, startTour } = useGuidedTour();
   const { data, isLoading, error } = useQuery({
     queryKey: ['blueprints'],
     queryFn: () => api.getBlueprints(),
@@ -161,34 +157,26 @@ export default function Blueprints() {
   }
 
   return (
-    <div className="app-page space-y-6 pb-12">
-      <InlineHelpTip
-        tipId="blueprints-advanced-surface-tip"
-        title="Blueprints are an advanced editing surface"
-        description="If you are not deliberately changing generation structure, stay with templates instead. Blueprint edits can break parser-facing output even when the text still looks readable."
-        actionLabel={isTourCompleted(BLUEPRINTS_SAFETY_TOUR_ID) ? 'Replay Blueprint Safety Tour' : 'Start Blueprint Safety Tour'}
-        onAction={() => (isTourCompleted(BLUEPRINTS_SAFETY_TOUR_ID) ? restartTour(BLUEPRINTS_SAFETY_TOUR_ID) : startTour(BLUEPRINTS_SAFETY_TOUR_ID))}
-      />
-
+    <div className="app-page space-y-5 pb-10 sm:space-y-6 sm:pb-12">
       <section className="app-page-hero">
         <div className="app-page-hero-grid">
           <div className="space-y-4">
-            <p className="app-page-eyebrow">Blueprint source control</p>
-            <h1 className="app-page-title">Inspect the live blueprint catalog without confusing it with template manifests.</h1>
+            <p className="app-page-eyebrow">Blueprints</p>
+            <h1 className="app-page-title">Manage blueprint files</h1>
             <p className="app-page-summary">
-              This screen lists Markdown blueprint files from the browser catalog: system prompts, example assets, template-scoped blueprint files, and any custom copies saved under blueprints/custom. Template manifests and asset graphs still belong in Templates.
+              Edit the live blueprint catalog here. Template manifests and asset graphs still belong in Templates.
             </p>
             <button
               onClick={() => setCreateDialogOpen(true)}
-              className="inline-flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 sm:justify-start"
             >
               <Plus className="h-4 w-4" />
               New Blueprint
             </button>
           </div>
 
-          <div className="app-panel-muted p-5">
-            <p className="app-page-eyebrow">Catalog state</p>
+          <div className="app-panel-muted p-4 sm:p-5">
+            <p className="app-page-eyebrow">Library</p>
             <div className="mt-4 app-page-metrics">
               <div className="app-page-metric">
                 <p className="app-page-metric-label">Visible</p>
@@ -207,47 +195,26 @@ export default function Blueprints() {
         </div>
       </section>
 
-      <section className="grid gap-3 lg:grid-cols-3">
-        <div className="app-panel-muted p-4">
-          <p className="text-sm font-medium text-foreground">What belongs here</p>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Markdown blueprint sources that drive generation behavior or provide reusable examples.
-          </p>
-        </div>
-        <div className="app-panel-muted p-4">
-          <p className="text-sm font-medium text-foreground">What does not</p>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Template TOML manifests, asset dependency design, and routine draft editing. Use Templates for those.
-          </p>
-        </div>
-        <div className="app-panel-muted p-4">
-          <p className="text-sm font-medium text-foreground">Safe workflow</p>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Duplicate or create a custom blueprint first, then edit the copy so parser-facing defaults stay intact.
-          </p>
-        </div>
-      </section>
-
       <div data-tour-anchor="blueprints-search" className="relative max-w-xl">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <input
           type="text"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search blueprint files by name, description, or path"
+          placeholder="Search by name, description, or path"
           className="w-full rounded-md border border-input bg-background py-2 pl-10 pr-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
       </div>
 
-      <section data-tour-anchor="blueprints-tools" className="app-panel border-dashed p-5">
+      <section data-tour-anchor="blueprints-tools" className="app-panel border-dashed p-4 sm:p-5">
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-lg font-semibold">Blueprint Tools</h2>
+            <h2 className="text-lg font-semibold">Blueprint tools</h2>
             <p className="text-sm text-muted-foreground">
-              Linting and sandbox preview run against the selected blueprint file so you can test edits before wiring them into a template.
+              Lint and preview the selected blueprint before wiring it into a template.
             </p>
           </div>
-          <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+          <span className="app-pill app-pill-emerald hidden sm:inline-flex">
             Live
           </span>
         </div>
@@ -266,7 +233,7 @@ export default function Blueprints() {
           No blueprints match the current search.
         </div>
       ) : (
-        <div data-tour-anchor="blueprints-list" className="space-y-6">
+        <div data-tour-anchor="blueprints-list" className="space-y-5 sm:space-y-6">
           {filteredSections.map((section) => (
             <section key={section.title} className="space-y-3">
               <div className="flex items-center gap-2">
@@ -291,7 +258,7 @@ export default function Blueprints() {
                         navigate(editorPath);
                       }
                     }}
-                    className="group app-panel cursor-pointer p-4 transition-colors hover:border-primary hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="group app-panel cursor-pointer p-3 transition-colors hover:border-primary hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:p-4"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <Link
@@ -299,15 +266,15 @@ export default function Blueprints() {
                         onClick={(event) => event.stopPropagation()}
                         className="flex-1 min-w-0"
                       >
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-medium">{blueprint.name}</h3>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="break-words font-medium">{blueprint.name}</h3>
                           {hasOverride && (
-                            <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">
+                            <span className="app-pill app-pill-amber !px-2 !py-1 !text-[11px]">
                               Edited
                             </span>
                           )}
                         </div>
-                        <p className="mt-1 text-sm text-muted-foreground truncate">{blueprint.description || 'No description'}</p>
+                        <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{blueprint.description || 'No description'}</p>
                       </Link>
                       <div className="flex items-center gap-1">
                         <Link
@@ -377,8 +344,8 @@ export default function Blueprints() {
                         </div>
                       </div>
                     </div>
-                    <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
-                      <span className="truncate">{blueprint.path}</span>
+                    <div className="mt-4 flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                      <span className="truncate pr-2">{blueprint.path}</span>
                       <span>v{blueprint.version}</span>
                     </div>
                   </div>
@@ -393,7 +360,7 @@ export default function Blueprints() {
       {confirmAction && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/50" onClick={() => !isProcessing && setConfirmAction(null)} />
-          <div className="relative bg-card border border-border rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+          <div className="relative mx-4 w-full max-w-md rounded-lg border border-border bg-card p-5 shadow-xl sm:p-6">
             <h3 className="text-lg font-semibold">
               {confirmAction.type === 'reset' ? 'Reset Blueprint?' : 'Delete Blueprint?'}
             </h3>
@@ -406,7 +373,7 @@ export default function Blueprints() {
               <button
                 onClick={() => setConfirmAction(null)}
                 disabled={isProcessing}
-                className="px-4 py-2 text-sm font-medium rounded-md border border-input hover:bg-accent disabled:opacity-50"
+                className="app-button app-button-secondary"
               >
                 Cancel
               </button>
@@ -419,7 +386,7 @@ export default function Blueprints() {
                   }
                 }}
                 disabled={isProcessing}
-                className="px-4 py-2 text-sm font-medium rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
+                className="app-button app-button-destructive"
               >
                 {isProcessing ? 'Processing...' : confirmAction.type === 'reset' ? 'Reset' : 'Delete'}
               </button>
@@ -432,7 +399,7 @@ export default function Blueprints() {
       {duplicateDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/50" onClick={() => !isProcessing && setDuplicateDialog(null)} />
-          <div className="relative bg-card border border-border rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+          <div className="relative mx-4 w-full max-w-md rounded-lg border border-border bg-card p-5 shadow-xl sm:p-6">
             <h3 className="text-lg font-semibold">Duplicate Blueprint</h3>
             <p className="mt-2 text-sm text-muted-foreground">
               Create a copy of "{duplicateDialog.name}" with a new name.
@@ -454,14 +421,14 @@ export default function Blueprints() {
                   setDuplicateName('');
                 }}
                 disabled={isProcessing}
-                className="px-4 py-2 text-sm font-medium rounded-md border border-input hover:bg-accent disabled:opacity-50"
+                className="app-button app-button-secondary"
               >
                 Cancel
               </button>
               <button
                 onClick={() => void handleDuplicate()}
                 disabled={isProcessing || !duplicateName.trim()}
-                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                className="app-button app-button-primary"
               >
                 {isProcessing ? 'Duplicating...' : 'Duplicate'}
               </button>

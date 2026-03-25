@@ -36,8 +36,7 @@ export function BlueprintLintPanel({
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="font-semibold text-foreground">Blueprint Lint</h3>
-          <p className="mt-2">Checks frontmatter and a small set of category-aware structural issues for the selected blueprint.</p>
-          <p className="mt-2">Blueprint: {blueprintPath ?? 'unset'}</p>
+          <p className="mt-1">Checks frontmatter and structural issues for the selected blueprint.</p>
         </div>
         {issues.length === 0 && data ? (
           <CheckCircle2 className="h-5 w-5 text-green-500" />
@@ -49,7 +48,7 @@ export function BlueprintLintPanel({
       {isLoading && (
         <div className="mt-4 flex items-center gap-2 text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
-          Running lint checks...
+          Running lint...
         </div>
       )}
 
@@ -62,17 +61,17 @@ export function BlueprintLintPanel({
       {!isLoading && !error && data && (
         <div className="mt-4 space-y-3">
           <div className="flex flex-wrap gap-2 text-xs">
-            <span className="rounded-full bg-muted px-2.5 py-1 text-muted-foreground">
+            <span className="app-pill app-pill-muted">
               {errorCount} errors
             </span>
-            <span className="rounded-full bg-muted px-2.5 py-1 text-muted-foreground">
+            <span className="app-pill app-pill-muted">
               {warningCount} warnings
             </span>
           </div>
 
           {issues.length === 0 ? (
             <div className="rounded-md border border-green-500/40 bg-green-500/10 p-3 text-green-700 dark:text-green-300">
-              No obvious lint issues found.
+              No obvious issues found.
             </div>
           ) : (
             <div className="space-y-2">
@@ -87,8 +86,6 @@ export function BlueprintLintPanel({
               ))}
             </div>
           )}
-
-          {/* TODO: Expand blueprint linting to validate dependency graphs and template-specific output contracts once browser tooling exposes richer schema metadata. */}
         </div>
       )}
     </section>

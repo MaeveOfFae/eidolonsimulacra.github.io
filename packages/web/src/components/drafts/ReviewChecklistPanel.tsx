@@ -40,8 +40,7 @@ export function ReviewChecklistPanel({ draftId }: ReviewChecklistPanelProps) {
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="font-semibold text-foreground">Review Checklist</h3>
-          <p className="mt-2">Quick readiness pass built from draft metadata and the browser validator.</p>
-          <p className="mt-2">Draft: {draftId ?? 'unset'}</p>
+          <p className="mt-1">Quick readiness pass from draft metadata and validation.</p>
         </div>
         <ClipboardList className="h-5 w-5 text-primary" />
       </div>
@@ -55,14 +54,14 @@ export function ReviewChecklistPanel({ draftId }: ReviewChecklistPanelProps) {
 
       {!draftId ? (
         <div className="mt-4 rounded-md border border-border p-3">
-          Select a draft to load review checks.
+          Select a draft to load checks.
         </div>
       ) : null}
 
       {checklist.length > 0 && (
         <div className="mt-4 space-y-2">
           {checklist.map((item) => (
-            <div key={item.label} className="flex items-center gap-2 rounded-md border border-border p-3">
+            <div key={item.label} className="flex items-center gap-2 rounded-md border border-border px-3 py-2.5">
               <CheckCircle2 className={`h-4 w-4 shrink-0 ${item.passed ? 'text-green-500' : 'text-muted-foreground'}`} />
               <span className={item.passed ? 'text-foreground' : 'text-muted-foreground'}>{item.label}</span>
             </div>

@@ -19,7 +19,6 @@ import { api } from '@/lib/api';
 import { saveDownload } from '../../utils/download';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
 import TemplateComparisonPanel from './TemplateComparisonPanel';
-import TemplateMigrationPlaceholder from './TemplateMigrationPlaceholder';
 
 const TemplateWizard = lazy(() => import('./TemplateWizard'));
 
@@ -227,7 +226,7 @@ export default function Templates() {
         </Suspense>
       )}
 
-      <div className="app-page space-y-10 pb-12">
+      <div className="app-page space-y-8 pb-10 sm:space-y-10 sm:pb-12">
         {feedback && (
           <div
             className={`app-note p-4 text-sm ${
@@ -248,8 +247,8 @@ export default function Templates() {
               <p className="app-page-summary">
                 Each template defines the asset set, order, and export contract.
               </p>
-              <div className="flex flex-wrap items-center gap-3">
-                <label className="inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-input px-4 py-2.5 text-sm font-medium hover:bg-accent">
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+                <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-input px-4 py-2.5 text-sm font-medium hover:bg-accent sm:justify-start">
                   <Upload className="h-4 w-4" />
                   Import Template
                   <input type="file" accept=".json,.zip" className="hidden" onChange={handleImportChange} />
@@ -260,7 +259,7 @@ export default function Templates() {
                     setEditingTemplateData(null);
                     setShowWizard(true);
                   }}
-                  className="inline-flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 sm:justify-start"
                 >
                   <Plus className="h-4 w-4" />
                   Create Template
@@ -268,7 +267,7 @@ export default function Templates() {
               </div>
             </div>
 
-            <div className="app-panel-muted p-5">
+            <div className="app-panel-muted p-4 sm:p-5">
               <p className="app-page-eyebrow">Library</p>
               <div className="mt-4 app-page-metrics">
                 <div className="app-page-metric">
@@ -293,22 +292,22 @@ export default function Templates() {
             <div key={template.name} className="app-panel overflow-hidden">
               <button
                 onClick={() => toggleExpand(template.name)}
-                className="flex w-full items-center justify-between p-4 transition-colors hover:bg-accent/30"
+                className="flex w-full items-start justify-between gap-3 p-3 text-left transition-colors hover:bg-accent/30 sm:items-center sm:p-4"
               >
-                <div className="flex items-center gap-3">
+                <div className="flex min-w-0 items-start gap-3 sm:items-center">
                   <div className="rounded-xl border border-border/60 bg-background/55 p-2 text-primary">
                     <FileText className="h-5 w-5" />
                   </div>
-                  <div className="text-left">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-foreground">{template.name}</span>
+                  <div className="min-w-0 text-left">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="truncate font-medium text-foreground">{template.name}</span>
                       {template.is_official && <Star className="h-4 w-4 fill-yellow-500 text-yellow-500" />}
                     </div>
-                    <p className="text-sm text-muted-foreground">{template.description || `${template.assets.length} assets in flow`}</p>
+                    <p className="line-clamp-2 text-sm text-muted-foreground">{template.description || `${template.assets.length} assets in flow`}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">v{template.version}</span>
+                <div className="flex shrink-0 items-center gap-2">
+                  <span className="hidden text-xs text-muted-foreground sm:inline">v{template.version}</span>
                   {expandedTemplate === template.name ? (
                     <ChevronUp className="h-4 w-4 text-muted-foreground" />
                   ) : (
@@ -318,24 +317,24 @@ export default function Templates() {
               </button>
 
               {expandedTemplate === template.name && (
-                <div className="space-y-4 border-t border-border/60 p-4">
+                <div className="space-y-4 border-t border-border/60 p-3 sm:p-4">
                   <div>
                     <h3 className="mb-2 text-sm font-medium text-foreground">Assets ({template.assets.length})</h3>
                     <div className="space-y-2">
                       {template.assets.map((asset: AssetDefinition) => (
-                        <div key={asset.name} className="app-panel-muted flex items-center justify-between gap-3 p-3 text-sm">
-                          <div className="flex items-center gap-2">
+                        <div key={asset.name} className="app-panel-muted flex flex-col gap-2 p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+                          <div className="flex flex-wrap items-center gap-2">
                             <span className={asset.required ? 'text-primary' : 'text-muted-foreground'}>{asset.name}</span>
                             {asset.depends_on.length > 0 && (
                               <span className="text-xs text-muted-foreground">depends on {asset.depends_on.join(', ')}</span>
                             )}
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
                             {asset.required && (
                               <span className="rounded-full bg-primary/20 px-2 py-0.5 text-xs text-primary">required</span>
                             )}
                             {asset.blueprint_file && (
-                              <span className="text-xs text-muted-foreground">{asset.blueprint_file}</span>
+                              <span className="break-all text-xs text-muted-foreground">{asset.blueprint_file}</span>
                             )}
                           </div>
                         </div>
@@ -374,10 +373,10 @@ export default function Templates() {
                     </div>
                   )}
 
-                  <div className="flex flex-wrap justify-end gap-3">
+                  <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end sm:gap-3">
                     <button
                       onClick={() => handleValidate(template.name)}
-                      className="inline-flex items-center gap-2 text-sm text-foreground hover:text-primary"
+                      className="inline-flex items-center justify-center gap-2 text-sm text-foreground hover:text-primary sm:justify-start"
                     >
                       <ShieldCheck className="h-4 w-4" />
                       Validate
@@ -385,14 +384,14 @@ export default function Templates() {
                     <button
                       onClick={() => handleDuplicate(template.name)}
                       disabled={duplicateMutation.isPending}
-                      className="inline-flex items-center gap-2 text-sm text-foreground hover:text-primary disabled:opacity-50"
+                      className="inline-flex items-center justify-center gap-2 text-sm text-foreground hover:text-primary disabled:opacity-50 sm:justify-start"
                     >
                       <Copy className="h-4 w-4" />
                       Duplicate
                     </button>
                     <button
                       onClick={() => handleExport(template.name)}
-                      className="inline-flex items-center gap-2 text-sm text-foreground hover:text-primary"
+                      className="inline-flex items-center justify-center gap-2 text-sm text-foreground hover:text-primary sm:justify-start"
                     >
                       <Download className="h-4 w-4" />
                       Export
@@ -400,7 +399,7 @@ export default function Templates() {
                     {!template.is_official && (
                       <button
                         onClick={() => handleEdit(template)}
-                        className="inline-flex items-center gap-2 text-sm text-foreground hover:text-primary"
+                        className="inline-flex items-center justify-center gap-2 text-sm text-foreground hover:text-primary sm:justify-start"
                       >
                         <Pencil className="h-4 w-4" />
                         Edit
@@ -414,7 +413,7 @@ export default function Templates() {
                           }
                         }}
                         disabled={deleteMutation.isPending}
-                        className="inline-flex items-center gap-2 text-sm text-destructive hover:text-destructive/80 disabled:opacity-50"
+                        className="col-span-2 inline-flex items-center justify-center gap-2 text-sm text-destructive hover:text-destructive/80 disabled:opacity-50 sm:col-auto sm:justify-start"
                       >
                         <Trash2 className="h-4 w-4" />
                         Delete Template
@@ -432,13 +431,10 @@ export default function Templates() {
             <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
             <h3 className="mt-4 text-lg font-semibold">No templates yet</h3>
             <p className="text-muted-foreground">Create one to define a custom generation flow.</p>
-            <div className="mt-6 text-left">
-              <TemplateMigrationPlaceholder templateName="first template" />
-            </div>
           </div>
         )}
 
-        <section className="app-panel p-5">
+        <section className="app-panel p-4 sm:p-5">
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
               <h2 className="text-lg font-semibold">Compare templates</h2>
@@ -446,13 +442,9 @@ export default function Templates() {
                 Check ordering and contract differences before switching flows.
               </p>
             </div>
-            <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-300">Advanced</span>
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-2">
-            <TemplateMigrationPlaceholder templateName={templatesList[0]?.name} draftId={undefined} />
-            <TemplateComparisonPanel templates={templatesList} leftTemplate={templatesList[0]?.name} rightTemplate={templatesList[1]?.name} />
-          </div>
+          <TemplateComparisonPanel templates={templatesList} leftTemplate={templatesList[0]?.name} rightTemplate={templatesList[1]?.name} />
         </section>
       </div>
     </>

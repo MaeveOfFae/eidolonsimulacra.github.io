@@ -3,18 +3,12 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { CheckCircle, FolderSearch, Loader2, ShieldAlert, ShieldCheck } from 'lucide-react';
 import type { ValidationResponse } from '@char-gen/shared';
 import { api } from '@/lib/api';
-import { VALIDATION_TOUR_ID } from '@/lib/help';
-import InlineHelpTip from '../common/InlineHelpTip';
-import { useGuidedTour } from '../common/GuidedTourContext';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
-import ValidationProfilesPlaceholder from './ValidationProfilesPlaceholder';
-import AutoValidationPlaceholder from './AutoValidationPlaceholder';
 
 export default function Validation() {
   const [path, setPath] = useState('');
   const [selectedDraftId, setSelectedDraftId] = useState('');
   const [result, setResult] = useState<ValidationResponse | null>(null);
-  const { isTourCompleted, restartTour, startTour } = useGuidedTour();
 
   const { data: draftsData, isLoading } = useQuery({
     queryKey: ['drafts'],
@@ -60,20 +54,13 @@ export default function Validation() {
 
   return (
     <div className="app-page space-y-10 pb-12">
-      <InlineHelpTip
-        tipId="validation-before-export-tip"
-        title="Validation is the last structural check"
-        description="Catch missing sections before export. It's faster to fix here than after export."
-        actionLabel={isTourCompleted(VALIDATION_TOUR_ID) ? 'Replay Validation Tour' : 'Start Validation Tour'}
-        onAction={() => (isTourCompleted(VALIDATION_TOUR_ID) ? restartTour(VALIDATION_TOUR_ID) : startTour(VALIDATION_TOUR_ID))}
-      />
       <section className="app-page-hero">
         <div className="app-page-hero-grid">
           <div className="space-y-4">
-            <p className="app-page-eyebrow">Structural checks</p>
-            <h1 className="app-page-title">Catch issues before export</h1>
+            <p className="app-page-eyebrow">Validation</p>
+            <h1 className="app-page-title">Run structural checks</h1>
             <p className="app-page-summary">
-              Validate a draft against its template structure. Run this before export to check for missing sections or structural errors.
+              Validate a path or draft before export.
             </p>
           </div>
 
@@ -99,9 +86,6 @@ export default function Validation() {
             <FolderSearch className="h-5 w-5 text-primary" />
             <h2 className="text-lg font-semibold">Validate path</h2>
           </div>
-          <p className="text-sm text-muted-foreground">
-            Paste a draft path or review ID.
-          </p>
           <input
             type="text"
             value={path}
@@ -124,9 +108,6 @@ export default function Validation() {
             <ShieldAlert className="h-5 w-5 text-primary" />
             <h2 className="text-lg font-semibold">Validate draft</h2>
           </div>
-          <p className="text-sm text-muted-foreground">
-            Pick a draft from your library.
-          </p>
           <select
             value={selectedDraftId}
             onChange={(event) => setSelectedDraftId(event.target.value)}
@@ -192,31 +173,6 @@ export default function Validation() {
         </section>
       )}
 
-      {/* Planned Validation Tooling */}
-      <section className="app-panel p-5">
-        <div className="mb-4 flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-semibold">Planned Validation Tooling</h2>
-            <p className="text-sm text-muted-foreground">
-              These placeholders mark where profiles and auto-validation features will attach.
-            </p>
-          </div>
-          <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-            Planned
-          </span>
-        </div>
-
-        <div className="grid gap-4 lg:grid-cols-2">
-          <ValidationProfilesPlaceholder
-            profileName="default"
-            ruleCount={undefined}
-          />
-          <AutoValidationPlaceholder
-            enabled={false}
-            triggerCount={0}
-          />
-        </div>
-      </section>
     </div>
   );
 }

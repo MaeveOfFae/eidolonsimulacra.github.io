@@ -348,7 +348,7 @@ export default function DataManager() {
             </div>
             <button
               onClick={handleExportDrafts}
-              className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              className="app-button app-button-primary"
             >
               <Download className="h-4 w-4" />
               Export
@@ -367,7 +367,7 @@ export default function DataManager() {
             </div>
             <button
               onClick={handleExportConfig}
-              className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              className="app-button app-button-primary"
             >
               <Download className="h-4 w-4" />
               Export
@@ -386,7 +386,7 @@ export default function DataManager() {
             </div>
             <button
               onClick={handleExportApiKeys}
-              className="inline-flex items-center gap-2 rounded-md border border-input px-4 py-2 text-sm font-medium hover:bg-accent"
+              className="app-button app-button-secondary"
             >
               <Download className="h-4 w-4" />
               Export
@@ -415,7 +415,7 @@ export default function DataManager() {
             </div>
             <button
               onClick={() => importInputRef.current?.click()}
-              className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              className="app-button app-button-primary"
             >
               <Upload className="h-4 w-4" />
               Import
@@ -441,7 +441,7 @@ export default function DataManager() {
             </div>
             <button
               onClick={() => exportInputRef.current?.click()}
-              className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              className="app-button app-button-primary"
             >
               <Upload className="h-4 w-4" />
               Import
@@ -469,7 +469,7 @@ export default function DataManager() {
             <button
               onClick={() => setShowConfirmClear(true)}
               disabled={isClearing}
-              className="inline-flex items-center gap-2 rounded-md border border-destructive px-4 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 disabled:opacity-50"
+              className="app-button border border-destructive text-destructive hover:bg-destructive/10"
             >
               <Trash2 className="h-4 w-4" />
               Clear All Data
@@ -488,7 +488,7 @@ export default function DataManager() {
                 <button
                   onClick={handleClearAll}
                   disabled={isClearing}
-                  className="inline-flex items-center gap-2 rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
+                  className="app-button app-button-destructive"
                 >
                   {isClearing ? (
                     <>
@@ -505,7 +505,7 @@ export default function DataManager() {
                 <button
                   onClick={() => setShowConfirmClear(false)}
                   disabled={isClearing}
-                  className="inline-flex items-center gap-2 rounded-md border border-input px-4 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50"
+                  className="app-button app-button-secondary"
                 >
                   Cancel
                 </button>
