@@ -1,6 +1,22 @@
 # Changelog
 
 
+## v3.0.21 - 2026-03-26
+
+### Platform and UI update
+
+This release packages 12 recent commits focused on platform, UI, and themes.
+
+### Highlights
+- Add rate limiting configuration options to server environment
+- Add optional rate limiting configuration to environment files and update server logic
+- Add 'Themes' navigation item with Palette icon to the layout
+- Add optional API rate limiting configuration to environment files
+- Update rate limiting configuration to increase maximum requests
+
+### Links
+- [Open generation](/generate)
+- [Review templates](/templates)
 ## v3.0.20 - 2026-03-26
 
 ### Platform and UI update
@@ -337,6 +353,7 @@ This release packages 12 recent commits focused on documentation, templates, and
 ### Links
 - [Open generation](/generate)
 - [Review templates](/templates)
+
 
 
 

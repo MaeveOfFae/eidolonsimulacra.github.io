@@ -1732,11 +1732,6 @@ export class EidolonBrowserAPI {
       }
 
       try {
-        const status = await serverClient.checkStatus();
-        if (!status.authenticated) {
-          return false;
-        }
-
         const { themes: serverThemes } = await serverClient.syncThemes('pull') as { themes: Array<{
           name: string;
           displayName?: string;
@@ -1807,11 +1802,6 @@ export class EidolonBrowserAPI {
       }
 
       try {
-        const status = await serverClient.checkStatus();
-        if (!status.authenticated) {
-          return false;
-        }
-
         const { drafts: serverDrafts } = await serverClient.syncDrafts('pull') as { drafts: Array<{
           id: string;
           reviewId: string;
@@ -2035,41 +2025,38 @@ export class EidolonBrowserAPI {
 
   async getTemplates(): Promise<Template[]> {
     // Try to sync from server first if authenticated
-    if (serverClient.isEnabled()) {
+    if (serverClient.isEnabled() && serverClient.hasAccessToken()) {
       try {
-        const status = await serverClient.checkStatus();
-        if (status.authenticated) {
-          const { templates: serverTemplates } = await serverClient.syncTemplates('pull') as { templates: Array<{
-            name: string;
-            version: string;
-            description?: string;
-            is_official: boolean;
-            is_default: boolean;
-            assets: Array<{ name: string; required: boolean; depends_on: string[]; description: string; blueprint_file?: string }>;
-            blueprint_contents: Record<string, string>;
-          }> };
+        const { templates: serverTemplates } = await serverClient.syncTemplates('pull') as { templates: Array<{
+          name: string;
+          version: string;
+          description?: string;
+          is_official: boolean;
+          is_default: boolean;
+          assets: Array<{ name: string; required: boolean; depends_on: string[]; description: string; blueprint_file?: string }>;
+          blueprint_contents: Record<string, string>;
+        }> };
 
-          // Merge server templates with local storage
-          const localRecords = getStoredTemplates();
-          for (const serverT of serverTemplates) {
-            const existing = localRecords.find((r) => r.template.name === serverT.name);
-            if (!existing) {
-              // Add new template from server
-              localRecords.push({
-                template: {
-              name: serverT.name,
-              version: serverT.version,
-              description: serverT.description || '',
-              is_official: serverT.is_official,
-              is_default: serverT.is_default,
-              assets: serverT.assets,
-            },
-            blueprint_contents: serverT.blueprint_contents,
-              });
-            }
+        // Merge server templates with local storage
+        const localRecords = getStoredTemplates();
+        for (const serverT of serverTemplates) {
+          const existing = localRecords.find((r) => r.template.name === serverT.name);
+          if (!existing) {
+            // Add new template from server
+            localRecords.push({
+              template: {
+            name: serverT.name,
+            version: serverT.version,
+            description: serverT.description || '',
+            is_official: serverT.is_official,
+            is_default: serverT.is_default,
+            assets: serverT.assets,
+          },
+          blueprint_contents: serverT.blueprint_contents,
+            });
           }
-          saveStoredTemplates(localRecords);
         }
+        saveStoredTemplates(localRecords);
       } catch (e) {
         console.warn('Failed to sync templates from server:', e);
       }
@@ -2573,36 +2560,33 @@ export class EidolonBrowserAPI {
 
   async getBlueprints(): Promise<BlueprintList> {
     // Try to sync from server first if authenticated
-    if (serverClient.isEnabled()) {
+    if (serverClient.isEnabled() && serverClient.hasAccessToken()) {
       try {
-        const status = await serverClient.checkStatus();
-        if (status.authenticated) {
-          const { blueprints } = await serverClient.syncBlueprints('list') as { blueprints: Array<{
-            path: string;
-            name: string;
-            description: string;
-            invokable: boolean;
-            version: string;
-            content: string;
-            category: string;
-            isBuiltin: boolean;
-          }> };
+        const { blueprints } = await serverClient.syncBlueprints('list') as { blueprints: Array<{
+          path: string;
+          name: string;
+          description: string;
+          invokable: boolean;
+          version: string;
+          content: string;
+          category: string;
+          isBuiltin: boolean;
+        }> };
 
-          // Merge server blueprints with local catalog
-          const localCatalog = getBlueprintCatalog();
-          for (const serverBp of blueprints) {
-            // Server blueprints override local for user-created ones
-            if (!serverBp.isBuiltin) {
-              localCatalog.set(serverBp.path, {
-                name: serverBp.name,
-                description: serverBp.description,
-                invokable: serverBp.invokable,
-                version: serverBp.version,
-                content: serverBp.content,
-                path: serverBp.path,
-                category: serverBp.category as 'core' | 'system' | 'template' | 'example',
-              });
-            }
+        // Merge server blueprints with local catalog
+        const localCatalog = getBlueprintCatalog();
+        for (const serverBp of blueprints) {
+          // Server blueprints override local for user-created ones
+          if (!serverBp.isBuiltin) {
+            localCatalog.set(serverBp.path, {
+              name: serverBp.name,
+              description: serverBp.description,
+              invokable: serverBp.invokable,
+              version: serverBp.version,
+              content: serverBp.content,
+              path: serverBp.path,
+              category: serverBp.category as 'core' | 'system' | 'template' | 'example',
+            });
           }
         }
       } catch (e) {

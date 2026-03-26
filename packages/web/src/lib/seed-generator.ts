@@ -346,12 +346,7 @@ export function favoriteSeedsNeedSync(): boolean {
 }
 
 export async function hydrateFavoriteSeedsFromServer(): Promise<FavoriteSeedRecord[] | null> {
-  if (!serverClient.isEnabled()) {
-    return null;
-  }
-
-  const status = await serverClient.checkStatus();
-  if (!status.authenticated) {
+  if (!serverClient.isEnabled() || !serverClient.hasAccessToken()) {
     return null;
   }
 

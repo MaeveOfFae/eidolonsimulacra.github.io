@@ -280,12 +280,7 @@ async function flushPendingAutoSync(): Promise<void> {
     const domains = Array.from(pendingDomains);
     pendingDomains.clear();
 
-    if (domains.length === 0 || !serverClient.isEnabled()) {
-      return;
-    }
-
-    const status = await serverClient.checkStatus();
-    if (!status.authenticated) {
+    if (domains.length === 0 || !serverClient.isEnabled() || !serverClient.hasAccessToken()) {
       return;
     }
 
