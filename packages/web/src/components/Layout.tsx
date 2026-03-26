@@ -21,6 +21,7 @@ import {
   Calendar,
   ChevronRight as TrayChevronRight,
   Layers as DynamicIcon,
+  Palette,
 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { helpTopics, resolvePageHelp } from '../lib/help';
@@ -61,6 +62,7 @@ const navItems = [
   { path: '/generate', label: 'Generate', icon: Sparkles },
   { path: '/drafts', label: 'Drafts', icon: FolderOpen },
   { path: '/templates', label: 'Templates', icon: FileText },
+  { path: '/themes', label: 'Themes', icon: Palette },
   { path: '/settings', label: 'Settings', icon: Settings },
 ];
 
