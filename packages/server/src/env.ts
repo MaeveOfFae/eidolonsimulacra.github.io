@@ -39,7 +39,7 @@ const envSchema = z.object({
 
   // Rate limiting
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(15 * 60 * 1000),
-  RATE_LIMIT_MAX: z.coerce.number().int().positive().default(300),
+  RATE_LIMIT_MAX: z.coerce.number().int().positive().default(1000),
   RATE_LIMIT_AUTH_MAX: z.coerce.number().int().positive().default(40),
 
   // Proxy handling for accurate client IP detection behind reverse proxies
