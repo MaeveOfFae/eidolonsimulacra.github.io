@@ -213,12 +213,12 @@ export default function Drafts() {
       )}
 
       {activeTab === 'library' && hasDrafts && (
-        <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
-          <section className="app-panel p-0 overflow-hidden" data-tour-anchor="drafts-open-review">
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+          <section className="app-panel min-w-0 overflow-hidden p-0 xl:max-h-[calc(100vh-18rem)]" data-tour-anchor="drafts-open-review">
             <DraftListSidebar drafts={data?.drafts ?? []} isLoading={isLoading} />
           </section>
 
-          <div className="space-y-4">
+          <div className="min-w-0 space-y-4">
             <div className="app-panel p-4">
               <SyncControls
                 dataType="drafts"
@@ -277,7 +277,7 @@ export default function Drafts() {
             </span>
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
             <DraftComparisonPanel
               leftDraftId={leftDraftId}
               rightDraftId={rightDraftId}

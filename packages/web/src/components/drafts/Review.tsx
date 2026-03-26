@@ -239,7 +239,7 @@ export default function Review() {
             <p className="app-page-summary max-w-4xl">{draft.metadata.seed}</p>
           </div>
 
-          <div className="app-panel-muted p-4 sm:p-5">
+          <div className="app-panel-muted min-w-0 p-4 sm:p-5">
             <p className="app-page-eyebrow">Draft state</p>
             <div className="mt-4 app-page-metrics">
               <div className="app-page-metric">
@@ -295,7 +295,7 @@ export default function Review() {
         </div>
       </section>
 
-      <div className="flex flex-wrap gap-1.5 sm:gap-2">
+      <div className="flex min-w-0 flex-wrap gap-1.5 sm:gap-2">
         {draft.metadata.mode && (
           <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs text-primary sm:px-3 sm:text-sm">
             {draft.metadata.mode}
@@ -348,13 +348,13 @@ export default function Review() {
                 </button>
               )}
             </div>
-            <div className="app-panel p-2.5 sm:p-3">
+            <div className="app-panel min-w-0 overflow-hidden p-2.5 sm:p-3">
               {editingAsset === assetName ? (
                 <div className="space-y-3">
                   <textarea
                     value={editContent}
                     onChange={(event) => setEditContent(event.target.value)}
-                    className="w-full min-h-[160px] rounded-xl border border-input bg-background p-3 text-sm font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-[180px]"
+                    className="min-h-[160px] w-full min-w-0 rounded-xl border border-input bg-background p-3 text-sm font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-[180px]"
                   />
                   <div className="flex flex-col gap-2 sm:flex-row">
                     <button
@@ -379,7 +379,7 @@ export default function Review() {
                   </div>
                 </div>
               ) : (
-                <pre className="overflow-x-auto whitespace-pre-wrap text-xs leading-5 font-mono sm:leading-6">
+                <pre className="max-h-[28rem] overflow-auto whitespace-pre-wrap break-words text-xs leading-5 font-mono sm:leading-6">
                   {draft.assets[assetName]}
                 </pre>
               )}
@@ -402,7 +402,7 @@ export default function Review() {
           </span>
         </summary>
 
-        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           <ReviewChecklistPanel draftId={reviewId} />
           <VersionHistoryPanel draftId={reviewId} />
         </div>
@@ -421,7 +421,7 @@ export default function Review() {
 
       {showDeleteModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-xl">
+          <div className="max-h-[calc(100vh-2rem)] w-full max-w-md overflow-y-auto rounded-lg border border-border bg-card p-6 shadow-xl">
             <h2 className="text-lg font-semibold">Delete Draft</h2>
             <p className="mt-2 text-sm text-muted-foreground">
               Delete this draft and all of its saved assets? This cannot be undone.

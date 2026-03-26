@@ -130,7 +130,7 @@ export function DraftListSidebar({ drafts, isLoading }: DraftListSidebarProps) {
   }, [drafts]);
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
       {/* Header */}
       <div className="border-b border-border/60 px-3 py-3">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -169,7 +169,7 @@ export function DraftListSidebar({ drafts, isLoading }: DraftListSidebarProps) {
       </div>
 
       {/* Filter toggle and sort */}
-      <div className="flex items-center justify-between border-b border-border/40 px-3 py-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/40 px-3 py-2">
         <button
           type="button"
           onClick={() => setShowFilters(!showFilters)}
@@ -189,11 +189,11 @@ export function DraftListSidebar({ drafts, isLoading }: DraftListSidebarProps) {
           )}
         </button>
 
-        <div className="flex items-center gap-1">
+        <div className="flex max-w-full items-center gap-1">
           <select
             value={sortField}
             onChange={(e) => setSortField(e.target.value as SortField)}
-            className="rounded-md border border-input bg-background px-2 py-1 text-xs focus:border-primary focus:outline-none"
+            className="max-w-full rounded-md border border-input bg-background px-2 py-1 text-xs focus:border-primary focus:outline-none"
           >
             <option value="modified">Modified</option>
             <option value="created">Created</option>
@@ -281,7 +281,7 @@ export function DraftListSidebar({ drafts, isLoading }: DraftListSidebarProps) {
       )}
 
       {/* Draft list */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
         {isLoading ? (
           <div className="p-4 text-center text-xs text-muted-foreground">
             Loading drafts...
@@ -317,7 +317,7 @@ export function DraftListSidebar({ drafts, isLoading }: DraftListSidebarProps) {
                       : 'border-transparent hover:border-border/60 hover:bg-accent/40'
                   )}
                 >
-                  <div className="flex items-start justify-between gap-2">
+                  <div className="flex min-w-0 items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
                         <span className="truncate text-sm font-medium">
@@ -327,7 +327,7 @@ export function DraftListSidebar({ drafts, isLoading }: DraftListSidebarProps) {
                           <Star className="h-3 w-3 shrink-0 fill-yellow-500 text-yellow-500" />
                         )}
                       </div>
-                      <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
+                      <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-2 text-xs text-muted-foreground">
                         {draft.mode && (
                           <span className="inline-flex items-center gap-1 rounded bg-muted px-1.5 py-0.5">
                             <Layers className="h-2.5 w-2.5" />
@@ -346,7 +346,7 @@ export function DraftListSidebar({ drafts, isLoading }: DraftListSidebarProps) {
                       )}
                     </div>
                     {draft.tags && draft.tags.length > 0 && (
-                      <div className="flex shrink-0 flex-wrap gap-0.5">
+                      <div className="flex max-w-[8rem] shrink-0 flex-wrap justify-end gap-0.5 overflow-hidden">
                         {draft.tags.slice(0, 2).map((tag) => (
                           <span
                             key={tag}

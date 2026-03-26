@@ -5,8 +5,17 @@ import { GitCompare, Loader2, Users, AlertCircle, CheckCircle } from 'lucide-rea
 import type { SimilarityResult } from '@char-gen/shared';
 import { api } from '@/lib/api';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
-import ClusteringPlaceholder from './ClusteringPlaceholder';
-import RelationshipGraphPlaceholder from './RelationshipGraphPlaceholder';
+
+const PLANNED_SIMILARITY_MODULES = [
+  {
+    name: 'Clustering',
+    description: 'Grouping drafts into broader similarity families is still staged outside the live comparison flow.',
+  },
+  {
+    name: 'Relationship graph',
+    description: 'Graph visualization for cross-draft links stays staged until there is a clearer interaction model.',
+  },
+];
 
 export default function Similarity() {
   const [searchParams] = useSearchParams();
@@ -119,10 +128,10 @@ export default function Similarity() {
         </div>
       </section>
 
-      <div className="app-panel space-y-6 p-6">
-        <div className="grid gap-6 md:grid-cols-2">
+      <div className="app-panel min-w-0 space-y-6 p-6">
+        <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         {/* Character 1 */}
-          <div className="space-y-2">
+          <div className="min-w-0 space-y-2">
           <label className="text-sm font-medium">Character 1</label>
           <select
             value={character1}
@@ -139,7 +148,7 @@ export default function Similarity() {
         </div>
 
         {/* Character 2 */}
-          <div className="space-y-2">
+          <div className="min-w-0 space-y-2">
           <label className="text-sm font-medium">Character 2</label>
           <select
             value={character2}
@@ -156,7 +165,7 @@ export default function Similarity() {
         </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-4">
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
@@ -170,7 +179,7 @@ export default function Similarity() {
           <button
             onClick={handleCompare}
             disabled={!character1 || !character2 || compareMutation.isPending}
-            className="ml-auto flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 sm:ml-auto"
           >
             {compareMutation.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -193,12 +202,12 @@ export default function Similarity() {
       {result && (
         <div className="space-y-6">
           {/* Overview */}
-          <div className="app-panel p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold">
+          <div className="app-panel min-w-0 overflow-hidden p-6">
+            <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+              <h2 className="break-words text-xl font-semibold">
                 {result.character1_name} vs {result.character2_name}
               </h2>
-              <span className={`rounded-full px-3 py-1 text-sm font-medium ${getCompatibilityColor(result.compatibility)}`}>
+              <span className={`shrink-0 rounded-full px-3 py-1 text-sm font-medium ${getCompatibilityColor(result.compatibility)}`}>
                 {result.compatibility} compatibility
               </span>
             </div>
@@ -226,8 +235,8 @@ export default function Similarity() {
           </div>
 
           {/* Commonalities & Differences */}
-          <div className="grid gap-6 md:grid-cols-2">
-            <div className="app-panel p-6">
+          <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+            <div className="app-panel min-w-0 overflow-hidden p-6">
               <h3 className="font-semibold mb-4 flex items-center gap-2">
                 <CheckCircle className="h-5 w-5 text-green-500" />
                 Commonalities
@@ -243,7 +252,7 @@ export default function Similarity() {
               )}
             </div>
 
-            <div className="app-panel p-6">
+            <div className="app-panel min-w-0 overflow-hidden p-6">
               <h3 className="font-semibold mb-4 flex items-center gap-2">
                 <Users className="h-5 w-5 text-blue-500" />
                 Differences
@@ -262,7 +271,7 @@ export default function Similarity() {
 
           {/* Relationship Suggestions */}
           {result.relationship_suggestions.length > 0 && (
-            <div className="app-panel p-6">
+            <div className="app-panel min-w-0 overflow-hidden p-6">
               <h3 className="font-semibold mb-4">Relationship Suggestions</h3>
               <ul className="space-y-2">
                 {result.relationship_suggestions.map((item, i) => (
@@ -273,15 +282,15 @@ export default function Similarity() {
           )}
 
           {result.llm_analysis && (
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="app-panel p-6">
+            <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+              <div className="app-panel min-w-0 overflow-hidden p-6">
                 <h3 className="font-semibold mb-4">LLM Relationship Read</h3>
-                <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+                <p className="max-h-[24rem] overflow-auto whitespace-pre-wrap break-words text-sm text-muted-foreground">
                   {result.llm_analysis.relationship_potential}
                 </p>
               </div>
 
-              <div className="app-panel space-y-4 p-6">
+              <div className="app-panel min-w-0 overflow-hidden space-y-4 p-6">
                 <div>
                   <h3 className="font-semibold mb-2">Story Hooks</h3>
                   <ul className="space-y-2">
@@ -291,8 +300,8 @@ export default function Similarity() {
                   </ul>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
+                <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                  <div className="min-w-0">
                     <h4 className="text-sm font-medium mb-2">Conflict Areas</h4>
                     <ul className="space-y-1">
                       {result.llm_analysis.conflict_areas.map((item, i) => (
@@ -300,7 +309,7 @@ export default function Similarity() {
                       ))}
                     </ul>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <h4 className="text-sm font-medium mb-2">Synergy Areas</h4>
                     <ul className="space-y-1">
                       {result.llm_analysis.synergy_areas.map((item, i) => (
@@ -328,24 +337,26 @@ export default function Similarity() {
       <section className="app-panel border-dashed p-5">
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-lg font-semibold">Planned Similarity Tooling</h2>
+            <h2 className="text-lg font-semibold">Staged similarity modules</h2>
             <p className="text-sm text-muted-foreground">
-              These placeholders mark where clustering and relationship graph features will attach.
+              The live comparison stays focused on pair analysis. Broader clustering and relationship visualization remain staged until they have a clearer workflow.
             </p>
           </div>
-          <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-            Planned
-          </span>
+          <span className="app-pill app-pill-muted">Not live</span>
         </div>
 
         <div className="grid gap-4 lg:grid-cols-2">
-          <ClusteringPlaceholder
-            draftIds={draftsData?.drafts.map(d => d.review_id) ?? []}
-          />
-          <RelationshipGraphPlaceholder
-            characterCount={draftsData?.drafts.length ?? 0}
-            relationshipCount={result ? 1 : 0}
-          />
+          {PLANNED_SIMILARITY_MODULES.map((module) => (
+            <article key={module.name} className="rounded-lg border border-border bg-background/60 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">{module.name}</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">{module.description}</p>
+                </div>
+                <span className="app-pill app-pill-muted">Staged</span>
+              </div>
+            </article>
+          ))}
         </div>
       </section>
     </div>

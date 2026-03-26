@@ -13,8 +13,6 @@ import {
 import { useAssistantScreenContext } from '../common/useAssistantContext';
 import { BlueprintPanel } from '../common/BlueprintPanel';
 import GenerationProgress from '../generation/GenerationProgress';
-import TraitInheritancePlaceholder from './TraitInheritancePlaceholder';
-import BreedingHistoryPlaceholder from './BreedingHistoryPlaceholder';
 import { configManager } from '@/lib/config/manager';
 
 type OffspringStage = 'idle' | 'loading_parents' | 'building_prompt' | 'generating' | 'review_seed' | 'generating_character' | 'saving' | 'complete' | 'cancelled' | 'error';
@@ -27,6 +25,17 @@ const OFFSPRING_STAGES: Array<{ key: Exclude<OffspringStage, 'idle' | 'error'>; 
   { key: 'generating_character', label: 'Generate Character', detail: 'Running the normal character generator against the offspring seed.' },
   { key: 'saving', label: 'Save Draft', detail: 'Writing the offspring draft and lineage metadata to storage.' },
   { key: 'complete', label: 'Complete', detail: 'Offspring draft is ready for review.' },
+];
+
+const PLANNED_OFFSPRING_MODULES = [
+  {
+    name: 'Trait inheritance',
+    description: 'Structured inheritance breakdowns remain staged until the generated offspring flow exposes durable trait data.',
+  },
+  {
+    name: 'Breeding history',
+    description: 'Longer breeding-chain views stay staged until lineage interactions and summaries have a clearer review surface.',
+  },
 ];
 
 const PAGE_FEATURE_CATEGORY: FeatureCategory = 'offspring_generation';
@@ -711,7 +720,7 @@ export default function Offspring() {
         )}
       </div>
 
-      <div className="app-panel space-y-4 p-6">
+      <div className="app-panel min-w-0 overflow-hidden space-y-4 p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-lg font-semibold">Generation Tracking</h2>
@@ -719,7 +728,7 @@ export default function Offspring() {
               Seed synthesis happens first. After review, the normal asset-by-asset generator takes over below.
             </p>
           </div>
-          <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${stage === 'error' ? 'bg-destructive/10 text-destructive' : stage === 'complete' ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : stage === 'cancelled' ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300' : 'bg-muted text-muted-foreground'}`}>
+          <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${stage === 'error' ? 'bg-destructive/10 text-destructive' : stage === 'complete' ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : stage === 'cancelled' ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300' : 'bg-muted text-muted-foreground'}`}>
             {getStageLabel(stage)}
           </span>
         </div>
@@ -730,7 +739,7 @@ export default function Offspring() {
           </div>
         )}
 
-        <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
           {OFFSPRING_STAGES.map((entry, index) => {
             const currentIndex = getStageIndex(stage);
             const isComplete = stage === 'complete' || (currentIndex !== -1 && index < currentIndex);
@@ -739,7 +748,7 @@ export default function Offspring() {
             return (
               <div
                 key={entry.key}
-                className={`rounded-md border p-4 ${isCurrent ? 'border-primary bg-primary/5' : isComplete ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-border bg-background/40'}`}
+                className={`min-w-0 rounded-md border p-4 ${isCurrent ? 'border-primary bg-primary/5' : isComplete ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-border bg-background/40'}`}
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="text-sm font-medium text-foreground">{entry.label}</div>
@@ -765,7 +774,7 @@ export default function Offspring() {
       )}
 
       {offspringSeed && !isGeneratingSeed && !isRunningAssetWorkflow && !result && (
-        <div className="app-panel space-y-4 p-6">
+        <div className="app-panel min-w-0 overflow-hidden space-y-4 p-6">
           <div className="flex items-start justify-between gap-4">
             <div>
               <h2 className="text-lg font-semibold">Review Seed</h2>
@@ -773,7 +782,7 @@ export default function Offspring() {
                 Edit the synthesized offspring seed before compiling the selected template asset-by-asset.
               </p>
             </div>
-            <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-300">
+            <span className="shrink-0 rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-300">
               Seed Ready
             </span>
           </div>
@@ -841,7 +850,7 @@ export default function Offspring() {
         <div className="space-y-2">
           <h2 className="text-lg font-semibold">Generated Seed</h2>
           <div className="app-panel max-h-96 overflow-auto p-4">
-            <pre className="whitespace-pre-wrap text-sm">{output}</pre>
+            <pre className="whitespace-pre-wrap break-words text-sm">{output}</pre>
           </div>
         </div>
       )}
@@ -859,25 +868,26 @@ export default function Offspring() {
       <section className="app-panel border-dashed p-5">
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-lg font-semibold">Planned Offspring Tooling</h2>
+            <h2 className="text-lg font-semibold">Staged offspring modules</h2>
             <p className="text-sm text-muted-foreground">
-              These placeholders mark where trait inheritance and breeding chain features will attach.
+              The live offspring flow stops at seed review and draft creation. Deeper inheritance and breeding-chain analysis stay staged until their supporting data is real.
             </p>
           </div>
-          <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-            Planned
-          </span>
+          <span className="app-pill app-pill-muted">Not live</span>
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-2">
-          <TraitInheritancePlaceholder
-            parent1Name={parent1 ? getParentName(parent1) : undefined}
-            parent2Name={parent2 ? getParentName(parent2) : undefined}
-          />
-          <BreedingHistoryPlaceholder
-            offspringId={result?.draftId}
-            generation={result ? 1 : undefined}
-          />
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+          {PLANNED_OFFSPRING_MODULES.map((module) => (
+            <article key={module.name} className="rounded-lg border border-border bg-background/60 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">{module.name}</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">{module.description}</p>
+                </div>
+                <span className="app-pill app-pill-muted">Staged</span>
+              </div>
+            </article>
+          ))}
         </div>
       </section>
     </div>

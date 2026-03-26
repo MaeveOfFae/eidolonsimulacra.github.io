@@ -9,8 +9,17 @@ import {
   saveActiveBatchGenerationSession,
 } from '@/lib/services/generation-session';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
-import BatchSchedulingPlaceholder from './BatchSchedulingPlaceholder';
-import BatchTemplatesPlaceholder from './BatchTemplatesPlaceholder';
+
+const PLANNED_BATCH_MODULES = [
+  {
+    name: 'Scheduling',
+    description: 'Timed and recurring batch execution remains staged until the queue model supports real scheduling state.',
+  },
+  {
+    name: 'Template batch presets',
+    description: 'Reusable batch template packs stay staged until the live batch workflow has clearer reuse rules.',
+  },
+];
 
 interface BatchJob {
   seed: string;
@@ -255,7 +264,7 @@ export default function BatchGenerate() {
         </div>
       </section>
 
-      <div className="app-panel space-y-3 p-6">
+      <div className="app-panel min-w-0 overflow-hidden space-y-3 p-6">
         <div className="flex items-center gap-2">
           <List className="h-5 w-5 text-primary" />
           <h2 className="text-lg font-semibold">Seeds</h2>
@@ -270,7 +279,7 @@ export default function BatchGenerate() {
             className="w-full min-h-[120px] rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             disabled={isRunning}
           />
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={handleAddSeeds}
               disabled={!inputText.trim() || isRunning}
@@ -298,11 +307,11 @@ export default function BatchGenerate() {
 
         {/* Seed List */}
         {seeds.length > 0 && (
-          <div className="max-h-48 overflow-y-auto rounded-md border border-border">
+          <div className="max-h-48 overflow-auto rounded-md border border-border">
             <div className="divide-y divide-border">
               {seeds.map((seed, index) => (
-                <div key={index} className="flex items-center justify-between px-3 py-2 text-sm">
-                  <span className="truncate flex-1">{seed}</span>
+                <div key={index} className="flex min-w-0 items-center justify-between gap-2 px-3 py-2 text-sm">
+                  <span className="truncate break-all flex-1">{seed}</span>
                   <button
                     onClick={() => handleRemoveSeed(seed)}
                     disabled={isRunning}
@@ -317,7 +326,7 @@ export default function BatchGenerate() {
         )}
       </div>
 
-      <div className="app-panel space-y-4 p-6">
+      <div className="app-panel min-w-0 overflow-hidden space-y-4 p-6">
         <h2 className="text-lg font-semibold">Options</h2>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -362,7 +371,7 @@ export default function BatchGenerate() {
         </div>
 
         {/* Parallel Settings */}
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-4">
           <label className="flex items-center gap-2">
             <input
               type="checkbox"
@@ -392,8 +401,8 @@ export default function BatchGenerate() {
       </div>
 
       {jobs.length > 0 && (
-        <div className="app-panel space-y-4 p-6">
-          <div className="flex items-center justify-between">
+        <div className="app-panel min-w-0 overflow-hidden space-y-4 p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-lg font-semibold">Progress</h2>
             <span className="text-sm text-muted-foreground">
               {completedCount} / {jobs.length} complete
@@ -411,19 +420,19 @@ export default function BatchGenerate() {
 
           {/* Current Seed */}
           {currentSeed && (
-            <div className="flex items-center gap-2 text-sm">
+            <div className="flex min-w-0 items-center gap-2 text-sm">
               <Loader2 className="h-4 w-4 animate-spin text-primary" />
-              <span>Generating: {currentSeed}</span>
+              <span className="truncate">Generating: {currentSeed}</span>
             </div>
           )}
 
           {/* Job List */}
-          <div className="max-h-64 overflow-y-auto rounded-md border border-border">
+          <div className="max-h-64 overflow-auto rounded-md border border-border">
             <div className="divide-y divide-border">
               {jobs.map((job, index) => (
-                <div key={index} className="flex items-center justify-between px-3 py-2 text-sm">
-                  <span className="truncate flex-1">{job.seed}</span>
-                  <div className="flex items-center gap-2">
+                <div key={index} className="flex min-w-0 items-center justify-between gap-3 px-3 py-2 text-sm">
+                  <span className="truncate break-all flex-1">{job.seed}</span>
+                  <div className="flex shrink-0 items-center gap-2">
                     {job.status === 'pending' && (
                       <span className="text-muted-foreground">Pending</span>
                     )}
@@ -456,7 +465,7 @@ export default function BatchGenerate() {
         </div>
       )}
 
-      <div className="flex gap-4">
+      <div className="flex flex-wrap gap-4">
         {isRunning ? (
           <button
             onClick={handleStop}
@@ -480,25 +489,26 @@ export default function BatchGenerate() {
       <section className="app-panel border-dashed p-5">
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-lg font-semibold">Planned Batch Tooling</h2>
+            <h2 className="text-lg font-semibold">Staged batch modules</h2>
             <p className="text-sm text-muted-foreground">
-              These placeholders mark where scheduling and template management features will attach.
+              The live batch flow stays focused on queueing and run progress. Scheduling and reusable template packs remain staged until the queue model supports them properly.
             </p>
           </div>
-          <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-            Planned
-          </span>
+          <span className="app-pill app-pill-muted">Not live</span>
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-2">
-          <BatchSchedulingPlaceholder
-            scheduledCount={0}
-            nextRunTime={undefined}
-          />
-          <BatchTemplatesPlaceholder
-            templateName={template || undefined}
-            seedCount={seeds.length}
-          />
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+          {PLANNED_BATCH_MODULES.map((module) => (
+            <article key={module.name} className="rounded-lg border border-border bg-background/60 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">{module.name}</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">{module.description}</p>
+                </div>
+                <span className="app-pill app-pill-muted">Staged</span>
+              </div>
+            </article>
+          ))}
         </div>
       </section>
     </div>

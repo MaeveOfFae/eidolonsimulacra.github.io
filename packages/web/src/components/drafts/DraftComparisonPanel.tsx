@@ -112,12 +112,12 @@ export function DraftComparisonPanel({
     : 0;
 
   return (
-    <section className="rounded-lg border border-dashed border-border bg-card/60 p-4 text-sm text-muted-foreground">
+    <section className="min-w-0 overflow-hidden rounded-lg border border-dashed border-border bg-card/60 p-4 text-sm text-muted-foreground">
       <div className="flex items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <h3 className="font-semibold text-foreground">Draft Comparison</h3>
           <p className="mt-2">Side-by-side comparison for shared assets, plus template and mode drift between two saved drafts.</p>
-          <p className="mt-2">Left: {selectedLeftDraftId || 'unset'} · Right: {selectedRightDraftId || 'unset'}</p>
+          <p className="mt-2 break-all">Left: {selectedLeftDraftId || 'unset'} · Right: {selectedRightDraftId || 'unset'}</p>
         </div>
         <GitCompare className="h-5 w-5 text-primary" />
       </div>
@@ -173,14 +173,14 @@ export function DraftComparisonPanel({
 
       {comparison && leftDraft.data && rightDraft.data && (
         <div className="mt-4 space-y-3">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-md border border-border p-3">
+          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+            <div className="min-w-0 rounded-md border border-border p-3">
               <div className="font-medium text-foreground">{leftDraft.data.metadata.character_name || leftDraft.data.metadata.seed}</div>
-              <div className="mt-1 text-xs">{leftDraft.data.metadata.template_name || 'Default Template'} · {leftDraft.data.metadata.mode || 'Unknown mode'}</div>
+              <div className="mt-1 break-words text-xs">{leftDraft.data.metadata.template_name || 'Default Template'} · {leftDraft.data.metadata.mode || 'Unknown mode'}</div>
             </div>
-            <div className="rounded-md border border-border p-3">
+            <div className="min-w-0 rounded-md border border-border p-3">
               <div className="font-medium text-foreground">{rightDraft.data.metadata.character_name || rightDraft.data.metadata.seed}</div>
-              <div className="mt-1 text-xs">{rightDraft.data.metadata.template_name || 'Default Template'} · {rightDraft.data.metadata.mode || 'Unknown mode'}</div>
+              <div className="mt-1 break-words text-xs">{rightDraft.data.metadata.template_name || 'Default Template'} · {rightDraft.data.metadata.mode || 'Unknown mode'}</div>
             </div>
           </div>
 
@@ -242,14 +242,14 @@ export function DraftComparisonPanel({
                     </div>
                   </div>
 
-                  <div className="grid gap-3 lg:grid-cols-2">
-                    <div className="space-y-2">
+                  <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                    <div className="min-w-0 space-y-2">
                       <div className="text-xs font-medium text-foreground">Left</div>
-                      <pre className="max-h-64 overflow-auto rounded-md border border-border bg-background p-3 text-xs whitespace-pre-wrap">{selectedLeftAssetContent || '(Asset missing)'}</pre>
+                      <pre className="max-h-64 overflow-auto rounded-md border border-border bg-background p-3 text-xs whitespace-pre-wrap break-words">{selectedLeftAssetContent || '(Asset missing)'}</pre>
                     </div>
-                    <div className="space-y-2">
+                    <div className="min-w-0 space-y-2">
                       <div className="text-xs font-medium text-foreground">Right</div>
-                      <pre className="max-h-64 overflow-auto rounded-md border border-border bg-background p-3 text-xs whitespace-pre-wrap">{selectedRightAssetContent || '(Asset missing)'}</pre>
+                      <pre className="max-h-64 overflow-auto rounded-md border border-border bg-background p-3 text-xs whitespace-pre-wrap break-words">{selectedRightAssetContent || '(Asset missing)'}</pre>
                     </div>
                   </div>
                 </div>

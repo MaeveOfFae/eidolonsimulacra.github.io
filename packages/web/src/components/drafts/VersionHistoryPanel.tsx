@@ -52,7 +52,7 @@ export function VersionHistoryPanel({
   const parentCount = draft?.metadata.parent_drafts?.length ?? 0;
 
   return (
-    <section className="rounded-lg border border-dashed border-border bg-card/60 p-4 text-sm text-muted-foreground">
+    <section className="min-w-0 overflow-hidden rounded-lg border border-dashed border-border bg-card/60 p-4 text-sm text-muted-foreground">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="flex items-center gap-2 font-semibold text-foreground">

@@ -36,7 +36,7 @@ export function ReviewChecklistPanel({ draftId }: ReviewChecklistPanelProps) {
   }, [draftQuery.data, validationQuery.data]);
 
   return (
-    <section className="rounded-lg border border-dashed border-border bg-card/60 p-4 text-sm text-muted-foreground">
+    <section className="min-w-0 overflow-hidden rounded-lg border border-dashed border-border bg-card/60 p-4 text-sm text-muted-foreground">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="font-semibold text-foreground">Review Checklist</h3>

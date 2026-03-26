@@ -1,6 +1,22 @@
 # Changelog
 
 
+## v3.0.20 - 2026-03-26
+
+### Platform and UI update
+
+This release packages 12 recent commits focused on platform, UI, and themes.
+
+### Highlights
+- Enhance DraftComparisonPanel with change handlers for draft selection
+- Update timelines, validation, events, and worlds components with planned modules and UI enhancements
+- Update version to 3.0.18 and enhance release notes with highlights and links
+- Clean up layout and drafts components by removing unused imports and enhancing UI text
+- Simplify layout component by removing unused footer links and enhancing button styles
+
+### Links
+- [Open generation](/generate)
+- [Review templates](/templates)
 ## v3.0.19 - 2026-03-25
 
 ### Platform and UI update
@@ -321,6 +337,7 @@ This release packages 12 recent commits focused on documentation, templates, and
 ### Links
 - [Open generation](/generate)
 - [Review templates](/templates)
+
 
 
 
