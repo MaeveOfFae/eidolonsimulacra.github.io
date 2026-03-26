@@ -7,12 +7,15 @@ import SyncControls from '../common/SyncControls';
 import { DraftStorage } from '@/lib/storage/draft-db';
 import { useGuidedTour } from '../common/GuidedTourContext';
 import { DRAFT_LIBRARY_TOUR_ID } from '@/lib/help';
-import { LibraryCollectionsPlaceholder } from './LibraryCollectionsPlaceholder';
+import { DraftListSidebar } from './DraftListSidebar';
 import { DraftComparisonPanel } from './DraftComparisonPanel';
 import { ReviewChecklistPanel } from './ReviewChecklistPanel';
 import { VersionHistoryPanel } from './VersionHistoryPanel';
 
+type DraftsTab = 'library' | 'workbench';
+
 export default function Drafts() {
+  const [activeTab, setActiveTab] = useState<DraftsTab>('library');
   const [leftDraftId, setLeftDraftId] = useState<string>('');
   const [rightDraftId, setRightDraftId] = useState<string>('');
   const [notice, setNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -29,6 +32,7 @@ export default function Drafts() {
     if (!data?.drafts.length) {
       setLeftDraftId('');
       setRightDraftId('');
+      setActiveTab('library');
       return;
     }
 
@@ -58,6 +62,8 @@ export default function Drafts() {
   }
 
   const hasDrafts = data?.drafts.length > 0;
+
+  const activeWorkbenchDraftId = leftDraftId || data?.drafts[0]?.review_id;
 
   async function handleImportDrafts(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -94,16 +100,16 @@ export default function Drafts() {
               Reopen drafts, compare them, and move the best ones forward.
             </p>
             <div className="flex flex-wrap gap-3">
-              <Link to="/generate" className="inline-flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
+              <Link to="/generate" className="app-button app-button-primary">
                 Generate another draft
               </Link>
-              <Link to="/validation" className="inline-flex items-center gap-2 rounded-2xl border border-border/60 bg-background/55 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary/35 hover:text-primary">
+              <Link to="/validation" className="app-button app-button-secondary">
                 Validation
               </Link>
               <button
                 type="button"
                 onClick={() => importInputRef.current?.click()}
-                className="inline-flex items-center gap-2 rounded-2xl border border-border/60 bg-background/55 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary/35 hover:text-primary"
+                className="app-button app-button-secondary"
               >
                 <Upload className="h-4 w-4" />
                 Upload drafts
@@ -118,7 +124,7 @@ export default function Drafts() {
               <button
                 type="button"
                 onClick={() => (isTourCompleted(DRAFT_LIBRARY_TOUR_ID) ? restartTour(DRAFT_LIBRARY_TOUR_ID) : startTour(DRAFT_LIBRARY_TOUR_ID))}
-                className="inline-flex items-center gap-2 rounded-2xl border border-border/60 bg-background/55 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary/35 hover:text-primary"
+                className="app-button app-button-secondary"
               >
                 {isTourCompleted(DRAFT_LIBRARY_TOUR_ID) ? 'Replay tour' : 'Start tour'}
               </button>
@@ -167,43 +173,97 @@ export default function Drafts() {
         </div>
       )}
 
-      <div className="app-panel p-4">
-        <SyncControls
-          dataType="drafts"
-          label="Drafts"
-          onGetLocalData={async () => JSON.parse(await DraftStorage.exportAll())}
-          onApplyData={async (data) => {
-            if (data && typeof data === 'object' && 'drafts' in data) {
-              await DraftStorage.import(JSON.stringify(data), { conflictStrategy: 'merge' });
-              queryClient.invalidateQueries({ queryKey: ['drafts'] });
-            }
-          }}
-        />
+      <div className="flex overflow-x-auto pb-1 sm:justify-start">
+        <div className="app-tab-group min-w-max">
+          <button
+            type="button"
+            onClick={() => setActiveTab('library')}
+            data-active={activeTab === 'library' ? 'true' : 'false'}
+            className="app-tab-button"
+          >
+            Library
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('workbench')}
+            data-active={activeTab === 'workbench' ? 'true' : 'false'}
+            className="app-tab-button"
+            disabled={!hasDrafts}
+          >
+            Workbench
+          </button>
+        </div>
       </div>
 
-      {/* Empty State */}
-      {!hasDrafts && (
+      {!hasDrafts && activeTab === 'library' && (
         <div className="app-panel p-8 text-center">
           <FolderOpen className="mx-auto h-12 w-12 text-muted-foreground" />
           <h3 className="mt-4 text-lg font-semibold">No drafts yet</h3>
           <p className="text-muted-foreground">
             Generate your first character to get started
           </p>
-          <div className="mt-6 text-left">
-            <LibraryCollectionsPlaceholder collectionName="first-run library" />
-          </div>
           <Link
             to="/generate"
             data-tour-anchor="drafts-open-review"
-            className="mt-4 inline-block rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+            className="app-button app-button-primary mt-4"
           >
             Generate Character
           </Link>
         </div>
       )}
 
-      {/* Draft Workbench - only show when there are drafts */}
-      {hasDrafts && (
+      {activeTab === 'library' && hasDrafts && (
+        <div className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+          <section className="app-panel p-0 overflow-hidden" data-tour-anchor="drafts-open-review">
+            <DraftListSidebar drafts={data?.drafts ?? []} isLoading={isLoading} />
+          </section>
+
+          <div className="space-y-4">
+            <div className="app-panel p-4">
+              <SyncControls
+                dataType="drafts"
+                label="Drafts"
+                onGetLocalData={async () => JSON.parse(await DraftStorage.exportAll())}
+                onApplyData={async (payload) => {
+                  if (payload && typeof payload === 'object' && 'drafts' in payload) {
+                    await DraftStorage.import(JSON.stringify(payload), { conflictStrategy: 'merge' });
+                    queryClient.invalidateQueries({ queryKey: ['drafts'] });
+                  }
+                }}
+              />
+            </div>
+
+            <section className="app-panel p-5">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-lg font-semibold">Library overview</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Search, filter, and reopen any saved draft from one place.
+                  </p>
+                </div>
+                <span className="app-pill app-pill-muted">{data?.drafts.length} drafts</span>
+              </div>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-3 text-sm">
+                <div className="rounded-lg border border-border bg-background/60 p-4">
+                  <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Available</div>
+                  <div className="mt-1 text-2xl font-semibold text-foreground">{data?.stats?.total_drafts ?? 0}</div>
+                </div>
+                <div className="rounded-lg border border-border bg-background/60 p-4">
+                  <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Favorites</div>
+                  <div className="mt-1 text-2xl font-semibold text-foreground">{data?.stats?.favorites ?? 0}</div>
+                </div>
+                <div className="rounded-lg border border-border bg-background/60 p-4">
+                  <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Genres</div>
+                  <div className="mt-1 text-2xl font-semibold text-foreground">{data?.stats ? Object.keys(data.stats.by_genre).length : 0}</div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'workbench' && hasDrafts && (
         <section data-tour-anchor="drafts-workbench" className="app-panel p-5">
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
@@ -218,16 +278,18 @@ export default function Drafts() {
           </div>
 
           <div className="grid gap-4 lg:grid-cols-2">
-            <LibraryCollectionsPlaceholder
-              collectionName="all drafts"
-            />
             <DraftComparisonPanel
               leftDraftId={leftDraftId}
               rightDraftId={rightDraftId}
               draftOptions={data?.drafts}
+              onLeftDraftChange={setLeftDraftId}
+              onRightDraftChange={setRightDraftId}
             />
-            <ReviewChecklistPanel draftId={leftDraftId || data?.drafts[0]?.review_id} />
-            <VersionHistoryPanel draftId={data?.drafts[0]?.review_id} />
+            <ReviewChecklistPanel draftId={activeWorkbenchDraftId} />
+            <VersionHistoryPanel draftId={activeWorkbenchDraftId} />
+            <div className="rounded-lg border border-dashed border-border bg-card/60 p-4 text-sm text-muted-foreground lg:col-span-2">
+              The workbench follows the left comparison draft for checklist and activity panels. Open any draft from the library tab when you want to jump back into full review.
+            </div>
           </div>
         </section>
       )}

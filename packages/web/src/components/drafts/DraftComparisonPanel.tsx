@@ -9,6 +9,8 @@ export interface DraftComparisonPanelProps {
   leftDraftId?: string;
   rightDraftId?: string;
   draftOptions?: DraftMetadata[];
+  onLeftDraftChange?: (draftId: string) => void;
+  onRightDraftChange?: (draftId: string) => void;
 }
 
 function countChangedLines(left: string, right: string): number {
@@ -30,6 +32,8 @@ export function DraftComparisonPanel({
   leftDraftId,
   rightDraftId,
   draftOptions = [],
+  onLeftDraftChange,
+  onRightDraftChange,
 }: DraftComparisonPanelProps) {
   const [selectedLeftDraftId, setSelectedLeftDraftId] = useState(leftDraftId || '');
   const [selectedRightDraftId, setSelectedRightDraftId] = useState(rightDraftId || '');
@@ -40,8 +44,16 @@ export function DraftComparisonPanel({
   }, [leftDraftId]);
 
   useEffect(() => {
+    onLeftDraftChange?.(selectedLeftDraftId);
+  }, [onLeftDraftChange, selectedLeftDraftId]);
+
+  useEffect(() => {
     setSelectedRightDraftId(rightDraftId || '');
   }, [rightDraftId]);
+
+  useEffect(() => {
+    onRightDraftChange?.(selectedRightDraftId);
+  }, [onRightDraftChange, selectedRightDraftId]);
 
   const leftDraft = useQuery({
     queryKey: ['draft', selectedLeftDraftId, 'comparison-left'],
