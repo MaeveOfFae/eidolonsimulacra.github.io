@@ -5,7 +5,6 @@ const ACTIVE_GENERATION_SESSION_KEY = 'eidolon.active-generation-session';
 const ACTIVE_OFFSPRING_SESSION_KEY = 'eidolon.active-offspring-session';
 const ACTIVE_SEED_GENERATOR_SESSION_KEY = 'eidolon.active-seed-generator-session';
 const ACTIVE_BATCH_GENERATION_SESSION_KEY = 'eidolon.active-batch-generation-session';
-const ACTIVE_INTRO_GENERATOR_SESSION_KEY = 'eidolon.active-intro-generator-session';
 const ACTIVE_DRAFT_REFINER_SESSION_KEY = 'eidolon.active-draft-refiner-session';
 const ACTIVE_ASSET_REGENERATOR_SESSION_KEY = 'eidolon.active-asset-regenerator-session';
 
@@ -74,25 +73,6 @@ export interface ActiveBatchGenerationSession {
   jobs: ActiveBatchJob[];
   currentSeed: string;
   status: ActiveBatchGenerationStatus;
-  updatedAt: number;
-}
-
-export type ActiveIntroGeneratorStatus = 'configuring' | 'generating' | 'ready';
-
-export interface ActiveIntroGeneratorIntro {
-  id: string;
-  content: string;
-  timestamp: number;
-}
-
-export interface ActiveIntroGeneratorSession {
-  version: 1;
-  selectedDraftId: string;
-  generationCount: number;
-  customInstructions: string;
-  generatedIntros: ActiveIntroGeneratorIntro[];
-  generatingContent: string;
-  status: ActiveIntroGeneratorStatus;
   updatedAt: number;
 }
 
@@ -219,28 +199,6 @@ function isValidBatchGenerationSession(value: unknown): value is ActiveBatchGene
     && session.jobs.every((job) => job && typeof job === 'object' && typeof job.seed === 'string' && typeof job.status === 'string')
     && typeof session.currentSeed === 'string'
     && (session.status === 'configuring' || session.status === 'running' || session.status === 'ready')
-    && typeof session.updatedAt === 'number';
-}
-
-function isValidIntroGeneratorSession(value: unknown): value is ActiveIntroGeneratorSession {
-  if (!value || typeof value !== 'object') {
-    return false;
-  }
-
-  const session = value as Partial<ActiveIntroGeneratorSession>;
-  return session.version === 1
-    && typeof session.selectedDraftId === 'string'
-    && typeof session.generationCount === 'number'
-    && typeof session.customInstructions === 'string'
-    && Array.isArray(session.generatedIntros)
-    && session.generatedIntros.every(
-      (intro) => intro && typeof intro === 'object'
-        && typeof intro.id === 'string'
-        && typeof intro.content === 'string'
-        && typeof intro.timestamp === 'number'
-    )
-    && typeof session.generatingContent === 'string'
-    && (session.status === 'configuring' || session.status === 'generating' || session.status === 'ready')
     && typeof session.updatedAt === 'number';
 }
 
@@ -430,40 +388,6 @@ export function clearActiveBatchGenerationSession(): void {
   }
 
   window.localStorage.removeItem(ACTIVE_BATCH_GENERATION_SESSION_KEY);
-}
-
-export function loadActiveIntroGeneratorSession(): ActiveIntroGeneratorSession | null {
-  if (!canUseStorage()) {
-    return null;
-  }
-
-  try {
-    const raw = window.localStorage.getItem(ACTIVE_INTRO_GENERATOR_SESSION_KEY);
-    if (!raw) {
-      return null;
-    }
-
-    const parsed: unknown = JSON.parse(raw);
-    return isValidIntroGeneratorSession(parsed) ? parsed : null;
-  } catch {
-    return null;
-  }
-}
-
-export function saveActiveIntroGeneratorSession(session: ActiveIntroGeneratorSession): void {
-  if (!canUseStorage()) {
-    return;
-  }
-
-  window.localStorage.setItem(ACTIVE_INTRO_GENERATOR_SESSION_KEY, JSON.stringify(session));
-}
-
-export function clearActiveIntroGeneratorSession(): void {
-  if (!canUseStorage()) {
-    return;
-  }
-
-  window.localStorage.removeItem(ACTIVE_INTRO_GENERATOR_SESSION_KEY);
 }
 
 export function loadActiveDraftRefinerSession(): ActiveDraftRefinerSession | null {

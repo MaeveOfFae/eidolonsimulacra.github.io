@@ -833,7 +833,7 @@ export default function Settings() {
               <option value="">None (Built-in)</option>
             </select>
             <p className="text-xs text-muted-foreground">
-              Blueprint used by the More Intros tab when generating additional opener scenes.
+              Blueprint used by the Assets tab when generating additional intro scenes.
             </p>
           </div>
 

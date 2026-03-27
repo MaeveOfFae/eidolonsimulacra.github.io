@@ -16,9 +16,27 @@ export interface ReleaseNoteEntry {
 // Generated and maintained by tools/generation/generate-release-notes.mjs.
 export const releaseNotes: ReleaseNoteEntry[] = [
   {
-    version: '3.1.1',
-    releasedOn: '2026-03-27',
+    version: '3.1.2',
+    releasedOn: '2026-03-26',
     badge: 'Current release',
+    headline: 'Draft assets and regeneration update',
+    summary: 'This release adds per-asset review actions and a universal asset regeneration workspace that now replaces the older dedicated intro workflow.',
+    highlights: [
+      'Add copy actions to each asset card on the draft review page',
+      'Add a single-asset regeneration route from draft review cards',
+      'Replace the dedicated intro tab with the universal asset variants workspace',
+      'Carry intro-scene keep, export, and restore behavior into the universal asset page',
+      'Persist asset regeneration sessions and runtime blueprint overrides between visits',
+    ],
+    links: [
+      { label: 'Open generation', to: '/generate' },
+      { label: 'Review drafts', to: '/drafts' },
+    ],
+  },
+  {
+    version: '3.1.1',
+    releasedOn: '2026-03-26',
+    badge: 'Previous release',
     headline: 'Platform and themes update',
     summary: 'This release packages 12 recent commits focused on platform, themes, and runtime.',
     highlights: [

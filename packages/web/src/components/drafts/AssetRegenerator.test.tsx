@@ -18,8 +18,10 @@ vi.mock('react-router-dom', async () => {
 vi.mock('@/lib/api', () => ({
   api: {
     getDraft: vi.fn(),
+    getDrafts: vi.fn(),
     getTemplates: vi.fn(),
     updateAsset: vi.fn(),
+    updateMetadata: vi.fn(),
   },
 }));
 
@@ -41,10 +43,26 @@ const draftResponse = {
     mode: 'NSFW',
     template_name: 'V2/V3 Card',
     character_name: 'Test Character',
+    notes: '',
   },
   assets: {
     system_prompt: 'original system prompt',
     character_sheet: 'character sheet content',
+  },
+};
+
+const introDraftResponse = {
+  metadata: {
+    review_id: 'review-2',
+    seed: 'intro seed',
+    mode: 'SFW',
+    template_name: 'Intro Template',
+    character_name: 'Intro Character',
+    notes: '',
+  },
+  assets: {
+    system_prompt: 'system prompt',
+    intro_scene: 'current intro',
   },
 };
 
@@ -56,9 +74,19 @@ const templatesResponse = [
       { name: 'character_sheet', required: true, depends_on: ['system_prompt'] },
     ],
   },
+  {
+    name: 'Intro Template',
+    assets: [
+      { name: 'system_prompt', required: true, depends_on: [] },
+      { name: 'intro_scene', required: true, depends_on: ['system_prompt'] },
+    ],
+  },
 ];
 
-function createWrapper() {
+function createWrapper(options?: {
+  route?: string;
+  element?: React.ReactNode;
+}) {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
@@ -69,9 +97,9 @@ function createWrapper() {
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={['/drafts/review-1/assets/system_prompt/regenerate']}>
+      <MemoryRouter initialEntries={[options?.route ?? '/drafts/review-1/assets/system_prompt/regenerate']}>
         <Routes>
-          <Route path="/drafts/:id/assets/:assetName/regenerate" element={<AssetRegenerator />} />
+          <Route path="/drafts/:id/assets/:assetName/regenerate" element={options?.element ?? <AssetRegenerator />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>
@@ -83,8 +111,10 @@ describe('AssetRegenerator', () => {
     window.localStorage.clear();
     mockNavigate.mockReset();
     vi.mocked(api.getDraft).mockResolvedValue(draftResponse as never);
+    vi.mocked(api.getDrafts).mockResolvedValue({ drafts: [] } as never);
     vi.mocked(api.getTemplates).mockResolvedValue(templatesResponse as never);
     vi.mocked(api.updateAsset).mockResolvedValue(undefined as never);
+    vi.mocked(api.updateMetadata).mockResolvedValue(undefined as never);
     vi.mocked(GenerationService.previewBlueprint).mockReset();
     vi.mocked(GenerationService.generateAsset).mockReset();
   });
@@ -186,5 +216,45 @@ describe('AssetRegenerator', () => {
     });
 
     expect(await screen.findByText('override-generated system prompt')).toBeInTheDocument();
+  });
+
+  it('keeps generated intros when the universal page is used for intro_scene', async () => {
+    vi.mocked(api.getDraft).mockResolvedValue(introDraftResponse as never);
+    vi.mocked(api.getDrafts).mockResolvedValue({
+      drafts: [
+        {
+          review_id: 'review-2',
+          seed: 'intro seed',
+          character_name: 'Intro Character',
+          template_name: 'Intro Template',
+        },
+      ],
+    } as never);
+
+    vi.mocked(GenerationService.generateAsset).mockImplementation(async function* () {
+      yield { type: 'asset', content: 'new intro candidate' } as never;
+    });
+
+    createWrapper({
+      route: '/drafts/review-2/assets/intro_scene/regenerate',
+      element: <AssetRegenerator templates={templatesResponse as never} fixedAssetName="intro_scene" embedded enableDraftSelection />,
+    });
+
+    expect(await screen.findByText('Generate Asset Variants')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Draft' }), {
+      target: { value: 'review-2' },
+    });
+
+    expect(await screen.findByText('Current Active Asset')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Generate One' }));
+    expect(await screen.findByText('new intro candidate')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Keep' }));
+
+    await waitFor(() => {
+      expect(api.updateMetadata).toHaveBeenCalled();
+    });
   });
 });

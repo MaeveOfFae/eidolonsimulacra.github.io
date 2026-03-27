@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Sparkles, Zap, BookOpen, XCircle, Loader2, Edit3, MessageSquarePlus } from 'lucide-react';
+import { Sparkles, Zap, BookOpen, XCircle, Loader2, Edit3, FileText } from 'lucide-react';
 import type { ContentMode, FeatureCategory, GenerationComplete, Template } from '@char-gen/shared';
 import { api } from '@/lib/api';
 import type { Blueprint } from '@char-gen/shared';
@@ -12,12 +12,12 @@ import {
 import { useAssistantScreenContext } from '../common/useAssistantContext';
 import GenerationProgress from './GenerationProgress';
 import DraftRefiner from './DraftRefiner';
-import IntroGenerator from './IntroGenerator';
+import AssetRegenerator from '../drafts/AssetRegenerator';
 import { BlueprintPanel } from '../common/BlueprintPanel';
 import { getBlueprintsForFeature, resolveBlueprintForFeature, toBlueprintOptions } from '@/lib/blueprints/featureSelection';
 import { configManager } from '@/lib/config/manager';
 
-type TabId = 'generate' | 'refine' | 'intros';
+type TabId = 'generate' | 'refine' | 'assets';
 
 interface Tab {
   id: TabId;
@@ -28,7 +28,7 @@ interface Tab {
 const TABS: Tab[] = [
   { id: 'generate', label: 'New Draft', icon: Sparkles },
   { id: 'refine', label: 'Refine Draft', icon: Edit3 },
-  { id: 'intros', label: 'Intros', icon: MessageSquarePlus },
+  { id: 'assets', label: 'Assets', icon: FileText },
 ];
 
 const FEATURE_PREFERRED_PATHS: Partial<Record<FeatureCategory, string>> = {
@@ -67,9 +67,6 @@ export default function Generation() {
   const activeFeatureCategory = useMemo<FeatureCategory | null>(() => {
     if (activeTab === 'generate') {
       return 'orchestration';
-    }
-    if (activeTab === 'intros') {
-      return 'intro_scene_generation';
     }
     return null;
   }, [activeTab]);
@@ -264,9 +261,7 @@ export default function Generation() {
     }));
   };
 
-  const blueprintPanelTitle = activeFeatureCategory === 'intro_scene_generation'
-    ? 'Intro Scene Blueprint'
-    : 'Orchestration Blueprint';
+  const blueprintPanelTitle = 'Orchestration Blueprint';
 
   return (
     <div className="app-page space-y-8 pb-10 sm:space-y-12 sm:pb-12">
@@ -359,8 +354,13 @@ export default function Generation() {
       {/* Tab Content */}
       {activeTab === 'refine' ? (
         <DraftRefiner templates={templates} />
-      ) : activeTab === 'intros' ? (
-        <IntroGenerator templates={templates} blueprintContent={effectiveGenerationBlueprint} />
+      ) : activeTab === 'assets' ? (
+        <AssetRegenerator
+          templates={templates}
+          enableDraftSelection
+          enableAssetSelection
+          embedded
+        />
       ) : (
         <>
         <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
