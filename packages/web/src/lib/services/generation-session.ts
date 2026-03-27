@@ -7,6 +7,7 @@ const ACTIVE_SEED_GENERATOR_SESSION_KEY = 'eidolon.active-seed-generator-session
 const ACTIVE_BATCH_GENERATION_SESSION_KEY = 'eidolon.active-batch-generation-session';
 const ACTIVE_INTRO_GENERATOR_SESSION_KEY = 'eidolon.active-intro-generator-session';
 const ACTIVE_DRAFT_REFINER_SESSION_KEY = 'eidolon.active-draft-refiner-session';
+const ACTIVE_ASSET_REGENERATOR_SESSION_KEY = 'eidolon.active-asset-regenerator-session';
 
 export type ActiveGenerationStatus = 'initializing' | 'generating' | 'reviewing' | 'saving';
 
@@ -92,6 +93,28 @@ export interface ActiveIntroGeneratorSession {
   generatedIntros: ActiveIntroGeneratorIntro[];
   generatingContent: string;
   status: ActiveIntroGeneratorStatus;
+  updatedAt: number;
+}
+
+export type ActiveAssetRegeneratorStatus = 'configuring' | 'generating' | 'ready';
+
+export interface ActiveAssetRegeneratorCandidate {
+  id: string;
+  content: string;
+  timestamp: number;
+}
+
+export interface ActiveAssetRegeneratorSession {
+  version: 1;
+  draftId: string;
+  assetName: string;
+  generationCount: number;
+  customInstructions: string;
+  blueprintOverrideContent: string;
+  generatedCandidates: ActiveAssetRegeneratorCandidate[];
+  expandedCandidates: string[];
+  generatingContent: string;
+  status: ActiveAssetRegeneratorStatus;
   updatedAt: number;
 }
 
@@ -244,6 +267,32 @@ function isValidDraftRefinerSession(value: unknown): value is ActiveDraftRefiner
     && (typeof session.editingAsset === 'string' || session.editingAsset === null)
     && typeof session.editContent === 'string'
     && typeof session.interrupted === 'boolean'
+    && typeof session.updatedAt === 'number';
+}
+
+function isValidAssetRegeneratorSession(value: unknown): value is ActiveAssetRegeneratorSession {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const session = value as Partial<ActiveAssetRegeneratorSession>;
+  return session.version === 1
+    && typeof session.draftId === 'string'
+    && typeof session.assetName === 'string'
+    && typeof session.generationCount === 'number'
+    && typeof session.customInstructions === 'string'
+    && (typeof session.blueprintOverrideContent === 'string' || typeof session.blueprintOverrideContent === 'undefined')
+    && Array.isArray(session.generatedCandidates)
+    && session.generatedCandidates.every(
+      (candidate) => candidate && typeof candidate === 'object'
+        && typeof candidate.id === 'string'
+        && typeof candidate.content === 'string'
+        && typeof candidate.timestamp === 'number'
+    )
+    && Array.isArray(session.expandedCandidates)
+    && session.expandedCandidates.every((candidateId) => typeof candidateId === 'string')
+    && typeof session.generatingContent === 'string'
+    && (session.status === 'configuring' || session.status === 'generating' || session.status === 'ready')
     && typeof session.updatedAt === 'number';
 }
 
@@ -449,6 +498,40 @@ export function clearActiveDraftRefinerSession(): void {
   }
 
   window.localStorage.removeItem(ACTIVE_DRAFT_REFINER_SESSION_KEY);
+}
+
+export function loadActiveAssetRegeneratorSession(): ActiveAssetRegeneratorSession | null {
+  if (!canUseStorage()) {
+    return null;
+  }
+
+  try {
+    const raw = window.localStorage.getItem(ACTIVE_ASSET_REGENERATOR_SESSION_KEY);
+    if (!raw) {
+      return null;
+    }
+
+    const parsed: unknown = JSON.parse(raw);
+    return isValidAssetRegeneratorSession(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveActiveAssetRegeneratorSession(session: ActiveAssetRegeneratorSession): void {
+  if (!canUseStorage()) {
+    return;
+  }
+
+  window.localStorage.setItem(ACTIVE_ASSET_REGENERATOR_SESSION_KEY, JSON.stringify(session));
+}
+
+export function clearActiveAssetRegeneratorSession(): void {
+  if (!canUseStorage()) {
+    return;
+  }
+
+  window.localStorage.removeItem(ACTIVE_ASSET_REGENERATOR_SESSION_KEY);
 }
 
 export function matchesActiveGenerationSession(

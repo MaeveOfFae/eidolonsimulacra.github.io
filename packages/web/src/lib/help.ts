@@ -1040,6 +1040,7 @@ export const routeCoverageManifest: RouteCoverageManifestEntry[] = [
   { route: '/batch', pageHelpId: 'batch', coverage: 'complete' },
   { route: '/drafts', pageHelpId: 'drafts', coverage: 'complete' },
   { route: '/drafts/:id', pageHelpId: 'draft-review', coverage: 'complete' },
+  { route: '/drafts/:id/assets/:assetName/regenerate', pageHelpId: 'draft-review', coverage: 'complete' },
   { route: '/templates', pageHelpId: 'templates', coverage: 'complete' },
   { route: '/blueprints', pageHelpId: 'blueprints', coverage: 'complete' },
   { route: '/blueprints/edit/*', pageHelpId: 'blueprint-editor', coverage: 'complete' },

@@ -361,6 +361,13 @@ export default function Review() {
                   {copiedAsset === assetName ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
                   {copiedAsset === assetName ? 'Copied' : 'Copy'}
                 </button>
+                <Link
+                  to={`/drafts/${encodeURIComponent(reviewId)}/assets/${encodeURIComponent(assetName)}/regenerate`}
+                  className="inline-flex items-center gap-1 rounded-lg border border-input bg-background px-2 py-1 text-xs hover:bg-accent"
+                >
+                  <ArrowLeft className="h-3 w-3 rotate-180" />
+                  Regen
+                </Link>
                 {editingAsset !== assetName && (
                   <button
                     onClick={() => handleEditAsset(assetName)}

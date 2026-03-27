@@ -16,9 +16,27 @@ export interface ReleaseNoteEntry {
 // Generated and maintained by tools/generation/generate-release-notes.mjs.
 export const releaseNotes: ReleaseNoteEntry[] = [
   {
+    version: '3.1.1',
+    releasedOn: '2026-03-27',
+    badge: 'Current release',
+    headline: 'Platform and themes update',
+    summary: 'This release packages 12 recent commits focused on platform, themes, and runtime.',
+    highlights: [
+      'Implement asset copy functionality in Review component',
+      'Update version to 3.1.1 and enhance release notes with highlights and links',
+      'Add rate limiting configuration options to server environment',
+      'Add optional rate limiting configuration to environment files and update server logic',
+      'Add \'Themes\' navigation item with Palette icon to the layout',
+    ],
+    links: [
+      { label: 'Open generation', to: '/generate' },
+      { label: 'Review templates', to: '/templates' },
+    ],
+  },
+  {
     version: '3.0.21',
     releasedOn: '2026-03-26',
-    badge: 'Current release',
+    badge: 'Previous release',
     headline: 'Platform and UI update',
     summary: 'This release packages 12 recent commits focused on platform, UI, and themes.',
     highlights: [

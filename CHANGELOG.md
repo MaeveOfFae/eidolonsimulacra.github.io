@@ -1,6 +1,22 @@
 # Changelog
 
 
+## v3.1.1 - 2026-03-27
+
+### Platform and themes update
+
+This release packages 12 recent commits focused on platform, themes, and runtime.
+
+### Highlights
+- Implement asset copy functionality in Review component
+- Update version to 3.1.1 and enhance release notes with highlights and links
+- Add rate limiting configuration options to server environment
+- Add optional rate limiting configuration to environment files and update server logic
+- Add 'Themes' navigation item with Palette icon to the layout
+
+### Links
+- [Open generation](/generate)
+- [Review templates](/templates)
 ## v3.0.21 - 2026-03-26
 
 ### Platform and UI update
@@ -353,6 +369,7 @@ This release packages 12 recent commits focused on documentation, templates, and
 ### Links
 - [Open generation](/generate)
 - [Review templates](/templates)
+
 
 
 

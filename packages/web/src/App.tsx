@@ -15,6 +15,7 @@ const SeedGenerator = lazy(() => import('./components/generation/SeedGenerator')
 const Validation = lazy(() => import('./components/validation/Validation'));
 const Drafts = lazy(() => import('./components/drafts/Drafts'));
 const Review = lazy(() => import('./components/drafts/Review'));
+const AssetRegenerator = lazy(() => import('./components/drafts/AssetRegenerator'));
 const Blueprints = lazy(() => import('./components/blueprints/Blueprints'));
 const BlueprintEditor = lazy(() => import('./components/blueprints/BlueprintEditor'));
 const Templates = lazy(() => import('./components/templates/Templates'));
@@ -96,6 +97,7 @@ export default function App() {
           <Route path="/drafts" element={<Drafts />} />
           <Route path="/drafts/" element={<Drafts />} />
           <Route path="/drafts/:id" element={<Review />} />
+          <Route path="/drafts/:id/assets/:assetName/regenerate" element={<AssetRegenerator />} />
           <Route path="/templates" element={<Templates />} />
           <Route path="/blueprints" element={<Blueprints />} />
           <Route path="/blueprints/edit/*" element={<BlueprintEditor />} />
