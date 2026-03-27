@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Star, Download, Trash2, Edit3, Check, X, ShieldCheck, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Star, Download, Trash2, Edit3, Check, X, ShieldCheck, ChevronDown, Copy } from 'lucide-react';
 import { api } from '@/lib/api';
 import { getGuidedTour, REVIEW_EXPORT_TOUR_ID } from '@/lib/help';
 import ExportModal from '../common/ExportModal';
@@ -20,6 +20,7 @@ export default function Review() {
   const [editName, setEditName] = useState('');
   const [editingAsset, setEditingAsset] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
+  const [copiedAsset, setCopiedAsset] = useState<string | null>(null);
   const [tourManagedExportModal, setTourManagedExportModal] = useState(false);
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
   const { activeStepIndex, activeTourId } = useGuidedTour();
@@ -128,6 +129,20 @@ export default function Review() {
 
   const handleAssetRefined = (assetName: string, newContent: string) => {
     saveAsset.mutate({ assetName, content: newContent });
+  };
+
+  const handleCopyAsset = async (assetName: string) => {
+    const content = editingAsset === assetName ? editContent : draft.assets[assetName];
+
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopiedAsset(assetName);
+      window.setTimeout(() => {
+        setCopiedAsset((currentAsset) => (currentAsset === assetName ? null : currentAsset));
+      }, 1600);
+    } catch (copyError) {
+      console.error('Failed to copy asset', copyError);
+    }
   };
 
   useEffect(() => {
@@ -338,15 +353,24 @@ export default function Review() {
               <h2 className="text-base font-semibold capitalize" style={{ fontFamily: '"Space Grotesk", sans-serif' }}>
                 {assetName.replace(/_/g, ' ')}
               </h2>
-              {editingAsset !== assetName && (
+              <div className="flex shrink-0 flex-wrap items-center gap-2">
                 <button
-                  onClick={() => handleEditAsset(assetName)}
-                  className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-input bg-background px-2 py-1 text-xs hover:bg-accent"
+                  onClick={() => void handleCopyAsset(assetName)}
+                  className="inline-flex items-center gap-1 rounded-lg border border-input bg-background px-2 py-1 text-xs hover:bg-accent"
                 >
-                  <Edit3 className="h-3 w-3" />
-                  Edit
+                  {copiedAsset === assetName ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                  {copiedAsset === assetName ? 'Copied' : 'Copy'}
                 </button>
-              )}
+                {editingAsset !== assetName && (
+                  <button
+                    onClick={() => handleEditAsset(assetName)}
+                    className="inline-flex items-center gap-1 rounded-lg border border-input bg-background px-2 py-1 text-xs hover:bg-accent"
+                  >
+                    <Edit3 className="h-3 w-3" />
+                    Edit
+                  </button>
+                )}
+              </div>
             </div>
             <div className="app-panel min-w-0 overflow-hidden p-2.5 sm:p-3">
               {editingAsset === assetName ? (

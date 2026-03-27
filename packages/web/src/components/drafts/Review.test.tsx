@@ -27,6 +27,14 @@ vi.mock('../common/ChatPanel', () => ({
   default: () => null,
 }));
 
+vi.mock('./ReviewChecklistPanel', () => ({
+  default: () => null,
+}));
+
+vi.mock('./VersionHistoryPanel', () => ({
+  default: () => null,
+}));
+
 vi.mock('../common/InlineHelpTip', () => ({
   default: () => null,
 }));
@@ -71,11 +79,21 @@ function renderReview() {
 }
 
 describe('Review export modal behavior', () => {
+  const writeText = vi.fn();
+
   beforeEach(() => {
     mockUseQuery.mockReset();
     mockUseMutation.mockReset();
     mockUseQueryClient.mockReset();
     mockUseGuidedTour.mockReset();
+    writeText.mockReset();
+
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        writeText,
+      },
+    });
 
     mockUseQuery.mockReturnValue({
       data: draftResponse,
@@ -154,5 +172,27 @@ describe('Review export modal behavior', () => {
     );
 
     expect(screen.getByTestId('export-modal')).toBeInTheDocument();
+  });
+
+  it('copies an asset from the draft review card', async () => {
+    writeText.mockResolvedValue(undefined);
+
+    mockUseGuidedTour.mockReturnValue({
+      activeTourId: null,
+      activeStepIndex: 0,
+      isTourCompleted: vi.fn(() => false),
+      restartTour: vi.fn(),
+      startTour: vi.fn(),
+    });
+
+    renderReview();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Copy' }));
+
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith('hello');
+    });
+
+    expect(screen.getByRole('button', { name: 'Copied' })).toBeInTheDocument();
   });
 });
