@@ -1,11 +1,8 @@
 # Caddyfile for Eidolon Character Generator
-# Replace 'your-domain.com' with your actual domain
+# Override the domain with EIDOLON_DOMAIN in your Compose env file if needed.
 
-api.eidolonsimulacra.com {
-    # API requests go to the backend server
-    handle /api/* {
-        reverse_proxy 127.0.0.1:3001
-    }
+{$EIDOLON_DOMAIN:api.eidolonsimulacra.com} {
+    reverse_proxy eidolon:3001
 
     # Enable gzip compression
     encode gzip zstd
@@ -31,9 +28,9 @@ api.eidolonsimulacra.com {
         -Server
     }
 
-    # Logging
+    # Log to stdout so Docker Desktop can collect logs directly.
     log {
-        output file /var/log/caddy/access.log
+        output stdout
         format console
     }
 }
@@ -43,11 +40,5 @@ api.eidolonsimulacra.com {
 # localhost {
 #     tls internal
 #
-#     handle /api/* {
-#         reverse_proxy server:3001
-#     }
-#
-#     handle {
-#         reverse_proxy web:80
-#     }
+#     reverse_proxy eidolon:3001
 # }

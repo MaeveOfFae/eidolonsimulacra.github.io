@@ -44,6 +44,27 @@ The web app currently exposes the main workflows directly in the browser:
 
 The home screen also calls out the current operating mode explicitly: browser-only, no local API server required for normal usage.
 
+## Optional Docker API Stack
+
+If you want the sync API on Windows 11 with Docker Desktop, the default Compose stack now runs:
+
+- `eidolon`: the Node API server and PostgreSQL in the same container
+- `caddy`: reverse proxy and TLS termination in its own container
+
+Quick start:
+
+```bash
+Copy-Item .env.docker.example .env
+docker compose --env-file .env up -d --build
+```
+
+Notes:
+
+- Set `DB_PASSWORD`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, and `ENCRYPTION_KEY` before first boot.
+- Set `CORS_ORIGIN` to your web app origin and `EIDOLON_DOMAIN` to the API hostname Caddy should serve.
+- The API is still reachable directly on `http://localhost:3001`, while Caddy serves it on ports `80` and `443`.
+- PostgreSQL data persists in the named Docker volume `postgres_data`.
+
 ## Quick Start
 
 Requirements:

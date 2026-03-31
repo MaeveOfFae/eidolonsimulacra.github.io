@@ -1,0 +1,13 @@
+.git
+.github
+node_modules
+packages/*/node_modules
+packages/*/dist
+coverage
+dist
+.turbo
+.pnpm-store
+.env
+.env.*
+!.env.example
+!.env.docker.example

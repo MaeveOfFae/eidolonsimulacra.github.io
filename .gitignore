@@ -85,3 +85,7 @@ yarn-error.log*
 pnpm-debug.log*
 
 docker/
+!docker/
+!docker/.env.example
+!docker/eidolon/
+!docker/eidolon/**
