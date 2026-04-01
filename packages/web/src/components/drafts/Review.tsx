@@ -187,7 +187,7 @@ export default function Review() {
           className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to Drafts
+          Back to Library
         </Link>
         <div className="rounded-lg border border-destructive bg-destructive/10 p-4 text-destructive">
           Error loading draft
@@ -208,7 +208,7 @@ export default function Review() {
               className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
             >
               <ArrowLeft className="h-4 w-4" />
-              Back to Drafts
+              Back to Library
             </Link>
             <p className="app-page-eyebrow">Review</p>
             {isEditingName ? (

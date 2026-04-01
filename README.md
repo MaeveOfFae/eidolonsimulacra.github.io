@@ -89,6 +89,25 @@ pnpm dev:web:lan
 
 That launches Vite on port `3000` with host `0.0.0.0`.
 
+## Docker Web Stack
+
+If you want the web app instances to appear in Docker Desktop, use the dedicated web compose file:
+
+```bash
+pnpm docker:web
+```
+
+That starts:
+
+- `eidolon-web`: Vite preview on port `3000`
+- `eidolon-web-dev`: Vite dev server on port `3100`
+
+To stop both containers:
+
+```bash
+pnpm docker:web:down
+```
+
 ## Common Commands
 
 ```bash

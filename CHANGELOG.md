@@ -1,4 +1,21 @@
-# Changelog
+#
+## v3.1.3 - 2026-04-01
+
+### Platform and runtime update
+
+This release packages 12 recent commits focused on platform, runtime, and themes.
+
+### Highlights
+- Update Docker configuration and scripts for improved API and PostgreSQL integration
+- Replace IntroGenerator with AssetRegenerator in Generation component
+- Add AssetRegenerator component for regenerating draft assets with custom instructions and multiple variants feat: implement asset regeneration session management with local storage feat: add route for asset regeneration in the Review component feat: update changelog and release notes for version 3.1.1
+- Implement asset copy functionality in Review component
+- Update version to 3.0.21 and enhance release notes with highlights and links
+
+### Links
+- [Open generation](/generate)
+- [Review templates](/templates)
+ Changelog
 
 
 ## v3.1.2 - 2026-03-26
@@ -391,6 +408,7 @@ This release packages 12 recent commits focused on documentation, templates, and
 ### Links
 - [Open generation](/generate)
 - [Review templates](/templates)
+
 
 
 

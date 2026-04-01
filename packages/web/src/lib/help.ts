@@ -179,7 +179,7 @@ export const helpTopics: HelpTopic[] = [
       'Use refinement and validation before exporting to a target format.',
     ],
     actions: [
-      { label: 'Open Drafts', to: '/drafts' },
+      { label: 'Open Library', to: '/drafts' },
       { label: 'Open Validation', to: '/validation' },
     ],
   },
@@ -262,11 +262,11 @@ export const guidedTours: GuidedTour[] = [
       {
         id: 'review-library',
         title: 'Review saved drafts',
-        description: 'Drafts is where you reopen saved work and decide what should move into deeper review, validation, or export.',
+        description: 'The library is where you reopen saved work and decide what should move into deeper review, validation, or export.',
         to: '/drafts',
-        routeLabel: 'Drafts',
+        routeLabel: 'Library',
         bullets: [
-          'Open the draft library after generation to confirm the draft actually saved.',
+          'Open the library after generation to confirm the draft actually saved.',
           'Use draft review before export when details need cleanup.',
         ],
       },
@@ -443,11 +443,11 @@ export const guidedTours: GuidedTour[] = [
         title: 'Treat Drafts as your working library',
         description: 'The library is not just storage. It is where you decide which drafts are worth opening for deeper review or export.',
         to: '/drafts',
-        routeLabel: 'Drafts',
+        routeLabel: 'Library',
         targetId: 'drafts-list',
         targetLabel: 'Draft list',
         bullets: [
-          'Open drafts from here after generation instead of relying on memory or browser history.',
+          'Open the library from here after generation instead of relying on memory or browser history.',
           'Use names, tags, and favorites to keep the library readable as it grows.',
         ],
       },
@@ -456,7 +456,7 @@ export const guidedTours: GuidedTour[] = [
         title: 'Use the workbench for comparison and checks',
         description: 'The workbench keeps review aids in view so you can compare outputs and think before opening a draft for editing.',
         to: '/drafts',
-        routeLabel: 'Drafts',
+        routeLabel: 'Library',
         targetId: 'drafts-workbench',
         targetLabel: 'Draft workbench',
         bullets: [
@@ -653,7 +653,7 @@ export const pageHelpEntries: PageHelpEntry[] = [
       'Passing generation does not guarantee export readiness.',
     ],
     actions: [
-      { label: 'Open Drafts', to: '/drafts' },
+      { label: 'Open Library', to: '/drafts' },
       { label: 'Open Help Center', to: '/help' },
     ],
     relatedTopicIds: ['first-draft-review', 'common-blockers'],
@@ -681,8 +681,8 @@ export const pageHelpEntries: PageHelpEntry[] = [
     id: 'drafts',
     match: '/drafts',
     matchMode: 'exact',
-    title: 'Draft library help',
-    summary: 'Drafts is where you reopen saved work, check metadata, and decide which draft should move into review or export.',
+    title: 'Library help',
+    summary: 'The library is where you reopen saved work, check metadata, and decide which draft should move into review or export.',
     keyActions: [
       'Open the review page for the draft you want to polish or export.',
       'Use metadata and favorites to keep the library manageable as it grows.',
@@ -787,7 +787,7 @@ export const pageHelpEntries: PageHelpEntry[] = [
       'Similarity is analysis support, not a replacement for human review.',
     ],
     actions: [
-      { label: 'Open Drafts', to: '/drafts' },
+      { label: 'Open Library', to: '/drafts' },
       { label: 'Open Help Center', to: '/help' },
     ],
     relatedTopicIds: ['first-draft-review'],
@@ -805,7 +805,7 @@ export const pageHelpEntries: PageHelpEntry[] = [
       'Using unstable or contradictory parents gives unstable offspring output.',
     ],
     actions: [
-      { label: 'Open Drafts', to: '/drafts' },
+      { label: 'Open Library', to: '/drafts' },
       { label: 'Open Validation', to: '/validation' },
     ],
     relatedTopicIds: ['first-draft-review'],
@@ -823,7 +823,7 @@ export const pageHelpEntries: PageHelpEntry[] = [
       'Lineage helps you understand relationships, but it does not repair structural draft issues on its own.',
     ],
     actions: [
-      { label: 'Open Drafts', to: '/drafts' },
+      { label: 'Open Library', to: '/drafts' },
       { label: 'Open Help Center', to: '/help' },
     ],
     relatedTopicIds: ['first-draft-review'],

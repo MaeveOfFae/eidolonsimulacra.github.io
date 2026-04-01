@@ -60,7 +60,7 @@ interface TraySection {
 const navItems = [
   { path: '/', label: 'Home', icon: Home },
   { path: '/generate', label: 'Generate', icon: Sparkles },
-  { path: '/drafts', label: 'Drafts', icon: FolderOpen },
+  { path: '/drafts', label: 'Library', icon: FolderOpen },
   { path: '/templates', label: 'Templates', icon: FileText },
   { path: '/themes', label: 'Themes', icon: Palette },
   { path: '/settings', label: 'Settings', icon: Settings },
@@ -269,7 +269,7 @@ export default function Layout({ children }: LayoutProps) {
 
       const sections: TraySection[] = [{
         id: 'drafts',
-        title: 'Draft Filing Tray',
+        title: 'Library Tray',
         emptyLabel: 'No drafts available yet.',
         items: draftItems,
       }];
@@ -352,7 +352,7 @@ export default function Layout({ children }: LayoutProps) {
         title: 'Generate Tray',
         emptyLabel: 'No generation actions available.',
         items: [
-          { id: 'gen-drafts', label: 'Recent drafts', description: `${draftsCount} available`, to: '/drafts' },
+          { id: 'gen-drafts', label: 'Library', description: `${draftsCount} drafts available`, to: '/drafts' },
           { id: 'gen-seeds', label: 'Favorite seeds', description: `${seedsCount} saved`, to: '/seed-generator' },
           { id: 'gen-templates', label: 'Template manager', description: 'Switch template packs', to: '/templates' },
         ],

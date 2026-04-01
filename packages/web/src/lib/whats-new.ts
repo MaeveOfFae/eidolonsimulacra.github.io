@@ -18,7 +18,7 @@ export const releaseNotes: ReleaseNoteEntry[] = [
   {
     version: '3.1.2',
     releasedOn: '2026-03-26',
-    badge: 'Current release',
+    badge: 'Previous release',
     headline: 'Draft assets and regeneration update',
     summary: 'This release adds per-asset review actions and a universal asset regeneration workspace that now replaces the older dedicated intro workflow.',
     highlights: [
@@ -30,7 +30,7 @@ export const releaseNotes: ReleaseNoteEntry[] = [
     ],
     links: [
       { label: 'Open generation', to: '/generate' },
-      { label: 'Review drafts', to: '/drafts' },
+      { label: 'Open library', to: '/drafts' },
     ],
   },
   {
