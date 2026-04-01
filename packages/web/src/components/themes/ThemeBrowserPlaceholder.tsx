@@ -1,14 +1,20 @@
 import { Globe, Search, TrendingUp, Clock, Star, Users } from 'lucide-react';
 
-export default function ThemeBrowserPlaceholder() {
+interface ThemeBrowserPlaceholderProps {
+  showHeader?: boolean;
+}
+
+export default function ThemeBrowserPlaceholder({ showHeader = true }: ThemeBrowserPlaceholderProps) {
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold">Theme Browser</h2>
-        <p className="text-sm text-muted-foreground">
-          Browse and discover themes shared by the community.
-        </p>
-      </div>
+      {showHeader && (
+        <div>
+          <h2 className="text-lg font-semibold">Theme Browser</h2>
+          <p className="text-sm text-muted-foreground">
+            Browse and discover themes shared by the community.
+          </p>
+        </div>
+      )}
 
       {/* Coming Soon Card */}
       <div className="rounded-2xl border border-dashed border-border bg-card/50 p-12 text-center">

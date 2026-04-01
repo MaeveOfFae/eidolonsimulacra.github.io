@@ -66,6 +66,11 @@ interface ThemeImportOptions {
   target_name?: string;
 }
 
+interface ThemeEditorProps {
+  showHeader?: boolean;
+  showSyncControls?: boolean;
+}
+
 type ThemeSortMode = 'name-asc' | 'name-desc' | 'author-asc' | 'source';
 type ThemeViewMode = 'comfortable' | 'compact';
 
@@ -181,7 +186,7 @@ function renderColorValue(value: string) {
   );
 }
 
-export default function Themes() {
+export default function Themes({ showHeader = true, showSyncControls = true }: ThemeEditorProps) {
   const queryClient = useQueryClient();
   const importInputId = 'theme-import-input';
   const [notice, setNotice] = useState<string | null>(null);
@@ -579,15 +584,24 @@ export default function Themes() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold">Theme Editor</h2>
-          <p className="text-sm text-muted-foreground">
-            Create, edit, and manage custom theme presets. Save the current palette as a reusable preset.
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Changes apply automatically. If other pages don't update, press <kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">F5</kbd> to refresh.
-          </p>
-        </div>
+        {showHeader ? (
+          <div>
+            <h2 className="text-lg font-semibold">Theme Editor</h2>
+            <p className="text-sm text-muted-foreground">
+              Create, edit, and manage custom theme presets. Save the current palette as a reusable preset.
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Changes apply automatically. If other pages don't update, press <kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">F5</kbd> to refresh.
+            </p>
+          </div>
+        ) : (
+          <div>
+            <div className="text-sm font-semibold text-foreground">Preset actions</div>
+            <p className="text-sm text-muted-foreground">
+              Import presets, update the active custom preset, or review the current active preset before saving reusable changes.
+            </p>
+          </div>
+        )}
         <div className="flex flex-wrap items-center gap-3">
           <label
             htmlFor={importInputId}
@@ -612,23 +626,24 @@ export default function Themes() {
         </div>
       </div>
 
-      {/* Server Sync */}
-      <div className="rounded-lg border border-border bg-card p-4">
-        <SyncControls
-          dataType="themes"
-          label="Themes"
-          onGetLocalData={async () => {
-            const themes = await api.getThemes();
-            return { version: '1.0', exportedAt: new Date().toISOString(), themes };
-          }}
-          onApplyData={async (data) => {
-            // Themes are managed via API, refresh after pull
-            if (data && typeof data === 'object') {
-              queryClient.invalidateQueries({ queryKey: ['themes'] });
-            }
-          }}
-        />
-      </div>
+      {showSyncControls && (
+        <div className="rounded-lg border border-border bg-card p-4">
+          <SyncControls
+            dataType="themes"
+            label="Themes"
+            onGetLocalData={async () => {
+              const themes = await api.getThemes();
+              return { version: '1.0', exportedAt: new Date().toISOString(), themes };
+            }}
+            onApplyData={async (data) => {
+              // Themes are managed via API, refresh after pull
+              if (data && typeof data === 'object') {
+                queryClient.invalidateQueries({ queryKey: ['themes'] });
+              }
+            }}
+          />
+        </div>
+      )}
 
       <div className="grid gap-6 xl:grid-cols-[1.2fr_1fr]">
         <section className="rounded-lg border border-border bg-card p-5">
