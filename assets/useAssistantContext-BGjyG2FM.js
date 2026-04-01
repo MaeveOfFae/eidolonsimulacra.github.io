@@ -1,0 +1,2 @@
+import{r as e}from"./react-vendor-C34M-SVW.js";import{J as u}from"./index-hfP4Tejj.js";function a(){const t=e.useContext(u);if(!t)throw new Error("useAssistantContext must be used within AssistantContextProvider");return t}function C(t){const{setScreenContext:n,clearScreenContext:o}=a(),c=e.useRef(`screen-${Math.random().toString(36).slice(2)}`),s=e.useMemo(()=>JSON.stringify(t),[t]),r=e.useMemo(()=>JSON.parse(s),[s]);e.useEffect(()=>{const i=c.current;return n(i,r,s),()=>{o(i)}},[o,s,n,r])}export{C as u};
+//# sourceMappingURL=useAssistantContext-BGjyG2FM.js.map
