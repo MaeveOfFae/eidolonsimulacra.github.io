@@ -52,7 +52,8 @@ function getShortContentThreshold(context?: BlueprintLintContext): number {
 
 export function lintBlueprintContent(content: string, context?: BlueprintLintContext): BlueprintLintIssue[] {
   const issues: BlueprintLintIssue[] = [];
-  const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+  const normalizedContent = content.replace(/\r\n?/g, '\n');
+  const frontmatterMatch = normalizedContent.match(/^---\n([\s\S]*?)\n---/);
   const requiredFrontmatterFields = ['name', 'description', 'version', 'invokable', 'always'];
 
   if (!frontmatterMatch) {
@@ -82,21 +83,21 @@ export function lintBlueprintContent(content: string, context?: BlueprintLintCon
   }
 
   const bodyStartIndex = frontmatterMatch ? frontmatterMatch[0].length + 1 : 0;
-  const body = content.slice(bodyStartIndex).trimStart();
-  const bodyOffset = body.length === 0 ? bodyStartIndex : content.indexOf(body, bodyStartIndex);
+  const body = normalizedContent.slice(bodyStartIndex).trimStart();
+  const bodyOffset = body.length === 0 ? bodyStartIndex : normalizedContent.indexOf(body, bodyStartIndex);
 
   if (body.length === 0) {
-    issues.push({ severity: 'warning', message: 'Blueprint body is empty.', line: getLineNumber(content, bodyStartIndex) });
+    issues.push({ severity: 'warning', message: 'Blueprint body is empty.', line: getLineNumber(normalizedContent, bodyStartIndex) });
   } else if (!body.startsWith('# ')) {
-    issues.push({ severity: 'warning', message: 'Blueprint body should start with a top-level heading.', line: getLineNumber(content, bodyOffset) });
+    issues.push({ severity: 'warning', message: 'Blueprint body should start with a top-level heading.', line: getLineNumber(normalizedContent, bodyOffset) });
   }
 
-  const hasCodeBlock = /```[\s\S]*?```/g.test(content);
+  const hasCodeBlock = /```[\s\S]*?```/g.test(normalizedContent);
   if (!hasCodeBlock && shouldWarnForMissingCodeBlock(context)) {
-    issues.push({ severity: 'warning', message: 'No fenced example or output block detected.', line: getLineNumber(content, bodyStartIndex) });
+    issues.push({ severity: 'warning', message: 'No fenced example or output block detected.', line: getLineNumber(normalizedContent, bodyStartIndex) });
   }
 
-  if (content.length < getShortContentThreshold(context)) {
+  if (normalizedContent.length < getShortContentThreshold(context)) {
     issues.push({ severity: 'warning', message: 'Blueprint content is unusually short.', line: 1 });
   }
 

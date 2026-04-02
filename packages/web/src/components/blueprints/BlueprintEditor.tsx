@@ -25,7 +25,8 @@ type ParsedBlueprintDocument = {
 };
 
 function parseBlueprintDocument(rawContent: string): ParsedBlueprintDocument {
-  const match = rawContent.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+  const normalizedContent = rawContent.replace(/\r\n?/g, '\n');
+  const match = normalizedContent.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
   if (!match) {
     return {
       metadata: {
@@ -61,9 +62,10 @@ function parseBlueprintDocument(rawContent: string): ParsedBlueprintDocument {
 }
 
 function highlightBlueprintSource(source: string): string {
-  const match = source.match(/^(---\n)([\s\S]*?)(\n---\n?)([\s\S]*)$/);
+  const normalizedSource = source.replace(/\r\n?/g, '\n');
+  const match = normalizedSource.match(/^(---\n)([\s\S]*?)(\n---\n?)([\s\S]*)$/);
   if (!match) {
-    return Prism.highlight(source, Prism.languages.markdown, 'markdown');
+    return Prism.highlight(normalizedSource, Prism.languages.markdown, 'markdown');
   }
 
   const [, openingFence, frontmatterBody, closingFence, markdownBody] = match;
@@ -606,7 +608,7 @@ export default function BlueprintEditor() {
             {showPreview ? (
               <div ref={previewContainerRef} className="max-h-[70vh] overflow-y-auto rounded-lg border border-border bg-card p-4">
                 <div className="mb-4 rounded-md bg-muted p-3 text-xs font-mono overflow-x-auto whitespace-pre-wrap">
-                  {rawContent.match(/^---\n[\s\S]*?\n---/)?.[0] || 'No frontmatter detected'}
+                  {rawContent.replace(/\r\n?/g, '\n').match(/^---\n[\s\S]*?\n---/)?.[0] || 'No frontmatter detected'}
                 </div>
                 <div className="prose prose-sm dark:prose-invert max-w-none">
                   <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{parsedDocument.body || '*No markdown body yet*'}</ReactMarkdown>

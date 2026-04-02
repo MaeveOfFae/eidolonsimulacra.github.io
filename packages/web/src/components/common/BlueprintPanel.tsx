@@ -37,6 +37,7 @@ export function BlueprintPanel({
   const [isEditing, setIsEditing] = useState(false);
   const [editedContent, setEditedContent] = useState(blueprintContent);
   const [copiedContent, setCopiedContent] = useState(false);
+  const normalizedBlueprintContent = useMemo(() => blueprintContent.replace(/\r\n?/g, '\n'), [blueprintContent]);
 
   useEffect(() => {
     setEditedContent(blueprintContent);
@@ -45,15 +46,18 @@ export function BlueprintPanel({
 
   // Extract frontmatter info
   const frontmatterMatch = useMemo(() => {
-    const match = blueprintContent.match(/^---\n([\s\S]*?)\n---/);
+    const match = normalizedBlueprintContent.match(/^---\n([\s\S]*?)\n---/);
     return match?.[1] || '';
-  }, [blueprintContent]);
+  }, [normalizedBlueprintContent]);
 
   const bodyContent = useMemo(() => {
-    const index = blueprintContent.indexOf('---', 4);
-    if (index === -1) return blueprintContent;
-    return blueprintContent.substring(index + 4).trim();
-  }, [blueprintContent]);
+    const match = normalizedBlueprintContent.match(/^---\n[\s\S]*?\n---\n?([\s\S]*)$/);
+    if (!match) {
+      return normalizedBlueprintContent;
+    }
+
+    return match[1].trim();
+  }, [normalizedBlueprintContent]);
 
   const handleCopy = async () => {
     try {

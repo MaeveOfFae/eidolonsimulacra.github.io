@@ -108,12 +108,14 @@ export function parseBlueprintFrontmatter(content: string): {
   version: string;
   feature_category?: FeatureCategory;
 } {
+  const normalizedContent = content.replace(/\r\n?/g, '\n');
+
   // Look for YAML frontmatter between --- markers
-  const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+  const frontmatterMatch = normalizedContent.match(/^---\n([\s\S]*?)\n---/);
 
   if (!frontmatterMatch) {
-    const headingMatch = content.match(/^#\s+(.+)$/m);
-    const paragraphMatch = content
+    const headingMatch = normalizedContent.match(/^#\s+(.+)$/m);
+    const paragraphMatch = normalizedContent
       .split('\n')
       .map((line) => line.trim())
       .find((line) => line.length > 0 && !line.startsWith('#') && !line.startsWith('```'));

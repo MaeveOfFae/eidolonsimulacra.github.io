@@ -3,6 +3,22 @@
 Generated release history for the browser app.
 
 
+## v3.1.7 - 2026-04-02
+
+### Platform and runtime update
+
+This release packages 12 recent commits focused on platform, runtime, and templates.
+
+### Highlights
+- Update version to 3.1.6 and enhance changelog with highlights and links
+- Update changelog and release notes for version 3.1.5
+- Update package manager to pnpm@10.33.0
+- Update version numbers and add sync-backed persistence tests for templates and blueprints
+- Enhance Theme components with optional headers and sync controls
+
+### Links
+- [Open generation](/generate)
+- [Review templates](/templates)
 ## v3.1.6 - 2026-04-02
 
 ### Platform and runtime update
@@ -461,6 +477,7 @@ This release packages 12 recent commits focused on documentation, templates, and
 ### Links
 - [Open generation](/generate)
 - [Review templates](/templates)
+
 
 
 
