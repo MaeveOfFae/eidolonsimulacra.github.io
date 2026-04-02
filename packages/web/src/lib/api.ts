@@ -166,6 +166,67 @@ function parseBlueprintMetadata(path: string, content: string): {
   return { name, description, version, invokable };
 }
 
+type RemoteTemplateSyncRecord = {
+  name?: unknown;
+  version?: unknown;
+  description?: unknown;
+  isOfficial?: unknown;
+  is_official?: unknown;
+  isDefault?: unknown;
+  is_default?: unknown;
+  assets?: unknown;
+  blueprintContent?: unknown;
+  blueprint_contents?: unknown;
+};
+
+type RemoteBlueprintSyncRecord = {
+  path?: unknown;
+  name?: unknown;
+  description?: unknown;
+  invokable?: unknown;
+  version?: unknown;
+  content?: unknown;
+  category?: unknown;
+  isBuiltin?: unknown;
+  is_builtin?: unknown;
+};
+
+function toStringRecord(value: unknown): Record<string, string> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {};
+  }
+
+  return Object.fromEntries(
+    Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === 'string')
+  );
+}
+
+function normalizeRemoteTemplateRecord(record: RemoteTemplateSyncRecord): StoredTemplateRecord | null {
+  if (typeof record.name !== 'string' || record.name.trim().length === 0 || !Array.isArray(record.assets)) {
+    return null;
+  }
+
+  return {
+    template: {
+      name: record.name,
+      version: typeof record.version === 'string' && record.version.trim().length > 0 ? record.version : '1.0.0',
+      description: typeof record.description === 'string' ? record.description : '',
+      is_official: Boolean(record.isOfficial ?? record.is_official),
+      is_default: Boolean(record.isDefault ?? record.is_default),
+      assets: record.assets as Template['assets'],
+    },
+    blueprint_contents: toStringRecord(record.blueprintContent ?? record.blueprint_contents),
+  };
+}
+
+function normalizeRemoteBlueprintPath(path: string): string {
+  if (!path.startsWith('blueprints/overrides/')) {
+    return path;
+  }
+
+  return `blueprints/${path.replace(/^blueprints\/overrides\//, '')}`;
+}
+
 function getUniqueTemplateName(requestedName: string, excludeName?: string): string {
   const existingNames = new Set(
     getAllTemplateRecords()
@@ -2027,34 +2088,19 @@ export class EidolonBrowserAPI {
     // Try to sync from server first if authenticated
     if (serverClient.isEnabled() && serverClient.hasAccessToken()) {
       try {
-        const { templates: serverTemplates } = await serverClient.syncTemplates('pull') as { templates: Array<{
-          name: string;
-          version: string;
-          description?: string;
-          is_official: boolean;
-          is_default: boolean;
-          assets: Array<{ name: string; required: boolean; depends_on: string[]; description: string; blueprint_file?: string }>;
-          blueprint_contents: Record<string, string>;
-        }> };
+        const { templates: serverTemplates = [] } = await serverClient.syncTemplates('pull') as {
+          templates?: RemoteTemplateSyncRecord[];
+        };
 
         // Merge server templates with local storage
         const localRecords = getStoredTemplates();
         for (const serverT of serverTemplates) {
-          const existing = localRecords.find((r) => r.template.name === serverT.name);
-          if (!existing) {
-            // Add new template from server
-            localRecords.push({
-              template: {
-            name: serverT.name,
-            version: serverT.version,
-            description: serverT.description || '',
-            is_official: serverT.is_official,
-            is_default: serverT.is_default,
-            assets: serverT.assets,
-          },
-          blueprint_contents: serverT.blueprint_contents,
-            });
+          const normalizedRecord = normalizeRemoteTemplateRecord(serverT);
+          if (!normalizedRecord || getStoredTemplateRecord(normalizedRecord.template.name)) {
+            continue;
           }
+
+          localRecords.push(normalizedRecord);
         }
         saveStoredTemplates(localRecords);
       } catch (e) {
@@ -2562,32 +2608,35 @@ export class EidolonBrowserAPI {
     // Try to sync from server first if authenticated
     if (serverClient.isEnabled() && serverClient.hasAccessToken()) {
       try {
-        const { blueprints } = await serverClient.syncBlueprints('list') as { blueprints: Array<{
-          path: string;
-          name: string;
-          description: string;
-          invokable: boolean;
-          version: string;
-          content: string;
-          category: string;
-          isBuiltin: boolean;
-        }> };
+        const { blueprints = [] } = await serverClient.syncBlueprints('list') as {
+          blueprints?: RemoteBlueprintSyncRecord[];
+        };
 
-        // Merge server blueprints with local catalog
-        const localCatalog = getBlueprintCatalog();
+        const overrides = getBlueprintOverrides();
+        let nextOverrides = overrides;
         for (const serverBp of blueprints) {
-          // Server blueprints override local for user-created ones
-          if (!serverBp.isBuiltin) {
-            localCatalog.set(serverBp.path, {
-              name: serverBp.name,
-              description: serverBp.description,
-              invokable: serverBp.invokable,
-              version: serverBp.version,
-              content: serverBp.content,
-              path: serverBp.path,
-              category: serverBp.category as 'core' | 'system' | 'template' | 'example',
-            });
+          if (serverBp.isBuiltin === true || serverBp.is_builtin === true) {
+            continue;
           }
+
+          if (typeof serverBp.path !== 'string' || typeof serverBp.content !== 'string') {
+            continue;
+          }
+
+          const localPath = normalizeRemoteBlueprintPath(serverBp.path);
+          if (Object.prototype.hasOwnProperty.call(overrides, localPath)) {
+            continue;
+          }
+
+          if (nextOverrides === overrides) {
+            nextOverrides = { ...overrides };
+          }
+
+          nextOverrides[localPath] = serverBp.content;
+        }
+
+        if (nextOverrides !== overrides) {
+          saveBlueprintOverrides(nextOverrides);
         }
       } catch (e) {
         console.warn('Failed to sync blueprints from server:', e);

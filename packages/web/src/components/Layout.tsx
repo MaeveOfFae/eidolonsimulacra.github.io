@@ -5,6 +5,7 @@ import {
   Sparkles,
   FolderOpen,
   FileText,
+  FileJson,
   Baby,
   GitBranch,
   Settings,
@@ -62,9 +63,18 @@ const navItems = [
   { path: '/generate', label: 'Generate', icon: Sparkles },
   { path: '/drafts', label: 'Library', icon: FolderOpen },
   { path: '/templates', label: 'Templates', icon: FileText },
+  { path: '/blueprints', label: 'Blueprints', icon: FileJson },
   { path: '/themes', label: 'Themes', icon: Palette },
   { path: '/settings', label: 'Settings', icon: Settings },
 ];
+
+function isNavItemActive(currentPath: string, itemPath: string): boolean {
+  if (itemPath === '/') {
+    return currentPath === '/';
+  }
+
+  return currentPath === itemPath || currentPath.startsWith(`${itemPath}/`);
+}
 
 const charactersSubmenuItems = [
   { path: '/lineage', label: 'Lineage', icon: GitBranch },
@@ -554,7 +564,7 @@ export default function Layout({ children }: LayoutProps) {
 
               {/* Regular nav items */}
               {navItems.map((item) => {
-                const isActive = location.pathname === item.path;
+                const isActive = isNavItemActive(location.pathname, item.path);
                 return (
                   <NavItem
                     key={item.path}
