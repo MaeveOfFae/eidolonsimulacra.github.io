@@ -402,7 +402,12 @@ async function updateChangelog(entry) {
     source = `${header}${source.trimStart()}`;
   }
 
-  const insertAt = source.indexOf('\n\n') + 2;
+  const normalizedHeader = source.startsWith(header)
+    ? header
+    : header.replace(/\n/g, '\r\n');
+  const insertAt = source.startsWith(normalizedHeader)
+    ? normalizedHeader.length
+    : source.indexOf('\n\n') + 2;
   const prefix = source.slice(0, insertAt);
   const suffix = source.slice(insertAt).replace(/^\n+/, '');
 
@@ -464,20 +469,23 @@ async function main() {
   validateEntry(entry);
 
   const source = await fs.readFile(releaseNotesPath, 'utf8');
+  const eol = source.includes('\r\n') ? '\r\n' : '\n';
+  const releaseNotesHeaderPattern = /export const releaseNotes: ReleaseNoteEntry\[\] = \[\r?\n/;
 
   if (source.includes(`version: '${entry.version}'`)) {
     throw new Error(`Release notes already contain version ${entry.version}.`);
   }
 
+  if (!releaseNotesHeaderPattern.test(source)) {
+    throw new Error('Failed to update release notes source. Expected releaseNotes array header was not found.');
+  }
+
   const updatedSource = source
     .replace("badge: 'Current release'", "badge: 'Previous release'")
-    .replace(
-      'export const releaseNotes: ReleaseNoteEntry[] = [\n',
-      `export const releaseNotes: ReleaseNoteEntry[] = [\n${formatEntry(entry)}\n`,
-    );
+    .replace(releaseNotesHeaderPattern, (header) => `${header}${formatEntry(entry).replace(/\n/g, eol)}${eol}`);
 
   if (updatedSource === source) {
-    throw new Error('Failed to update release notes source. Expected releaseNotes array header was not found.');
+    throw new Error('Failed to update release notes source. No release note changes were applied.');
   }
 
   const updatedChangelog = await updateChangelog(entry);

@@ -1,4 +1,41 @@
-#
+# Changelog
+
+Generated release history for the browser app.
+
+
+## v3.1.5 - 2026-04-02
+
+### Platform and themes update
+
+This release packages 12 recent commits focused on platform, themes, and runtime.
+
+### Highlights
+- Update package manager to pnpm@10.33.0
+- Update version numbers and add sync-backed persistence tests for templates and blueprints
+- Enhance Theme components with optional headers and sync controls
+- Add favorites, asset regen, and refactor backend
+- Update Docker configuration and scripts for improved API and PostgreSQL integration
+
+### Links
+- [Open generation](/generate)
+- [Review templates](/templates)
+## v3.1.4 - 2026-04-02
+
+### Sync reliability and theme controls update
+
+This release tightens browser sync workflows for templates and blueprints, expands theme management controls, and continues the shift toward the universal asset regeneration flow alongside updated container tooling.
+
+### Highlights
+- Harden template and blueprint sync coverage with persistence regression tests
+- Add optional headers and sync controls across theme management views
+- Continue the favorites and asset regeneration refactor across browser and backend flows
+- Refresh Docker and PostgreSQL setup scripts for local and server deployment paths
+- Move the workspace to pnpm 10.33.0
+
+### Links
+- [Open generation](/generate)
+- [Review templates](/templates)
+
 ## v3.1.3 - 2026-04-01
 
 ### Platform and runtime update
@@ -408,6 +445,8 @@ This release packages 12 recent commits focused on documentation, templates, and
 ### Links
 - [Open generation](/generate)
 - [Review templates](/templates)
+
+
 
 
 

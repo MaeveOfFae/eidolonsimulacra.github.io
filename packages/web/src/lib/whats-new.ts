@@ -16,6 +16,42 @@ export interface ReleaseNoteEntry {
 // Generated and maintained by tools/generation/generate-release-notes.mjs.
 export const releaseNotes: ReleaseNoteEntry[] = [
   {
+    version: '3.1.5',
+    releasedOn: '2026-04-02',
+    badge: 'Current release',
+    headline: 'Platform and themes update',
+    summary: 'This release packages 12 recent commits focused on platform, themes, and runtime.',
+    highlights: [
+      'Update package manager to pnpm@10.33.0',
+      'Update version numbers and add sync-backed persistence tests for templates and blueprints',
+      'Enhance Theme components with optional headers and sync controls',
+      'Add favorites, asset regen, and refactor backend',
+      'Update Docker configuration and scripts for improved API and PostgreSQL integration',
+    ],
+    links: [
+      { label: 'Open generation', to: '/generate' },
+      { label: 'Review templates', to: '/templates' },
+    ],
+  },
+  {
+    version: '3.1.4',
+    releasedOn: '2026-04-02',
+    badge: 'Previous release',
+    headline: 'Sync reliability and theme controls update',
+    summary: 'This release tightens browser sync workflows for templates and blueprints, expands theme management controls, and continues the shift toward the universal asset regeneration flow alongside updated container tooling.',
+    highlights: [
+      'Harden template and blueprint sync coverage with persistence regression tests',
+      'Add optional headers and sync controls across theme management views',
+      'Continue the favorites and asset regeneration refactor across browser and backend flows',
+      'Refresh Docker and PostgreSQL setup scripts for local and server deployment paths',
+      'Move the workspace to pnpm 10.33.0',
+    ],
+    links: [
+      { label: 'Open generation', to: '/generate' },
+      { label: 'Review templates', to: '/templates' },
+    ],
+  },
+  {
     version: '3.1.2',
     releasedOn: '2026-03-26',
     badge: 'Previous release',
