@@ -1631,6 +1631,8 @@ export class EidolonBrowserAPI {
 
   private draftsSyncPromise: Promise<boolean> | null = null;
 
+  private configSyncPromise: Promise<boolean> | null = null;
+
   private async fetchOpenAICompatibleModels(
     provider: string,
     apiKey: string,
@@ -1753,10 +1755,52 @@ export class EidolonBrowserAPI {
     return getAllThemes();
   }
 
+  async syncConfigFromServer(): Promise<boolean> {
+    if (!serverClient.isEnabled() || !serverClient.hasAccessToken()) {
+      return false;
+    }
+
+    if (this.configSyncPromise) {
+      return this.configSyncPromise;
+    }
+
+    this.configSyncPromise = (async () => {
+      try {
+        const [configResult, apiKeysResult] = await Promise.all([
+          serverClient.pullConfig(),
+          serverClient.pullApiKeys(),
+        ]);
+
+        const currentConfig = configManager.getConfig();
+        const currentApiKeys = configManager.getApiKeys();
+        const remoteConfig = (configResult.config || {}) as Partial<Config>;
+        const remoteApiKeys = apiKeysResult.apiKeys || {};
+
+        const configChanged = JSON.stringify(currentConfig) !== JSON.stringify({ ...currentConfig, ...remoteConfig });
+        const apiKeysChanged = JSON.stringify(currentApiKeys) !== JSON.stringify(remoteApiKeys);
+
+        if (!configChanged && !apiKeysChanged) {
+          return false;
+        }
+
+        configManager.updateConfig(remoteConfig);
+        configManager.replaceApiKeys(remoteApiKeys);
+        return true;
+      } catch (error) {
+        console.warn('Failed to sync config from server:', error);
+        return false;
+      } finally {
+        this.configSyncPromise = null;
+      }
+    })();
+
+    return this.configSyncPromise;
+  }
+
   async updateConfig(config: Partial<Config>): Promise<Config> {
     const nextConfig = { ...config };
     if (config.api_keys) {
-      configManager.setApiKeys(config.api_keys);
+      configManager.replaceApiKeys(config.api_keys);
       delete nextConfig.api_keys;
     }
     configManager.updateConfig(nextConfig);

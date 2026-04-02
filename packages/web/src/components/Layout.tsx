@@ -435,7 +435,10 @@ export default function Layout({ children }: LayoutProps) {
         
         // If authentication just became available, flush any pending syncs
         if (status.authenticated && status.connected) {
-          void triggerAutoSyncFlush();
+          void (async () => {
+            await triggerAutoSyncFlush();
+            await api.syncConfigFromServer();
+          })();
         }
       } catch {
         setAuthStatus({ connected: false, authenticated: false });

@@ -17,7 +17,7 @@ import {
 import { Link } from 'react-router-dom';
 import type { Config, FeatureCategory, ModelInfo } from '@char-gen/shared';
 import { api } from '../../lib/api.js';
-import { configManager, isInvalidApiKeyValue, normalizeApiKeyValue } from '../../lib/config/manager.js';
+import { CONFIG_MANAGER_CHANGED_EVENT, configManager, isInvalidApiKeyValue, normalizeApiKeyValue } from '../../lib/config/manager.js';
 import { queueAutoSync } from '../../lib/server/auto-sync.js';
 import { createEngine, MODEL_SUGGESTIONS } from '../../lib/llm/factory.js';
 import { GETTING_STARTED_TOUR_ID } from '@/lib/help';
@@ -82,8 +82,7 @@ export default function Settings() {
     } as Record<FeatureCategory, Array<{ value: string; label: string }>>;
   }, [blueprintList]);
 
-  // Load config from client-side manager
-  useEffect(() => {
+  const syncLocalConfigFromManager = () => {
     const config = configManager.getConfig();
     const apiKeys = configManager.getApiKeys();
     setLocalConfig({ ...config, api_keys: apiKeys });
@@ -101,6 +100,20 @@ export default function Settings() {
         return;
       }
     }
+  };
+
+  // Load config from client-side manager
+  useEffect(() => {
+    syncLocalConfigFromManager();
+
+    const handleConfigChange = () => {
+      syncLocalConfigFromManager();
+    };
+
+    window.addEventListener(CONFIG_MANAGER_CHANGED_EVENT, handleConfigChange);
+    return () => {
+      window.removeEventListener(CONFIG_MANAGER_CHANGED_EVENT, handleConfigChange);
+    };
   }, []);
 
   const modelSuggestions = useMemo(() => {

@@ -322,6 +322,15 @@ export class ConfigManager {
   }
 
   /**
+   * Replace the full API key set.
+   */
+  replaceApiKeys(keys: ApiKeys): void {
+    sessionApiKeys = normalizeApiKeys(keys);
+    this.persistApiKeysIfNeeded();
+    dispatchConfigChangedEvent();
+  }
+
+  /**
    * Clear an API key
    */
   clearApiKey(provider: string): void {

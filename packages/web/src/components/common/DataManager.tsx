@@ -312,14 +312,7 @@ export default function DataManager() {
                   if (d.config) {
                     configManager.importConfig(JSON.stringify(d.config));
                   }
-                  if (d.apiKeys) {
-                    // Import API keys
-                    for (const [provider, key] of Object.entries(d.apiKeys)) {
-                      if (key) {
-                        configManager.setApiKey(provider, key);
-                      }
-                    }
-                  }
+                  configManager.replaceApiKeys(d.apiKeys || {});
                   await loadStats();
                 }
               }}

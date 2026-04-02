@@ -18,19 +18,25 @@ vi.mock('./server/client.js', () => ({
     hasAccessToken: vi.fn(),
     syncTemplates: vi.fn(),
     syncBlueprints: vi.fn(),
+    pullConfig: vi.fn(),
+    pullApiKeys: vi.fn(),
   },
 }));
 
 import { api } from './api';
+import { configManager } from './config/manager';
 import { serverClient } from './server/client.js';
 
 describe('sync-backed browser persistence', () => {
   beforeEach(() => {
     window.localStorage.clear();
+    configManager.clearAll();
     vi.mocked(serverClient.isEnabled).mockReturnValue(true);
     vi.mocked(serverClient.hasAccessToken).mockReturnValue(true);
     vi.mocked(serverClient.syncTemplates).mockResolvedValue({ templates: [] });
     vi.mocked(serverClient.syncBlueprints).mockResolvedValue({ blueprints: [] });
+    vi.mocked(serverClient.pullConfig).mockResolvedValue({ config: {} });
+    vi.mocked(serverClient.pullApiKeys).mockResolvedValue({ apiKeys: {} });
   });
 
   it('hydrates synced templates from camelCase server payloads', async () => {
@@ -126,5 +132,37 @@ describe('sync-backed browser persistence', () => {
     expect(customBlueprint.name).toBe('Remote Note');
     expect(api.hasBlueprintOverride('blueprints/system/generator.md')).toBe(true);
     expect(overriddenBlueprint.content).toContain('Override content');
+  });
+
+  it('hydrates synced config and replaces API keys from the server', async () => {
+    await api.updateConfig({
+      model: 'openrouter/openai/gpt-4o-mini',
+      api_keys: {
+        openrouter: 'local-openrouter-key',
+        openai: 'stale-local-key',
+      },
+    });
+
+    vi.mocked(serverClient.pullConfig).mockResolvedValue({
+      config: {
+        model: 'openai/gpt-4.1-mini',
+        engine_mode: 'explicit',
+        engine: 'openai',
+      },
+    });
+    vi.mocked(serverClient.pullApiKeys).mockResolvedValue({
+      apiKeys: {
+        openai: 'remote-openai-key',
+      },
+    });
+
+    const changed = await api.syncConfigFromServer();
+    const config = await api.getConfig();
+
+    expect(changed).toBe(true);
+    expect(config.model).toBe('openai/gpt-4.1-mini');
+    expect(config.api_keys).toEqual({
+      openai: 'remote-openai-key',
+    });
   });
 });
