@@ -18,9 +18,16 @@ const blueprintModules = import.meta.glob('../../../../../blueprints/**/*.md', {
   eager: true,
 }) as Record<string, string>;
 
+const templateManifestModules = import.meta.glob('../../../../../blueprints/templates/**/template.toml', {
+  query: '?raw',
+  import: 'default',
+  eager: true,
+}) as Record<string, string>;
+
 export interface StoredTemplateRecord {
   template: Template;
   blueprint_contents: Record<string, string>;
+  template_root?: string;
 }
 
 type BlueprintCategory = 'core' | 'system' | 'template' | 'example';
@@ -34,6 +41,208 @@ interface BrowserBlueprint {
   path: string;
   category: BlueprintCategory;
   feature_category?: FeatureCategory;
+}
+
+function normalizePathSegments(path: string): string {
+  const normalized = path.replace(/\\/g, '/');
+  const segments = normalized.split('/');
+  const resolved: string[] = [];
+
+  for (const segment of segments) {
+    if (!segment || segment === '.') {
+      continue;
+    }
+
+    if (segment === '..') {
+      if (resolved.length > 0) {
+        resolved.pop();
+      }
+      continue;
+    }
+
+    resolved.push(segment);
+  }
+
+  return resolved.join('/');
+}
+
+function normalizeBlueprintPath(path: string): string {
+  return normalizePathSegments(path.replace(/^\/+/, ''));
+}
+
+function resolveBlueprintPath(templateRoot: string | undefined, blueprintPath: string): string {
+  const normalizedPath = normalizeBlueprintPath(blueprintPath);
+  if (normalizedPath.startsWith('blueprints/')) {
+    return normalizedPath;
+  }
+
+  if (!templateRoot) {
+    return normalizedPath;
+  }
+
+  return normalizeBlueprintPath(`${templateRoot}/${normalizedPath}`);
+}
+
+function parseTomlString(rawValue: string): string {
+  return rawValue.trim().replace(/^"|"$/g, '');
+}
+
+function parseTomlStringArray(rawValue: string): string[] {
+  const values: string[] = [];
+  const matcher = /"([^"]*)"/g;
+  let match = matcher.exec(rawValue);
+
+  while (match) {
+    values.push(match[1]);
+    match = matcher.exec(rawValue);
+  }
+
+  return values;
+}
+
+function parseTemplateManifest(content: string): Template | null {
+  const normalizedContent = content.replace(/\r\n?/g, '\n');
+  const lines = normalizedContent.split('\n');
+
+  let section: 'template' | 'assets' | null = null;
+  let pendingArrayKey: 'depends_on' | null = null;
+
+  let templateName = '';
+  let templateVersion = '1.0.0';
+  let templateDescription = '';
+
+  const assets: Template['assets'] = [];
+  let currentAsset: Template['assets'][number] | null = null;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) {
+      continue;
+    }
+
+    if (trimmed === '[template]') {
+      section = 'template';
+      pendingArrayKey = null;
+      continue;
+    }
+
+    if (trimmed === '[[assets]]') {
+      currentAsset = {
+        name: '',
+        required: false,
+        depends_on: [],
+        description: '',
+      };
+      assets.push(currentAsset);
+      section = 'assets';
+      pendingArrayKey = null;
+      continue;
+    }
+
+    if (pendingArrayKey && currentAsset) {
+      if (trimmed === ']') {
+        pendingArrayKey = null;
+        continue;
+      }
+
+      currentAsset.depends_on.push(...parseTomlStringArray(trimmed));
+      continue;
+    }
+
+    const keyValueMatch = trimmed.match(/^([A-Za-z0-9_]+)\s*=\s*(.+)$/);
+    if (!keyValueMatch) {
+      continue;
+    }
+
+    const [, key, rawValue] = keyValueMatch;
+
+    if (section === 'template') {
+      if (key === 'name') {
+        templateName = parseTomlString(rawValue);
+      } else if (key === 'version') {
+        templateVersion = parseTomlString(rawValue);
+      } else if (key === 'description') {
+        templateDescription = parseTomlString(rawValue);
+      }
+      continue;
+    }
+
+    if (section !== 'assets' || !currentAsset) {
+      continue;
+    }
+
+    if (key === 'name') {
+      currentAsset.name = parseTomlString(rawValue);
+    } else if (key === 'required') {
+      currentAsset.required = rawValue.trim() === 'true';
+    } else if (key === 'depends_on') {
+      const compactValue = rawValue.trim();
+      if (compactValue === '[') {
+        pendingArrayKey = 'depends_on';
+      } else {
+        currentAsset.depends_on = parseTomlStringArray(compactValue);
+      }
+    } else if (key === 'description') {
+      currentAsset.description = parseTomlString(rawValue);
+    } else if (key === 'blueprint_file') {
+      currentAsset.blueprint_file = parseTomlString(rawValue);
+    }
+  }
+
+  const parsedAssets = assets.filter((asset) => asset.name.trim().length > 0);
+  if (!templateName.trim() || parsedAssets.length === 0) {
+    return null;
+  }
+
+  return {
+    name: templateName,
+    version: templateVersion,
+    description: templateDescription,
+    is_official: true,
+    assets: parsedAssets,
+  };
+}
+
+function buildBuiltinTemplateRecords(): StoredTemplateRecord[] {
+  const manifestRecords = Object.entries(templateManifestModules)
+    .map(([modulePath, content]) => {
+      const template = parseTemplateManifest(content);
+      if (!template) {
+        return null;
+      }
+
+      const manifestPath = modulePath.replace(/^.*\/blueprints\//, 'blueprints/');
+      const templateRoot = manifestPath.replace(/\/template\.toml$/i, '');
+
+      return {
+        template,
+        blueprint_contents: {},
+        template_root: templateRoot,
+      } as StoredTemplateRecord;
+    })
+    .filter((record): record is StoredTemplateRecord => Boolean(record));
+
+  const defaultTemplateRoot = manifestRecords.find((record) => record.template_root?.endsWith('/official_v2v3'))?.template_root;
+  const builtinRecords: StoredTemplateRecord[] = [
+    {
+      template: {
+        ...OFFICIAL_TEMPLATE,
+        is_default: true,
+      },
+      blueprint_contents: {},
+      template_root: defaultTemplateRoot,
+    },
+  ];
+
+  for (const record of manifestRecords) {
+    if (record.template_root === defaultTemplateRoot || record.template.name === OFFICIAL_TEMPLATE.name) {
+      continue;
+    }
+
+    builtinRecords.push(record);
+  }
+
+  return builtinRecords;
 }
 
 function sanitizeBlueprintSlug(name: string): string {
@@ -247,6 +456,7 @@ function normalizeTemplateRecord(record: StoredTemplateRecord): StoredTemplateRe
   return {
     template: record.template,
     blueprint_contents: normalizedContents,
+    template_root: record.template_root,
   };
 }
 
@@ -267,16 +477,7 @@ function hydrateTemplateRecord(record: StoredTemplateRecord): StoredTemplateReco
   return {
     template: normalized.template,
     blueprint_contents: blueprintContents,
-  };
-}
-
-function getDefaultTemplateStorageRecord(): StoredTemplateRecord {
-  return {
-    template: {
-      ...OFFICIAL_TEMPLATE,
-      is_default: true,
-    },
-    blueprint_contents: {},
+    template_root: normalized.template_root,
   };
 }
 
@@ -304,7 +505,7 @@ export function saveStoredTemplates(records: StoredTemplateRecord[]): void {
 
 export function getAllTemplateRecords(): StoredTemplateRecord[] {
   return [
-    hydrateTemplateRecord(getDefaultTemplateStorageRecord()),
+    ...buildBuiltinTemplateRecords().map(hydrateTemplateRecord),
     ...getStoredTemplates().map(hydrateTemplateRecord),
   ];
 }
@@ -312,11 +513,6 @@ export function getAllTemplateRecords(): StoredTemplateRecord[] {
 export function getStoredTemplateRecord(name?: string): StoredTemplateRecord | undefined {
   if (!name) {
     return undefined;
-  }
-
-  const defaultRecord = getDefaultTemplateStorageRecord();
-  if (defaultRecord.template.name === name) {
-    return defaultRecord;
   }
 
   return getStoredTemplates().find((record) => record.template.name === name);
@@ -351,7 +547,13 @@ export function resolveTemplateBlueprintContent(templateName: string | undefined
   }
 
   const blueprintFile = getAssetBlueprintKey(asset);
-  return record.blueprint_contents[blueprintFile] || findBlueprintContent(blueprintFile) || undefined;
+  const resolvedBlueprintFile = resolveBlueprintPath(record.template_root, blueprintFile);
+
+  return record.blueprint_contents[blueprintFile]
+    || record.blueprint_contents[resolvedBlueprintFile]
+    || findBlueprintContent(resolvedBlueprintFile)
+    || findBlueprintContent(blueprintFile)
+    || undefined;
 }
 
 export function inferCharacterDisplayNameForTemplate(

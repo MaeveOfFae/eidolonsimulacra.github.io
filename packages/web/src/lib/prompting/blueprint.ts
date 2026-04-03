@@ -9,6 +9,15 @@ import type {
 } from '@char-gen/shared';
 import { configManager } from '../config/manager';
 
+const BLUEPRINT_OVERRIDES_STORAGE_KEY = 'eidolon.web.blueprints.overrides';
+const LEGACY_BLUEPRINT_OVERRIDES_STORAGE_KEYS = ['bpui.web.blueprints.overrides'];
+
+const bundledBlueprintModules = import.meta.glob('../../../../../blueprints/**/*.md', {
+  query: '?raw',
+  import: 'default',
+  eager: true,
+}) as Record<string, string>;
+
 export interface Blueprint {
   name: string;
   description: string;
@@ -42,6 +51,36 @@ function resolveBlueprintPath(nameOrPath: string): string {
   return BLUEPRINT_PATH_ALIASES[normalized] ?? `${normalized}.md`;
 }
 
+function getStoredBlueprintOverride(path: string): string | undefined {
+  if (typeof window === 'undefined') {
+    return undefined;
+  }
+
+  for (const storageKey of [BLUEPRINT_OVERRIDES_STORAGE_KEY, ...LEGACY_BLUEPRINT_OVERRIDES_STORAGE_KEYS]) {
+    const raw = window.localStorage.getItem(storageKey);
+    if (!raw) {
+      continue;
+    }
+
+    try {
+      const parsed = JSON.parse(raw) as Record<string, string>;
+      const override = parsed[path];
+      if (typeof override === 'string' && override.trim().length > 0) {
+        return override;
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return undefined;
+}
+
+function getBundledBlueprint(path: string): string | undefined {
+  const modulePath = `../../../../../${path}`;
+  return bundledBlueprintModules[modulePath];
+}
+
 /**
  * Blueprint repository URL
  * Can be configured to point to a CDN or local folder
@@ -53,7 +92,18 @@ const BLUEPRINT_REPO_URL = '/blueprints';
  */
 export async function loadBlueprint(name: string, baseUrl: string = BLUEPRINT_REPO_URL): Promise<string> {
   const resolvedPath = resolveBlueprintPath(name);
+  const repoPath = `blueprints/${resolvedPath}`;
   const url = `${baseUrl}/${resolvedPath}`;
+
+  const overrideContent = getStoredBlueprintOverride(repoPath);
+  if (overrideContent) {
+    return overrideContent;
+  }
+
+  const bundledContent = getBundledBlueprint(repoPath);
+  if (bundledContent) {
+    return bundledContent;
+  }
 
   try {
     const response = await fetch(url);

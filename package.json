@@ -1,6 +1,6 @@
 {
   "name": "eidolon-simulacra",
-  "version": "3.1.7",
+  "version": "3.1.8",
   "private": true,
   "description": "Eidolon Simulacra - Modern web application for generating RPG characters",
   "scripts": {

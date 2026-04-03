@@ -1,4 +1,36 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { loadBlueprint } from './blueprint';
+
+describe('loadBlueprint', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    vi.restoreAllMocks();
+  });
+
+  it('loads bundled built-in blueprints without fetching static files', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+
+    const content = await loadBlueprint('blueprints/system/generator.md');
+
+    expect(content).toContain('name: Orchestrator');
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('prefers locally overridden blueprints over bundled content', async () => {
+    window.localStorage.setItem(
+      'eidolon.web.blueprints.overrides',
+      JSON.stringify({
+        'blueprints/system/generator.md': 'custom generator blueprint',
+      })
+    );
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+
+    const content = await loadBlueprint('blueprints/system/generator.md');
+
+    expect(content).toBe('custom generator blueprint');
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+});import { describe, expect, it } from 'vitest';
 import { parseBlueprintFrontmatter } from './blueprint';
 import { lintBlueprintContent } from '@/components/blueprints/blueprintLint';
 
