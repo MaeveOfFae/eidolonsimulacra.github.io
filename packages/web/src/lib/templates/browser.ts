@@ -43,6 +43,63 @@ interface BrowserBlueprint {
   feature_category?: FeatureCategory;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isTemplateShape(value: unknown): value is Template {
+  return isRecord(value)
+    && typeof value.name === 'string'
+    && typeof value.version === 'string'
+    && Array.isArray(value.assets);
+}
+
+function toStringMap(value: unknown): Record<string, string> {
+  if (!isRecord(value)) {
+    return {};
+  }
+
+  return Object.fromEntries(
+    Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === 'string')
+  );
+}
+
+function coerceStoredTemplateRecord(value: unknown): StoredTemplateRecord | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  if (isTemplateShape(value.template)) {
+    return {
+      template: value.template,
+      blueprint_contents: toStringMap(value.blueprint_contents),
+      template_root: typeof value.template_root === 'string' ? value.template_root : undefined,
+    };
+  }
+
+  if (isTemplateShape(value)) {
+    return {
+      template: value,
+      blueprint_contents: toStringMap(value.blueprint_contents),
+      template_root: typeof value.template_root === 'string' ? value.template_root : undefined,
+    };
+  }
+
+  return null;
+}
+
+function coerceStoredTemplateRecords(value: unknown): StoredTemplateRecord[] {
+  const candidates = Array.isArray(value)
+    ? value
+    : isRecord(value)
+      ? Object.values(value)
+      : [];
+
+  return candidates
+    .map(coerceStoredTemplateRecord)
+    .filter((record): record is StoredTemplateRecord => Boolean(record));
+}
+
 function normalizePathSegments(path: string): string {
   const normalized = path.replace(/\\/g, '/');
   const segments = normalized.split('/');
@@ -482,11 +539,12 @@ function hydrateTemplateRecord(record: StoredTemplateRecord): StoredTemplateReco
 }
 
 export function getStoredTemplates(): StoredTemplateRecord[] {
-  const stored = readStorage<StoredTemplateRecord[]>(
+  const stored = readStorage<unknown>(
     [CUSTOM_TEMPLATES_STORAGE_KEY, ...LEGACY_CUSTOM_TEMPLATES_STORAGE_KEYS],
     []
   );
-  const normalized = stored.map(normalizeTemplateRecord);
+  const coerced = coerceStoredTemplateRecords(stored);
+  const normalized = coerced.map(normalizeTemplateRecord);
 
   if (JSON.stringify(stored) !== JSON.stringify(normalized)) {
     writeStorage(CUSTOM_TEMPLATES_STORAGE_KEY, LEGACY_CUSTOM_TEMPLATES_STORAGE_KEYS, normalized);
