@@ -14,6 +14,7 @@ const createDraftSchema = z.object({
   seed: z.string(),
   mode: z.enum(["SFW", "NSFW", "Platform-Safe", "Auto"]).optional(),
   model: z.string().optional(),
+  archivedAt: z.string().optional(),
   characterName: z.string().optional(),
   templateName: z.string().optional(),
   genre: z.string().optional(),
@@ -32,6 +33,7 @@ const pushDraftSchema = z.object({
   seed: z.string(),
   mode: z.enum(["SFW", "NSFW", "Platform-Safe", "Auto"]).optional(),
   model: z.string().optional(),
+  archivedAt: z.string().optional(),
   characterName: z.string().optional(),
   templateName: z.string().optional(),
   genre: z.string().optional(),
@@ -47,6 +49,8 @@ const draftQuerySchema = z.object({
   search: z.string().optional(),
   tags: z.string().optional(),
   favorite: z.enum(["true", "false"]).optional(),
+  archived: z.enum(["true", "false"]).optional(),
+  includeArchived: z.enum(["true", "false"]).optional(),
   genre: z.string().optional(),
   template: z.string().optional(),
   sortBy: z.enum(["createdAt", "updatedAt", "characterName"]).optional(),
@@ -63,6 +67,14 @@ router.get("/", validateQuery(draftQuerySchema), async (req: Request, res: Respo
   const q = req.query as z.infer<typeof draftQuerySchema>;
 
   const where: Prisma.DraftWhereInput = { userId };
+
+  if (q.includeArchived !== "true") {
+    where.archivedAt = q.archived === "true" ? { not: null } : null;
+  } else if (q.archived === "true") {
+    where.archivedAt = { not: null };
+  } else if (q.archived === "false") {
+    where.archivedAt = null;
+  }
 
   if (q.search) {
     where.OR = [
@@ -94,19 +106,19 @@ router.get("/", validateQuery(draftQuerySchema), async (req: Request, res: Respo
 // GET /stats - Get draft statistics
 router.get("/stats", async (req: Request, res: Response): Promise<void> => {
   const userId = req.user!.userId;
-  const [total, favorites] = await Promise.all([
-    prisma.draft.count({ where: { userId } }),
-    prisma.draft.count({ where: { userId, favorite: true } }),
+  const [total, archived, favorites] = await Promise.all([
+    prisma.draft.count({ where: { userId, archivedAt: null } }),
+    prisma.draft.count({ where: { userId, archivedAt: { not: null } } }),
+    prisma.draft.count({ where: { userId, favorite: true, archivedAt: null } }),
   ]);
-  res.json({ total, favorites });
+  res.json({ total, archived, favorites });
 });
 
 // GET /tags - Get all unique tags
 router.get("/tags", async (req: Request, res: Response): Promise<void> => {
   const userId = req.user!.userId;
-  const drafts = await prisma.draft.findMany({ where: { userId }, select: { tags: true } });
+  const drafts = await prisma.draft.findMany({ where: { userId, archivedAt: null }, select: { tags: true } });
   const uniqueTags = [...new Set(drafts.flatMap((d) => d.tags))].sort();
-  res.json({ tags: uniqueTags });
   res.json({ tags: uniqueTags });
 });
 
@@ -163,6 +175,7 @@ router.post(
           seed: draftData.seed,
           mode: draftData.mode ?? "Auto",
           model: draftData.model,
+          archivedAt: draftData.archivedAt ? new Date(draftData.archivedAt) : null,
           characterName: draftData.characterName,
           templateName: draftData.templateName,
           genre: draftData.genre,
@@ -184,6 +197,7 @@ router.post(
               seed: draftWriteData.seed,
               mode: draftWriteData.mode,
               model: draftWriteData.model,
+              archivedAt: draftWriteData.archivedAt,
               characterName: draftWriteData.characterName,
               templateName: draftWriteData.templateName,
               genre: draftWriteData.genre,
@@ -240,7 +254,13 @@ router.post("/", validateBody(createDraftSchema), async (req: Request, res: Resp
     }
 
     const draft = await prisma.draft.create({
-      data: { ...data, userId, tags: data.tags || [], assets: data.assets || {} },
+      data: {
+        ...data,
+        userId,
+        archivedAt: data.archivedAt ? new Date(data.archivedAt) : null,
+        tags: data.tags || [],
+        assets: data.assets || {},
+      },
     })
     res.status(201).json({ draft })
   }
@@ -260,7 +280,12 @@ router.put("/:id", validateParams(draftParamsSchema), validateBody(createDraftSc
 
     const draft = await prisma.draft.update({
       where: { id },
-      data: { ...data, tags: data.tags || [], assets: data.assets || {} },
+      data: {
+        ...data,
+        archivedAt: data.archivedAt ? new Date(data.archivedAt) : null,
+        tags: data.tags || [],
+        assets: data.assets || {},
+      },
     })
     res.json({ draft })
   }
@@ -278,7 +303,13 @@ router.patch("/:id", validateParams(draftParamsSchema), validateBody(updateDraft
       return
     }
 
-    const draft = await prisma.draft.update({ where: { id }, data })
+    const draft = await prisma.draft.update({
+      where: { id },
+      data: {
+        ...data,
+        archivedAt: data.archivedAt === undefined ? undefined : data.archivedAt ? new Date(data.archivedAt) : null,
+      },
+    })
     res.json({ draft })
   }
 )

@@ -2,7 +2,7 @@ import type { Draft, ThemePreset } from '@char-gen/shared';
 import { configManager } from '../config/manager.js';
 import { parseBlueprintFrontmatter } from '../prompting/blueprint.js';
 import { DraftStorage } from '../storage/draft-db.js';
-import { getFavoriteSeeds, markFavoriteSeedsSynced } from '../seed-generator.js';
+import { getAllFavoriteSeeds, getArchivedSeedRuns, markArchivedSeedRunsSynced, markFavoriteSeedsSynced } from '../seed-generator.js';
 import {
   getBlueprintOverrides,
   getOriginalBlueprintContent,
@@ -72,6 +72,7 @@ function mapDraftForSync(draft: Draft) {
     seed: toOptionalString(draft.metadata.seed) ?? draft.path,
     mode: normalizedMode,
     model: toOptionalString(draft.metadata.model),
+    archivedAt: toOptionalString(draft.metadata.archived_at),
     characterName: toOptionalString(draft.metadata.character_name),
     templateName: toOptionalString(draft.metadata.template_name),
     genre: toOptionalString(draft.metadata.genre),
@@ -104,7 +105,7 @@ function isUuid(value: string | undefined): value is string {
 
 async function syncDrafts(): Promise<void> {
   const [localDrafts, remoteResponse] = await Promise.all([
-    DraftStorage.getAllDrafts(),
+    DraftStorage.getAllDraftsWithOptions({ includeArchived: true }),
     serverClient.listRemoteDrafts(),
   ]);
 
@@ -193,13 +194,19 @@ async function syncTemplates(): Promise<void> {
 }
 
 async function syncSeeds(): Promise<void> {
-  const favorites = getFavoriteSeeds();
+  const favorites = getAllFavoriteSeeds();
+  const archivedRuns = getArchivedSeedRuns();
 
   await serverClient.syncSeeds('push', {
     seeds: favorites,
   });
 
+  await serverClient.syncArchivedSeedRuns('push', {
+    runs: archivedRuns,
+  });
+
   markFavoriteSeedsSynced();
+  markArchivedSeedRunsSynced();
 }
 
 async function syncBlueprints(): Promise<void> {

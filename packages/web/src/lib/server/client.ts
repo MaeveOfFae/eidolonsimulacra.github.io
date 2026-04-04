@@ -39,6 +39,21 @@ export interface SyncedSeedRecord {
   seed: string;
   addedAt: string;
   lastUsedAt?: string;
+  archivedAt?: string;
+}
+
+export interface SyncedSeedRunRecord {
+  id: string;
+  createdAt: string;
+  archivedAt?: string;
+  request: {
+    genreLines: string;
+    count: number;
+    coverageMode: 'per-genre' | 'blended';
+    surpriseMode: boolean;
+    presetId?: string;
+  };
+  seeds: string[];
 }
 
 // Storage keys
@@ -80,6 +95,7 @@ function normalizeDraftForSync(draft: Draft) {
     seed: optionalString(draft.metadata.seed) ?? draft.path,
     mode: normalizeDraftMode(draft.metadata.mode),
     model: optionalString(draft.metadata.model),
+    archivedAt: optionalString(draft.metadata.archived_at),
     characterName: optionalString(draft.metadata.character_name),
     templateName: optionalString(draft.metadata.template_name),
     genre: optionalString(draft.metadata.genre),
@@ -517,7 +533,7 @@ class ServerClient {
   }
 
   async listRemoteDrafts(): Promise<{ drafts: Array<{ id: string; reviewId: string }> }> {
-    const response = await this.request('/api/sync/drafts', {
+    const response = await this.request('/api/sync/drafts/list', {
       method: 'GET',
     });
 
@@ -607,6 +623,26 @@ class ServerClient {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || `Failed to ${action} seeds`);
+    }
+
+    return response.json();
+  }
+
+  async syncArchivedSeedRuns(action: 'pull' | 'push' | 'list', data?: unknown): Promise<unknown> {
+    const isPush = action === 'push';
+    const endpoint = action === 'list'
+      ? '/api/sync/seed-runs/list'
+      : isPush
+        ? '/api/sync/seed-runs/push'
+        : '/api/sync/seed-runs';
+    const response = await this.request(endpoint, {
+      method: isPush ? 'POST' : 'GET',
+      body: isPush ? JSON.stringify(data) : undefined,
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || `Failed to ${action} archived seed runs`);
     }
 
     return response.json();

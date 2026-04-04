@@ -16,9 +16,27 @@ export interface ReleaseNoteEntry {
 // Generated and maintained by tools/generation/generate-release-notes.mjs.
 export const releaseNotes: ReleaseNoteEntry[] = [
   {
+    version: '3.1.10',
+    releasedOn: '2026-04-04',
+    badge: 'Current release',
+    headline: 'Platform and templates update',
+    summary: 'This release packages 12 recent commits focused on platform, templates, and runtime.',
+    highlights: [
+      'Update version to 3.1.9, enhance changelog, and add new tests for template storage',
+      'Update version to 3.1.8 and enhance changelog with highlights and links',
+      'Update version to 3.1.7 and enhance changelog with highlights and links',
+      'Update version to 3.1.6 and enhance changelog with highlights and links',
+      'Update changelog and release notes for version 3.1.5',
+    ],
+    links: [
+      { label: 'Open generation', to: '/generate' },
+      { label: 'Review templates', to: '/templates' },
+    ],
+  },
+  {
     version: '3.1.9',
     releasedOn: '2026-04-03',
-    badge: 'Current release',
+    badge: 'Previous release',
     headline: 'Platform and runtime update',
     summary: 'This release packages 12 recent commits focused on platform, runtime, and templates.',
     highlights: [

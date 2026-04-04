@@ -204,6 +204,7 @@ export interface DraftMetadata {
   model?: string;
   created?: string;
   modified?: string;
+  archived_at?: string;
   tags?: string[];
   genre?: string;
   notes?: string;
@@ -225,6 +226,7 @@ export interface DraftListResponse {
   total: number;
   stats: {
     total_drafts: number;
+    archived_drafts: number;
     favorites: number;
     by_genre: Record<string, number>;
     by_mode: Record<string, number>;
@@ -237,6 +239,8 @@ export interface DraftFilters {
   genre?: string;
   mode?: ContentMode;
   favorite?: boolean;
+  archived?: boolean;
+  include_archived?: boolean;
   sort_by?: 'created' | 'modified' | 'name';
   sort_order?: 'asc' | 'desc';
   limit?: number;

@@ -11,6 +11,7 @@ const savedSeedSchema = z.object({
   seed: z.string().trim().min(1),
   addedAt: z.coerce.date(),
   lastUsedAt: z.coerce.date().optional(),
+  archivedAt: z.coerce.date().optional(),
 });
 
 type SavedSeedPayload = z.infer<typeof savedSeedSchema>;
@@ -19,6 +20,7 @@ interface SavedSeedRow {
   seed: string;
   addedAt: Date;
   lastUsedAt: Date | null;
+  archivedAt: Date | null;
 }
 
 function dedupeSeeds(seeds: SavedSeedPayload[]) {
@@ -34,10 +36,10 @@ function dedupeSeeds(seeds: SavedSeedPayload[]) {
 async function listSeeds(req: Request, res: Response): Promise<void> {
   const userId = req.user!.userId;
   const seeds = await prisma.$queryRaw<SavedSeedRow[]>(Prisma.sql`
-    SELECT "seed", "addedAt", "lastUsedAt"
+    SELECT "seed", "addedAt", "lastUsedAt", "archivedAt"
     FROM "saved_seeds"
     WHERE "userId" = ${userId}
-    ORDER BY "lastUsedAt" DESC NULLS LAST, "addedAt" DESC
+    ORDER BY "archivedAt" ASC NULLS FIRST, "lastUsedAt" DESC NULLS LAST, "addedAt" DESC
   `);
 
   res.json({
@@ -45,6 +47,7 @@ async function listSeeds(req: Request, res: Response): Promise<void> {
       seed: seed.seed,
       addedAt: seed.addedAt,
       lastUsedAt: seed.lastUsedAt ?? undefined,
+      archivedAt: seed.archivedAt ?? undefined,
     })),
   });
 }
@@ -80,6 +83,7 @@ router.post(
           ${seed.seed},
           ${seed.addedAt},
           ${seed.lastUsedAt ?? null},
+          ${seed.archivedAt ?? null},
           NOW(),
           NOW()
         )`)
@@ -92,6 +96,7 @@ router.post(
           "seed",
           "addedAt",
           "lastUsedAt",
+          "archivedAt",
           "createdAt",
           "updatedAt"
         )

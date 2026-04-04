@@ -51,12 +51,34 @@ const DRAFT_DB_SCHEMA = {
   tags: '++id, tag, draftId',
 } as const;
 
+interface DraftQueryOptions {
+  includeArchived?: boolean;
+  archivedOnly?: boolean;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
 function createImportedReviewId(): string {
   return `imported-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function isDraftArchived(metadata: DraftMetadata): boolean {
+  return typeof metadata.archived_at === 'string' && metadata.archived_at.trim().length > 0;
+}
+
+function matchesDraftArchiveState(metadata: DraftMetadata, options: DraftQueryOptions = {}): boolean {
+  if (options.includeArchived) {
+    return true;
+  }
+
+  const archived = isDraftArchived(metadata);
+  if (options.archivedOnly) {
+    return archived;
+  }
+
+  return !archived;
 }
 
 function coerceContentMode(value: unknown): DraftMetadata['mode'] | undefined {
@@ -430,7 +452,23 @@ export class DraftStorage {
 
     const entities = await db.drafts.toArray();
 
-    return entities.map(entity => ({
+    return entities
+      .filter((entity) => matchesDraftArchiveState(entity.metadata))
+      .map(entity => ({
+        path: entity.reviewId,
+        metadata: entity.metadata,
+        assets: entity.assets,
+      }));
+  }
+
+  static async getAllDraftsWithOptions(options: DraftQueryOptions = {}): Promise<Draft[]> {
+    await this.ensureReady();
+
+    const entities = await db.drafts.toArray();
+
+    return entities
+      .filter((entity) => matchesDraftArchiveState(entity.metadata, options))
+      .map(entity => ({
       path: entity.reviewId,
       metadata: entity.metadata,
       assets: entity.assets,
@@ -440,11 +478,13 @@ export class DraftStorage {
   /**
    * Get draft metadata for listing
    */
-  static async getAllMetadata(): Promise<DraftMetadata[]> {
+  static async getAllMetadata(options: DraftQueryOptions = {}): Promise<DraftMetadata[]> {
     await this.ensureReady();
 
     const entities = await db.drafts.toArray();
-    return entities.map(e => e.metadata);
+    return entities
+      .filter((entity) => matchesDraftArchiveState(entity.metadata, options))
+      .map(e => e.metadata);
   }
 
   /**
@@ -538,12 +578,16 @@ export class DraftStorage {
   /**
    * Search drafts by query
    */
-  static async searchDrafts(query: string): Promise<DraftMetadata[]> {
+  static async searchDrafts(query: string, options: DraftQueryOptions = {}): Promise<DraftMetadata[]> {
     await this.ensureReady();
 
     const q = query.toLowerCase();
 
     const entities = await db.drafts.filter(entity => {
+      if (!matchesDraftArchiveState(entity.metadata, options)) {
+        return false;
+      }
+
       const name = entity.metadata.character_name?.toLowerCase() || '';
       const seed = entity.metadata.seed?.toLowerCase() || '';
       const notes = entity.metadata.notes?.toLowerCase() || '';
@@ -563,7 +607,7 @@ export class DraftStorage {
   /**
    * Get drafts by tag
    */
-  static async getDraftsByTag(tag: string): Promise<DraftMetadata[]> {
+  static async getDraftsByTag(tag: string, options: DraftQueryOptions = {}): Promise<DraftMetadata[]> {
     await this.ensureReady();
 
     const draftIds = await db.tags.where('tag').equals(tag).toArray();
@@ -574,7 +618,9 @@ export class DraftStorage {
       .anyOf(reviewIds)
       .toArray();
 
-    return entities.map(e => e.metadata);
+    return entities
+      .filter((entity) => matchesDraftArchiveState(entity.metadata, options))
+      .map(e => e.metadata);
   }
 
   /**
@@ -591,38 +637,43 @@ export class DraftStorage {
   /**
    * Get favorite drafts
    */
-  static async getFavorites(): Promise<DraftMetadata[]> {
+  static async getFavorites(options: DraftQueryOptions = {}): Promise<DraftMetadata[]> {
     await this.ensureReady();
 
-    const entities = await db.drafts.filter(draft => draft.metadata.favorite === true).toArray();
+    const entities = await db.drafts.filter((draft) => draft.metadata.favorite === true && matchesDraftArchiveState(draft.metadata, options)).toArray();
     return entities.map(e => e.metadata);
   }
 
   /**
    * Get drafts by mode
    */
-  static async getDraftsByMode(mode: string): Promise<DraftMetadata[]> {
+  static async getDraftsByMode(mode: string, options: DraftQueryOptions = {}): Promise<DraftMetadata[]> {
     await this.ensureReady();
 
     const entities = await db.drafts.where('metadata.mode').equals(mode).toArray();
-    return entities.map(e => e.metadata);
+    return entities
+      .filter((entity) => matchesDraftArchiveState(entity.metadata, options))
+      .map(e => e.metadata);
   }
 
   /**
    * Get drafts by genre
    */
-  static async getDraftsByGenre(genre: string): Promise<DraftMetadata[]> {
+  static async getDraftsByGenre(genre: string, options: DraftQueryOptions = {}): Promise<DraftMetadata[]> {
     await this.ensureReady();
 
     const entities = await db.drafts.where('metadata.genre').equals(genre).toArray();
-    return entities.map(e => e.metadata);
+    return entities
+      .filter((entity) => matchesDraftArchiveState(entity.metadata, options))
+      .map(e => e.metadata);
   }
 
   /**
    * Get draft statistics
    */
-  static async getStats(): Promise<{
+  static async getStats(options: DraftQueryOptions = {}): Promise<{
     total: number;
+    archived: number;
     favorites: number;
     byMode: Record<string, number>;
     byGenre: Record<string, number>;
@@ -630,15 +681,18 @@ export class DraftStorage {
     await this.ensureReady();
 
     const all = await db.drafts.toArray();
+    const visible = all.filter((entity) => matchesDraftArchiveState(entity.metadata, options));
+    const archived = all.filter((entity) => isDraftArchived(entity.metadata));
 
     const stats = {
-      total: all.length,
-      favorites: all.filter(e => e.metadata.favorite).length,
+      total: visible.length,
+      archived: archived.length,
+      favorites: visible.filter(e => e.metadata.favorite).length,
       byMode: {} as Record<string, number>,
       byGenre: {} as Record<string, number>,
     };
 
-    for (const entity of all) {
+    for (const entity of visible) {
       const mode = entity.metadata.mode || 'unknown';
       const genre = entity.metadata.genre || 'unknown';
 
@@ -655,7 +709,7 @@ export class DraftStorage {
   static async exportAll(): Promise<string> {
     await this.ensureReady();
 
-    const drafts = await this.getAllDrafts();
+    const drafts = await this.getAllDraftsWithOptions({ includeArchived: true });
     const exportData = {
       version: '1.0',
       exportedAt: new Date().toISOString(),
@@ -697,7 +751,7 @@ export class DraftStorage {
       throw new Error('Invalid draft import format. Supported: exported drafts JSON and combined markdown draft files.');
     }
 
-    const existingMetadata = await this.getAllMetadata();
+    const existingMetadata = await this.getAllMetadata({ includeArchived: true });
     const usedIds = new Set(existingMetadata.map((metadata) => metadata.review_id));
     const idRemap = new Map<string, string>();
     let remapped = 0;

@@ -1357,13 +1357,21 @@ function dispatchBrowserSyncEvent(eventName: string): void {
   window.dispatchEvent(new CustomEvent(eventName));
 }
 
+function isArchivedDraft(metadata: DraftMetadata): boolean {
+  return typeof metadata.archived_at === 'string' && metadata.archived_at.trim().length > 0;
+}
+
 function buildDraftListResponse(
   metadata: DraftMetadata[],
   total: number,
-  statsSource: DraftMetadata[] = metadata
+  statsSource: DraftMetadata[] = metadata,
+  archiveSource: DraftMetadata[] = statsSource
 ): DraftListResponse {
   const stats = statsSource.reduce<DraftListResponse['stats']>((accumulator, draft) => {
     accumulator.total_drafts += 1;
+    if (isArchivedDraft(draft)) {
+      accumulator.archived_drafts += 1;
+    }
     if (draft.favorite) {
       accumulator.favorites += 1;
     }
@@ -1375,6 +1383,7 @@ function buildDraftListResponse(
     return accumulator;
   }, {
     total_drafts: 0,
+    archived_drafts: archiveSource.filter((draft) => isArchivedDraft(draft)).length,
     favorites: 0,
     by_genre: {},
     by_mode: {},
@@ -1389,6 +1398,14 @@ function buildDraftListResponse(
 
 function applyDraftFilters(metadata: DraftMetadata[], filters?: DraftFilters): DraftMetadata[] {
   let result = [...metadata];
+
+  if (!filters?.include_archived) {
+    if (filters?.archived) {
+      result = result.filter((draft) => isArchivedDraft(draft));
+    } else {
+      result = result.filter((draft) => !isArchivedDraft(draft));
+    }
+  }
 
   if (filters?.search) {
     const query = filters.search.toLowerCase();
@@ -1913,6 +1930,7 @@ export class EidolonBrowserAPI {
           seed: string;
           mode: string;
           model?: string;
+          archivedAt?: string;
           characterName?: string;
           templateName?: string;
           genre?: string;
@@ -1937,6 +1955,9 @@ export class EidolonBrowserAPI {
                 seed: serverDraft.seed,
                 mode: serverDraft.mode as 'SFW' | 'NSFW' | 'Platform-Safe' | 'Auto',
                 model: serverDraft.model,
+                created: serverDraft.createdAt,
+                modified: serverDraft.updatedAt,
+                archived_at: serverDraft.archivedAt,
                 character_name: serverDraft.characterName,
                 template_name: serverDraft.templateName,
                 genre: serverDraft.genre,
@@ -1961,6 +1982,9 @@ export class EidolonBrowserAPI {
                 seed: serverDraft.seed,
                 mode: serverDraft.mode as 'SFW' | 'NSFW' | 'Platform-Safe' | 'Auto',
                 model: serverDraft.model,
+                created: serverDraft.createdAt,
+                modified: serverDraft.updatedAt,
+                archived_at: serverDraft.archivedAt,
                 character_name: serverDraft.characterName,
                 template_name: serverDraft.templateName,
                 genre: serverDraft.genre,
@@ -2298,10 +2322,10 @@ export class EidolonBrowserAPI {
   }
 
   async getDrafts(filters?: DraftFilters): Promise<DraftListResponse> {
-    const allMetadata = await DraftStorage.getAllMetadata();
+    const allMetadata = await DraftStorage.getAllMetadata({ includeArchived: true });
     void this.syncDraftsFromServer();
     const filtered = applyDraftFilters(allMetadata, filters);
-    return buildDraftListResponse(filtered, filtered.length, allMetadata);
+    return buildDraftListResponse(filtered, filtered.length, filtered, allMetadata);
   }
 
   async listDrafts(filters?: DraftFilters): Promise<DraftListResponse> {
@@ -2322,6 +2346,24 @@ export class EidolonBrowserAPI {
     queueAutoSync('drafts');
 
     return { status: 'updated', draft_id: reviewId };
+  }
+
+  async archiveDraft(reviewId: string): Promise<{ status: string; draft_id: string }> {
+    await DraftStorage.updateMetadata(reviewId, {
+      archived_at: new Date().toISOString(),
+    });
+    queueAutoSync('drafts');
+
+    return { status: 'archived', draft_id: reviewId };
+  }
+
+  async restoreDraft(reviewId: string): Promise<{ status: string; draft_id: string }> {
+    await DraftStorage.updateMetadata(reviewId, {
+      archived_at: undefined,
+    });
+    queueAutoSync('drafts');
+
+    return { status: 'restored', draft_id: reviewId };
   }
 
   async deleteDraft(reviewId: string): Promise<{ status: string; draft_id: string }> {

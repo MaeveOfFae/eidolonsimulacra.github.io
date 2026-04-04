@@ -1,24 +1,46 @@
 import { useState, useEffect, useRef, type ChangeEvent } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
-import { FolderOpen, Upload, CheckCircle2, AlertTriangle, BookOpen, Globe, Lock, MapPin, ShieldCheck, Star, Users } from 'lucide-react';
+import { FolderOpen, Upload, CheckCircle2, AlertTriangle, BookOpen, Globe, Lock, MapPin, ShieldCheck, Star, Users, Archive, RotateCcw, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import SyncControls from '../common/SyncControls';
 import { DraftStorage } from '@/lib/storage/draft-db';
 import { useGuidedTour } from '../common/GuidedTourContext';
 import { DRAFT_LIBRARY_TOUR_ID } from '@/lib/help';
-import { getFavoriteSeeds, getSeedRunHistory, parseFavoriteSeedsPayload, replaceFavoriteSeedsFromServer, SEED_FAVORITES_CHANGED_EVENT, type FavoriteSeedRecord, type SeedRunRecord } from '@/lib/seed-generator';
+import {
+  archiveFavoriteSeed,
+  archiveSeedRun,
+  deleteArchivedFavoriteSeed,
+  deleteArchivedSeedRun,
+  getAllFavoriteSeeds,
+  getArchivedFavoriteSeeds,
+  getArchivedSeedRuns,
+  getFavoriteSeeds,
+  getSeedRunHistory,
+  hydrateArchivedSeedRunsFromServer,
+  hydrateFavoriteSeedsFromServer,
+  parseFavoriteSeedsPayload,
+  replaceFavoriteSeedsFromServer,
+  restoreFavoriteSeed,
+  restoreSeedRun,
+  SEED_FAVORITES_CHANGED_EVENT,
+  SEED_HISTORY_CHANGED_EVENT,
+  type FavoriteSeedRecord,
+  type SeedRunRecord,
+} from '@/lib/seed-generator';
+import { queueAutoSync } from '@/lib/server/auto-sync';
 import { DraftListSidebar } from './DraftListSidebar';
 import { DraftComparisonPanel } from './DraftComparisonPanel';
 import { ReviewChecklistPanel } from './ReviewChecklistPanel';
 import { VersionHistoryPanel } from './VersionHistoryPanel';
 import { GenerationHistoryPanel } from '../timelines/GenerationHistoryPanel';
 
-type LibraryTab = 'drafts' | 'seeds' | 'worlds' | 'timelines' | 'workbench';
+type LibraryTab = 'drafts' | 'seeds' | 'archive' | 'worlds' | 'timelines' | 'workbench';
 
 const LIBRARY_TABS: Array<{ id: LibraryTab; label: string }> = [
   { id: 'drafts', label: 'Drafts' },
   { id: 'seeds', label: 'Seeds' },
+  { id: 'archive', label: 'Archive' },
   { id: 'worlds', label: 'Worlds' },
   { id: 'timelines', label: 'Timelines' },
   { id: 'workbench', label: 'Workbench' },
@@ -73,7 +95,9 @@ export default function Drafts() {
   const [rightDraftId, setRightDraftId] = useState<string>('');
   const [notice, setNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [favoriteSeeds, setFavoriteSeeds] = useState<FavoriteSeedRecord[]>(() => getFavoriteSeeds());
+  const [archivedFavoriteSeeds, setArchivedFavoriteSeeds] = useState<FavoriteSeedRecord[]>(() => getArchivedFavoriteSeeds());
   const [seedHistory, setSeedHistory] = useState<SeedRunRecord[]>(() => getSeedRunHistory());
+  const [archivedSeedRuns, setArchivedSeedRuns] = useState<SeedRunRecord[]>(() => getArchivedSeedRuns());
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const { isTourCompleted, restartTour, startTour } = useGuidedTour();
   const queryClient = useQueryClient();
@@ -83,6 +107,46 @@ export default function Drafts() {
   const { data, isLoading, error } = useQuery({
     queryKey: ['drafts'],
     queryFn: () => api.getDrafts(),
+  });
+
+  const { data: archivedDraftData, isLoading: archivedDraftsLoading, error: archivedDraftError } = useQuery({
+    queryKey: ['drafts', 'archived'],
+    queryFn: () => api.getDrafts({ archived: true }),
+  });
+
+  const refreshSeedData = () => {
+    setFavoriteSeeds(getFavoriteSeeds());
+    setArchivedFavoriteSeeds(getArchivedFavoriteSeeds());
+    setSeedHistory(getSeedRunHistory());
+    setArchivedSeedRuns(getArchivedSeedRuns());
+  };
+
+  const refreshDraftQueries = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['drafts'] }),
+      queryClient.invalidateQueries({ queryKey: ['drafts', 'archived'] }),
+    ]);
+  };
+
+  const archiveDraftMutation = useMutation({
+    mutationFn: (reviewId: string) => api.archiveDraft(reviewId),
+    onSuccess: async () => {
+      await refreshDraftQueries();
+    },
+  });
+
+  const restoreDraftMutation = useMutation({
+    mutationFn: (reviewId: string) => api.restoreDraft(reviewId),
+    onSuccess: async () => {
+      await refreshDraftQueries();
+    },
+  });
+
+  const deleteDraftMutation = useMutation({
+    mutationFn: (reviewId: string) => api.deleteDraft(reviewId),
+    onSuccess: async () => {
+      await refreshDraftQueries();
+    },
   });
 
   const setActiveTab = (tab: LibraryTab) => {
@@ -112,15 +176,32 @@ export default function Drafts() {
   }, [data?.drafts]);
 
   useEffect(() => {
-    const refreshSeedData = () => {
-      setFavoriteSeeds(getFavoriteSeeds());
-      setSeedHistory(getSeedRunHistory());
+    let cancelled = false;
+
+    const hydrateSeedArchives = async () => {
+      try {
+        await Promise.all([
+          hydrateFavoriteSeedsFromServer(),
+          hydrateArchivedSeedRunsFromServer(),
+        ]);
+      } catch (hydrateError) {
+        console.warn('Failed to hydrate archived seed data from server:', hydrateError);
+      }
+
+      if (!cancelled) {
+        refreshSeedData();
+      }
     };
 
     window.addEventListener(SEED_FAVORITES_CHANGED_EVENT, refreshSeedData);
+    window.addEventListener(SEED_HISTORY_CHANGED_EVENT, refreshSeedData);
     window.addEventListener('storage', refreshSeedData);
+    void hydrateSeedArchives();
+
     return () => {
+      cancelled = true;
       window.removeEventListener(SEED_FAVORITES_CHANGED_EVENT, refreshSeedData);
+      window.removeEventListener(SEED_HISTORY_CHANGED_EVENT, refreshSeedData);
       window.removeEventListener('storage', refreshSeedData);
     };
   }, []);
@@ -149,11 +230,14 @@ export default function Drafts() {
 
   const hasDrafts = data?.drafts.length > 0;
   const draftCount = data?.stats?.total_drafts ?? data?.drafts.length ?? 0;
+  const archivedDraftCount = archivedDraftData?.drafts.length ?? data?.stats?.archived_drafts ?? 0;
   const favoritesCount = data?.stats?.favorites ?? 0;
   const genresCount = data?.stats ? Object.keys(data.stats.by_genre).length : 0;
   const branchCount = (data?.drafts ?? []).filter((draft) => (draft.parent_drafts?.length ?? 0) > 0).length;
   const recentFavoriteSeeds = favoriteSeeds.slice(0, 6);
   const recentSeedRuns = seedHistory.slice(0, 4);
+  const recentArchivedFavoriteSeeds = archivedFavoriteSeeds.slice(0, 6);
+  const recentArchivedSeedRuns = archivedSeedRuns.slice(0, 6);
 
   const activeWorkbenchDraftId = leftDraftId || data?.drafts[0]?.review_id;
 
@@ -166,7 +250,7 @@ export default function Drafts() {
     try {
       const text = await file.text();
       const result = await DraftStorage.import(text);
-      await queryClient.invalidateQueries({ queryKey: ['drafts'] });
+      await refreshDraftQueries();
       const remapMessage = result.remapped > 0
         ? ` (${result.remapped} review IDs remapped to avoid overwriting existing drafts)`
         : '';
@@ -179,6 +263,54 @@ export default function Drafts() {
     }
 
     event.target.value = '';
+  }
+
+  async function handleArchiveDraft(reviewId: string) {
+    await archiveDraftMutation.mutateAsync(reviewId);
+  }
+
+  async function handleRestoreDraft(reviewId: string) {
+    await restoreDraftMutation.mutateAsync(reviewId);
+  }
+
+  async function handleDeleteDraft(reviewId: string) {
+    await deleteDraftMutation.mutateAsync(reviewId);
+  }
+
+  function handleArchiveFavoriteSeed(seed: string) {
+    archiveFavoriteSeed(seed);
+    refreshSeedData();
+    queueAutoSync('seeds');
+  }
+
+  function handleRestoreFavoriteSeed(seed: string) {
+    restoreFavoriteSeed(seed);
+    refreshSeedData();
+    queueAutoSync('seeds');
+  }
+
+  function handleDeleteArchivedFavoriteSeed(seed: string) {
+    deleteArchivedFavoriteSeed(seed);
+    refreshSeedData();
+    queueAutoSync('seeds');
+  }
+
+  function handleArchiveSeedRun(id: string) {
+    archiveSeedRun(id);
+    refreshSeedData();
+    queueAutoSync('seeds');
+  }
+
+  function handleRestoreSeedRun(id: string) {
+    restoreSeedRun(id);
+    refreshSeedData();
+    queueAutoSync('seeds');
+  }
+
+  function handleDeleteArchivedSeedRun(id: string) {
+    deleteArchivedSeedRun(id);
+    refreshSeedData();
+    queueAutoSync('seeds');
   }
 
   return (
@@ -376,9 +508,9 @@ export default function Drafts() {
                 <div className="mt-1 text-2xl font-semibold text-foreground">{seedHistory.length}</div>
               </div>
               <div className="rounded-lg border border-border bg-background/60 p-4">
-                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Last saved</div>
+                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Archived</div>
                 <div className="mt-1 text-sm font-semibold text-foreground">
-                  {recentFavoriteSeeds[0] ? formatTimestamp(recentFavoriteSeeds[0].lastUsedAt ?? recentFavoriteSeeds[0].addedAt) : 'None yet'}
+                  {archivedFavoriteSeeds.length} seeds · {archivedSeedRuns.length} runs
                 </div>
               </div>
             </div>
@@ -387,11 +519,12 @@ export default function Drafts() {
               <SyncControls
                 dataType="seeds"
                 label="Favorite seeds"
-                onGetLocalData={() => ({ seeds: getFavoriteSeeds() })}
+                onGetLocalData={() => ({ seeds: getAllFavoriteSeeds() })}
                 onApplyData={(payload) => {
                   const parsed = parseFavoriteSeedsPayload(payload);
                   if (parsed) {
                     replaceFavoriteSeedsFromServer(parsed);
+                    refreshSeedData();
                   }
                 }}
               />
@@ -427,6 +560,14 @@ export default function Drafts() {
                         <Link to="/generate" state={{ seed: entry.seed }} className="app-button app-button-secondary">
                           Use seed
                         </Link>
+                        <button
+                          type="button"
+                          onClick={() => handleArchiveFavoriteSeed(entry.seed)}
+                          className="app-button app-button-secondary"
+                        >
+                          <Archive className="h-4 w-4" />
+                          Archive
+                        </button>
                       </div>
                     </div>
                   </article>
@@ -472,11 +613,220 @@ export default function Drafts() {
                         </div>
                       ))}
                     </div>
+                    <div className="mt-3 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => handleArchiveSeedRun(entry.id)}
+                        className="app-button app-button-secondary"
+                      >
+                        <Archive className="h-4 w-4" />
+                        Archive run
+                      </button>
+                    </div>
                   </article>
                 ))}
               </div>
             )}
           </section>
+        </div>
+      )}
+
+      {activeTab === 'archive' && (
+        <div className="space-y-4">
+          <section className="app-panel p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold">Archive</h2>
+                <p className="text-sm text-muted-foreground">
+                  Keep source material recoverable without leaving it in the active library.
+                </p>
+              </div>
+              <span className="app-pill app-pill-muted">
+                {archivedDraftCount + archivedFavoriteSeeds.length + archivedSeedRuns.length} archived items
+              </span>
+            </div>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-3 text-sm">
+              <div className="rounded-lg border border-border bg-background/60 p-4">
+                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Drafts</div>
+                <div className="mt-1 text-2xl font-semibold text-foreground">{archivedDraftCount}</div>
+              </div>
+              <div className="rounded-lg border border-border bg-background/60 p-4">
+                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Favorite seeds</div>
+                <div className="mt-1 text-2xl font-semibold text-foreground">{archivedFavoriteSeeds.length}</div>
+              </div>
+              <div className="rounded-lg border border-border bg-background/60 p-4">
+                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Seed runs</div>
+                <div className="mt-1 text-2xl font-semibold text-foreground">{archivedSeedRuns.length}</div>
+              </div>
+            </div>
+          </section>
+
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+            <section className="app-panel p-5">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h2 className="text-lg font-semibold">Archived drafts</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Restore archived drafts back into the active workspace or remove them permanently.
+                  </p>
+                </div>
+              </div>
+
+              {archivedDraftsLoading ? (
+                <div className="mt-4 rounded-lg border border-dashed border-border bg-background/40 p-6 text-sm text-muted-foreground">
+                  Loading archived drafts...
+                </div>
+              ) : archivedDraftError ? (
+                <div className="mt-4 rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
+                  Error loading archive: {archivedDraftError.message}
+                </div>
+              ) : (archivedDraftData?.drafts.length ?? 0) === 0 ? (
+                <div className="mt-4 rounded-lg border border-dashed border-border bg-background/40 p-6 text-sm text-muted-foreground">
+                  No archived drafts yet.
+                </div>
+              ) : (
+                <div className="mt-4 space-y-3">
+                  {(archivedDraftData?.drafts ?? []).map((draft) => (
+                    <article key={draft.review_id} className="rounded-lg border border-border bg-background/50 p-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0">
+                          <Link to={`/drafts/${encodeURIComponent(draft.review_id)}`} className="text-sm font-semibold text-foreground hover:underline">
+                            {draft.character_name || draft.seed}
+                          </Link>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            Archived {formatTimestamp(draft.archived_at)}
+                          </p>
+                          <p className="mt-2 text-sm text-muted-foreground line-clamp-2">{draft.seed}</p>
+                        </div>
+                        <div className="flex shrink-0 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => void handleRestoreDraft(draft.review_id)}
+                            className="app-button app-button-secondary"
+                          >
+                            <RotateCcw className="h-4 w-4" />
+                            Restore
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleDeleteDraft(draft.review_id)}
+                            className="app-button app-button-secondary text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            <section className="space-y-4">
+              <div className="app-panel p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h2 className="text-lg font-semibold">Archived favorite seeds</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Restore saved concepts when you want them back in the active seed shelf.
+                    </p>
+                  </div>
+                </div>
+
+                {recentArchivedFavoriteSeeds.length === 0 ? (
+                  <div className="mt-4 rounded-lg border border-dashed border-border bg-background/40 p-6 text-sm text-muted-foreground">
+                    No archived favorite seeds yet.
+                  </div>
+                ) : (
+                  <div className="mt-4 space-y-3">
+                    {recentArchivedFavoriteSeeds.map((entry) => (
+                      <article key={`${entry.seed}-${entry.archivedAt}`} className="rounded-lg border border-border bg-background/50 p-4">
+                        <p className="text-sm text-foreground">{entry.seed}</p>
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          Archived {formatTimestamp(entry.archivedAt)}
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleRestoreFavoriteSeed(entry.seed)}
+                            className="app-button app-button-secondary"
+                          >
+                            <RotateCcw className="h-4 w-4" />
+                            Restore
+                          </button>
+                          <Link to="/generate" state={{ seed: entry.seed }} className="app-button app-button-secondary">
+                            Use seed
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteArchivedFavoriteSeed(entry.seed)}
+                            className="app-button app-button-secondary text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            Delete
+                          </button>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="app-panel p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h2 className="text-lg font-semibold">Archived seed runs</h2>
+                    <p className="text-sm text-muted-foreground">
+                      Restore old batches back into the active recent history or remove them permanently.
+                    </p>
+                  </div>
+                </div>
+
+                {recentArchivedSeedRuns.length === 0 ? (
+                  <div className="mt-4 rounded-lg border border-dashed border-border bg-background/40 p-6 text-sm text-muted-foreground">
+                    No archived seed runs yet.
+                  </div>
+                ) : (
+                  <div className="mt-4 space-y-3">
+                    {recentArchivedSeedRuns.map((entry) => (
+                      <article key={entry.id} className="rounded-lg border border-border bg-background/50 p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <h3 className="text-sm font-semibold text-foreground">{entry.seeds.length} generated seeds</h3>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              Archived {formatTimestamp(entry.archivedAt)}
+                            </p>
+                          </div>
+                          <span className="app-pill app-pill-muted">Archived run</span>
+                        </div>
+                        <p className="mt-3 text-sm text-muted-foreground line-clamp-3">{entry.request.genreLines}</p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleRestoreSeedRun(entry.id)}
+                            className="app-button app-button-secondary"
+                          >
+                            <RotateCcw className="h-4 w-4" />
+                            Restore
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteArchivedSeedRun(entry.id)}
+                            className="app-button app-button-secondary text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            Delete
+                          </button>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </section>
+          </div>
         </div>
       )}
 

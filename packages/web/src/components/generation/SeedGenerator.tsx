@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, Loader2, ArrowRight, Copy, Check, RefreshCcw, Wand2, Star, History } from 'lucide-react';
+import { Sparkles, Loader2, ArrowRight, Copy, Check, RefreshCcw, Wand2, Star, History, Archive } from 'lucide-react';
 import type { FeatureCategory, SeedGenerationRequest } from '@char-gen/shared';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
 import { api } from '@/lib/api';
 import type { Blueprint } from '@char-gen/shared';
 import {
+  archiveSeedRun,
   DEFAULT_SEED_COUNT,
   buildSeedGenerationLines,
   getFavoriteSeeds,
@@ -16,6 +17,7 @@ import {
   markSeedUsed,
   pickSurpriseSeedPreset,
   SEED_FAVORITES_CHANGED_EVENT,
+  SEED_HISTORY_CHANGED_EVENT,
   sanitizeSeedCount,
   saveSeedRun,
   toggleFavoriteSeed,
@@ -168,8 +170,16 @@ export default function SeedGenerator() {
       setFavorites(getFavoriteSeeds());
     };
 
+    const handleSeedHistoryChanged = () => {
+      setHistory(getSeedRunHistory());
+    };
+
     window.addEventListener(SEED_FAVORITES_CHANGED_EVENT, handleFavoriteSeedsChanged);
-    return () => window.removeEventListener(SEED_FAVORITES_CHANGED_EVENT, handleFavoriteSeedsChanged);
+    window.addEventListener(SEED_HISTORY_CHANGED_EVENT, handleSeedHistoryChanged);
+    return () => {
+      window.removeEventListener(SEED_FAVORITES_CHANGED_EVENT, handleFavoriteSeedsChanged);
+      window.removeEventListener(SEED_HISTORY_CHANGED_EVENT, handleSeedHistoryChanged);
+    };
   }, []);
 
   useAssistantScreenContext({
@@ -297,6 +307,11 @@ export default function SeedGenerator() {
     });
     setActivePreset(entry.request.presetId || null);
     setResumeNotice(null);
+  };
+
+  const handleArchiveHistoryEntry = (id: string) => {
+    setHistory(archiveSeedRun(id));
+    queueAutoSync('seeds');
   };
 
   const handleCountChange = (value: string) => {
@@ -572,7 +587,7 @@ export default function SeedGenerator() {
                       }`}
                     >
                       <Star className={`h-3.5 w-3.5 ${favoriteSeeds.has(seed) ? 'fill-current' : ''}`} />
-                      {favoriteSeeds.has(seed) ? 'Favorited' : 'Favorite'}
+                      {favoriteSeeds.has(seed) ? 'Archive Favorite' : 'Favorite'}
                     </button>
                   </div>
                 </div>
@@ -607,7 +622,7 @@ export default function SeedGenerator() {
                             onClick={() => handleToggleFavorite(entry.seed)}
                             className="app-button app-button-secondary !px-3 !py-2 !text-xs"
                           >
-                            Remove
+                            Archive
                           </button>
                         </div>
                       </div>
@@ -628,27 +643,38 @@ export default function SeedGenerator() {
                 ) : (
                   <div className="space-y-2">
                     {history.slice(0, 6).map((entry) => (
-                      <button
-                        key={entry.id}
-                        type="button"
-                        onClick={() => handleUseHistoryEntry(entry)}
-                        className="w-full rounded-lg border border-border p-3 text-left hover:bg-accent/40"
-                      >
+                      <div key={entry.id} className="rounded-lg border border-border p-3">
                         <div className="flex items-center justify-between gap-3">
-                          <span className="text-xs text-muted-foreground">
-                            {new Date(entry.createdAt).toLocaleString()}
-                          </span>
-                          <span className="app-pill app-pill-muted !px-2 !py-1 !text-[11px]">
-                            {entry.request.count} seeds • {entry.request.coverageMode}
-                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleUseHistoryEntry(entry)}
+                            className="min-w-0 text-left"
+                          >
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(entry.createdAt).toLocaleString()}
+                            </span>
+                            <p className="mt-2 line-clamp-2 text-sm text-foreground">
+                              {entry.request.genreLines}
+                            </p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {entry.seeds.length} generated seeds
+                            </p>
+                          </button>
+                          <div className="flex shrink-0 items-center gap-2">
+                            <span className="app-pill app-pill-muted !px-2 !py-1 !text-[11px]">
+                              {entry.request.count} seeds • {entry.request.coverageMode}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleArchiveHistoryEntry(entry.id)}
+                              className="app-button app-button-secondary !px-3 !py-2 !text-xs"
+                            >
+                              <Archive className="h-3.5 w-3.5" />
+                              Archive
+                            </button>
+                          </div>
                         </div>
-                        <p className="mt-2 line-clamp-2 text-sm text-foreground">
-                          {entry.request.genreLines}
-                        </p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {entry.seeds.length} generated seeds
-                        </p>
-                      </button>
+                      </div>
                     ))}
                   </div>
                 )}

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Star, Download, Trash2, Edit3, Check, X, ShieldCheck, ChevronDown, Copy } from 'lucide-react';
+import { ArrowLeft, Star, Download, Archive, RotateCcw, Edit3, Check, X, ShieldCheck, ChevronDown, Copy } from 'lucide-react';
 import { api } from '@/lib/api';
 import { getGuidedTour, REVIEW_EXPORT_TOUR_ID } from '@/lib/help';
 import ExportModal from '../common/ExportModal';
@@ -15,7 +15,6 @@ export default function Review() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [showExportModal, setShowExportModal] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editName, setEditName] = useState('');
   const [editingAsset, setEditingAsset] = useState<string | null>(null);
@@ -44,11 +43,15 @@ export default function Review() {
     },
   });
 
-  const deleteDraft = useMutation({
-    mutationFn: () => api.deleteDraft(reviewId),
+  const archiveDraft = useMutation({
+    mutationFn: () => draft?.metadata.archived_at ? api.restoreDraft(reviewId) : api.archiveDraft(reviewId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['drafts'] });
-      navigate('/drafts');
+      queryClient.invalidateQueries({ queryKey: ['drafts', 'archived'] });
+      if (draft?.metadata.archived_at) {
+        return;
+      }
+      navigate('/drafts?tab=archive');
     },
   });
 
@@ -299,11 +302,11 @@ export default function Review() {
                 Export
               </button>
               <button
-                onClick={() => setShowDeleteModal(true)}
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive hover:bg-destructive/20 sm:justify-start"
+                onClick={() => archiveDraft.mutate()}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-input bg-background px-3 py-2 text-sm hover:bg-accent sm:justify-start"
               >
-                <Trash2 className="h-4 w-4" />
-                Delete
+                {draft.metadata.archived_at ? <RotateCcw className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+                {draft.metadata.archived_at ? 'Restore' : 'Archive'}
               </button>
             </div>
           </div>
@@ -343,6 +346,12 @@ export default function Review() {
         <div className="app-note px-4 py-3 text-sm text-muted-foreground">
           <span className="font-medium text-foreground">Lineage:</span>{' '}
             Offspring of: {draft.metadata.parent_drafts.join(' + ')}
+        </div>
+      )}
+
+      {draft.metadata.archived_at && (
+        <div className="app-note px-4 py-3 text-sm text-muted-foreground">
+          Archived {new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(draft.metadata.archived_at))}
         </div>
       )}
 
@@ -448,36 +457,6 @@ export default function Review() {
             setTourManagedExportModal(false);
           }}
         />
-      )}
-
-      {showDeleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="max-h-[calc(100vh-2rem)] w-full max-w-md overflow-y-auto rounded-lg border border-border bg-card p-6 shadow-xl">
-            <h2 className="text-lg font-semibold">Delete Draft</h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Delete this draft and all of its saved assets? This cannot be undone.
-            </p>
-            <div className="mt-6 flex justify-end gap-2">
-              <button
-                onClick={() => setShowDeleteModal(false)}
-                disabled={deleteDraft.isPending}
-                className="rounded-md border border-input bg-background px-4 py-2 text-sm hover:bg-accent disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  setShowDeleteModal(false);
-                  deleteDraft.mutate();
-                }}
-                disabled={deleteDraft.isPending}
-                className="rounded-md bg-destructive px-4 py-2 text-sm text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
-              >
-                {deleteDraft.isPending ? 'Deleting...' : 'Delete Draft'}
-              </button>
-            </div>
-          </div>
-        </div>
       )}
 
       <ChatPanel

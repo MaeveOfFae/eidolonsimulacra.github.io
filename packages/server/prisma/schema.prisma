@@ -37,6 +37,7 @@ model User {
   worlds           World[]
   timelines        Timeline[]
   savedSeeds       SavedSeed[]
+  archivedSeedRuns ArchivedSeedRun[]
 
   @@map("users")
 }
@@ -85,6 +86,7 @@ model Draft {
   templateName   String?
   genre          String?
   notes          String?
+  archivedAt     DateTime?
   favorite       Boolean  @default(false)
   tags           String[]
   offspringType  String?
@@ -99,6 +101,7 @@ model Draft {
 
   @@unique([userId, reviewId])
   @@index([userId])
+  @@index([userId, archivedAt])
   @@index([characterName])
   @@index([createdAt(sort: Desc)])
   @@map("drafts")
@@ -169,6 +172,7 @@ model SavedSeed {
   seed       String
   addedAt    DateTime
   lastUsedAt DateTime?
+  archivedAt DateTime?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -176,8 +180,24 @@ model SavedSeed {
 
   @@unique([userId, seed])
   @@index([userId])
+  @@index([userId, archivedAt])
   @@index([addedAt(sort: Desc)])
   @@map("saved_seeds")
+}
+
+model ArchivedSeedRun {
+  id         String   @id
+  userId     String
+  request    Json
+  seeds      String[]
+  createdAt  DateTime
+  archivedAt DateTime
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, archivedAt])
+  @@map("archived_seed_runs")
 }
 
 // =============================================================================
