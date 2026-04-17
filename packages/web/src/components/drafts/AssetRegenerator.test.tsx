@@ -71,6 +71,7 @@ const templatesResponse = [
     name: 'V2/V3 Card',
     assets: [
       { name: 'system_prompt', required: true, depends_on: [] },
+      { name: 'post_history', required: true, depends_on: ['system_prompt'] },
       { name: 'character_sheet', required: true, depends_on: ['system_prompt'] },
     ],
   },
@@ -113,7 +114,7 @@ describe('AssetRegenerator', () => {
     vi.mocked(api.getDraft).mockResolvedValue(draftResponse as never);
     vi.mocked(api.getDrafts).mockResolvedValue({ drafts: [] } as never);
     vi.mocked(api.getTemplates).mockResolvedValue(templatesResponse as never);
-    vi.mocked(api.updateAsset).mockResolvedValue(undefined as never);
+    vi.mocked(api.updateAsset).mockResolvedValue({ status: 'updated', draft_id: 'review-1', asset_name: 'system_prompt' } as never);
     vi.mocked(api.updateMetadata).mockResolvedValue(undefined as never);
     vi.mocked(GenerationService.previewBlueprint).mockReset();
     vi.mocked(GenerationService.generateAsset).mockReset();
@@ -134,10 +135,13 @@ describe('AssetRegenerator', () => {
     expect(await screen.findByText('Variant #1')).toBeInTheDocument();
     expect(await screen.findByText('regenerated system prompt')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Set Active' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Replace Asset' }));
 
     await waitFor(() => {
-      expect(api.updateAsset).toHaveBeenCalledWith('review-1', 'system_prompt', 'regenerated system prompt');
+      expect(api.updateAsset).toHaveBeenCalledWith('review-1', 'system_prompt', 'regenerated system prompt', {
+        expectedPreviousContent: 'original system prompt',
+        overwrite: true,
+      });
     });
 
     expect(screen.getByText('Current active')).toBeInTheDocument();
@@ -185,11 +189,39 @@ describe('AssetRegenerator', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Generate One' }));
     expect(await screen.findByText('candidate for return flow')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Apply and Return' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Replace and Return' }));
 
     await waitFor(() => {
-      expect(api.updateAsset).toHaveBeenCalledWith('review-1', 'system_prompt', 'candidate for return flow');
+      expect(api.updateAsset).toHaveBeenCalledWith('review-1', 'system_prompt', 'candidate for return flow', {
+        expectedPreviousContent: 'original system prompt',
+        overwrite: true,
+      });
       expect(mockNavigate).toHaveBeenCalledWith('/drafts/review-1');
+    });
+  });
+
+  it('creates a missing asset instead of requiring it to already exist on the draft', async () => {
+    vi.mocked(api.updateAsset).mockResolvedValue({ status: 'created', draft_id: 'review-1', asset_name: 'post_history' } as never);
+    vi.mocked(GenerationService.generateAsset).mockImplementation(async function* () {
+      yield { type: 'asset', content: 'generated missing post history' } as never;
+    });
+
+    createWrapper({
+      route: '/drafts/review-1/assets/post_history/regenerate',
+    });
+
+    expect(await screen.findByText('This draft does not have a saved post history yet. Generate a candidate to create it from the current seed and prior asset chain.')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Generate One' }));
+    expect(await screen.findByText('generated missing post history')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Create Asset' }));
+
+    await waitFor(() => {
+      expect(api.updateAsset).toHaveBeenCalledWith('review-1', 'post_history', 'generated missing post history', {
+        expectedPreviousContent: null,
+        overwrite: false,
+      });
     });
   });
 

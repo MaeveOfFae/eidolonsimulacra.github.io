@@ -9,8 +9,8 @@ const mockUseQueryClient = vi.fn();
 const mockUseGuidedTour = vi.fn();
 
 vi.mock('@tanstack/react-query', () => ({
-  useQuery: () => mockUseQuery(),
-  useMutation: () => mockUseMutation(),
+  useQuery: (options: unknown) => mockUseQuery(options),
+  useMutation: (options: unknown) => mockUseMutation(options),
   useQueryClient: () => mockUseQueryClient(),
 }));
 
@@ -61,6 +61,16 @@ const draftResponse = {
   },
 };
 
+const templatesResponse = [
+  {
+    name: 'V2/V3 Card',
+    assets: [
+      { name: 'system_prompt', required: true, depends_on: [], description: 'System instructions' },
+      { name: 'post_history', required: true, depends_on: ['system_prompt'], description: 'Relationship context' },
+    ],
+  },
+];
+
 function createMutationResult() {
   return {
     mutate: vi.fn(),
@@ -95,10 +105,22 @@ describe('Review export modal behavior', () => {
       },
     });
 
-    mockUseQuery.mockReturnValue({
-      data: draftResponse,
-      isLoading: false,
-      error: null,
+    mockUseQuery.mockImplementation((options?: { queryKey?: unknown[] }) => {
+      const key = Array.isArray(options?.queryKey) ? options.queryKey[0] : undefined;
+
+      if (key === 'templates') {
+        return {
+          data: templatesResponse,
+          isLoading: false,
+          error: null,
+        };
+      }
+
+      return {
+        data: draftResponse,
+        isLoading: false,
+        error: null,
+      };
     });
 
     mockUseMutation.mockImplementation(() => createMutationResult());
@@ -194,5 +216,23 @@ describe('Review export modal behavior', () => {
     });
 
     expect(screen.getByRole('button', { name: 'Copied' })).toBeInTheDocument();
+  });
+
+  it('shows missing template assets so imported drafts can create them', async () => {
+    mockUseGuidedTour.mockReturnValue({
+      activeTourId: null,
+      activeStepIndex: 0,
+      isTourCompleted: vi.fn(() => false),
+      restartTour: vi.fn(),
+      startTour: vi.fn(),
+    });
+
+    renderReview();
+
+    expect(await screen.findByText('This draft is missing 1 template asset. Create it with AI from the existing draft context or add it manually before export.')).toBeInTheDocument();
+    expect(screen.getByText('post history')).toBeInTheDocument();
+    expect(screen.getByText('Missing')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Create with AI' })).toHaveAttribute('href', '/drafts/review-1/assets/post_history/regenerate');
+    expect(screen.getByRole('button', { name: 'Add Manually' })).toBeInTheDocument();
   });
 });

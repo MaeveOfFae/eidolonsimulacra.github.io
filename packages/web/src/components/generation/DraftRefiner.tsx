@@ -30,6 +30,18 @@ interface AssetRegenerationState {
   status: 'idle' | 'generating' | 'reviewing' | 'saving';
   content: string;
   originalContent: string;
+  storedContent: string | null;
+}
+
+interface DraftAssetEntry {
+  name: string;
+  exists: boolean;
+  required?: boolean;
+  description?: string;
+}
+
+function draftHasAsset(draft: Draft | undefined, assetName: string): boolean {
+  return Boolean(draft && Object.prototype.hasOwnProperty.call(draft.assets, assetName));
 }
 
 export default function DraftRefiner({ templates }: DraftRefinerProps) {
@@ -38,6 +50,7 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
   const [expandedAssets, setExpandedAssets] = useState<Set<string>>(new Set());
   const [editingAsset, setEditingAsset] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
+  const [refinerError, setRefinerError] = useState<string | null>(null);
   const [resumeNotice, setResumeNotice] = useState<string | null>(null);
   const restoredSessionRef = useRef(loadActiveDraftRefinerSession());
   const queryClient = useQueryClient();
@@ -61,10 +74,42 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
     return templates.find((t) => t.name === draft.metadata.template_name);
   }, [draft, templates]);
 
-  // Asset names from draft
-  const assetNames = useMemo(() => {
-    return draft ? Object.keys(draft.assets) : [];
-  }, [draft]);
+  const assetEntries = useMemo((): DraftAssetEntry[] => {
+    if (!draft) {
+      return [];
+    }
+
+    const entries: DraftAssetEntry[] = [];
+    const seenAssets = new Set<string>();
+
+    if (draftTemplate) {
+      for (const asset of draftTemplate.assets) {
+        entries.push({
+          name: asset.name,
+          exists: draftHasAsset(draft, asset.name),
+          required: asset.required,
+          description: asset.description,
+        });
+        seenAssets.add(asset.name);
+      }
+    }
+
+    for (const assetName of Object.keys(draft.assets)) {
+      if (seenAssets.has(assetName)) {
+        continue;
+      }
+
+      entries.push({
+        name: assetName,
+        exists: true,
+      });
+    }
+
+    return entries;
+  }, [draft, draftTemplate]);
+
+  const assetNames = useMemo(() => assetEntries.map((asset) => asset.name), [assetEntries]);
+  const missingAssetCount = useMemo(() => assetEntries.filter((asset) => !asset.exists).length, [assetEntries]);
 
   useEffect(() => {
     const session = restoredSessionRef.current;
@@ -73,10 +118,24 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
     }
 
     setSelectedDraftId(session.selectedDraftId);
-    setAssetStates(session.assetStates);
+    setAssetStates(
+      Object.fromEntries(
+        Object.entries(session.assetStates).map(([assetName, state]) => [
+          assetName,
+          {
+            assetName: state.assetName,
+            status: state.status,
+            content: state.content,
+            originalContent: state.originalContent,
+            storedContent: state.storedContent ?? state.originalContent,
+          },
+        ])
+      )
+    );
     setExpandedAssets(new Set(session.expandedAssets));
     setEditingAsset(session.editingAsset);
     setEditContent(session.editContent);
+    setRefinerError(null);
 
     if (session.interrupted) {
       setResumeNotice('Draft refinement was interrupted. Restored your editable snapshot.');
@@ -93,26 +152,61 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
 
   // Initialize asset states when draft loads
   useEffect(() => {
-    if (draft && Object.keys(assetStates).length === 0) {
-      const states: Record<string, AssetRegenerationState> = {};
-      for (const name of Object.keys(draft.assets)) {
-        states[name] = {
-          assetName: name,
+    if (!draft) {
+      return;
+    }
+
+    setAssetStates((previous) => {
+      const nextStates: Record<string, AssetRegenerationState> = {};
+
+      for (const assetEntry of assetEntries) {
+        const draftContent = draftHasAsset(draft, assetEntry.name) ? draft.assets[assetEntry.name] : '';
+        const previousState = previous[assetEntry.name];
+
+        if (previousState) {
+          nextStates[assetEntry.name] = {
+            ...previousState,
+            assetName: assetEntry.name,
+            storedContent: previousState.storedContent ?? (draftHasAsset(draft, assetEntry.name) ? draftContent : null),
+          };
+          continue;
+        }
+
+        nextStates[assetEntry.name] = {
+          assetName: assetEntry.name,
           status: 'idle',
-          content: draft.assets[name],
-          originalContent: draft.assets[name],
+          content: draftContent,
+          originalContent: draftContent,
+          storedContent: draftHasAsset(draft, assetEntry.name) ? draftContent : null,
         };
       }
-      setAssetStates(states);
-    }
-  }, [draft, assetStates]);
+
+      return nextStates;
+    });
+  }, [assetEntries, draft]);
 
   // Update asset mutation
   const updateAsset = useMutation({
-    mutationFn: ({ assetName, content }: { assetName: string; content: string }) =>
-      api.updateAsset(selectedDraftId, assetName, content),
+    mutationFn: ({
+      assetName,
+      content,
+      expectedPreviousContent,
+      overwrite,
+    }: {
+      assetName: string;
+      content: string;
+      expectedPreviousContent: string | null;
+      overwrite: boolean;
+    }) => api.updateAsset(selectedDraftId, assetName, content, {
+      expectedPreviousContent,
+      overwrite,
+    }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['draft', selectedDraftId] });
+      setRefinerError(null);
+    },
+    onError: (error: Error) => {
+      setRefinerError(error.message);
     },
   });
 
@@ -133,19 +227,23 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
   const startEditing = useCallback((assetName: string) => {
     if (draft) {
       setEditingAsset(assetName);
-      setEditContent(draft.assets[assetName]);
+      setEditContent(draft.assets[assetName] ?? assetStates[assetName]?.content ?? '');
+      setRefinerError(null);
     }
-  }, [draft]);
+  }, [assetStates, draft]);
 
   // Cancel editing
   const cancelEditing = useCallback(() => {
     setEditingAsset(null);
     setEditContent('');
+    setRefinerError(null);
   }, []);
 
   // Save edited content
   const saveEditedContent = useCallback(async () => {
     if (!editingAsset || !editContent.trim()) return;
+
+    setRefinerError(null);
 
     setAssetStates((prev) => ({
       ...prev,
@@ -156,7 +254,13 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
     }));
 
     try {
-      await updateAsset.mutateAsync({ assetName: editingAsset, content: editContent });
+      const currentState = assetStates[editingAsset];
+      await updateAsset.mutateAsync({
+        assetName: editingAsset,
+        content: editContent,
+        expectedPreviousContent: currentState?.storedContent ?? null,
+        overwrite: (currentState?.storedContent ?? null) !== null,
+      });
       setAssetStates((prev) => ({
         ...prev,
         [editingAsset]: {
@@ -164,6 +268,7 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
           status: 'idle',
           content: editContent,
           originalContent: editContent,
+          storedContent: editContent,
         },
       }));
       setEditingAsset(null);
@@ -177,11 +282,13 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
         },
       }));
     }
-  }, [editingAsset, editContent, updateAsset]);
+  }, [assetStates, editingAsset, editContent, updateAsset]);
 
   // Regenerate a single asset
   const regenerateAsset = useCallback(async (assetName: string) => {
     if (!draft || !draftTemplate) return;
+
+    setRefinerError(null);
 
     setAssetStates((prev) => ({
       ...prev,
@@ -197,8 +304,9 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
 
     for (let i = 0; i < assetIndex; i++) {
       const priorName = draftTemplate.assets[i].name;
-      if (draft.assets[priorName]) {
-        priorAssets[priorName] = draft.assets[priorName];
+      const priorContent = assetStates[priorName]?.content ?? draft.assets[priorName];
+      if (priorContent) {
+        priorAssets[priorName] = priorContent;
       }
     }
 
@@ -207,7 +315,7 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
 
       for await (const progress of GenerationService.generateAsset({
         seed: draft.metadata.seed,
-        mode: draft.metadata.mode,
+        mode: draft.metadata.mode ?? 'Auto',
         template: draft.metadata.template_name,
         asset_name: assetName,
         prior_assets: priorAssets,
@@ -240,6 +348,7 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
       }
     } catch (error) {
       console.error('Asset regeneration failed:', error);
+      setRefinerError(error instanceof Error ? error.message : 'Asset regeneration failed');
       setAssetStates((prev) => ({
         ...prev,
         [assetName]: {
@@ -248,12 +357,14 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
         },
       }));
     }
-  }, [draft, draftTemplate]);
+  }, [assetStates, draft, draftTemplate]);
 
   // Accept regenerated content
   const acceptRegenerated = useCallback(async (assetName: string) => {
     const state = assetStates[assetName];
     if (!state || state.status !== 'reviewing') return;
+
+    setRefinerError(null);
 
     setAssetStates((prev) => ({
       ...prev,
@@ -264,13 +375,19 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
     }));
 
     try {
-      await updateAsset.mutateAsync({ assetName, content: state.content });
+      await updateAsset.mutateAsync({
+        assetName,
+        content: state.content,
+        expectedPreviousContent: state.storedContent,
+        overwrite: state.storedContent !== null,
+      });
       setAssetStates((prev) => ({
         ...prev,
         [assetName]: {
           ...prev[assetName],
           status: 'idle',
           originalContent: state.content,
+          storedContent: state.content,
         },
       }));
     } catch {
@@ -306,6 +423,7 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
     setExpandedAssets(new Set());
     setEditingAsset(null);
     setEditContent('');
+    setRefinerError(null);
     setResumeNotice(null);
   }, []);
 
@@ -334,6 +452,7 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
           status: state.status === 'reviewing' ? 'reviewing' : 'idle',
           content: state.content,
           originalContent: state.originalContent,
+          storedContent: state.storedContent,
         },
       ])
     );
@@ -389,6 +508,7 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
       <div className="rounded-2xl border border-border/50 bg-card/50 p-6">
         <h3 className="text-lg font-semibold mb-4">Select Draft to Refine</h3>
         <select
+          aria-label="Select draft to refine"
           value={selectedDraftId}
           onChange={(e) => handleDraftSelect(e.target.value)}
           className="w-full rounded-xl border border-border bg-background/50 px-4 py-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -441,9 +561,22 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
             </div>
           </div>
 
+          {missingAssetCount > 0 && (
+            <div className="rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-foreground">
+              This draft is missing {missingAssetCount} template asset{missingAssetCount === 1 ? '' : 's'}. Create them here with AI or by editing the empty fields directly.
+            </div>
+          )}
+
+          {refinerError && (
+            <div className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              {refinerError}
+            </div>
+          )}
+
           {/* Asset List */}
           <div className="space-y-2">
-            {assetNames.map((assetName) => {
+            {assetEntries.map((assetEntry) => {
+              const assetName = assetEntry.name;
               const state = assetStates[assetName];
               if (!state) return null;
 
@@ -453,6 +586,10 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
               const isReviewing = state.status === 'reviewing';
               const isSaving = state.status === 'saving';
               const hasChanges = state.content !== state.originalContent;
+              const assetExists = state.storedContent !== null;
+              const saveLabel = assetExists ? 'Save Changes' : 'Create Asset';
+              const regenerateLabel = assetExists ? 'Regenerate' : 'Create with AI';
+              const reviewLabel = assetExists ? 'Accept' : 'Create Asset';
 
               return (
                 <div
@@ -477,9 +614,21 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
                         <ChevronRight className="h-4 w-4 text-muted-foreground" />
                       )}
                       {getStatusIcon(state.status)}
-                      <span className="font-medium capitalize">
-                        {assetName.replace(/_/g, ' ')}
-                      </span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-medium capitalize">
+                          {assetName.replace(/_/g, ' ')}
+                        </span>
+                        {!assetExists && (
+                          <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium uppercase tracking-[0.14em] text-amber-700 dark:text-amber-300">
+                            Missing
+                          </span>
+                        )}
+                        {assetEntry.required && (
+                          <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium uppercase tracking-[0.14em] text-secondary-foreground">
+                            Required
+                          </span>
+                        )}
+                      </div>
                       {hasChanges && state.status === 'idle' && (
                         <span className="text-xs text-primary">(modified)</span>
                       )}
@@ -500,10 +649,15 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
                   {/* Asset Content */}
                   {isExpanded && (
                     <div className="border-t border-border/50 p-4 space-y-3">
+                      {assetEntry.description && (
+                        <p className="text-xs text-muted-foreground">{assetEntry.description}</p>
+                      )}
+
                       {isEditing ? (
                         // Edit Mode
                         <div className="space-y-3">
                           <textarea
+                            aria-label={`${assetName.replace(/_/g, ' ')} content`}
                             value={editContent}
                             onChange={(e) => setEditContent(e.target.value)}
                             className="w-full min-h-[200px] rounded-md border border-input bg-background p-3 text-sm font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -519,7 +673,7 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
                               ) : (
                                 <Save className="h-4 w-4" />
                               )}
-                              Save Changes
+                              {saveLabel}
                             </button>
                             <button
                               onClick={cancelEditing}
@@ -534,6 +688,7 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
                         // View/Review Mode
                         <div className="space-y-3">
                           <textarea
+                            aria-label={`${assetName.replace(/_/g, ' ')} content`}
                             value={state.content}
                             onChange={(e) => {
                               if (state.status === 'idle') {
@@ -562,11 +717,12 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
                                   className="inline-flex items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm hover:bg-accent disabled:opacity-50"
                                 >
                                   <RotateCcw className="h-4 w-4" />
-                                  Regenerate
+                                  {regenerateLabel}
                                 </button>
                                 {hasChanges && (
                                   <button
                                     onClick={() => {
+                                      setRefinerError(null);
                                       setAssetStates((prev) => ({
                                         ...prev,
                                         [assetName]: {
@@ -575,7 +731,12 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
                                         },
                                       }));
                                       updateAsset
-                                        .mutateAsync({ assetName, content: state.content })
+                                        .mutateAsync({
+                                          assetName,
+                                          content: state.content,
+                                          expectedPreviousContent: state.storedContent,
+                                          overwrite: state.storedContent !== null,
+                                        })
                                         .then(() => {
                                           setAssetStates((prev) => ({
                                             ...prev,
@@ -583,6 +744,16 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
                                               ...prev[assetName],
                                               status: 'idle',
                                               originalContent: state.content,
+                                              storedContent: state.content,
+                                            },
+                                          }));
+                                        })
+                                        .catch(() => {
+                                          setAssetStates((prev) => ({
+                                            ...prev,
+                                            [assetName]: {
+                                              ...prev[assetName],
+                                              status: 'idle',
                                             },
                                           }));
                                         });
@@ -590,7 +761,7 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
                                     className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground hover:bg-primary/90"
                                   >
                                     <Save className="h-4 w-4" />
-                                    Save Changes
+                                    {saveLabel}
                                   </button>
                                 )}
                               </>
@@ -603,7 +774,7 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
                                   className="inline-flex items-center gap-2 rounded-md bg-green-600 px-3 py-2 text-sm text-white hover:bg-green-700"
                                 >
                                   <CheckCircle2 className="h-4 w-4" />
-                                  Accept
+                                  {reviewLabel}
                                 </button>
                                 <button
                                   onClick={() => discardRegenerated(assetName)}
@@ -617,9 +788,13 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
 
                           <p className="text-xs text-muted-foreground">
                             {state.status === 'idle'
-                              ? 'Edit the content directly or regenerate with AI.'
+                              ? assetExists
+                                ? 'Edit the content directly or regenerate with AI.'
+                                : 'This asset is missing. Create it with AI or type content directly, then save.'
                               : state.status === 'reviewing'
-                              ? 'Review the regenerated content above. Accept to save, or discard to revert.'
+                              ? assetExists
+                                ? 'Review the regenerated content above. Accept to save, or discard to revert.'
+                                : 'Review the generated content above. Create the asset to save it, or discard to keep this slot empty.'
                               : 'Processing...'}
                           </p>
                         </div>

@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Star, Download, Archive, RotateCcw, Edit3, Check, X, ShieldCheck, ChevronDown, Copy } from 'lucide-react';
+import type { Template } from '@char-gen/shared';
 import { api } from '@/lib/api';
 import { getGuidedTour, REVIEW_EXPORT_TOUR_ID } from '@/lib/help';
 import ExportModal from '../common/ExportModal';
@@ -11,6 +12,13 @@ import { useAssistantScreenContext } from '../common/useAssistantContext';
 import ReviewChecklistPanel from './ReviewChecklistPanel';
 import VersionHistoryPanel from './VersionHistoryPanel';
 
+interface ReviewAssetEntry {
+  name: string;
+  exists: boolean;
+  description?: string;
+  required?: boolean;
+}
+
 export default function Review() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -18,8 +26,10 @@ export default function Review() {
   const [isEditingName, setIsEditingName] = useState(false);
   const [editName, setEditName] = useState('');
   const [editingAsset, setEditingAsset] = useState<string | null>(null);
+  const [editingBaseContent, setEditingBaseContent] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
   const [copiedAsset, setCopiedAsset] = useState<string | null>(null);
+  const [assetActionError, setAssetActionError] = useState<string | null>(null);
   const [tourManagedExportModal, setTourManagedExportModal] = useState(false);
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
   const { activeStepIndex, activeTourId } = useGuidedTour();
@@ -32,6 +42,53 @@ export default function Review() {
     queryFn: () => api.getDraft(reviewId),
     enabled: !!id,
   });
+
+  const { data: templates = [] } = useQuery({
+    queryKey: ['templates'],
+    queryFn: () => api.getTemplates(),
+  });
+
+  const template = useMemo(() => {
+    if (!draft) {
+      return undefined;
+    }
+
+    return templates.find((entry: Template) => entry.name === draft.metadata.template_name);
+  }, [draft, templates]);
+
+  const assetEntries = useMemo((): ReviewAssetEntry[] => {
+    if (!draft) {
+      return [];
+    }
+
+    const entries: ReviewAssetEntry[] = [];
+    const seenAssets = new Set<string>();
+
+    if (template) {
+      for (const asset of template.assets) {
+        entries.push({
+          name: asset.name,
+          exists: Object.prototype.hasOwnProperty.call(draft.assets, asset.name),
+          description: asset.description,
+          required: asset.required,
+        });
+        seenAssets.add(asset.name);
+      }
+    }
+
+    for (const assetName of Object.keys(draft.assets)) {
+      if (seenAssets.has(assetName)) {
+        continue;
+      }
+
+      entries.push({
+        name: assetName,
+        exists: true,
+      });
+    }
+
+    return entries;
+  }, [draft, template]);
 
   const toggleFavorite = useMutation({
     mutationFn: () => api.updateMetadata(reviewId, {
@@ -65,11 +122,29 @@ export default function Review() {
   });
 
   const saveAsset = useMutation({
-    mutationFn: ({ assetName, content }: { assetName: string; content: string }) => api.updateAsset(reviewId, assetName, content),
+    mutationFn: ({
+      assetName,
+      content,
+      expectedPreviousContent,
+      overwrite,
+    }: {
+      assetName: string;
+      content: string;
+      expectedPreviousContent: string | null;
+      overwrite: boolean;
+    }) => api.updateAsset(reviewId, assetName, content, {
+      expectedPreviousContent,
+      overwrite,
+    }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['draft', id] });
       setEditingAsset(null);
+      setEditingBaseContent(null);
       setEditContent('');
+      setAssetActionError(null);
+    },
+    onError: (mutationError: Error) => {
+      setAssetActionError(mutationError.message);
     },
   });
 
@@ -99,8 +174,14 @@ export default function Review() {
       return;
     }
 
+    const baseContent = Object.prototype.hasOwnProperty.call(draft.assets, assetName)
+      ? draft.assets[assetName]
+      : null;
+
     setEditingAsset(assetName);
-    setEditContent(draft.assets[assetName]);
+    setEditingBaseContent(baseContent);
+    setEditContent(baseContent ?? '');
+    setAssetActionError(null);
   };
 
   const handleEditName = () => {
@@ -121,21 +202,37 @@ export default function Review() {
 
   const handleSaveAsset = () => {
     if (editingAsset) {
-      saveAsset.mutate({ assetName: editingAsset, content: editContent });
+      saveAsset.mutate({
+        assetName: editingAsset,
+        content: editContent,
+        expectedPreviousContent: editingBaseContent,
+        overwrite: editingBaseContent !== null,
+      });
     }
   };
 
   const handleCancelEdit = () => {
     setEditingAsset(null);
+    setEditingBaseContent(null);
     setEditContent('');
+    setAssetActionError(null);
   };
 
   const handleAssetRefined = (assetName: string, newContent: string) => {
-    saveAsset.mutate({ assetName, content: newContent });
+    const expectedPreviousContent = draft && Object.prototype.hasOwnProperty.call(draft.assets, assetName)
+      ? draft.assets[assetName]
+      : null;
+
+    saveAsset.mutate({
+      assetName,
+      content: newContent,
+      expectedPreviousContent,
+      overwrite: expectedPreviousContent !== null,
+    });
   };
 
   const handleCopyAsset = async (assetName: string) => {
-    const content = editingAsset === assetName ? editContent : draft.assets[assetName];
+    const content = editingAsset === assetName ? editContent : draft?.assets[assetName] ?? '';
 
     try {
       await navigator.clipboard.writeText(content);
@@ -200,6 +297,8 @@ export default function Review() {
   }
 
   const assetNames = Object.keys(draft.assets);
+  const missingAssetCount = assetEntries.filter((asset) => !asset.exists).length;
+  const assetCountLabel = template ? `${assetNames.length}/${template.assets.length}` : `${assetNames.length}`;
 
   return (
     <div className="app-page space-y-5 pb-10 sm:space-y-6 sm:pb-12">
@@ -262,7 +361,7 @@ export default function Review() {
             <div className="mt-4 app-page-metrics">
               <div className="app-page-metric">
                 <p className="app-page-metric-label">Assets</p>
-                <div className="app-page-metric-value text-2xl">{assetNames.length}</div>
+                <div className="app-page-metric-value text-2xl">{assetCountLabel}</div>
               </div>
               <div className="app-page-metric">
                 <p className="app-page-metric-label">Mode</p>
@@ -342,6 +441,12 @@ export default function Review() {
         </div>
       )}
 
+      {missingAssetCount > 0 && (
+        <div className="app-note border-primary/30 bg-primary/10 p-4 text-sm text-foreground">
+          This draft is missing {missingAssetCount} template asset{missingAssetCount === 1 ? '' : 's'}. {missingAssetCount === 1 ? 'Create it' : 'Create them'} with AI from the existing draft context or add {missingAssetCount === 1 ? 'it' : 'them'} manually before export.
+        </div>
+      )}
+
       {draft.metadata.parent_drafts && draft.metadata.parent_drafts.length > 0 && (
         <div className="app-note px-4 py-3 text-sm text-muted-foreground">
           <span className="font-medium text-foreground">Lineage:</span>{' '}
@@ -355,27 +460,56 @@ export default function Review() {
         </div>
       )}
 
+      {assetActionError && (
+        <div className="app-note border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+          {assetActionError}
+        </div>
+      )}
+
       <div data-tour-anchor="review-assets" className="space-y-2.5 sm:space-y-3">
-        {assetNames.map((assetName) => (
+        {assetEntries.map((assetEntry) => {
+          const assetName = assetEntry.name;
+          const assetExists = assetEntry.exists;
+
+          return (
           <div key={assetName} className="space-y-1.5">
             <div className="flex items-start justify-between gap-3">
-              <h2 className="text-base font-semibold capitalize" style={{ fontFamily: '"Space Grotesk", sans-serif' }}>
-                {assetName.replace(/_/g, ' ')}
-              </h2>
+              <div className="space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="text-base font-semibold capitalize" style={{ fontFamily: '"Space Grotesk", sans-serif' }}>
+                    {assetName.replace(/_/g, ' ')}
+                  </h2>
+                  {!assetExists && (
+                    <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium uppercase tracking-[0.14em] text-amber-700 dark:text-amber-300">
+                      Missing
+                    </span>
+                  )}
+                  {assetEntry.required && (
+                    <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium uppercase tracking-[0.14em] text-secondary-foreground">
+                      Required
+                    </span>
+                  )}
+                </div>
+                {assetEntry.description && (
+                  <p className="text-xs text-muted-foreground">{assetEntry.description}</p>
+                )}
+              </div>
               <div className="flex shrink-0 flex-wrap items-center gap-2">
-                <button
-                  onClick={() => void handleCopyAsset(assetName)}
-                  className="inline-flex items-center gap-1 rounded-lg border border-input bg-background px-2 py-1 text-xs hover:bg-accent"
-                >
-                  {copiedAsset === assetName ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                  {copiedAsset === assetName ? 'Copied' : 'Copy'}
-                </button>
+                {assetExists && (
+                  <button
+                    onClick={() => void handleCopyAsset(assetName)}
+                    className="inline-flex items-center gap-1 rounded-lg border border-input bg-background px-2 py-1 text-xs hover:bg-accent"
+                  >
+                    {copiedAsset === assetName ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                    {copiedAsset === assetName ? 'Copied' : 'Copy'}
+                  </button>
+                )}
                 <Link
                   to={`/drafts/${encodeURIComponent(reviewId)}/assets/${encodeURIComponent(assetName)}/regenerate`}
                   className="inline-flex items-center gap-1 rounded-lg border border-input bg-background px-2 py-1 text-xs hover:bg-accent"
                 >
                   <ArrowLeft className="h-3 w-3 rotate-180" />
-                  Regen
+                  {assetExists ? 'Regen' : 'Create with AI'}
                 </Link>
                 {editingAsset !== assetName && (
                   <button
@@ -383,7 +517,7 @@ export default function Review() {
                     className="inline-flex items-center gap-1 rounded-lg border border-input bg-background px-2 py-1 text-xs hover:bg-accent"
                   >
                     <Edit3 className="h-3 w-3" />
-                    Edit
+                    {assetExists ? 'Edit' : 'Add Manually'}
                   </button>
                 )}
               </div>
@@ -392,6 +526,7 @@ export default function Review() {
               {editingAsset === assetName ? (
                 <div className="space-y-3">
                   <textarea
+                    aria-label={`${assetName.replace(/_/g, ' ')} content`}
                     value={editContent}
                     onChange={(event) => setEditContent(event.target.value)}
                     className="min-h-[160px] w-full min-w-0 rounded-xl border border-input bg-background p-3 text-sm font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-[180px]"
@@ -407,7 +542,7 @@ export default function Review() {
                       ) : (
                         <Check className="h-4 w-4" />
                       )}
-                      Save
+                      {editingBaseContent === null ? 'Create Asset' : 'Save'}
                     </button>
                     <button
                       onClick={handleCancelEdit}
@@ -419,13 +554,19 @@ export default function Review() {
                   </div>
                 </div>
               ) : (
-                <pre className="max-h-[28rem] overflow-auto whitespace-pre-wrap break-words text-xs leading-5 font-mono sm:leading-6">
-                  {draft.assets[assetName]}
-                </pre>
+                assetExists ? (
+                  <pre className="max-h-[28rem] overflow-auto whitespace-pre-wrap break-words text-xs leading-5 font-mono sm:leading-6">
+                    {draft.assets[assetName]}
+                  </pre>
+                ) : (
+                  <div className="rounded-xl border border-dashed border-border/70 bg-background/40 p-4 text-sm text-muted-foreground">
+                    This asset was not present in the imported draft. Create it with AI using the existing seed and prior assets, or add it manually here.
+                  </div>
+                )
               )}
             </div>
           </div>
-        ))}
+        )})}
       </div>
 
       <details className="app-panel group p-4 sm:p-5">

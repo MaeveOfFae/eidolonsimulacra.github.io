@@ -52,7 +52,7 @@ import {
 } from '@char-gen/shared';
 import { MODEL_SUGGESTIONS, buildProviderHeaders, createEngine, getDefaultBaseUrl } from './llm/factory.js';
 import { configManager } from './config/manager.js';
-import { DraftStorage } from './storage/draft-db.js';
+import { DraftStorage, type AssetWriteOptions } from './storage/draft-db.js';
 import { GenerationService } from './services/generation.js';
 import {
   buildUniqueCustomBlueprintPath,
@@ -2374,12 +2374,17 @@ export class EidolonBrowserAPI {
     return { status: 'deleted', draft_id: reviewId };
   }
 
-  async updateAsset(reviewId: string, assetName: string, content: string): Promise<{ status: string; draft_id: string; asset_name: string }> {
+  async updateAsset(
+    reviewId: string,
+    assetName: string,
+    content: string,
+    options: AssetWriteOptions = {}
+  ): Promise<{ status: 'created' | 'updated'; draft_id: string; asset_name: string }> {
     // Update locally first
-    await DraftStorage.updateAsset(reviewId, assetName, content);
+    const status = await DraftStorage.updateAsset(reviewId, assetName, content, options);
     queueAutoSync('drafts');
 
-    return { status: 'updated', draft_id: reviewId, asset_name: assetName };
+    return { status, draft_id: reviewId, asset_name: assetName };
   }
 
   async validateDraft(reviewId: string): Promise<ValidationResponse> {

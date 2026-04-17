@@ -103,6 +103,7 @@ export interface ActiveDraftRefinerAssetState {
   status: 'idle' | 'reviewing';
   content: string;
   originalContent: string;
+  storedContent?: string | null;
 }
 
 export interface ActiveDraftRefinerSession {
@@ -219,6 +220,11 @@ function isValidDraftRefinerSession(value: unknown): value is ActiveDraftRefiner
         && (state.status === 'idle' || state.status === 'reviewing')
         && typeof state.content === 'string'
         && typeof state.originalContent === 'string'
+        && (
+          typeof state.storedContent === 'undefined'
+          || typeof state.storedContent === 'string'
+          || state.storedContent === null
+        )
     )
     && Array.isArray(session.expandedAssets)
     && session.expandedAssets.every((asset) => typeof asset === 'string')

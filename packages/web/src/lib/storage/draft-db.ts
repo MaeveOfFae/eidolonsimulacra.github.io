@@ -58,6 +58,11 @@ interface DraftQueryOptions {
   archivedOnly?: boolean;
 }
 
+export interface AssetWriteOptions {
+  overwrite?: boolean;
+  expectedPreviousContent?: string | null;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
@@ -582,13 +587,33 @@ export class DraftStorage {
   /**
    * Update an asset content
    */
-  static async updateAsset(reviewId: string, assetName: string, content: string): Promise<void> {
+  static async updateAsset(
+    reviewId: string,
+    assetName: string,
+    content: string,
+    options: AssetWriteOptions = {}
+  ): Promise<'created' | 'updated'> {
     await this.ensureReady();
 
     const existing = await db.drafts.where('reviewId').equals(reviewId).first();
 
     if (!existing) {
       throw new Error(`Draft ${reviewId} not found`);
+    }
+
+    const hadExistingAsset = Object.prototype.hasOwnProperty.call(existing.assets, assetName);
+    const currentContent = hadExistingAsset ? existing.assets[assetName] : null;
+
+    if (hadExistingAsset && options.overwrite === false) {
+      throw new Error(`Asset ${assetName} already exists. Reload the draft before trying a different action.`);
+    }
+
+    if (options.expectedPreviousContent !== undefined && currentContent !== options.expectedPreviousContent) {
+      if (hadExistingAsset) {
+        throw new Error(`Asset ${assetName} changed since you loaded it. Reload the draft before overwriting it.`);
+      }
+
+      throw new Error(`Asset ${assetName} was created after this session started. Reload the draft before saving.`);
     }
 
     existing.assets[assetName] = content;
@@ -616,6 +641,8 @@ export class DraftStorage {
         createdAt: existing.updatedAt,
       });
     }
+
+    return hadExistingAsset ? 'updated' : 'created';
   }
 
   /**

@@ -45,6 +45,10 @@ interface AssetCandidate {
   timestamp: number;
 }
 
+function draftHasAsset(draft: Draft | undefined, assetName: string): boolean {
+  return Boolean(draft && Object.prototype.hasOwnProperty.call(draft.assets, assetName));
+}
+
 const exportIntrosAsMarkdown = (
   characterName: string,
   savedIntros: AssetCandidate[],
@@ -148,6 +152,7 @@ export default function AssetRegenerator({
   const [customInstructions, setCustomInstructions] = useState('');
   const [blueprintOverrideContent, setBlueprintOverrideContent] = useState('');
   const [generationError, setGenerationError] = useState<string | null>(null);
+  const [assetWriteError, setAssetWriteError] = useState<string | null>(null);
   const [resumeNotice, setResumeNotice] = useState<string | null>(null);
   const restoredSessionRef = useRef(loadActiveAssetRegeneratorSession());
 
@@ -187,8 +192,11 @@ export default function AssetRegenerator({
     return template.assets.findIndex((asset) => asset.name === selectedAssetName);
   }, [selectedAssetName, template]);
 
+  const assetExists = draftHasAsset(draft, selectedAssetName);
   const currentAssetContent = draft?.assets[selectedAssetName] ?? '';
-  const canRegenerate = Boolean(draft && template && templateAssetIndex >= 0 && selectedAssetName && selectedAssetName in draft.assets);
+  const canGenerateAsset = Boolean(draft && template && templateAssetIndex >= 0 && selectedAssetName);
+  const primaryActionLabel = assetExists ? 'Replace Asset' : 'Create Asset';
+  const secondaryActionLabel = assetExists ? 'Replace and Return' : 'Create and Return';
   const isIntroAsset = selectedAssetName === 'intro_scene';
   const assetBlueprintFile = useMemo(() => {
     if (!template || templateAssetIndex < 0) {
@@ -280,10 +288,22 @@ export default function AssetRegenerator({
     candidate_count: generatedCandidates.length,
     is_generating: isGenerating,
     has_blueprint_override: hasBlueprintOverride,
+    asset_exists: assetExists,
   });
 
   const updateAsset = useMutation({
-    mutationFn: (content: string) => api.updateAsset(selectedDraftId, selectedAssetName, content),
+    mutationFn: ({
+      content,
+      expectedPreviousContent,
+      overwrite,
+    }: {
+      content: string;
+      expectedPreviousContent: string | null;
+      overwrite: boolean;
+    }) => api.updateAsset(selectedDraftId, selectedAssetName, content, {
+      expectedPreviousContent,
+      overwrite,
+    }),
     onSuccess: (_, content) => {
       queryClient.setQueryData<Draft | undefined>(['draft', selectedDraftId], (existingDraft) => {
         if (!existingDraft) {
@@ -294,7 +314,7 @@ export default function AssetRegenerator({
           ...existingDraft,
           assets: {
             ...existingDraft.assets,
-            [selectedAssetName]: content,
+            [selectedAssetName]: content.content,
           },
         };
       });
@@ -354,13 +374,14 @@ export default function AssetRegenerator({
   }, [draft, template, templateAssetIndex]);
 
   const generateCandidate = useCallback(async () => {
-    if (!draft || !canRegenerate || isGenerating) {
+    if (!draft || !canGenerateAsset || isGenerating) {
       return;
     }
 
     setIsGenerating(true);
     setGeneratingContent('');
     setGenerationError(null);
+    setAssetWriteError(null);
 
     const enhancedSeed = customInstructions.trim()
       ? `${draft.metadata.seed}\n\nAdditional ${assetLabel} instructions: ${customInstructions.trim()}`
@@ -372,7 +393,7 @@ export default function AssetRegenerator({
       const stream = hasBlueprintOverride
         ? GenerationService.previewBlueprint({
             seed: enhancedSeed,
-            mode: draft.metadata.mode,
+            mode: draft.metadata.mode ?? 'Auto',
             template: draft.metadata.template_name,
             asset_name: selectedAssetName,
             prior_assets: buildPriorAssets(),
@@ -380,7 +401,7 @@ export default function AssetRegenerator({
           })
         : GenerationService.generateAsset({
             seed: enhancedSeed,
-            mode: draft.metadata.mode,
+            mode: draft.metadata.mode ?? 'Auto',
             template: draft.metadata.template_name,
             asset_name: selectedAssetName,
             prior_assets: buildPriorAssets(),
@@ -415,7 +436,7 @@ export default function AssetRegenerator({
       setIsGenerating(false);
       setGeneratingContent('');
     }
-  }, [assetLabel, buildPriorAssets, canRegenerate, customInstructions, draft, effectiveBlueprintContent, hasBlueprintOverride, isGenerating, selectedAssetName]);
+  }, [assetLabel, buildPriorAssets, canGenerateAsset, customInstructions, draft, effectiveBlueprintContent, hasBlueprintOverride, isGenerating, selectedAssetName]);
 
   const generateMultiple = useCallback(async () => {
     for (let index = 0; index < generationCount; index += 1) {
@@ -487,12 +508,30 @@ export default function AssetRegenerator({
   }, []);
 
   const applyCandidate = useCallback(async (content: string, options?: { returnToReview?: boolean }) => {
-    await updateAsset.mutateAsync(content);
-
-    if (options?.returnToReview) {
-      navigate(`/drafts/${encodeURIComponent(selectedDraftId)}`);
+    if (!draft) {
+      return;
     }
-  }, [navigate, selectedDraftId, updateAsset]);
+
+    setAssetWriteError(null);
+
+    try {
+      const expectedPreviousContent = draftHasAsset(draft, selectedAssetName)
+        ? draft.assets[selectedAssetName]
+        : null;
+
+      await updateAsset.mutateAsync({
+        content,
+        expectedPreviousContent,
+        overwrite: draftHasAsset(draft, selectedAssetName),
+      });
+
+      if (options?.returnToReview) {
+        navigate(`/drafts/${encodeURIComponent(selectedDraftId)}`);
+      }
+    } catch (error) {
+      setAssetWriteError(error instanceof Error ? error.message : 'Unable to save asset');
+    }
+  }, [draft, navigate, selectedAssetName, selectedDraftId, updateAsset]);
 
   const saveToIntroCollection = useCallback(async (intro: AssetCandidate) => {
     if (!draft || !isIntroAsset) {
@@ -536,6 +575,8 @@ export default function AssetRegenerator({
     setCustomInstructions('');
     setBlueprintOverrideContent('');
     setGeneratingContent('');
+    setAssetWriteError(null);
+    setGenerationError(null);
     setResumeNotice(null);
   }, []);
 
@@ -545,6 +586,8 @@ export default function AssetRegenerator({
     setExpandedCandidates(new Set());
     setBlueprintOverrideContent('');
     setGeneratingContent('');
+    setAssetWriteError(null);
+    setGenerationError(null);
     setResumeNotice(null);
   }, []);
 
@@ -642,7 +685,7 @@ export default function AssetRegenerator({
                 className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
               >
                 <Star className="h-3.5 w-3.5" />
-                {isActive ? 'Active' : 'Set Active'}
+                {isActive ? 'Active' : primaryActionLabel}
               </button>
 
               {!embedded && (
@@ -652,7 +695,7 @@ export default function AssetRegenerator({
                   className="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-sm hover:bg-accent disabled:opacity-50"
                 >
                   <ArrowLeft className="h-3.5 w-3.5" />
-                  Apply and Return
+                  {secondaryActionLabel}
                 </button>
               )}
 
@@ -776,15 +819,15 @@ export default function AssetRegenerator({
               <div className="mt-4 app-page-metrics">
                 <div className="app-page-metric">
                   <p className="app-page-metric-label">Character</p>
-                  <div className="app-page-metric-value text-lg sm:text-2xl">{draft.metadata.character_name || 'Unnamed'}</div>
+                  <div className="app-page-metric-value text-lg sm:text-2xl">{draft?.metadata.character_name || 'Unnamed'}</div>
                 </div>
                 <div className="app-page-metric">
                   <p className="app-page-metric-label">Mode</p>
-                  <div className="app-page-metric-value text-lg sm:text-2xl">{draft.metadata.mode || 'Unset'}</div>
+                  <div className="app-page-metric-value text-lg sm:text-2xl">{draft?.metadata.mode || 'Unset'}</div>
                 </div>
                 <div className="app-page-metric">
                   <p className="app-page-metric-label">Template</p>
-                  <div className="app-page-metric-value text-base sm:text-xl">{draft.metadata.template_name || 'Unset'}</div>
+                  <div className="app-page-metric-value text-base sm:text-xl">{draft?.metadata.template_name || 'Unset'}</div>
                 </div>
               </div>
             </div>
@@ -792,9 +835,15 @@ export default function AssetRegenerator({
         </section>
       )}
 
-      {draft && !canRegenerate && (
+      {draft && !canGenerateAsset && (
         <div className="app-note border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
           This asset cannot be regenerated because its template contract could not be resolved for the current draft.
+        </div>
+      )}
+
+      {draft && canGenerateAsset && !assetExists && (
+        <div className="app-note border-primary/30 bg-primary/10 p-4 text-sm text-foreground">
+          This draft does not have a saved {assetLabel} yet. Generate a candidate to create it from the current seed and prior asset chain.
         </div>
       )}
 
@@ -834,7 +883,9 @@ export default function AssetRegenerator({
           <div>
             <h2 className="text-lg font-semibold">Current Active Asset</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              This is what the draft currently uses for {assetLabel}.
+              {assetExists
+                ? `This is what the draft currently uses for ${assetLabel}.`
+                : `No ${assetLabel} is saved yet for this draft.`}
             </p>
           </div>
 
@@ -852,7 +903,9 @@ export default function AssetRegenerator({
               <div>
                 <h2 className="text-lg font-semibold">Generate Variants</h2>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Use the saved draft context and prior asset order to spin alternative versions of this one asset.
+                  {assetExists
+                    ? 'Use the saved draft context and prior asset order to spin alternative versions of this one asset.'
+                    : 'Use the saved draft context and prior asset order to generate this missing asset without rerunning the full draft.'}
                 </p>
               </div>
             </div>
@@ -864,7 +917,7 @@ export default function AssetRegenerator({
                 onChange={(event) => setCustomInstructions(event.target.value)}
                 placeholder={`e.g., Make the ${assetLabel} sharper, more restrained, more vivid, or more specific.`}
                 className="min-h-[96px] w-full rounded-xl border border-input bg-background px-3 py-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                disabled={!canRegenerate || isGenerating}
+                disabled={!canGenerateAsset || isGenerating}
               />
             </div>
 
@@ -875,7 +928,7 @@ export default function AssetRegenerator({
                   value={generationCount}
                   onChange={(event) => setGenerationCount(Number(event.target.value))}
                   className="rounded-md border border-input bg-background px-2 py-1 text-sm"
-                  disabled={!canRegenerate || isGenerating}
+                  disabled={!canGenerateAsset || isGenerating}
                 >
                   {[1, 2, 3, 4, 5].map((count) => (
                     <option key={count} value={count}>
@@ -887,7 +940,7 @@ export default function AssetRegenerator({
 
               <button
                 onClick={() => void generateCandidate()}
-                disabled={!canRegenerate || isGenerating}
+                disabled={!canGenerateAsset || isGenerating}
                 className="inline-flex items-center justify-center gap-2 rounded-xl border border-input bg-background px-4 py-2 text-sm hover:bg-accent disabled:opacity-50"
               >
                 {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
@@ -896,7 +949,7 @@ export default function AssetRegenerator({
 
               <button
                 onClick={() => void generateMultiple()}
-                disabled={!canRegenerate || isGenerating}
+                disabled={!canGenerateAsset || isGenerating}
                 className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
               >
                 {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
@@ -907,6 +960,12 @@ export default function AssetRegenerator({
             {generationError && (
               <div className="app-note border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
                 {generationError}
+              </div>
+            )}
+
+            {assetWriteError && (
+              <div className="app-note border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+                {assetWriteError}
               </div>
             )}
 
