@@ -79,12 +79,59 @@ const navItems = [
 
 const KOFI_SCRIPT_ID = 'kofi-overlay-widget-script';
 const KOFI_SCRIPT_SRC = 'https://storage.ko-fi.com/cdn/scripts/overlay-widget.js';
+const KOFI_STYLE_ID = 'kofi-overlay-position-style';
+
+function ensureKofiTopRightStyles() {
+  const existingStyle = document.getElementById(KOFI_STYLE_ID) as HTMLStyleElement | null;
+  if (existingStyle) {
+    return;
+  }
+
+  const style = document.createElement('style');
+  style.id = KOFI_STYLE_ID;
+  style.textContent = `
+    :root {
+      --kofi-overlay-top: 16px;
+      --kofi-overlay-popup-top: 92px;
+      --kofi-overlay-right: 16px;
+    }
+
+    .floatingchat-container-wrap,
+    .floatingchat-container-wrap-mobi {
+      top: var(--kofi-overlay-top) !important;
+      right: var(--kofi-overlay-right) !important;
+      bottom: auto !important;
+      left: auto !important;
+    }
+
+    .floating-chat-kofi-popup-iframe,
+    .floating-chat-kofi-popup-iframe-mobi {
+      top: var(--kofi-overlay-popup-top) !important;
+      right: var(--kofi-overlay-right) !important;
+      bottom: auto !important;
+      left: auto !important;
+      max-width: calc(100vw - 32px) !important;
+    }
+
+    @media (max-width: 1023px) {
+      :root {
+        --kofi-overlay-top: 80px;
+        --kofi-overlay-popup-top: 156px;
+        --kofi-overlay-right: 12px;
+      }
+    }
+  `;
+
+  document.head.appendChild(style);
+}
 
 function initializeKofiOverlay() {
   const kofiWindow = window as KofiWindow;
   if (kofiWindow.__eidolonKofiOverlayInitialized || !kofiWindow.kofiWidgetOverlay) {
     return;
   }
+
+  ensureKofiTopRightStyles();
 
   kofiWindow.kofiWidgetOverlay.draw('maeveoffae', {
     type: 'floating-chat',
