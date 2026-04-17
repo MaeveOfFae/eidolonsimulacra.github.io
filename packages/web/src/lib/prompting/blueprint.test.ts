@@ -84,4 +84,26 @@ describe('lintBlueprintContent', () => {
 
     expect(issues.find((issue) => issue.message.includes('Missing YAML frontmatter block'))).toBeUndefined();
   });
+
+  it('reports unbalanced fenced code blocks', () => {
+    const content = [
+      '---',
+      'name: Seed Generator',
+      'description: Generate batches of compressed, compiler-ready character seeds from genre and tag lines.',
+      'invokable: true',
+      'always: false',
+      'version: 1.0',
+      'feature_category: seed_generation',
+      '---',
+      '',
+      '# Seed Generation Engine',
+      '',
+      '```text',
+      'seed output',
+    ].join('\n');
+
+    const issues = lintBlueprintContent(content, { category: 'system', path: 'blueprints/system/seed_generator.md' });
+
+    expect(issues.find((issue) => issue.message.includes('Unbalanced fenced code block'))).toBeDefined();
+  });
 });

@@ -16,6 +16,8 @@ import {
 } from './blueprint.js';
 import { resolveTemplateBlueprintContent } from '../templates/browser.js';
 
+type JsonPromptValue = null | boolean | number | string | JsonPromptValue[] | { [key: string]: JsonPromptValue };
+
 function buildTemplateOverrideSection(template: Template): string {
   const assets = templateToAssets(template);
   if (assets.length === 0) {
@@ -121,12 +123,129 @@ function buildParentSuiteSection(
   }
 
   assetNames.forEach((assetName) => {
-    lines.push(`### ${assetName}:\n\`\`\``);
-    lines.push(parentAssets[assetName] || '');
-    lines.push('\`\`\`');
+    lines.push(...buildAssetContextSection(`### ${assetName}:`, assetName, parentAssets[assetName] || ''));
   });
 
   return lines;
+}
+
+function isJsonRecord(value: JsonPromptValue): value is { [key: string]: JsonPromptValue } {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function normalizeJsonScalar(value: null | boolean | number | string): string | null {
+  if (value === null) {
+    return null;
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.replace(/\s+/g, ' ').trim();
+    if (!normalized) {
+      return null;
+    }
+
+    return normalized.length > 240 ? `${normalized.slice(0, 237)}...` : normalized;
+  }
+
+  return String(value);
+}
+
+function collectJsonContextLines(
+  value: JsonPromptValue,
+  path: string,
+  lines: string[],
+  depth: number = 0
+): void {
+  if (lines.length >= 60 || depth > 4) {
+    return;
+  }
+
+  if (Array.isArray(value)) {
+    if (value.length === 0) {
+      return;
+    }
+
+    const scalarValues = value
+      .map((entry) => (entry === null || typeof entry === 'boolean' || typeof entry === 'number' || typeof entry === 'string'
+        ? normalizeJsonScalar(entry)
+        : null))
+      .filter((entry): entry is string => Boolean(entry));
+
+    if (scalarValues.length === value.length) {
+      lines.push(`- ${path}: ${scalarValues.slice(0, 8).join(', ')}`);
+      if (value.length > 8) {
+        lines.push(`- ${path}: (${value.length - 8} more values omitted)`);
+      }
+      return;
+    }
+
+    value.slice(0, 3).forEach((entry, index) => {
+      collectJsonContextLines(entry, `${path}[${index}]`, lines, depth + 1);
+    });
+
+    if (value.length > 3) {
+      lines.push(`- ${path}: (${value.length - 3} more items omitted)`);
+    }
+    return;
+  }
+
+  if (isJsonRecord(value)) {
+    const entries = Object.entries(value);
+    entries.slice(0, 15).forEach(([key, entryValue]) => {
+      const nextPath = path ? `${path}.${key}` : key;
+      collectJsonContextLines(entryValue, nextPath, lines, depth + 1);
+    });
+
+    if (entries.length > 15 && lines.length < 60) {
+      lines.push(`- ${path || 'root'}: (${entries.length - 15} more fields omitted)`);
+    }
+    return;
+  }
+
+  const normalized = normalizeJsonScalar(value);
+  if (!normalized) {
+    return;
+  }
+
+  lines.push(`- ${path}: ${normalized}`);
+}
+
+function buildAssetContextSection(
+  heading: string,
+  assetName: string,
+  assetContent: string,
+  jsonInstruction: string = 'Use the extracted fields below. Do not assume access to any external file.'
+): string[] {
+  const structuredHeading = heading.endsWith(':') ? heading.slice(0, -1) : heading;
+  const trimmed = assetContent.trim();
+  if (!trimmed) {
+    return [heading, '```', '', '```', ''];
+  }
+
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(trimmed) as JsonPromptValue;
+      const structuredLines: string[] = [];
+      collectJsonContextLines(parsed, '', structuredLines);
+
+      if (structuredLines.length > 0) {
+        return [
+          `${structuredHeading} (structured JSON context):`,
+          jsonInstruction,
+          ...structuredLines,
+          '',
+        ];
+      }
+    } catch {
+      // Fall back to raw text below when the asset only looks like JSON.
+    }
+  }
+
+  return [heading, '```', assetContent, '```', ''];
+}
+
+function buildPriorAssetContext(priorName: string, priorContent: string): string[] {
+  return buildAssetContextSection(`### ${priorName}:`, priorName, priorContent);
 }
 
 /**
@@ -192,7 +311,7 @@ export async function buildAssetPrompt(
   if (priorAssets && Object.keys(priorAssets).length > 0) {
     userLines.push('\n---\n## Prior Assets (for context):\n');
     for (const [priorName, priorContent] of Object.entries(priorAssets)) {
-      userLines.push(`### ${priorName}:\n\`\`\`\n${priorContent}\n\`\`\`\n`);
+      userLines.push(...buildPriorAssetContext(priorName, priorContent));
     }
   }
 
@@ -433,17 +552,9 @@ The user is working on an Eidolon Simulacra project using the blueprint system. 
 ${blueprint}
 \`\`\`
 
-## Current Asset: ${label}
+${buildAssetContextSection(`## Current Asset: ${label}`, assetName, currentContent, 'Use the extracted fields below as the active asset content. Do not assume access to any external file.').join('\n')}
 
-\`\`\`
-${currentContent}
-\`\`\`
-
-## Character Sheet (for context):
-
-\`\`\`
-${characterSheet}
-\`\`\`
+${buildAssetContextSection('## Character Sheet (for context)', 'character_sheet', characterSheet, 'Use the extracted character-sheet fields below to maintain consistency. Do not assume access to any external file.').join('\n')}
 
 ## Your Role:
 
@@ -451,7 +562,7 @@ ${characterSheet}
 - **Refine**: When requested, provide an edited version of the asset
 - **Maintain Consistency**: Ensure edits align with the character sheet and blueprint requirements
 - **Follow Blueprint**: Strictly adhere to the format, rules, and constraints specified in the blueprint above
-- **Format**: When providing an edited version, output it in a single code block (\`\`\`)
+- **Format**: When providing an edited version, return only the finished asset content with no surrounding code fences or commentary
 
 ## Key Guidelines:
 
@@ -465,7 +576,7 @@ ${characterSheet}
 - For intro_scene: second-person narrative, end with open loop
 - For a1111/suno: follow the modular prompt format exactly (including [Control] blocks)
 
-If the user asks for changes, provide the complete edited asset in a code block. Otherwise, discuss and advise.`;
+If the user asks for changes, provide the complete edited asset content only. Otherwise, discuss and advise.`;
 
   return prompt;
 }

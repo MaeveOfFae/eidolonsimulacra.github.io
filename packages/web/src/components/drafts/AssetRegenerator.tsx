@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import type { Draft, Template } from '@char-gen/shared';
 import { api } from '@/lib/api';
+import { unwrapSingleCodeFence } from '@/lib/content-format';
 import { GenerationService } from '@/lib/services/generation';
 import { resolveTemplateBlueprintContent } from '@/lib/templates/browser';
 import {
@@ -423,7 +424,7 @@ export default function AssetRegenerator({
 
       const candidate: AssetCandidate = {
         id: `asset_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-        content: fullContent,
+        content: unwrapSingleCodeFence(fullContent),
         timestamp: Date.now(),
       };
 
@@ -514,13 +515,15 @@ export default function AssetRegenerator({
 
     setAssetWriteError(null);
 
+    const sanitizedContent = unwrapSingleCodeFence(content);
+
     try {
       const expectedPreviousContent = draftHasAsset(draft, selectedAssetName)
         ? draft.assets[selectedAssetName]
         : null;
 
       await updateAsset.mutateAsync({
-        content,
+        content: sanitizedContent,
         expectedPreviousContent,
         overwrite: draftHasAsset(draft, selectedAssetName),
       });

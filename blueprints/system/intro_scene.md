@@ -27,7 +27,7 @@ Hard Rules:
 - Balance description, action, and dialogue—no monologue dumps.
 - End with an open loop that clearly invites a response from {{user}}.
 - Plaintext only.
-- Output ONLY the finished scene inside a single plaintext code block.
+- Output ONLY the finished scene content with no code fences or commentary.
 
 ----------
 

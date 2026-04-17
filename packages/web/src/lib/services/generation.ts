@@ -19,6 +19,7 @@ import {
   parseBlueprintOutput as parseGeneratedBlueprintOutput,
 } from '@char-gen/shared';
 import { createEngine } from '../llm/factory.js';
+import { unwrapSingleCodeFence } from '../content-format.js';
 import { configManager } from '../config/manager.js';
 import { queueAutoSync } from '../server/auto-sync.js';
 import { DraftStorage } from '../storage/draft-db.js';
@@ -110,10 +111,7 @@ export class GenerationService {
   }
 
   private static sanitizeGeneratedSeed(content: string): string {
-    return content
-      .replace(/^```[a-z]*\n?/i, '')
-      .replace(/```$/i, '')
-      .trim()
+    return unwrapSingleCodeFence(content)
       .replace(/^['"]|['"]$/g, '');
   }
 
@@ -303,7 +301,7 @@ export class GenerationService {
     yield {
       type: 'asset',
       asset: asset_name,
-      content: fullContent,
+      content: unwrapSingleCodeFence(fullContent),
       systemPrompt,
       userPrompt,
     };

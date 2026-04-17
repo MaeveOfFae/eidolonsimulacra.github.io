@@ -225,6 +225,28 @@ describe('AssetRegenerator', () => {
     });
   });
 
+  it('unwraps a single outer code fence before saving a generated asset', async () => {
+    vi.mocked(GenerationService.generateAsset).mockImplementation(async function* () {
+      yield { type: 'asset', content: '```text\nregenerated system prompt\n```' } as never;
+    });
+
+    createWrapper();
+
+    expect(await screen.findByText('Current Active Asset')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Generate One' }));
+    expect(await screen.findByText('regenerated system prompt')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Replace Asset' }));
+
+    await waitFor(() => {
+      expect(api.updateAsset).toHaveBeenCalledWith('review-1', 'system_prompt', 'regenerated system prompt', {
+        expectedPreviousContent: 'original system prompt',
+        overwrite: true,
+      });
+    });
+  });
+
   it('uses previewBlueprint when a blueprint override is applied', async () => {
     vi.mocked(GenerationService.previewBlueprint).mockImplementation(async function* () {
       yield { type: 'asset', content: 'override-generated system prompt' } as never;

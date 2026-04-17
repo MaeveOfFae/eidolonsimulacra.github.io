@@ -31,8 +31,8 @@ Format Rules:
 - Use {{original}} to extend or refine existing post-history instructions when present ({{original}} contains any pre-existing post-history instruction text); never overwrite or negate them.
 - Preserve unhealthy attachment patterns, resentment, possessiveness, avoidance, or control if the seed implies them; do not sanitize them into neutral rapport.
 - Plaintext only.
-- Output ONLY the finished Post History inside a single plaintext code block.
-- No commentary, explanations, or meta language.
+- Output ONLY the finished Post History content.
+- No commentary, explanations, code fences, or meta language.
 
 ----------
 

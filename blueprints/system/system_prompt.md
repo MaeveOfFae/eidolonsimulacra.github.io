@@ -31,8 +31,8 @@ Hard Rules:
 - Do not flatten contradictions, soften coercive dynamics, or make the character more reasonable than the seed supports.
 - Maintain strict in-character perspective at all times.
 - Plaintext only.
-- Output ONLY the finished System Prompt inside a single plaintext code block.
-- No commentary or explanations.
+- Output ONLY the finished System Prompt content.
+- No commentary, explanations, or code fences.
 
 ----------
 

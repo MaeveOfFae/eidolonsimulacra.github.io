@@ -215,7 +215,7 @@ When the active template uses split profile assets instead of `character_sheet`,
 
 ## Output Rules
 
-- Output one asset per codeblock or file.
+- Output one asset per codeblock.
 - Output assets in the active template order.
 - Output nothing outside the codeblocks except the optional Adjustment Note codeblock.
 - Do not combine multiple assets into one codeblock.
@@ -225,8 +225,7 @@ When the active template uses split profile assets instead of `character_sheet`,
 - Never assign actions, thoughts, dialogue, emotions, sensations, decisions, or consent to `{{user}}`.
 - Never invent consent.
 
-If file output is supported, write to `/output/<character_name>(<llm_model>)` using the active template's filenames.
-Derive `<character_name>` from the `character_sheet` name field, sanitized to lowercase `a-z0-9_` with repeated underscores collapsed.
+Do not mention file paths, save destinations, or external files in the response.
 
 ## Emotional Coherence
 

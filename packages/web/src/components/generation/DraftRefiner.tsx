@@ -19,6 +19,7 @@ import {
   loadActiveDraftRefinerSession,
   saveActiveDraftRefinerSession,
 } from '@/lib/services/generation-session';
+import { unwrapSingleCodeFence } from '@/lib/content-format';
 import type { Draft, Template } from '@char-gen/shared';
 
 interface DraftRefinerProps {
@@ -243,6 +244,8 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
   const saveEditedContent = useCallback(async () => {
     if (!editingAsset || !editContent.trim()) return;
 
+    const sanitizedContent = unwrapSingleCodeFence(editContent);
+
     setRefinerError(null);
 
     setAssetStates((prev) => ({
@@ -257,7 +260,7 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
       const currentState = assetStates[editingAsset];
       await updateAsset.mutateAsync({
         assetName: editingAsset,
-        content: editContent,
+        content: sanitizedContent,
         expectedPreviousContent: currentState?.storedContent ?? null,
         overwrite: (currentState?.storedContent ?? null) !== null,
       });
@@ -266,9 +269,9 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
         [editingAsset]: {
           ...prev[editingAsset],
           status: 'idle',
-          content: editContent,
-          originalContent: editContent,
-          storedContent: editContent,
+          content: sanitizedContent,
+          originalContent: sanitizedContent,
+          storedContent: sanitizedContent,
         },
       }));
       setEditingAsset(null);
@@ -331,7 +334,7 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
             },
           }));
         } else if (progress.type === 'asset' && progress.content) {
-          newContent = progress.content;
+          newContent = unwrapSingleCodeFence(progress.content);
           setAssetStates((prev) => ({
             ...prev,
             [assetName]: {
@@ -364,6 +367,8 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
     const state = assetStates[assetName];
     if (!state || state.status !== 'reviewing') return;
 
+    const sanitizedContent = unwrapSingleCodeFence(state.content);
+
     setRefinerError(null);
 
     setAssetStates((prev) => ({
@@ -377,7 +382,7 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
     try {
       await updateAsset.mutateAsync({
         assetName,
-        content: state.content,
+        content: sanitizedContent,
         expectedPreviousContent: state.storedContent,
         overwrite: state.storedContent !== null,
       });
@@ -386,8 +391,9 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
         [assetName]: {
           ...prev[assetName],
           status: 'idle',
-          originalContent: state.content,
-          storedContent: state.content,
+          content: sanitizedContent,
+          originalContent: sanitizedContent,
+          storedContent: sanitizedContent,
         },
       }));
     } catch {

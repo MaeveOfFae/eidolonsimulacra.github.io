@@ -65,8 +65,8 @@ Hard Rules:
 - Show traits through behavior and consequence, not labels.
 - Respect the orchestrator content mode when present (SFW/NSFW/Platform-Safe).
 - Plaintext only.
-- Output ONLY the finished template inside a single plaintext code block.
-- No commentary, explanations, or meta language outside the block.
+- Output ONLY the finished template content.
+- No commentary, explanations, code fences, or meta language.
 
 Moreau support (apply only when the seed implies it):
 

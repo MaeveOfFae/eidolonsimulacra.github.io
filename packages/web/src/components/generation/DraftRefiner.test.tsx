@@ -119,4 +119,45 @@ describe('DraftRefiner', () => {
       });
     });
   });
+
+  it('unwraps a single outer code fence before saving regenerated content', async () => {
+    vi.mocked(api.updateAsset).mockResolvedValue({
+      status: 'updated',
+      draft_id: 'review-1',
+      asset_name: 'system_prompt',
+    } as never);
+    vi.mocked(GenerationService.generateAsset).mockImplementation(async function* () {
+      yield { type: 'asset', content: '```text\nregenerated system prompt\n```' } as never;
+    });
+
+    window.localStorage.setItem('eidolon.active-draft-refiner-session', JSON.stringify({
+      version: 1,
+      selectedDraftId: 'review-1',
+      assetStates: {},
+      expandedAssets: [],
+      editingAsset: null,
+      editContent: '',
+      interrupted: false,
+      updatedAt: Date.now(),
+    }));
+
+    renderRefiner();
+
+    await waitFor(() => {
+      expect(api.getDraft).toHaveBeenCalledWith('review-1');
+    });
+
+    fireEvent.click(await screen.findByRole('button', { name: /system prompt/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Regenerate' }));
+    expect(await screen.findByDisplayValue('regenerated system prompt')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Accept' }));
+
+    await waitFor(() => {
+      expect(api.updateAsset).toHaveBeenCalledWith('review-1', 'system_prompt', 'regenerated system prompt', {
+        expectedPreviousContent: 'existing system prompt',
+        overwrite: true,
+      });
+    });
+  });
 });

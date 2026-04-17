@@ -97,6 +97,11 @@ export function lintBlueprintContent(content: string, context?: BlueprintLintCon
     issues.push({ severity: 'warning', message: 'No fenced example or output block detected.', line: getLineNumber(normalizedContent, bodyStartIndex) });
   }
 
+  const fenceMarkers = normalizedContent.match(/^```.*$/gm) ?? [];
+  if (fenceMarkers.length % 2 !== 0) {
+    issues.push({ severity: 'warning', message: 'Unbalanced fenced code block detected.', line: getLineNumber(normalizedContent, normalizedContent.lastIndexOf('```')) });
+  }
+
   if (normalizedContent.length < getShortContentThreshold(context)) {
     issues.push({ severity: 'warning', message: 'Blueprint content is unusually short.', line: 1 });
   }
