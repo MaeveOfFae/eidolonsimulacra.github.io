@@ -553,6 +553,26 @@ export interface ModelsResponse {
 }
 
 // ============================================================================
+// Character Import Types
+// ============================================================================
+
+export type ImportedCharacterFormat =
+  | 'tavernai_v1'
+  | 'tavernai_v2'
+  | 'chubai'
+  | 'png_card'
+  | 'plain_text'
+  | 'unknown';
+
+export interface ImportedCharacter {
+  name: string;
+  assets: Record<string, string>;
+  sourceFormat: ImportedCharacterFormat;
+  sourcePreset?: string;
+  unmappedFields?: Record<string, string>;
+}
+
+// ============================================================================
 // Chat/Refinement Types
 // ============================================================================
 

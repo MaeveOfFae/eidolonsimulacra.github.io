@@ -228,7 +228,7 @@ export default function Drafts() {
     );
   }
 
-  const hasDrafts = data?.drafts.length > 0;
+  const hasDrafts = (data?.drafts?.length ?? 0) > 0;
   const draftCount = data?.stats?.total_drafts ?? data?.drafts.length ?? 0;
   const archivedDraftCount = archivedDraftData?.drafts.length ?? data?.stats?.archived_drafts ?? 0;
   const favoritesCount = data?.stats?.favorites ?? 0;
@@ -249,7 +249,7 @@ export default function Drafts() {
 
     try {
       const text = await file.text();
-      const result = await DraftStorage.import(text);
+      const result = await DraftStorage.import(text, { sourceName: file.name });
       await refreshDraftQueries();
       const remapMessage = result.remapped > 0
         ? ` (${result.remapped} review IDs remapped to avoid overwriting existing drafts)`
@@ -345,6 +345,7 @@ export default function Drafts() {
                 ref={importInputRef}
                 type="file"
                 accept="application/json,.json,text/markdown,.md,text/plain,.txt"
+                title="Upload draft files"
                 onChange={handleImportDrafts}
                 className="hidden"
               />

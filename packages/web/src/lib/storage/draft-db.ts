@@ -7,7 +7,9 @@ import Dexie, { Table } from 'dexie';
 import type {
   Draft,
   DraftMetadata,
+  ImportedCharacter,
 } from '@char-gen/shared';
+import { detectAndParseCharacter, OFFICIAL_TEMPLATE } from '@char-gen/shared';
 import { inferCharacterDisplayNameForTemplate } from '../templates/browser.js';
 
 /**
@@ -193,6 +195,14 @@ function parseJsonDraftPayload(data: unknown): Draft[] {
   return single ? [single] : [];
 }
 
+function isExplicitEmptyDraftPayload(data: unknown): boolean {
+  if (Array.isArray(data)) {
+    return data.length === 0;
+  }
+
+  return isRecord(data) && Array.isArray(data.drafts) && data.drafts.length === 0;
+}
+
 function isRecognizedDraftJsonPayload(data: unknown): boolean {
   if (Array.isArray(data)) {
     return true;
@@ -268,6 +278,39 @@ function parseMarkdownDraftPayload(markdown: string): Draft[] {
     metadata,
     assets,
   }];
+}
+
+function buildImportedDraftFromCharacter(character: ImportedCharacter, sourceName?: string): Draft {
+  const reviewId = createImportedReviewId();
+  const characterName = character.name.trim() || sourceName?.replace(/\.[^.]+$/, '') || 'Imported draft';
+  const seed = sourceName ? `Imported from ${sourceName}` : `Imported draft: ${characterName}`;
+  const sourceLabel = character.sourcePreset || character.sourceFormat;
+  const unmappedCount = Object.keys(character.unmappedFields || {}).length;
+  const notes = unmappedCount > 0
+    ? `Imported from ${sourceLabel}. Preserved ${unmappedCount} unmapped field${unmappedCount === 1 ? '' : 's'} in the upload preview.`
+    : `Imported from ${sourceLabel}.`;
+
+  return {
+    path: reviewId,
+    metadata: {
+      review_id: reviewId,
+      seed,
+      favorite: false,
+      character_name: characterName,
+      template_name: OFFICIAL_TEMPLATE.name,
+      notes,
+    },
+    assets: character.assets,
+  };
+}
+
+function parseLooseDraftPayload(raw: string, sourceName?: string): Draft[] {
+  const character = detectAndParseCharacter(raw, sourceName);
+  if (Object.keys(character.assets).length === 0) {
+    return [];
+  }
+
+  return [buildImportedDraftFromCharacter(character, sourceName)];
 }
 
 /**
@@ -723,10 +766,11 @@ export class DraftStorage {
    */
   static async import(
     raw: string,
-    options: { conflictStrategy?: 'remap' | 'merge' } = {}
+    options: { conflictStrategy?: 'remap' | 'merge'; sourceName?: string } = {}
   ): Promise<{ imported: number; remapped: number }> {
     await this.ensureReady();
     const conflictStrategy = options.conflictStrategy ?? 'remap';
+    const sourceName = options.sourceName;
 
     const trimmed = raw.trim();
     if (!trimmed) {
@@ -735,20 +779,29 @@ export class DraftStorage {
 
     let drafts: Draft[] = [];
     let recognizedJsonPayload = false;
+    let parsedJson: unknown = undefined;
 
     try {
-      const jsonData = JSON.parse(trimmed);
-      recognizedJsonPayload = isRecognizedDraftJsonPayload(jsonData);
-      drafts = parseJsonDraftPayload(jsonData);
+      parsedJson = JSON.parse(trimmed);
+      recognizedJsonPayload = isRecognizedDraftJsonPayload(parsedJson);
+      drafts = parseJsonDraftPayload(parsedJson);
     } catch {
       drafts = parseMarkdownDraftPayload(raw);
+    }
+
+    if (drafts.length === 0) {
+      if (parsedJson !== undefined && isExplicitEmptyDraftPayload(parsedJson)) {
+        return { imported: 0, remapped: 0 };
+      }
+
+      drafts = parseLooseDraftPayload(raw, sourceName);
     }
 
     if (drafts.length === 0) {
       if (recognizedJsonPayload) {
         return { imported: 0, remapped: 0 };
       }
-      throw new Error('Invalid draft import format. Supported: exported drafts JSON and combined markdown draft files.');
+      throw new Error('Invalid draft import format. Supported: exported drafts JSON, combined markdown draft files, or raw text/JSON uploads.');
     }
 
     const existingMetadata = await this.getAllMetadata({ includeArchived: true });

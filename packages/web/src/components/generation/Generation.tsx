@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Sparkles, Zap, BookOpen, XCircle, Loader2, Edit3, FileText } from 'lucide-react';
-import type { ContentMode, FeatureCategory, GenerationComplete, Template } from '@char-gen/shared';
+import { Sparkles, Zap, BookOpen, XCircle, Loader2, Edit3, FileText, Upload } from 'lucide-react';
+import type { ContentMode, FeatureCategory, GenerationComplete, ImportedCharacter, Template } from '@char-gen/shared';
 import { api } from '@/lib/api';
 import type { Blueprint } from '@char-gen/shared';
 import {
@@ -16,6 +16,7 @@ import AssetRegenerator from '../drafts/AssetRegenerator';
 import { BlueprintPanel } from '../common/BlueprintPanel';
 import { getBlueprintsForFeature, resolveBlueprintForFeature, toBlueprintOptions } from '@/lib/blueprints/featureSelection';
 import { configManager } from '@/lib/config/manager';
+import ImportCharacterModal from '../common/ImportCharacterModal';
 
 type TabId = 'generate' | 'refine' | 'assets';
 
@@ -63,6 +64,7 @@ export default function Generation() {
   );
   const [blueprintOverrides, setBlueprintOverrides] = useState<Partial<Record<FeatureCategory, string>>>({});
   const [availableBlueprints, setAvailableBlueprints] = useState<Array<{ name: string; label: string }>>([]);
+  const [showImportModal, setShowImportModal] = useState(false);
 
   const activeFeatureCategory = useMemo<FeatureCategory | null>(() => {
     if (activeTab === 'generate') {
@@ -261,6 +263,24 @@ export default function Generation() {
     }));
   };
 
+  const handleImportCharacter = useCallback((character: ImportedCharacter) => {
+    // Build a seed from the imported character's name and available asset content
+    const assetSummary = Object.entries(character.assets)
+      .map(([key, value]) => `${key}: ${value.slice(0, 200)}`)
+      .join('\n');
+
+    const importedSeed = [
+      `[Imported character for rehash]`,
+      `Name: ${character.name}`,
+      `Source: ${character.sourcePreset || character.sourceFormat}`,
+      '',
+      assetSummary,
+    ].join('\n');
+
+    setSeed(importedSeed);
+    setShowImportModal(false);
+  }, []);
+
   const blueprintPanelTitle = 'Orchestration Blueprint';
 
   return (
@@ -284,6 +304,13 @@ export default function Generation() {
                 <Zap className="h-4 w-4" />
                 Open seed generator
               </Link>
+              <button
+                onClick={() => setShowImportModal(true)}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-primary/40 bg-primary/10 px-4 py-2.5 text-sm font-medium text-primary transition-colors hover:border-primary/60 hover:bg-primary/20 sm:justify-start"
+              >
+                <Upload className="h-4 w-4" />
+                Import character
+              </button>
             </div>
           </div>
 
@@ -465,6 +492,7 @@ export default function Generation() {
                   value={template}
                   onChange={(e) => setTemplate(e.target.value)}
                   disabled={templatesLoading || templates.length === 0 || isGenerating}
+                  aria-label="Template"
                   className="w-full rounded-xl border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 disabled:cursor-not-allowed sm:py-3"
                 >
                   {templates.length === 0 ? (
@@ -513,6 +541,14 @@ export default function Generation() {
         />
       )}
       </>
+      )}
+
+      {/* Import Character Modal */}
+      {showImportModal && (
+        <ImportCharacterModal
+          onClose={() => setShowImportModal(false)}
+          onImport={handleImportCharacter}
+        />
       )}
     </div>
   );

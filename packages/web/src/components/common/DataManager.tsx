@@ -104,7 +104,7 @@ export default function DataManager() {
 
     try {
       const text = await file.text();
-      const result = await DraftStorage.import(text);
+      const result = await DraftStorage.import(text, { sourceName: file.name });
       queueAutoSync('drafts');
       await loadStats();
 
@@ -419,6 +419,7 @@ export default function DataManager() {
               accept="application/json,.json,text/markdown,.md,text/plain,.txt"
               onChange={handleImportDrafts}
               className="hidden"
+              aria-label="Import drafts file"
             />
           </div>
 
@@ -445,6 +446,7 @@ export default function DataManager() {
               accept="application/json"
               onChange={handleImportConfig}
               className="hidden"
+              aria-label="Import configuration file"
             />
           </div>
         </div>

@@ -52,6 +52,23 @@ export {
 } from './export/presets';
 
 // ============================================================================
+// Character Import
+// ============================================================================
+
+export {
+  detectAndParseCharacter,
+  detectJsonFormat,
+  extractPngCharaChunk,
+  parseTavernAICard,
+  parseChubAICard,
+  parseGenericCharacter,
+  parsePlainTextContent,
+  buildReverseMapping,
+  formatSourceLabel,
+  isPngFilename,
+} from './import/character-parser';
+
+// ============================================================================
 // Templates
 // ============================================================================
 
