@@ -10,14 +10,16 @@ interface ContextualHelpPanelProps {
 }
 
 export default function ContextualHelpPanel({ entry, topics, isOpen, onClose }: ContextualHelpPanelProps) {
+  if (!isOpen) {
+    return null;
+  }
+
   return (
     <>
-      {isOpen && <div className="fixed inset-0 z-30 bg-black/40 backdrop-blur-sm" onClick={onClose} />}
+      <div className="fixed inset-0 z-30 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       <aside
-        className={`fixed right-0 top-0 z-40 flex h-dvh w-full max-w-xl flex-col border-l border-border bg-card/95 shadow-2xl backdrop-blur-md transition-transform duration-300 ease-out ${
-          isOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}
-        aria-hidden={!isOpen}
+        aria-label="Contextual help"
+        className="fixed right-0 top-0 z-40 flex h-dvh w-full max-w-xl flex-col border-l border-border bg-card/95 shadow-2xl backdrop-blur-md transition-transform duration-300 ease-out translate-x-0"
       >
         <div className="flex items-start justify-between gap-4 border-b border-border/60 p-5">
           <div>
@@ -28,6 +30,7 @@ export default function ContextualHelpPanel({ entry, topics, isOpen, onClose }: 
           <button
             type="button"
             onClick={onClose}
+            title="Close help panel"
             className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
             <X className="h-5 w-5" />

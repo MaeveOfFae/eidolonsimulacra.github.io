@@ -58,6 +58,15 @@ interface TraySection {
   items: TrayItem[];
 }
 
+type KofiWidgetOverlay = {
+  draw: (username: string, options: Record<string, string>) => void;
+};
+
+type KofiWindow = Window & typeof globalThis & {
+  kofiWidgetOverlay?: KofiWidgetOverlay;
+  __eidolonKofiOverlayInitialized?: boolean;
+};
+
 const navItems = [
   { path: '/', label: 'Home', icon: Home },
   { path: '/generate', label: 'Generate', icon: Sparkles },
@@ -67,6 +76,25 @@ const navItems = [
   { path: '/themes', label: 'Themes', icon: Palette },
   { path: '/settings', label: 'Settings', icon: Settings },
 ];
+
+const KOFI_SCRIPT_ID = 'kofi-overlay-widget-script';
+const KOFI_SCRIPT_SRC = 'https://storage.ko-fi.com/cdn/scripts/overlay-widget.js';
+
+function initializeKofiOverlay() {
+  const kofiWindow = window as KofiWindow;
+  if (kofiWindow.__eidolonKofiOverlayInitialized || !kofiWindow.kofiWidgetOverlay) {
+    return;
+  }
+
+  kofiWindow.kofiWidgetOverlay.draw('maeveoffae', {
+    type: 'floating-chat',
+    'floating-chat.donateButton.text': 'Support me',
+    'floating-chat.donateButton.background-color': '#ff38b8',
+    'floating-chat.donateButton.text-color': '#fff',
+  });
+
+  kofiWindow.__eidolonKofiOverlayInitialized = true;
+}
 
 function isNavItemActive(currentPath: string, itemPath: string): boolean {
   if (itemPath === '/') {
@@ -264,6 +292,34 @@ export default function Layout({ children }: LayoutProps) {
       window.removeEventListener(DRAFTS_SYNCED_EVENT, handleDraftsSynced);
     };
   }, [queryClient]);
+
+  useEffect(() => {
+    const existingScript = document.getElementById(KOFI_SCRIPT_ID) as HTMLScriptElement | null;
+
+    if ((window as KofiWindow).kofiWidgetOverlay) {
+      initializeKofiOverlay();
+      return;
+    }
+
+    const script = existingScript ?? document.createElement('script');
+    script.id = KOFI_SCRIPT_ID;
+    script.src = KOFI_SCRIPT_SRC;
+    script.async = true;
+
+    const handleLoad = () => {
+      initializeKofiOverlay();
+    };
+
+    script.addEventListener('load', handleLoad);
+
+    if (!existingScript) {
+      document.head.appendChild(script);
+    }
+
+    return () => {
+      script.removeEventListener('load', handleLoad);
+    };
+  }, []);
 
   const traySections = useMemo<TraySection[]>(() => {
     if (location.pathname.startsWith('/drafts')) {
@@ -530,6 +586,8 @@ export default function Layout({ children }: LayoutProps) {
                 </div>
               </Link>
               <button
+                type="button"
+                aria-label="Close sidebar"
                 className="lg:hidden p-2 rounded-lg hover:bg-accent transition-colors"
                 onClick={() => setSidebarOpen(false)}
               >
@@ -645,7 +703,12 @@ export default function Layout({ children }: LayoutProps) {
         <main className="min-w-0 flex-1 overflow-auto">
           {/* Mobile header */}
           <header className="app-frame-panel sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border/50 px-4 lg:hidden">
-            <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-lg hover:bg-accent transition-colors">
+            <button
+              type="button"
+              aria-label="Open menu"
+              onClick={() => setSidebarOpen(true)}
+              className="p-2 rounded-lg hover:bg-accent transition-colors"
+            >
               <Menu className="h-6 w-6" />
             </button>
             <span className="min-w-0 truncate text-base font-semibold tracking-tight text-foreground sm:text-lg" style={{ fontFamily: '"Space Grotesk", sans-serif' }}>Eidolon Simulacra</span>
@@ -682,12 +745,10 @@ export default function Layout({ children }: LayoutProps) {
           <DynamicIcon className="h-4 w-4" />
           <span className="hidden sm:inline">Workspace</span>
         </button>
+        {trayOpen && (
         <aside
-          className={cn(
-            'fixed right-0 top-0 z-40 flex h-dvh w-full max-w-md flex-col border-l border-border/60 bg-card/95 shadow-2xl backdrop-blur-md transition-transform duration-300 ease-out',
-            trayOpen ? 'translate-x-0' : 'translate-x-full'
-          )}
-          aria-hidden={!trayOpen}
+          aria-label="Utility panel"
+          className="fixed right-0 top-0 z-40 flex h-dvh w-full max-w-md flex-col border-l border-border/60 bg-card/95 shadow-2xl backdrop-blur-md transition-transform duration-300 ease-out"
         >
           <div className="sticky top-0 z-10 border-b border-border/60 bg-card/90 backdrop-blur">
             <div className="flex items-center justify-between border-b border-border/40 px-4 py-3">
@@ -697,6 +758,7 @@ export default function Layout({ children }: LayoutProps) {
               </div>
               <button
                 type="button"
+                aria-label="Close panel"
                 onClick={() => setTrayOpen(false)}
                 className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
               >
@@ -852,6 +914,7 @@ export default function Layout({ children }: LayoutProps) {
             )}
           </div>
         </aside>
+        )}
         <GuidedTourOverlay />
       </div>
       </GuidedTourProvider>
