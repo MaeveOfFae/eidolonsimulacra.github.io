@@ -90,6 +90,8 @@ model Draft {
   favorite       Boolean  @default(false)
   tags           String[]
   offspringType  String?
+  customInstructions String?
+  componentSendOrder String[] @default([])
   assets         Json     @default("{}") // Record<string, string>
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt

@@ -9,6 +9,7 @@ vi.mock('@/lib/api', () => ({
     getDrafts: vi.fn(),
     getDraft: vi.fn(),
     updateAsset: vi.fn(),
+    updateMetadata: vi.fn(),
   },
 }));
 
@@ -35,9 +36,12 @@ const draftResponse = {
     mode: 'SFW',
     template_name: 'V2/V3 Card',
     character_name: 'Test Character',
+    custom_instructions: 'Preserve the draft voice.',
+    component_send_order: ['post_history', 'system_prompt'],
   },
   assets: {
     system_prompt: 'existing system prompt',
+    post_history: 'existing post history',
   },
 };
 
@@ -55,6 +59,21 @@ function renderRefiner() {
       <DraftRefiner templates={templates as never} />
     </QueryClientProvider>
   );
+}
+
+async function findAssetHeaderButton(assetLabel: RegExp): Promise<HTMLButtonElement> {
+  await screen.findAllByText(assetLabel);
+
+  const headerButton = Array.from(document.querySelectorAll('button')).find((button) => {
+    return button.className.includes('w-full flex items-center justify-between p-4 text-left')
+      && assetLabel.test(button.textContent ?? '');
+  });
+
+  if (!headerButton) {
+    throw new Error(`Unable to find asset header button for ${assetLabel.toString()}`);
+  }
+
+  return headerButton as HTMLButtonElement;
 }
 
 describe('DraftRefiner', () => {
@@ -76,10 +95,20 @@ describe('DraftRefiner', () => {
       draft_id: 'review-1',
       asset_name: 'post_history',
     } as never);
+    vi.mocked(api.updateMetadata).mockResolvedValue({
+      status: 'updated',
+      draft_id: 'review-1',
+    } as never);
     vi.mocked(GenerationService.generateAsset).mockReset();
   });
 
   it('shows missing template assets and creates them from AI generation', async () => {
+    vi.mocked(api.getDraft).mockResolvedValue({
+      ...draftResponse,
+      assets: {
+        system_prompt: 'existing system prompt',
+      },
+    } as never);
     vi.mocked(GenerationService.generateAsset).mockImplementation(async function* () {
       yield { type: 'asset', content: 'generated post history' } as never;
     });
@@ -103,7 +132,7 @@ describe('DraftRefiner', () => {
 
     expect(await screen.findByText('This draft is missing 1 template asset. Create them here with AI or by editing the empty fields directly.')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: /post history/i }));
+    fireEvent.click(await findAssetHeaderButton(/post history/i));
 
     expect(await screen.findByText('Relationship context')).toBeInTheDocument();
 
@@ -147,7 +176,7 @@ describe('DraftRefiner', () => {
       expect(api.getDraft).toHaveBeenCalledWith('review-1');
     });
 
-    fireEvent.click(await screen.findByRole('button', { name: /system prompt/i }));
+    fireEvent.click(await findAssetHeaderButton(/system prompt/i));
     fireEvent.click(screen.getByRole('button', { name: 'Regenerate' }));
     expect(await screen.findByDisplayValue('regenerated system prompt')).toBeInTheDocument();
 
@@ -158,6 +187,49 @@ describe('DraftRefiner', () => {
         expectedPreviousContent: 'existing system prompt',
         overwrite: true,
       });
+    });
+  });
+
+  it('uses transient send-only instructions and custom send order during regeneration', async () => {
+    vi.mocked(GenerationService.generateAsset).mockImplementation(async function* () {
+      yield { type: 'asset', content: 'regenerated system prompt' } as never;
+    });
+
+    window.localStorage.setItem('eidolon.active-draft-refiner-session', JSON.stringify({
+      version: 1,
+      selectedDraftId: 'review-1',
+      transientInstructions: '',
+      assetStates: {},
+      expandedAssets: [],
+      editingAsset: null,
+      editContent: '',
+      interrupted: false,
+      updatedAt: Date.now(),
+    }));
+
+    renderRefiner();
+
+    await waitFor(() => {
+      expect(api.getDraft).toHaveBeenCalledWith('review-1');
+    });
+
+    fireEvent.change(await screen.findByLabelText('Transient send-only instructions'), {
+      target: { value: 'Sharpen the system prompt.' },
+    });
+    fireEvent.click(await findAssetHeaderButton(/system prompt/i));
+    fireEvent.click(screen.getByRole('button', { name: 'Regenerate' }));
+
+    await waitFor(() => {
+      expect(GenerationService.generateAsset).toHaveBeenCalledWith(expect.objectContaining({
+        asset_name: 'system_prompt',
+        prior_assets: {
+          post_history: 'existing post history',
+        },
+        additional_instructions: [
+          'Preserve the draft voice.',
+          'Sharpen the system prompt.',
+        ],
+      }));
     });
   });
 });

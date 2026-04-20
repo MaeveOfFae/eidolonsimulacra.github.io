@@ -213,6 +213,8 @@ export interface DraftMetadata {
   template_name?: string;
   parent_drafts?: string[];
   offspring_type?: string;
+  custom_instructions?: string;
+  component_send_order?: string[];
 }
 
 export interface Draft {
@@ -361,6 +363,7 @@ export interface GenerateAssetRequest {
   mode: ContentMode;
   asset_name: string;
   prior_assets: Record<string, string>;
+  additional_instructions?: string[];
 }
 
 export interface GenerateAssetResponse {

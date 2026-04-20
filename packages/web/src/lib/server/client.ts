@@ -82,6 +82,19 @@ function optionalString(value: unknown): string | undefined {
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
+function optionalStringArray(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+
+  const normalized = value
+    .filter((entry): entry is string => typeof entry === 'string')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+
+  return normalized.length > 0 ? normalized : undefined;
+}
+
 function normalizeDraftForSync(draft: Draft) {
   const normalizedAssets = Object.fromEntries(
     Object.entries(draft.assets).filter((entry): entry is [string, string] => {
@@ -105,6 +118,8 @@ function normalizeDraftForSync(draft: Draft) {
       ? draft.metadata.tags.filter((tag): tag is string => typeof tag === 'string' && tag.trim().length > 0)
       : [],
     offspringType: optionalString(draft.metadata.offspring_type),
+    customInstructions: optionalString(draft.metadata.custom_instructions),
+    componentSendOrder: optionalStringArray(draft.metadata.component_send_order),
     parentDraftIds: Array.isArray(draft.metadata.parent_drafts)
       ? draft.metadata.parent_drafts.filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
       : undefined,

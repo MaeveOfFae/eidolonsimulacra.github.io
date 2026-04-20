@@ -2,13 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Star, Download, Archive, RotateCcw, Edit3, Check, X, ShieldCheck, ChevronDown, Copy } from 'lucide-react';
-import type { Template } from '@char-gen/shared';
+import type { DraftMetadata, Template } from '@char-gen/shared';
 import { api } from '@/lib/api';
 import { getGuidedTour, REVIEW_EXPORT_TOUR_ID } from '@/lib/help';
 import ExportModal from '../common/ExportModal';
 import ChatPanel from '../common/ChatPanel';
 import { useGuidedTour } from '../common/GuidedTourContext';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
+import DraftSendConfigPanel from './DraftSendConfigPanel';
 import ReviewChecklistPanel from './ReviewChecklistPanel';
 import VersionHistoryPanel from './VersionHistoryPanel';
 
@@ -34,6 +35,10 @@ export default function Review() {
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
   const { activeStepIndex, activeTourId } = useGuidedTour();
   const queryClient = useQueryClient();
+  const invalidateDraftQueries = () => {
+    queryClient.invalidateQueries({ queryKey: ['draft', id] });
+    queryClient.invalidateQueries({ queryKey: ['drafts'] });
+  };
 
   const reviewId = decodeURIComponent(id || '');
 
@@ -95,8 +100,7 @@ export default function Review() {
       favorite: !draft?.metadata.favorite,
     }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['draft', id] });
-      queryClient.invalidateQueries({ queryKey: ['drafts'] });
+      invalidateDraftQueries();
     },
   });
 
@@ -115,9 +119,15 @@ export default function Review() {
   const updateMetadata = useMutation({
     mutationFn: (metadata: { character_name?: string }) => api.updateMetadata(reviewId, metadata),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['draft', id] });
-      queryClient.invalidateQueries({ queryKey: ['drafts'] });
+      invalidateDraftQueries();
       setIsEditingName(false);
+    },
+  });
+
+  const saveDraftSendConfig = useMutation({
+    mutationFn: (metadata: Partial<DraftMetadata>) => api.updateMetadata(reviewId, metadata),
+    onSuccess: () => {
+      invalidateDraftQueries();
     },
   });
 
@@ -459,6 +469,16 @@ export default function Review() {
           Archived {new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(draft.metadata.archived_at))}
         </div>
       )}
+
+      <DraftSendConfigPanel
+        draft={draft}
+        template={template}
+        onSave={async (updates) => {
+          await saveDraftSendConfig.mutateAsync(updates);
+        }}
+        isSaving={saveDraftSendConfig.isPending}
+        description="Set persistent instructions and outbound component order for later refinement or regeneration of this saved draft."
+      />
 
       {assetActionError && (
         <div className="app-note border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">

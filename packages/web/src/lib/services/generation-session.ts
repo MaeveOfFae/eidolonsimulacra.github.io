@@ -109,6 +109,7 @@ export interface ActiveDraftRefinerAssetState {
 export interface ActiveDraftRefinerSession {
   version: 1;
   selectedDraftId: string;
+  transientInstructions?: string;
   assetStates: Record<string, ActiveDraftRefinerAssetState>;
   expandedAssets: string[];
   editingAsset: string | null;
@@ -212,6 +213,7 @@ function isValidDraftRefinerSession(value: unknown): value is ActiveDraftRefiner
   const assetStates = session.assetStates;
   return session.version === 1
     && typeof session.selectedDraftId === 'string'
+    && (typeof session.transientInstructions === 'string' || typeof session.transientInstructions === 'undefined')
     && !!assetStates
     && typeof assetStates === 'object'
     && Object.values(assetStates).every(

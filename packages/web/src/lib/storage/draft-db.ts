@@ -96,6 +96,19 @@ function coerceContentMode(value: unknown): DraftMetadata['mode'] | undefined {
   return value;
 }
 
+function coerceStringArray(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+
+  const normalized = value
+    .filter((entry): entry is string => typeof entry === 'string')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+
+  return normalized.length > 0 ? normalized : undefined;
+}
+
 function getUniqueReviewId(usedIds: Set<string>): string {
   let candidate = createImportedReviewId();
   while (usedIds.has(candidate)) {
@@ -134,6 +147,13 @@ function coerceDraftMetadata(raw: unknown, fallbackSeed: string): DraftMetadata 
   if (Array.isArray(source.tags)) metadata.tags = source.tags.filter((tag): tag is string => typeof tag === 'string');
   if (typeof source.genre === 'string') metadata.genre = source.genre;
   if (typeof source.notes === 'string') metadata.notes = source.notes;
+  if (typeof source.custom_instructions === 'string') metadata.custom_instructions = source.custom_instructions;
+  else if (typeof source.customInstructions === 'string') metadata.custom_instructions = source.customInstructions;
+  const componentSendOrder = coerceStringArray(source.component_send_order)
+    ?? coerceStringArray(source.componentSendOrder);
+  if (componentSendOrder) {
+    metadata.component_send_order = componentSendOrder;
+  }
   if (typeof source.character_name === 'string') metadata.character_name = source.character_name;
   else if (typeof source.characterName === 'string') metadata.character_name = source.characterName;
   if (typeof source.template_name === 'string') metadata.template_name = source.template_name;

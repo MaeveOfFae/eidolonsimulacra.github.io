@@ -5,7 +5,11 @@ vi.mock('./services/generation.js', () => ({
 }));
 
 vi.mock('./storage/draft-db.js', () => ({
-  DraftStorage: {},
+  DraftStorage: {
+    getAllMetadata: vi.fn(),
+    getDraft: vi.fn(),
+    saveDraft: vi.fn(),
+  },
 }));
 
 vi.mock('./server/auto-sync.js', () => ({
@@ -18,6 +22,7 @@ vi.mock('./server/client.js', () => ({
     hasAccessToken: vi.fn(),
     syncTemplates: vi.fn(),
     syncBlueprints: vi.fn(),
+    syncDrafts: vi.fn(),
     pullConfig: vi.fn(),
     pullApiKeys: vi.fn(),
   },
@@ -26,6 +31,7 @@ vi.mock('./server/client.js', () => ({
 import { api } from './api';
 import { configManager } from './config/manager';
 import { serverClient } from './server/client.js';
+import { DraftStorage } from './storage/draft-db.js';
 
 describe('sync-backed browser persistence', () => {
   beforeEach(() => {
@@ -35,8 +41,12 @@ describe('sync-backed browser persistence', () => {
     vi.mocked(serverClient.hasAccessToken).mockReturnValue(true);
     vi.mocked(serverClient.syncTemplates).mockResolvedValue({ templates: [] });
     vi.mocked(serverClient.syncBlueprints).mockResolvedValue({ blueprints: [] });
+    vi.mocked(serverClient.syncDrafts).mockResolvedValue({ drafts: [] });
     vi.mocked(serverClient.pullConfig).mockResolvedValue({ config: {} });
     vi.mocked(serverClient.pullApiKeys).mockResolvedValue({ apiKeys: {} });
+    vi.mocked(DraftStorage.getAllMetadata).mockResolvedValue([]);
+    vi.mocked(DraftStorage.getDraft).mockResolvedValue(null);
+    vi.mocked(DraftStorage.saveDraft).mockResolvedValue(undefined);
   });
 
   it('hydrates synced templates from camelCase server payloads', async () => {
@@ -164,5 +174,43 @@ describe('sync-backed browser persistence', () => {
     expect(config.api_keys).toEqual({
       openai: 'remote-openai-key',
     });
+  });
+
+  it('hydrates synced drafts with saved instructions and send order fields', async () => {
+    vi.mocked(serverClient.syncDrafts).mockResolvedValue({
+      drafts: [
+        {
+          id: '9e30fdf4-2c0f-4fa3-8f68-672df908a948',
+          reviewId: 'review-1',
+          seed: 'remote seed',
+          mode: 'NSFW',
+          model: 'openrouter/test-model',
+          characterName: 'Remote Character',
+          templateName: 'V2/V3 Card',
+          notes: 'remote notes',
+          favorite: true,
+          tags: ['remote'],
+          customInstructions: 'Keep the voice severe.',
+          componentSendOrder: ['post_history', 'system_prompt'],
+          assets: {
+            system_prompt: 'system prompt',
+            post_history: 'post history',
+          },
+          createdAt: '2026-04-20T00:00:00.000Z',
+          updatedAt: '2026-04-20T01:00:00.000Z',
+        },
+      ],
+    });
+
+    const changed = await (api as unknown as { syncDraftsFromServer: () => Promise<boolean> }).syncDraftsFromServer();
+
+    expect(changed).toBe(true);
+    expect(DraftStorage.saveDraft).toHaveBeenCalledWith(expect.objectContaining({
+      metadata: expect.objectContaining({
+        review_id: 'review-1',
+        custom_instructions: 'Keep the voice severe.',
+        component_send_order: ['post_history', 'system_prompt'],
+      }),
+    }));
   });
 });

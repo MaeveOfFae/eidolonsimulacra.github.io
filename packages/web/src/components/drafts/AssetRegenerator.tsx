@@ -20,6 +20,11 @@ import {
 import type { Draft, Template } from '@char-gen/shared';
 import { api } from '@/lib/api';
 import { unwrapSingleCodeFence } from '@/lib/content-format';
+import DraftSendConfigPanel from '@/components/drafts/DraftSendConfigPanel';
+import {
+  buildDraftPriorAssets,
+  mergeDraftAdditionalInstructions,
+} from '@/lib/drafts/send-config';
 import { GenerationService } from '@/lib/services/generation';
 import { resolveTemplateBlueprintContent } from '@/lib/templates/browser';
 import {
@@ -357,22 +362,12 @@ export default function AssetRegenerator({
   }, []);
 
   const buildPriorAssets = useCallback(() => {
-    if (!draft || !template || templateAssetIndex < 0) {
+    if (!draft) {
       return {} as Record<string, string>;
     }
 
-    const priorAssets: Record<string, string> = {};
-
-    for (let index = 0; index < templateAssetIndex; index += 1) {
-      const priorAssetName = template.assets[index].name;
-      const priorAssetContent = draft.assets[priorAssetName];
-      if (priorAssetContent) {
-        priorAssets[priorAssetName] = priorAssetContent;
-      }
-    }
-
-    return priorAssets;
-  }, [draft, template, templateAssetIndex]);
+    return buildDraftPriorAssets(draft, selectedAssetName, template);
+  }, [draft, selectedAssetName, template]);
 
   const generateCandidate = useCallback(async () => {
     if (!draft || !canGenerateAsset || isGenerating) {
@@ -384,28 +379,29 @@ export default function AssetRegenerator({
     setGenerationError(null);
     setAssetWriteError(null);
 
-    const enhancedSeed = customInstructions.trim()
-      ? `${draft.metadata.seed}\n\nAdditional ${assetLabel} instructions: ${customInstructions.trim()}`
-      : draft.metadata.seed;
+    const additionalInstructions = mergeDraftAdditionalInstructions(
+      draft.metadata.custom_instructions,
+      customInstructions
+    );
 
     try {
       let fullContent = '';
+      const baseRequest = {
+        seed: draft.metadata.seed,
+        mode: draft.metadata.mode ?? 'Auto',
+        template: draft.metadata.template_name,
+        asset_name: selectedAssetName,
+        prior_assets: buildPriorAssets(),
+        additional_instructions: additionalInstructions,
+      };
 
       const stream = hasBlueprintOverride
         ? GenerationService.previewBlueprint({
-            seed: enhancedSeed,
-            mode: draft.metadata.mode ?? 'Auto',
-            template: draft.metadata.template_name,
-            asset_name: selectedAssetName,
-            prior_assets: buildPriorAssets(),
+            ...baseRequest,
             blueprint_content: effectiveBlueprintContent,
           })
         : GenerationService.generateAsset({
-            seed: enhancedSeed,
-            mode: draft.metadata.mode ?? 'Auto',
-            template: draft.metadata.template_name,
-            asset_name: selectedAssetName,
-            prior_assets: buildPriorAssets(),
+            ...baseRequest,
           });
 
       for await (const progress of stream) {
@@ -881,6 +877,26 @@ export default function AssetRegenerator({
       )}
 
       {draft && (
+        <DraftSendConfigPanel
+          draft={draft}
+          template={template}
+          onSave={async (updates) => {
+            await updateMetadata.mutateAsync(updates);
+          }}
+          isSaving={updateMetadata.isPending}
+          description="Adjust the saved outbound instructions and component order used for future asset regeneration from this draft."
+          transientInstructions={{
+            value: customInstructions,
+            onChange: setCustomInstructions,
+            disabled: !canGenerateAsset || isGenerating,
+            label: 'Transient send-only instructions',
+            description: 'Merged with the saved draft instructions for this regeneration session only.',
+            placeholder: `e.g., Make the ${assetLabel} sharper, more restrained, more vivid, or more specific.`,
+          }}
+        />
+      )}
+
+      {draft && (
       <div className="grid gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
         <section className="app-panel space-y-4 p-4 sm:p-5">
           <div>
@@ -911,17 +927,6 @@ export default function AssetRegenerator({
                     : 'Use the saved draft context and prior asset order to generate this missing asset without rerunning the full draft.'}
                 </p>
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Custom Instructions</label>
-              <textarea
-                value={customInstructions}
-                onChange={(event) => setCustomInstructions(event.target.value)}
-                placeholder={`e.g., Make the ${assetLabel} sharper, more restrained, more vivid, or more specific.`}
-                className="min-h-[96px] w-full rounded-xl border border-input bg-background px-3 py-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                disabled={!canGenerateAsset || isGenerating}
-              />
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">

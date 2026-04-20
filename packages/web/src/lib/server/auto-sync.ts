@@ -66,6 +66,12 @@ function mapDraftForSync(draft: Draft) {
       return typeof assetName === 'string' && assetName.length > 0 && typeof content === 'string';
     })
   );
+  const normalizedSendOrder = Array.isArray(draft.metadata.component_send_order)
+    ? draft.metadata.component_send_order
+      .filter((assetName): assetName is string => typeof assetName === 'string')
+      .map((assetName) => assetName.trim())
+      .filter((assetName) => assetName.length > 0)
+    : undefined;
 
   return {
     reviewId: toOptionalString(draft.metadata.review_id) ?? draft.path,
@@ -82,6 +88,8 @@ function mapDraftForSync(draft: Draft) {
       ? draft.metadata.tags.filter((tag): tag is string => typeof tag === 'string' && tag.trim().length > 0)
       : [],
     offspringType: toOptionalString(draft.metadata.offspring_type),
+    customInstructions: toOptionalString(draft.metadata.custom_instructions),
+    componentSendOrder: normalizedSendOrder && normalizedSendOrder.length > 0 ? normalizedSendOrder : undefined,
     parentDraftIds: Array.isArray(draft.metadata.parent_drafts)
       ? draft.metadata.parent_drafts.filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
       : undefined,

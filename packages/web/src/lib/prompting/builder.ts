@@ -294,7 +294,8 @@ export async function buildAssetPrompt(
   mode: ContentMode | null = null,
   priorAssets: Record<string, string> = {},
   blueprintContent: string | null = null,
-  baseUrl?: string
+  baseUrl?: string,
+  additionalInstructions: string[] = []
 ): Promise<[system: string, user: string]> {
   // Load blueprint content
   const blueprint = blueprintContent || await loadBlueprint(assetName, baseUrl);
@@ -306,6 +307,17 @@ export async function buildAssetPrompt(
     userLines.push(`Mode: ${mode}`);
   }
   userLines.push(`SEED: ${seed}`);
+
+  if (additionalInstructions.length > 0) {
+    userLines.push('');
+    userLines.push('ADDITIONAL INSTRUCTIONS:');
+    additionalInstructions.forEach((instruction, index) => {
+      if (index > 0) {
+        userLines.push('');
+      }
+      userLines.push(instruction);
+    });
+  }
 
   // Add prior assets as context
   if (priorAssets && Object.keys(priorAssets).length > 0) {

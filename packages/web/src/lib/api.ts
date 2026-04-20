@@ -1938,6 +1938,8 @@ export class EidolonBrowserAPI {
           favorite: boolean;
           tags: string[];
           offspringType?: string;
+          customInstructions?: string;
+          componentSendOrder?: string[];
           assets: Record<string, string>;
           createdAt: string;
           updatedAt: string;
@@ -1965,6 +1967,8 @@ export class EidolonBrowserAPI {
                 favorite: serverDraft.favorite,
                 tags: serverDraft.tags,
                 offspring_type: serverDraft.offspringType,
+                custom_instructions: serverDraft.customInstructions,
+                component_send_order: serverDraft.componentSendOrder,
               },
               assets: serverDraft.assets,
             });
@@ -1992,6 +1996,8 @@ export class EidolonBrowserAPI {
                 favorite: serverDraft.favorite,
                 tags: serverDraft.tags,
                 offspring_type: serverDraft.offspringType,
+                custom_instructions: serverDraft.customInstructions,
+                component_send_order: serverDraft.componentSendOrder,
               },
               assets: serverDraft.assets,
             });

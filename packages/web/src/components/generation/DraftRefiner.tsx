@@ -12,6 +12,11 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { api } from '@/lib/api';
+import DraftSendConfigPanel from '@/components/drafts/DraftSendConfigPanel';
+import {
+  buildDraftPriorAssets,
+  mergeDraftAdditionalInstructions,
+} from '@/lib/drafts/send-config';
 import { GenerationService } from '@/lib/services/generation';
 import {
   clearActiveDraftRefinerSession,
@@ -20,7 +25,7 @@ import {
   saveActiveDraftRefinerSession,
 } from '@/lib/services/generation-session';
 import { unwrapSingleCodeFence } from '@/lib/content-format';
-import type { Draft, Template } from '@char-gen/shared';
+import type { Draft, DraftMetadata, Template } from '@char-gen/shared';
 
 interface DraftRefinerProps {
   templates: Template[];
@@ -51,6 +56,7 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
   const [expandedAssets, setExpandedAssets] = useState<Set<string>>(new Set());
   const [editingAsset, setEditingAsset] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
+  const [transientInstructions, setTransientInstructions] = useState('');
   const [refinerError, setRefinerError] = useState<string | null>(null);
   const [resumeNotice, setResumeNotice] = useState<string | null>(null);
   const restoredSessionRef = useRef(loadActiveDraftRefinerSession());
@@ -119,6 +125,7 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
     }
 
     setSelectedDraftId(session.selectedDraftId);
+    setTransientInstructions(session.transientInstructions ?? '');
     setAssetStates(
       Object.fromEntries(
         Object.entries(session.assetStates).map(([assetName, state]) => [
@@ -204,6 +211,18 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['draft', selectedDraftId] });
+      setRefinerError(null);
+    },
+    onError: (error: Error) => {
+      setRefinerError(error.message);
+    },
+  });
+
+  const updateMetadata = useMutation({
+    mutationFn: (metadata: Partial<DraftMetadata>) => api.updateMetadata(selectedDraftId, metadata),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['draft', selectedDraftId] });
+      queryClient.invalidateQueries({ queryKey: ['drafts'] });
       setRefinerError(null);
     },
     onError: (error: Error) => {
@@ -301,17 +320,17 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
       },
     }));
 
-    // Get prior assets (all assets that come before this one in the template)
-    const assetIndex = draftTemplate.assets.findIndex((a) => a.name === assetName);
-    const priorAssets: Record<string, string> = {};
-
-    for (let i = 0; i < assetIndex; i++) {
-      const priorName = draftTemplate.assets[i].name;
-      const priorContent = assetStates[priorName]?.content ?? draft.assets[priorName];
-      if (priorContent) {
-        priorAssets[priorName] = priorContent;
-      }
-    }
+    const draftWithCurrentState: Draft = {
+      ...draft,
+      assets: Object.fromEntries(
+        Object.entries(assetStates).map(([name, state]) => [name, state.content])
+      ),
+    };
+    const priorAssets = buildDraftPriorAssets(draftWithCurrentState, assetName, draftTemplate);
+    const additionalInstructions = mergeDraftAdditionalInstructions(
+      draft.metadata.custom_instructions,
+      transientInstructions
+    );
 
     try {
       let newContent = '';
@@ -322,6 +341,7 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
         template: draft.metadata.template_name,
         asset_name: assetName,
         prior_assets: priorAssets,
+        additional_instructions: additionalInstructions,
       })) {
         if (progress.type === 'chunk' && progress.content) {
           newContent += progress.content;
@@ -360,7 +380,7 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
         },
       }));
     }
-  }, [assetStates, draft, draftTemplate]);
+  }, [assetStates, draft, draftTemplate, transientInstructions]);
 
   // Accept regenerated content
   const acceptRegenerated = useCallback(async (assetName: string) => {
@@ -429,6 +449,7 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
     setExpandedAssets(new Set());
     setEditingAsset(null);
     setEditContent('');
+    setTransientInstructions('');
     setRefinerError(null);
     setResumeNotice(null);
   }, []);
@@ -436,6 +457,7 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
   useEffect(() => {
     const hasState = Boolean(
       selectedDraftId
+      || transientInstructions.trim()
       || Object.keys(assetStates).length > 0
       || editingAsset
       || editContent.trim()
@@ -466,6 +488,7 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
     saveActiveDraftRefinerSession({
       version: 1,
       selectedDraftId,
+      transientInstructions,
       assetStates: serializedAssetStates,
       expandedAssets: Array.from(expandedAssets),
       editingAsset,
@@ -473,10 +496,12 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
       interrupted,
       updatedAt: Date.now(),
     });
-  }, [assetStates, editContent, editingAsset, expandedAssets, selectedDraftId]);
+  }, [assetStates, editContent, editingAsset, expandedAssets, selectedDraftId, transientInstructions]);
 
   useEffect(() => {
     const hasWorkingState = Boolean(
+      transientInstructions.trim()
+      ||
       editingAsset
       || Object.values(assetStates).some((state) => state.status !== 'idle' || state.content !== state.originalContent)
     );
@@ -492,7 +517,7 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [assetStates, editingAsset]);
+  }, [assetStates, editingAsset, transientInstructions]);
 
   const getStatusIcon = (status: AssetRegenerationState['status']) => {
     switch (status) {
@@ -566,6 +591,24 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
               </div>
             </div>
           </div>
+
+          <DraftSendConfigPanel
+            draft={draft}
+            template={draftTemplate}
+            onSave={async (updates) => {
+              await updateMetadata.mutateAsync(updates);
+            }}
+            isSaving={updateMetadata.isPending}
+            description="Adjust the saved outbound instructions and component order used for future regeneration from this draft."
+            transientInstructions={{
+              value: transientInstructions,
+              onChange: setTransientInstructions,
+              disabled: updateMetadata.isPending,
+              label: 'Transient send-only instructions',
+              description: 'Merged with the saved draft instructions for regeneration actions in this refiner session only.',
+              placeholder: 'Temporary guidance for the next regenerate action without changing the saved draft instructions.',
+            }}
+          />
 
           {missingAssetCount > 0 && (
             <div className="rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-foreground">

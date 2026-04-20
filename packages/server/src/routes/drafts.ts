@@ -22,6 +22,8 @@ const createDraftSchema = z.object({
   favorite: z.boolean().optional(),
   tags: z.array(z.string()).optional(),
   offspringType: z.string().optional(),
+  customInstructions: z.string().optional(),
+  componentSendOrder: z.array(z.string()).optional(),
   assets: z.record(z.string()),
   parentDraftIds: z.array(z.string()).optional(),
 });
@@ -41,6 +43,8 @@ const pushDraftSchema = z.object({
   favorite: z.boolean().optional(),
   tags: z.array(z.string()).optional(),
   offspringType: z.string().optional(),
+  customInstructions: z.string().optional(),
+  componentSendOrder: z.array(z.string()).optional(),
   assets: z.record(z.string()),
   parentDraftIds: z.array(z.string()).optional(),
 });
@@ -183,6 +187,8 @@ router.post(
           favorite: draftData.favorite ?? false,
           tags: draftData.tags ?? [],
           offspringType: draftData.offspringType,
+          customInstructions: draftData.customInstructions,
+          componentSendOrder: draftData.componentSendOrder ?? [],
           assets: draftData.assets,
         }
 
@@ -205,6 +211,8 @@ router.post(
               favorite: draftWriteData.favorite,
               tags: draftWriteData.tags,
               offspringType: draftWriteData.offspringType,
+              customInstructions: draftWriteData.customInstructions,
+              componentSendOrder: draftWriteData.componentSendOrder,
               assets: draftWriteData.assets,
             },
           })

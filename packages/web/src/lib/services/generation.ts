@@ -248,7 +248,7 @@ export class GenerationService {
     blueprintContent: string | undefined,
     stream: boolean
   ): AsyncIterable<GenerationProgress> {
-    const { seed, mode = 'Auto', asset_name, prior_assets } = request;
+    const { seed, mode = 'Auto', asset_name, prior_assets, additional_instructions = [] } = request;
 
     yield { type: 'status', stage: 'initializing' };
 
@@ -262,7 +262,9 @@ export class GenerationService {
       seed,
       mode,
       prior_assets,
-      blueprintContent
+      blueprintContent,
+      undefined,
+      additional_instructions
     );
 
     yield {

@@ -7,6 +7,7 @@ const mockUseQuery = vi.fn();
 const mockUseMutation = vi.fn();
 const mockUseQueryClient = vi.fn();
 const mockUseGuidedTour = vi.fn();
+let mutationResults: Array<ReturnType<typeof createMutationResult>> = [];
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: (options: unknown) => mockUseQuery(options),
@@ -74,6 +75,7 @@ const templatesResponse = [
 function createMutationResult() {
   return {
     mutate: vi.fn(),
+    mutateAsync: vi.fn().mockResolvedValue(undefined),
     isPending: false,
   };
 }
@@ -97,6 +99,7 @@ describe('Review export modal behavior', () => {
     mockUseQueryClient.mockReset();
     mockUseGuidedTour.mockReset();
     writeText.mockReset();
+    mutationResults = [];
 
     Object.defineProperty(navigator, 'clipboard', {
       configurable: true,
@@ -123,7 +126,11 @@ describe('Review export modal behavior', () => {
       };
     });
 
-    mockUseMutation.mockImplementation(() => createMutationResult());
+    mockUseMutation.mockImplementation(() => {
+      const result = createMutationResult();
+      mutationResults.push(result);
+      return result;
+    });
     mockUseQueryClient.mockReturnValue({
       invalidateQueries: vi.fn(),
     });
@@ -230,9 +237,38 @@ describe('Review export modal behavior', () => {
     renderReview();
 
     expect(await screen.findByText('This draft is missing 1 template asset. Create it with AI from the existing draft context or add it manually before export.')).toBeInTheDocument();
-    expect(screen.getByText('post history')).toBeInTheDocument();
-    expect(screen.getByText('Missing')).toBeInTheDocument();
+    expect(screen.getAllByText('post history').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Missing').length).toBeGreaterThan(0);
     expect(screen.getByRole('link', { name: 'Create with AI' })).toHaveAttribute('href', '/drafts/review-1/assets/post_history/regenerate');
     expect(screen.getByRole('button', { name: 'Add Manually' })).toBeInTheDocument();
+  });
+
+  it('saves outbound send settings and shows dependency warnings for custom order', async () => {
+    mockUseGuidedTour.mockReturnValue({
+      activeTourId: null,
+      activeStepIndex: 0,
+      isTourCompleted: vi.fn(() => false),
+      restartTour: vi.fn(),
+      startTour: vi.fn(),
+    });
+
+    renderReview();
+
+    fireEvent.change(screen.getByLabelText('Saved draft instructions'), {
+      target: { value: 'Keep the relationship colder.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Move post history up' }));
+
+    expect(screen.getByText('Dependency warnings')).toBeInTheDocument();
+    expect(screen.getByText(/post history now appears before system prompt/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save outbound settings' }));
+
+    await waitFor(() => {
+      expect(mutationResults[3]?.mutateAsync).toHaveBeenCalledWith({
+        custom_instructions: 'Keep the relationship colder.',
+        component_send_order: ['post_history', 'system_prompt'],
+      });
+    });
   });
 });

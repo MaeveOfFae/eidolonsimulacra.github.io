@@ -44,10 +44,13 @@ const draftResponse = {
     template_name: 'V2/V3 Card',
     character_name: 'Test Character',
     notes: '',
+    custom_instructions: 'Keep the overall tone severe.',
+    component_send_order: ['character_sheet', 'system_prompt', 'post_history'],
   },
   assets: {
     system_prompt: 'original system prompt',
     character_sheet: 'character sheet content',
+    post_history: 'post history content',
   },
 };
 
@@ -201,6 +204,13 @@ describe('AssetRegenerator', () => {
   });
 
   it('creates a missing asset instead of requiring it to already exist on the draft', async () => {
+    vi.mocked(api.getDraft).mockResolvedValue({
+      ...draftResponse,
+      assets: {
+        system_prompt: 'original system prompt',
+        character_sheet: 'character sheet content',
+      },
+    } as never);
     vi.mocked(api.updateAsset).mockResolvedValue({ status: 'created', draft_id: 'review-1', asset_name: 'post_history' } as never);
     vi.mocked(GenerationService.generateAsset).mockImplementation(async function* () {
       yield { type: 'asset', content: 'generated missing post history' } as never;
@@ -258,7 +268,7 @@ describe('AssetRegenerator', () => {
 
     fireEvent.click(screen.getAllByRole('button', { name: '' })[0]);
     fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
-    fireEvent.change(screen.getAllByRole('textbox')[1], {
+    fireEvent.change(screen.getByRole('textbox', { name: 'Edit blueprint content' }), {
       target: { value: 'custom blueprint override' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
@@ -270,6 +280,34 @@ describe('AssetRegenerator', () => {
     });
 
     expect(await screen.findByText('override-generated system prompt')).toBeInTheDocument();
+  });
+
+  it('merges saved and transient instructions and uses custom send order for prior assets', async () => {
+    vi.mocked(GenerationService.generateAsset).mockImplementation(async function* () {
+      yield { type: 'asset', content: 'ordered candidate' } as never;
+    });
+
+    createWrapper();
+
+    expect(await screen.findByText('Current Active Asset')).toBeInTheDocument();
+
+    fireEvent.change(await screen.findByLabelText('Transient send-only instructions'), {
+      target: { value: 'Sharpen the system prompt.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Generate One' }));
+
+    await waitFor(() => {
+      expect(GenerationService.generateAsset).toHaveBeenCalledWith(expect.objectContaining({
+        asset_name: 'system_prompt',
+        prior_assets: {
+          character_sheet: 'character sheet content',
+        },
+        additional_instructions: [
+          'Keep the overall tone severe.',
+          'Sharpen the system prompt.',
+        ],
+      }));
+    });
   });
 
   it('keeps generated intros when the universal page is used for intro_scene', async () => {
