@@ -11,7 +11,6 @@ import {
   Settings,
   Menu,
   X,
-  Info,
   CircleHelp,
   LogIn,
   User,
@@ -176,7 +175,7 @@ function NavItem({ path, label, icon: Icon, isActive, onClick }: NavItemProps) {
       to={path}
       onClick={onClick}
       className={cn(
-        'group relative flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200',
+        'group relative flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
         isActive
           ? 'bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-lg shadow-primary/20'
           : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
@@ -185,7 +184,7 @@ function NavItem({ path, label, icon: Icon, isActive, onClick }: NavItemProps) {
       <Icon className={cn('h-5 w-5 transition-transform duration-200', isActive ? 'scale-110' : 'group-hover:scale-110')} />
       <span>{label}</span>
       {isActive && (
-        <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-primary/20 to-accent/20 -z-10" />
+        <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-primary/20 to-accent/20 -z-10" />
       )}
     </Link>
   );
@@ -223,24 +222,24 @@ function CollapsibleSubmenu({
         type="button"
         onClick={onToggle}
         className={cn(
-          'group flex w-full items-center justify-between rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200',
+          'group flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
           isActive
             ? 'bg-accent/50 text-foreground'
             : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
         )}
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <Icon className="h-5 w-5 transition-transform duration-200 group-hover:scale-110" />
           <span>{label}</span>
           {(draftsCount > 0 || seedsCount > 0) && (
             <div className="flex items-center gap-1.5">
               {draftsCount > 0 && (
-                <span className="rounded-full bg-primary/20 px-2 py-0.5 text-[10px] font-medium text-primary">
+                <span className="rounded-md bg-primary/20 px-2 py-0.5 text-[10px] font-medium text-primary">
                   {draftsCount} drafts
                 </span>
               )}
               {seedsCount > 0 && (
-                <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
+                <span className="rounded-md bg-amber-500/20 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
                   {seedsCount} seeds
                 </span>
               )}
@@ -596,7 +595,7 @@ export default function Layout({ children }: LayoutProps) {
   return (
     <AssistantContextProvider>
       <GuidedTourProvider>
-      <div className="app-shell flex min-h-dvh bg-background lg:h-screen">
+      <div className="app-shell flex min-h-dvh bg-background text-foreground lg:h-dvh lg:items-stretch lg:overflow-hidden">
         {/* Mobile sidebar backdrop */}
         {sidebarOpen && (
           <div
@@ -605,45 +604,38 @@ export default function Layout({ children }: LayoutProps) {
           />
         )}
 
-        {trayOpen && (
-          <div
-            className="fixed inset-0 z-30 bg-black/45 backdrop-blur-sm"
-            onClick={() => setTrayOpen(false)}
-          />
-        )}
-
         {/* Sidebar */}
         <aside
           className={cn(
-            'fixed inset-y-0 left-0 z-50 w-[min(20rem,calc(100vw-1rem))] max-w-[calc(100vw-1rem)] bg-card/80 backdrop-blur-md border-r border-border transition-transform duration-300 ease-out lg:static lg:w-72 lg:max-w-none lg:translate-x-0',
+            'fixed inset-y-0 left-0 z-50 w-[min(18rem,calc(100vw-1rem))] max-w-[calc(100vw-1rem)] bg-card/80 backdrop-blur-xl border-r border-border transition-[transform,background-color,box-shadow,border-color] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] lg:order-0 lg:static lg:w-[18rem] lg:max-w-none lg:translate-x-0',
             'app-sidebar',
             sidebarOpen ? 'translate-x-0' : '-translate-x-full'
           )}
         >
           <div className="flex h-dvh flex-col lg:h-full">
             {/* Logo */}
-            <div className="flex h-16 items-center justify-between border-b border-border/50 px-4">
+            <div className="flex h-14 items-center justify-between border-b border-border/50 px-3.5">
               <Link to="/" className="flex items-center gap-2" onClick={() => setSidebarOpen(false)}>
-                <div className="p-2 rounded-lg bg-gradient-to-br from-primary to-accent shadow-lg shadow-primary/20">
-                  <Sparkles className="h-5 w-5 text-white" />
+                <div className="rounded-md bg-gradient-to-br from-primary to-accent p-2 shadow-lg shadow-primary/20">
+                  <Sparkles className="h-4 w-4 text-white" />
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-lg font-semibold tracking-tight text-foreground" style={{ fontFamily: '"Space Grotesk", sans-serif' }}>Eidolon</span>
+                  <span className="text-base font-semibold tracking-tight text-foreground" style={{ fontFamily: '"Space Grotesk", sans-serif' }}>Eidolon</span>
                   <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground" style={{ fontFamily: '"IBM Plex Mono", monospace' }}>Simulacra v{__APP_VERSION__}</span>
                 </div>
               </Link>
               <button
                 type="button"
                 aria-label="Close sidebar"
-                className="lg:hidden p-2 rounded-lg hover:bg-accent transition-colors"
+                className="rounded-lg p-2 transition-colors hover:bg-accent lg:hidden"
                 onClick={() => setSidebarOpen(false)}
               >
-                <X className="h-5 w-5" />
+                <X className="h-4 w-4" />
               </button>
             </div>
 
             {/* Navigation */}
-            <nav className="flex-1 overflow-y-auto p-4 space-y-1">
+            <nav className="flex-1 space-y-0.5 overflow-y-auto p-3">
               {/* Characters collapsible submenu */}
               <CollapsibleSubmenu
                 label="Characters"
@@ -688,11 +680,11 @@ export default function Layout({ children }: LayoutProps) {
 
             {/* Auth Status / Sign In Button */}
             {authStatus && !authStatus.authenticated && serverClient.isEnabled() && (
-              <div className="px-4 py-3 border-t border-border/50">
+              <div className="border-t border-border/50 px-3 py-2.5">
                 <Link
                   to="/auth"
                   onClick={() => setSidebarOpen(false)}
-                  className="flex items-center gap-3 rounded-xl bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/20 px-4 py-3 text-sm font-medium text-foreground transition-all hover:from-primary/20 hover:to-accent/20 hover:border-primary/40"
+                  className="flex items-center gap-3 rounded-lg border border-primary/20 bg-gradient-to-r from-primary/10 to-accent/10 px-3.5 py-2.5 text-sm font-medium text-foreground transition-all hover:border-primary/40 hover:from-primary/20 hover:to-accent/20"
                 >
                   <LogIn className="h-5 w-5 text-primary" />
                   <div className="flex flex-col">
@@ -705,9 +697,9 @@ export default function Layout({ children }: LayoutProps) {
 
             {/* User Info when authenticated */}
             {authStatus?.authenticated && authStatus.user && (
-              <div className="px-4 py-3 border-t border-border/50">
-                <div className="flex items-center gap-3 rounded-xl bg-green-500/10 border border-green-500/20 px-4 py-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500/20">
+              <div className="border-t border-border/50 px-3 py-2.5">
+                <div className="flex items-center gap-3 rounded-lg border border-green-500/20 bg-green-500/10 px-3.5 py-2.5">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-md bg-green-500/20">
                     <User className="h-4 w-4 text-green-600 dark:text-green-400" />
                   </div>
                   <div className="flex flex-col min-w-0">
@@ -718,26 +710,26 @@ export default function Layout({ children }: LayoutProps) {
               </div>
             )}
 
-            <div className="border-t border-border/50 p-4">
+            <div className="border-t border-border/50 p-3">
               <div className="grid grid-cols-3 gap-2">
                 <Link
                   to="/settings"
                   onClick={() => setSidebarOpen(false)}
-                  className="rounded-lg border border-border/60 bg-background/60 px-3 py-2 text-center text-xs font-medium text-muted-foreground transition-colors hover:border-primary/35 hover:text-primary"
+                  className="rounded-lg border border-border/60 bg-background/60 px-2.5 py-1.5 text-center text-[11px] font-medium text-muted-foreground transition-colors hover:border-primary/35 hover:text-primary"
                 >
                   Settings
                 </Link>
                 <Link
                   to="/help"
                   onClick={() => setSidebarOpen(false)}
-                  className="rounded-lg border border-border/60 bg-background/60 px-3 py-2 text-center text-xs font-medium text-muted-foreground transition-colors hover:border-primary/35 hover:text-primary"
+                  className="rounded-lg border border-border/60 bg-background/60 px-2.5 py-1.5 text-center text-[11px] font-medium text-muted-foreground transition-colors hover:border-primary/35 hover:text-primary"
                 >
                   Help
                 </Link>
                 <Link
                   to="/about"
                   onClick={() => setSidebarOpen(false)}
-                  className="rounded-lg border border-border/60 bg-background/60 px-3 py-2 text-center text-xs font-medium text-muted-foreground transition-colors hover:border-primary/35 hover:text-primary"
+                  className="rounded-lg border border-border/60 bg-background/60 px-2.5 py-1.5 text-center text-[11px] font-medium text-muted-foreground transition-colors hover:border-primary/35 hover:text-primary"
                 >
                   About
                 </Link>
@@ -747,33 +739,37 @@ export default function Layout({ children }: LayoutProps) {
         </aside>
 
         {/* Main content */}
-        <main className="min-w-0 flex-1 overflow-auto">
-          {/* Mobile header */}
-          <header className="app-frame-panel sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border/50 px-4 lg:hidden">
-            <button
-              type="button"
-              aria-label="Open menu"
-              onClick={() => setSidebarOpen(true)}
-              className="p-2 rounded-lg hover:bg-accent transition-colors"
-            >
-              <Menu className="h-6 w-6" />
-            </button>
-            <span className="min-w-0 truncate text-base font-semibold tracking-tight text-foreground sm:text-lg" style={{ fontFamily: '"Space Grotesk", sans-serif' }}>Eidolon Simulacra</span>
-            {pageHelp && (
+        <main className="min-w-0 flex-1 overflow-hidden lg:order-2">
+          <div className="flex h-full min-h-0 flex-col">
+            {/* Mobile header */}
+            <header className="app-frame-panel sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border/50 px-3 lg:hidden">
               <button
                 type="button"
-                onClick={() => setHelpOpen(true)}
-                className="ml-auto inline-flex items-center gap-2 rounded-lg border border-border/60 bg-background/50 px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:text-primary"
+                aria-label="Open menu"
+                onClick={() => setSidebarOpen(true)}
+                className="rounded-lg p-2 transition-colors hover:bg-accent"
               >
-                <CircleHelp className="h-4 w-4" />
-                Help
+                <Menu className="h-5 w-5" />
               </button>
-            )}
-          </header>
+              <span className="min-w-0 truncate text-sm font-semibold tracking-tight text-foreground sm:text-base" style={{ fontFamily: '"Space Grotesk", sans-serif' }}>Eidolon Simulacra</span>
+              {pageHelp && (
+                <button
+                  type="button"
+                  onClick={() => setHelpOpen(true)}
+                  className="ml-auto inline-flex items-center gap-2 rounded-lg border border-border/60 bg-background/50 px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:border-primary/40 hover:text-primary"
+                >
+                  <CircleHelp className="h-3.5 w-3.5" />
+                  Help
+                </button>
+              )}
+            </header>
 
-          {/* Page content */}
-          <div className="mx-auto max-w-[1360px] p-5 lg:p-6">
-            {children}
+            {/* Page content */}
+            <div className="min-h-0 flex-1 overflow-auto px-4 py-4 lg:px-5 lg:py-5">
+              <div className="app-page mx-auto flex min-h-full w-full max-w-[1680px] flex-col gap-4">
+                {children}
+              </div>
+            </div>
           </div>
         </main>
         {pageHelp && (
@@ -784,184 +780,200 @@ export default function Layout({ children }: LayoutProps) {
             onClose={() => setHelpOpen(false)}
           />
         )}
-        <button
-          type="button"
-          onClick={() => setTrayOpen(true)}
-          className="fixed bottom-24 right-4 z-20 inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/95 px-3 py-3 text-sm font-medium text-foreground shadow-xl shadow-black/20 backdrop-blur-md transition-colors hover:border-primary/40 hover:text-primary sm:px-4"
-        >
-          <DynamicIcon className="h-4 w-4" />
-          <span className="hidden sm:inline">Workspace</span>
-        </button>
-        {trayOpen && (
         <aside
           aria-label="Utility panel"
-          className="fixed right-0 top-0 z-40 flex h-dvh w-full max-w-md flex-col border-l border-border/60 bg-card/95 shadow-2xl backdrop-blur-md transition-transform duration-300 ease-out"
+          className={cn(
+            'fixed inset-y-0 right-0 top-0 z-40 flex h-dvh overflow-visible transition-[width,transform,opacity,background-color,box-shadow,border-color] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] lg:order-1 lg:relative lg:inset-auto lg:h-dvh lg:shrink-0 lg:translate-x-0',
+            trayOpen
+              ? 'w-[min(18rem,calc(100vw-1rem))] bg-card/95 shadow-2xl lg:w-[17rem] lg:border-l lg:border-border/60 lg:bg-card/90'
+              : 'w-0 bg-transparent shadow-none lg:w-0 lg:border-l-0 lg:bg-transparent'
+          )}
         >
-          <div className="sticky top-0 z-10 border-b border-border/60 bg-card/90 backdrop-blur">
-            <div className="flex items-center justify-between border-b border-border/40 px-4 py-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">Utility Panel</p>
-                <p className="mt-1 text-sm text-muted-foreground">Shortcuts, context, and current work.</p>
-              </div>
-              <button
-                type="button"
-                aria-label="Close panel"
-                onClick={() => setTrayOpen(false)}
-                className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            {pageHelp && (
-              <div className="border-b border-border/40 px-4 py-3">
+          <button
+            type="button"
+            aria-label={trayOpen ? 'Collapse utility panel' : 'Expand utility panel'}
+            onClick={() => setTrayOpen((value) => !value)}
+            className={cn(
+              'absolute right-0 top-1/2 z-10 flex translate-x-full -translate-y-1/2 items-center gap-1.5 rounded-r-sm rounded-l-none border border-l-0 border-border/70 bg-card/95 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground shadow-lg shadow-black/10 backdrop-blur-sm transition-[color,border-color,background-color,box-shadow,transform] duration-300 hover:border-primary/40 hover:text-primary',
+              trayOpen && 'text-foreground'
+            )}
+          >
+            <TrayChevronRight className={cn('h-3.5 w-3.5 transition-transform duration-300', !trayOpen && 'rotate-180')} />
+            <span>Tray</span>
+          </button>
+          <div
+            className={cn(
+              'flex h-full min-h-0 w-full flex-col overflow-hidden border-l border-border/60 bg-card/95 transition-[opacity,transform,background-color,box-shadow,border-color] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]',
+              trayOpen ? 'opacity-100 pointer-events-auto' : 'pointer-events-none opacity-0'
+            )}
+          >
+            <div className="sticky top-0 z-10 border-b border-border/60 bg-card/90">
+              <div className="flex items-center justify-between border-b border-border/40 px-3 py-2.5 lg:px-3.5">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">Utility Panel</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Shortcuts, context, and current work.</p>
+                </div>
                 <button
                   type="button"
-                  onClick={() => {
-                    setTrayOpen(false);
-                    setHelpOpen(true);
-                  }}
-                  className="flex w-full items-center justify-between gap-3 rounded-lg border border-border/60 bg-background/60 px-3 py-2.5 text-left transition-colors hover:border-primary/40 hover:text-primary"
+                  aria-label="Close panel"
+                  onClick={() => setTrayOpen(false)}
+                  className="rounded-md p-2 text-muted-foreground transition-colors duration-300 hover:bg-accent hover:text-foreground"
                 >
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">Page Help</p>
-                    <p className="mt-1 truncate text-sm font-medium text-foreground">{pageHelp.title}</p>
-                  </div>
-                  <CircleHelp className="h-4 w-4 shrink-0" />
+                  <X className="h-4 w-4" />
                 </button>
               </div>
-            )}
-
-            <div className="flex border-b border-border/40">
-              <button
-                type="button"
-                onClick={() => setTrayTab('dynamic')}
-                className={cn(
-                  'flex-1 flex items-center justify-center gap-2 px-4 py-3 text-xs font-medium transition-colors',
-                  trayTab === 'dynamic'
-                    ? 'border-b-2 border-primary text-primary'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-              >
-                <DynamicIcon className="h-3.5 w-3.5" />
-                Dynamic
-              </button>
-              <button
-                type="button"
-                onClick={() => setTrayTab('whats-new')}
-                className={cn(
-                  'flex-1 flex items-center justify-center gap-2 px-4 py-3 text-xs font-medium transition-colors',
-                  trayTab === 'whats-new'
-                    ? 'border-b-2 border-primary text-primary'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-              >
-                <Sparkles className="h-3.5 w-3.5" />
-                New
-              </button>
-            </div>
-          </div>
-          <div className="flex-1 overflow-y-auto p-4">
-            {trayTab === 'dynamic' ? (
-              location.pathname.startsWith('/drafts') ? (
-                <DraftListSidebar
-                  drafts={draftsData?.drafts || []}
-                  isLoading={draftsQuery.isLoading}
-                />
-              ) : (
-                <div className="space-y-3">
-                  <div className="px-1">
-                    <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Upcoming Features</h3>
-                    <p className="mt-1 text-xs text-muted-foreground">Planned improvements and new capabilities.</p>
-                  </div>
-                  {upcomingFeatures.map((feature) => (
-                    <div
-                      key={feature.id}
-                      className="rounded-lg border border-border/70 bg-background/50 p-3"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <span className={cn(
-                          'rounded-full px-2 py-0.5 text-[10px] font-semibold',
-                          feature.status === 'planned'
-                            ? 'bg-blue-500/15 text-blue-600 dark:text-blue-400'
-                            : 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
-                        )}>
-                          {feature.status === 'planned' ? 'Planned' : 'In Progress'}
-                        </span>
-                      </div>
-                      <p className="mt-2 text-sm text-foreground leading-snug">{feature.title}</p>
-                      <p className="mt-1.5 text-xs text-muted-foreground">{feature.category}</p>
-                    </div>
-                  ))}
-                  <Link
-                    to="/whats-new"
-                    onClick={() => setTrayOpen(false)}
-                    className="flex items-center justify-center gap-2 rounded-lg border border-border/60 bg-background/50 px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:text-primary"
+              {pageHelp && (
+                <div className="border-b border-border/40 px-3 py-2.5 lg:px-3.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTrayOpen(false);
+                      setHelpOpen(true);
+                    }}
+                    className="flex w-full items-center justify-between gap-3 rounded-md border border-border/60 bg-background/60 px-3 py-2 text-left transition-all duration-300 hover:border-primary/40 hover:bg-accent/35 hover:text-primary"
                   >
-                    View Full Roadmap
-                    <TrayChevronRight className="h-4 w-4" />
-                  </Link>
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">Page Help</p>
+                      <p className="mt-1 truncate text-xs font-medium text-foreground">{pageHelp.title}</p>
+                    </div>
+                    <CircleHelp className="h-3.5 w-3.5 shrink-0" />
+                  </button>
                 </div>
-              )
-            ) : (
-              <div className="space-y-4">
-                {traySections.map((section) => (
-                  <section key={section.id} className="space-y-2">
-                    <h3 className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{section.title}</h3>
-                    {section.items.length === 0 ? (
-                      <div className="rounded-lg border border-dashed border-border p-3 text-xs text-muted-foreground">
-                        {section.emptyLabel}
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        {section.items.map((item) => {
-                          const content = (
-                            <>
-                              <div className="min-w-0 flex-1">
-                                <div className="truncate text-sm font-medium">{item.label}</div>
-                                {item.description && (
-                                  <div className="truncate text-xs text-muted-foreground">{item.description}</div>
-                                )}
-                              </div>
-                              {item.badge && (
-                                <span className="rounded-full border border-border bg-background px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
-                                  {item.badge}
-                                </span>
-                              )}
-                              {item.to && <TrayChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
-                            </>
-                          );
+              )}
 
-                          if (item.to) {
+              <div className="flex border-b border-border/40">
+                <button
+                  type="button"
+                  onClick={() => setTrayTab('dynamic')}
+                  className={cn(
+                    'flex flex-1 items-center justify-center gap-2 px-3 py-2.5 text-xs font-medium transition-all duration-300',
+                    trayTab === 'dynamic'
+                      ? 'border-b-2 border-primary text-primary'
+                      : 'text-muted-foreground hover:bg-accent/25 hover:text-foreground'
+                  )}
+                >
+                  <DynamicIcon className="h-3.5 w-3.5" />
+                  Dynamic
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTrayTab('whats-new')}
+                  className={cn(
+                    'flex flex-1 items-center justify-center gap-2 px-3 py-2.5 text-xs font-medium transition-all duration-300',
+                    trayTab === 'whats-new'
+                      ? 'border-b-2 border-primary text-primary'
+                      : 'text-muted-foreground hover:bg-accent/25 hover:text-foreground'
+                  )}
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  New
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-3 lg:p-3.5">
+              {trayTab === 'dynamic' ? (
+                location.pathname.startsWith('/drafts') ? (
+                  <DraftListSidebar
+                    drafts={draftsData?.drafts || []}
+                    isLoading={draftsQuery.isLoading}
+                  />
+                ) : (
+                  <div className="space-y-3">
+                    <div className="px-1">
+                      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Upcoming Features</h3>
+                      <p className="mt-1 text-xs text-muted-foreground">Planned improvements and new capabilities.</p>
+                    </div>
+                    {upcomingFeatures.map((feature) => (
+                      <div
+                        key={feature.id}
+                        className="rounded-lg border border-border/70 bg-background/50 p-2.5 transition-colors duration-300 hover:border-border/90 hover:bg-background/70"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <span
+                            className={cn(
+                              'rounded-md px-2 py-0.5 text-[10px] font-semibold',
+                              feature.status === 'planned'
+                                ? 'bg-blue-500/15 text-blue-600 dark:text-blue-400'
+                                : 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
+                            )}
+                          >
+                            {feature.status === 'planned' ? 'Planned' : 'In Progress'}
+                          </span>
+                        </div>
+                        <p className="mt-2 text-sm leading-snug text-foreground">{feature.title}</p>
+                        <p className="mt-1.5 text-xs text-muted-foreground">{feature.category}</p>
+                      </div>
+                    ))}
+                    <Link
+                      to="/whats-new"
+                      onClick={() => setTrayOpen(false)}
+                      className="flex items-center justify-center gap-2 rounded-md border border-border/60 bg-background/50 px-3 py-2.5 text-sm font-medium text-foreground transition-all duration-300 hover:border-primary/40 hover:bg-accent/25 hover:text-primary"
+                    >
+                      View Full Roadmap
+                      <TrayChevronRight className="h-4 w-4" />
+                    </Link>
+                  </div>
+                )
+              ) : (
+                <div className="space-y-4">
+                  {traySections.map((section) => (
+                    <section key={section.id} className="space-y-2">
+                      <h3 className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{section.title}</h3>
+                      {section.items.length === 0 ? (
+                        <div className="rounded-md border border-dashed border-border p-3 text-xs text-muted-foreground">
+                          {section.emptyLabel}
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {section.items.map((item) => {
+                            const content = (
+                              <>
+                                <div className="min-w-0 flex-1">
+                                  <div className="truncate text-sm font-medium">{item.label}</div>
+                                  {item.description && (
+                                    <div className="truncate text-xs text-muted-foreground">{item.description}</div>
+                                  )}
+                                </div>
+                                {item.badge && (
+                                  <span className="rounded-md border border-border bg-background px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                                    {item.badge}
+                                  </span>
+                                )}
+                                {item.to && <TrayChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
+                              </>
+                            );
+
+                            if (item.to) {
+                              return (
+                                <Link
+                                  key={item.id}
+                                  to={item.to}
+                                  onClick={() => setTrayOpen(false)}
+                                  className="flex items-center gap-2 rounded-md border border-border/70 bg-background/70 px-3 py-2 transition-all duration-300 hover:border-primary/40 hover:bg-accent/35"
+                                >
+                                  {content}
+                                </Link>
+                              );
+                            }
+
                             return (
-                              <Link
+                              <div
                                 key={item.id}
-                                to={item.to}
-                                onClick={() => setTrayOpen(false)}
-                                className="flex items-center gap-2 rounded-lg border border-border/70 bg-background/70 px-3 py-2 transition-colors hover:border-primary/40 hover:bg-accent/40"
+                                className="flex items-center gap-2 rounded-md border border-border/70 bg-background/50 px-3 py-2"
                               >
                                 {content}
-                              </Link>
+                              </div>
                             );
-                          }
-
-                          return (
-                            <div
-                              key={item.id}
-                              className="flex items-center gap-2 rounded-lg border border-border/70 bg-background/50 px-3 py-2"
-                            >
-                              {content}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </section>
-                ))}
-              </div>
-            )}
+                          })}
+                        </div>
+                      )}
+                    </section>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </aside>
-        )}
         <GuidedTourOverlay />
       </div>
       </GuidedTourProvider>

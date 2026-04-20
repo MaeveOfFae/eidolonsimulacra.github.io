@@ -3,6 +3,22 @@
 Generated release history for the browser app.
 
 
+## v3.3.5 - 2026-04-20
+
+### Platform and UI update
+
+This release packages 12 recent commits focused on platform, UI, and runtime.
+
+### Highlights
+- Enhance draft configuration with custom instructions and component send order
+- Update LLM engine options and improve base64 encoding
+- Release v3.3.3 with platform and UI updates, including new features and enhancements
+- Enhance draft review and refinement process
+- Add Kofi overlay styling to ensure proper positioning on the screen
+
+### Links
+- [Open generation](/generate)
+- [Review templates](/templates)
 ## v3.3.4 - 2026-04-20
 
 ### Platform and UI update
@@ -49,5 +65,6 @@ This release packages recent commits focused on platform, templates, and themes.
 ### Links
 - [Open generation](/generate)
 - [Review templates](/templates)
+
 
 

@@ -12,7 +12,7 @@ import {
   FileText,
   Layers,
 } from 'lucide-react';
-import type { DraftMetadata, DraftFilters } from '@char-gen/shared';
+import type { DraftMetadata } from '@char-gen/shared';
 import { cn } from '@/utils/cn';
 
 export interface DraftListSidebarProps {
@@ -115,6 +115,7 @@ export function DraftListSidebar({ drafts, isLoading }: DraftListSidebarProps) {
   }, [drafts, search, favoritesOnly, selectedMode, selectedGenre, sortField, sortOrder]);
 
   const hasActiveFilters = search || favoritesOnly || selectedMode || selectedGenre;
+  const activeFilterCount = Number(Boolean(search)) + Number(favoritesOnly) + Number(Boolean(selectedMode)) + Number(Boolean(selectedGenre));
 
   const clearFilters = () => {
     setSearch('');
@@ -132,11 +133,11 @@ export function DraftListSidebar({ drafts, isLoading }: DraftListSidebarProps) {
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
       {/* Header */}
-      <div className="border-b border-border/60 px-3 py-3">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      <div className="border-b border-border/60 px-3 py-2.5">
+        <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
           Draft Library
         </h3>
-        <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
+        <div className="mt-1.5 flex items-center gap-3 text-xs text-muted-foreground">
           <span>{stats.total} drafts</span>
           <span className="flex items-center gap-1">
             <Heart className="h-3 w-3" />
@@ -171,24 +172,35 @@ export function DraftListSidebar({ drafts, isLoading }: DraftListSidebarProps) {
 
       {/* Filter toggle and sort */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/40 px-3 py-2">
-        <button
-          type="button"
-          onClick={() => setShowFilters(!showFilters)}
-          className={cn(
-            'flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-colors',
-            showFilters || hasActiveFilters
-              ? 'bg-primary/10 text-primary'
-              : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
-          )}
-        >
-          <Filter className="h-3.5 w-3.5" />
-          Filters
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowFilters(!showFilters)}
+            className={cn(
+              'flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-colors',
+              showFilters || hasActiveFilters
+                ? 'bg-primary/10 text-primary'
+                : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+            )}
+          >
+            <Filter className="h-3.5 w-3.5" />
+            Filters
+            {hasActiveFilters && (
+              <span className="rounded-full bg-primary px-1.5 text-[10px] text-primary-foreground">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
           {hasActiveFilters && (
-            <span className="rounded-full bg-primary px-1.5 text-[10px] text-primary-foreground">
-              {[search && 'search', favoritesOnly && 'fav', selectedMode && 'mode', selectedGenre && 'genre'].filter(Boolean).length}
-            </span>
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Clear
+            </button>
           )}
-        </button>
+        </div>
 
         <div className="flex max-w-full items-center gap-1">
           <select
@@ -218,9 +230,8 @@ export function DraftListSidebar({ drafts, isLoading }: DraftListSidebarProps) {
 
       {/* Filter panel */}
       {showFilters && (
-        <div className="border-b border-border/40 bg-muted/30 px-3 py-2 space-y-2">
-          {/* Favorites toggle */}
-          <label className="flex items-center gap-2 text-xs">
+        <div className="grid gap-2 border-b border-border/40 bg-muted/20 px-3 py-2 sm:grid-cols-2">
+          <label className="flex items-center gap-2 rounded-md border border-border/60 bg-background/60 px-2.5 py-2 text-xs">
             <input
               type="checkbox"
               checked={favoritesOnly}
@@ -231,10 +242,9 @@ export function DraftListSidebar({ drafts, isLoading }: DraftListSidebarProps) {
             Favorites only
           </label>
 
-          {/* Mode filter */}
           {modes.length > 0 && (
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">Mode</label>
+            <label className="space-y-1 text-xs">
+              <span className="text-muted-foreground">Mode</span>
               <select
                 value={selectedMode}
                 onChange={(e) => setSelectedMode(e.target.value)}
@@ -248,13 +258,12 @@ export function DraftListSidebar({ drafts, isLoading }: DraftListSidebarProps) {
                   </option>
                 ))}
               </select>
-            </div>
+            </label>
           )}
 
-          {/* Genre filter */}
           {genres.length > 0 && (
-            <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">Genre</label>
+            <label className="space-y-1 text-xs sm:col-span-2">
+              <span className="text-muted-foreground">Genre</span>
               <select
                 value={selectedGenre}
                 onChange={(e) => setSelectedGenre(e.target.value)}
@@ -268,15 +277,14 @@ export function DraftListSidebar({ drafts, isLoading }: DraftListSidebarProps) {
                   </option>
                 ))}
               </select>
-            </div>
+            </label>
           )}
 
-          {/* Clear filters */}
           {hasActiveFilters && (
             <button
               type="button"
               onClick={clearFilters}
-              className="w-full rounded-md border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+              className="sm:col-span-2 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
             >
               Clear all filters
             </button>

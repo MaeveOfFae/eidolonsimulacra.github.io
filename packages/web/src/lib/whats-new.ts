@@ -16,9 +16,27 @@ export interface ReleaseNoteEntry {
 // Generated and maintained by tools/generation/generate-release-notes.mjs.
 export const releaseNotes: ReleaseNoteEntry[] = [
   {
-    version: '3.3.4',
+    version: '3.3.5',
     releasedOn: '2026-04-20',
     badge: 'Current release',
+    headline: 'Platform and UI update',
+    summary: 'This release packages 12 recent commits focused on platform, UI, and runtime.',
+    highlights: [
+      'Enhance draft configuration with custom instructions and component send order',
+      'Update LLM engine options and improve base64 encoding',
+      'Release v3.3.3 with platform and UI updates, including new features and enhancements',
+      'Enhance draft review and refinement process',
+      'Add Kofi overlay styling to ensure proper positioning on the screen',
+    ],
+    links: [
+      { label: 'Open generation', to: '/generate' },
+      { label: 'Review templates', to: '/templates' },
+    ],
+  },
+  {
+    version: '3.3.4',
+    releasedOn: '2026-04-20',
+    badge: 'Previous release',
     headline: 'Platform and UI update',
     summary: 'This release packages 12 recent commits focused on platform, UI, and runtime.',
     highlights: [
