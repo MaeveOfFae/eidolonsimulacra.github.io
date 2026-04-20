@@ -313,8 +313,10 @@ export default function BatchGenerate() {
                 <div key={index} className="flex min-w-0 items-center justify-between gap-2 px-3 py-2 text-sm">
                   <span className="truncate break-all flex-1">{seed}</span>
                   <button
+                    type="button"
                     onClick={() => handleRemoveSeed(seed)}
                     disabled={isRunning}
+                    aria-label={`Remove seed: ${seed}`}
                     className="ml-2 text-muted-foreground hover:text-destructive disabled:opacity-50"
                   >
                     <X className="h-4 w-4" />
@@ -353,8 +355,9 @@ export default function BatchGenerate() {
 
           {/* Template */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Template</label>
+            <label htmlFor="batch-template" className="text-sm font-medium">Template</label>
             <select
+              id="batch-template"
               value={template}
               onChange={(e) => setTemplate(e.target.value)}
               disabled={isRunning}
@@ -385,8 +388,9 @@ export default function BatchGenerate() {
 
           {parallel && (
             <div className="flex items-center gap-2">
-              <label className="text-sm text-muted-foreground">Max concurrent:</label>
+              <label htmlFor="batch-max-concurrent" className="text-sm text-muted-foreground">Max concurrent:</label>
               <input
+                id="batch-max-concurrent"
                 type="number"
                 min="1"
                 max="10"

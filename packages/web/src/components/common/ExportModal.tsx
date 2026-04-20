@@ -107,7 +107,7 @@ export default function ExportModal({ draftId, characterName, onClose }: ExportM
         <div className="shrink-0 border-b border-border p-4">
           <div className="flex items-center justify-between gap-3">
           <h2 className="text-lg font-semibold">Export Character</h2>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+          <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground" aria-label="Close">
             <X className="h-5 w-5" />
           </button>
           </div>

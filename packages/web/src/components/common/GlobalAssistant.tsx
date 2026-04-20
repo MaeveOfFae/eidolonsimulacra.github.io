@@ -111,6 +111,7 @@ export default function GlobalAssistant() {
   if (!isOpen) {
     return (
       <button
+        type="button"
         onClick={handleOpen}
         data-global-assistant-root="true"
         className="fixed bottom-6 right-6 z-30 inline-flex items-center gap-2 rounded-full bg-primary px-4 py-3 text-sm font-medium text-primary-foreground shadow-lg hover:bg-primary/90"
@@ -128,7 +129,7 @@ export default function GlobalAssistant() {
           <div className="font-semibold">Assistant</div>
           <div className="text-xs text-muted-foreground">{screenContext.screen_title}</div>
         </div>
-        <button onClick={() => setIsOpen(false)} className="text-muted-foreground hover:text-foreground">
+        <button type="button" onClick={() => setIsOpen(false)} aria-label="Close assistant" className="text-muted-foreground hover:text-foreground">
           <X className="h-5 w-5" />
         </button>
       </div>
@@ -168,8 +169,10 @@ export default function GlobalAssistant() {
             disabled={isStreaming}
           />
           <button
+            type="button"
             onClick={() => void handleSend()}
             disabled={!input.trim() || isStreaming}
+            aria-label="Send message"
             className="inline-flex items-center justify-center rounded-md bg-primary px-3 py-2 text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
             {isStreaming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}

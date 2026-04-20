@@ -147,8 +147,10 @@ export default function ChatPanel({ draftId, assetName, onAssetRefined }: ChatPa
           <span className="font-semibold">AI Refinement</span>
         </div>
         <button
+          type="button"
           onClick={() => setIsOpen(false)}
           className="text-muted-foreground hover:text-foreground"
+          aria-label="Close panel"
         >
           <X className="h-5 w-5" />
         </button>
@@ -160,6 +162,7 @@ export default function ChatPanel({ draftId, assetName, onAssetRefined }: ChatPa
         <select
           value={selectedAsset || ''}
           onChange={(e) => setSelectedAsset(e.target.value || undefined)}
+          aria-label="Focus asset"
           className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm"
         >
           <option value="">All assets</option>

@@ -626,7 +626,7 @@ export default function BlueprintEditor() {
           <div className="relative bg-card border border-border rounded-lg shadow-xl w-full max-w-6xl mx-4 max-h-[85vh] flex flex-col">
             <div className="flex items-center justify-between p-4 border-b border-border">
               <h2 className="text-lg font-semibold">Compare: Original vs Current</h2>
-              <button onClick={() => setShowDiff(false)} className="text-muted-foreground hover:text-foreground">
+              <button type="button" onClick={() => setShowDiff(false)} className="text-muted-foreground hover:text-foreground" title="Close">
                 <X className="h-5 w-5" />
               </button>
             </div>

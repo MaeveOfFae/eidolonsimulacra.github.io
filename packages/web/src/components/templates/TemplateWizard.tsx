@@ -187,7 +187,7 @@ export default function TemplateWizard({ open, onClose, initialData, templateNam
             </p>
           </div>
           {!created && (
-            <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+            <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground" aria-label="Close">
               <X className="h-5 w-5" />
             </button>
           )}

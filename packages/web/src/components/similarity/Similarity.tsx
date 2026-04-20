@@ -132,8 +132,9 @@ export default function Similarity() {
         <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         {/* Character 1 */}
           <div className="min-w-0 space-y-2">
-          <label className="text-sm font-medium">Character 1</label>
+          <label htmlFor="character1-select" className="text-sm font-medium">Character 1</label>
           <select
+            id="character1-select"
             value={character1}
             onChange={(e) => setCharacter1(e.target.value)}
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -149,8 +150,9 @@ export default function Similarity() {
 
         {/* Character 2 */}
           <div className="min-w-0 space-y-2">
-          <label className="text-sm font-medium">Character 2</label>
+          <label htmlFor="character2-select" className="text-sm font-medium">Character 2</label>
           <select
+            id="character2-select"
             value={character2}
             onChange={(e) => setCharacter2(e.target.value)}
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"

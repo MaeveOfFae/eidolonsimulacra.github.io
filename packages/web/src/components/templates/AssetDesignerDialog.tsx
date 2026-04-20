@@ -147,7 +147,7 @@ export default function AssetDesignerDialog({
             <h2 className="text-lg font-semibold">
               {asset ? 'Edit Asset' : 'Add Asset'}
             </h2>
-            <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+            <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground" aria-label="Close">
               <X className="h-5 w-5" />
             </button>
           </div>

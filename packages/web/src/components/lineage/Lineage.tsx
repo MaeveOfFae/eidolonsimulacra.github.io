@@ -205,8 +205,9 @@ export default function Lineage() {
       <div className="app-panel p-4">
         <div className="grid gap-4 md:grid-cols-[1fr_auto_auto_auto] md:items-end">
           <div>
-            <label className="text-sm font-medium">Generation</label>
+            <label htmlFor="generation-filter" className="text-sm font-medium">Generation</label>
             <select
+              id="generation-filter"
               value={generationFilter}
               onChange={(event) => setGenerationFilter(event.target.value)}
               className="mt-1.5 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
@@ -220,8 +221,9 @@ export default function Lineage() {
             </select>
           </div>
           <div>
-            <label className="text-sm font-medium">Max Depth</label>
+            <label htmlFor="max-depth-input" className="text-sm font-medium">Max Depth</label>
             <input
+              id="max-depth-input"
               type="number"
               min={1}
               max={10}

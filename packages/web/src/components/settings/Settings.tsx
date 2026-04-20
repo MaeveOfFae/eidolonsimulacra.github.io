@@ -540,8 +540,9 @@ export default function Settings() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">Provider</label>
+                <label htmlFor="provider-select" className="text-sm font-medium">Provider</label>
                 <select
+                  id="provider-select"
                   value={selectedProvider}
                   onChange={(e) => handleProviderSelect(e.target.value as Provider)}
                   className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -555,8 +556,9 @@ export default function Settings() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">Model</label>
+                <label htmlFor="model-select" className="text-sm font-medium">Model</label>
                 <select
+                  id="model-select"
                   value={currentModel}
                   onChange={(e) => handleModelSelect(e.target.value)}
                   className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -641,8 +643,9 @@ export default function Settings() {
 
             <div className="grid gap-4 grid-cols-2">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Temperature</label>
+                <label htmlFor="temperature-range" className="text-sm font-medium">Temperature</label>
                 <input
+                  id="temperature-range"
                   type="range"
                   min="0"
                   max="2"
@@ -658,8 +661,9 @@ export default function Settings() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">Max Tokens</label>
+                <label htmlFor="max-tokens-input" className="text-sm font-medium">Max Tokens</label>
                 <input
+                  id="max-tokens-input"
                   type="number"
                   value={localConfig.max_tokens ?? 4096}
                   onChange={(e) => setLocalConfig((previous) => ({ ...previous, max_tokens: parseInt(e.target.value, 10) || 0 }))}
@@ -683,8 +687,9 @@ export default function Settings() {
 
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
-            <label className="text-sm font-medium">Max Concurrent</label>
+            <label htmlFor="max-concurrent-input" className="text-sm font-medium">Max Concurrent</label>
             <input
+              id="max-concurrent-input"
               type="number"
               min="1"
               max="10"
@@ -703,8 +708,9 @@ export default function Settings() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Rate Limit Delay</label>
+            <label htmlFor="rate-limit-input" className="text-sm font-medium">Rate Limit Delay</label>
             <input
+              id="rate-limit-input"
               type="number"
               min="0"
               max="60"
@@ -739,8 +745,9 @@ export default function Settings() {
 
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
-            <label className="text-sm font-medium">Orchestration</label>
+            <label htmlFor="blueprint-orchestration" className="text-sm font-medium">Orchestration</label>
             <select
+              id="blueprint-orchestration"
               value={localConfig.feature_blueprints?.orchestration || 'blueprints/system/generator.md'}
               onChange={(e) => setLocalConfig((prev) => ({
                 ...prev,
@@ -767,8 +774,9 @@ export default function Settings() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Seed Generation</label>
+            <label htmlFor="blueprint-seed" className="text-sm font-medium">Seed Generation</label>
             <select
+              id="blueprint-seed"
               value={localConfig.feature_blueprints?.seed_generation || 'blueprints/system/seed_generator.md'}
               onChange={(e) => setLocalConfig((prev) => ({
                 ...prev,
@@ -795,8 +803,9 @@ export default function Settings() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Offspring Generation</label>
+            <label htmlFor="blueprint-offspring" className="text-sm font-medium">Offspring Generation</label>
             <select
+              id="blueprint-offspring"
               value={localConfig.feature_blueprints?.offspring_generation || 'blueprints/system/offspring_generator.md'}
               onChange={(e) => setLocalConfig((prev) => ({
                 ...prev,
@@ -823,8 +832,9 @@ export default function Settings() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Intro Scene Generation</label>
+            <label htmlFor="blueprint-intro-scene" className="text-sm font-medium">Intro Scene Generation</label>
             <select
+              id="blueprint-intro-scene"
               value={localConfig.feature_blueprints?.intro_scene_generation || 'blueprints/system/intro_scene.md'}
               onChange={(e) => setLocalConfig((prev) => ({
                 ...prev,
@@ -851,8 +861,9 @@ export default function Settings() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Validation</label>
+            <label htmlFor="blueprint-validation" className="text-sm font-medium">Validation</label>
             <select
+              id="blueprint-validation"
               value={localConfig.feature_blueprints?.validation || ''}
               onChange={(e) => setLocalConfig((prev) => ({
                 ...prev,
@@ -876,8 +887,9 @@ export default function Settings() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">Similarity Analysis</label>
+            <label htmlFor="blueprint-similarity" className="text-sm font-medium">Similarity Analysis</label>
             <select
+              id="blueprint-similarity"
               value={localConfig.feature_blueprints?.similarity || ''}
               onChange={(e) => setLocalConfig((prev) => ({
                 ...prev,
@@ -1018,6 +1030,7 @@ export default function Settings() {
             <button
               onClick={() => { setThemeError(null); setThemeNotice(null); }}
               className="ml-auto p-1 rounded hover:bg-black/10 transition-colors"
+              aria-label="Dismiss notification"
             >
               <XCircle className="h-4 w-4" />
             </button>

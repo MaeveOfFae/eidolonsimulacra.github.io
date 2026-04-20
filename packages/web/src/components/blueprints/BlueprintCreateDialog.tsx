@@ -102,9 +102,11 @@ Expected output structure
         <div className="flex items-center justify-between p-4 border-b border-border">
           <h2 className="text-lg font-semibold">Create New Blueprint</h2>
           <button
+            type="button"
             onClick={onClose}
             disabled={isCreating}
             className="text-muted-foreground hover:text-foreground disabled:opacity-50"
+            aria-label="Close"
           >
             <X className="h-5 w-5" />
           </button>

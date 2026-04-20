@@ -222,7 +222,7 @@ export default function GenerationProgress({
       queueAutoSync('drafts');
 
       clearActiveGenerationSession();
-      setCharacterName(nextCharacterName);
+      setCharacterName(nextCharacterName ?? null);
       setStatus('complete');
       onComplete({
         draft_path: reviewId,
@@ -292,7 +292,7 @@ export default function GenerationProgress({
     setCurrentAsset(restoredCurrentAsset);
     setEditorContent(storedSession.currentStatus === 'reviewing' ? storedSession.currentAssetContent : '');
     setError(null);
-    setCharacterName(inferCharacterDisplayNameForTemplate(approvedAssets, template));
+    setCharacterName(inferCharacterDisplayNameForTemplate(approvedAssets, template) ?? null);
 
     if (storedSession.currentStatus === 'reviewing' && restoredCurrentAsset) {
       setStatus('reviewing');
@@ -526,6 +526,8 @@ export default function GenerationProgress({
             value={editorContent}
             onChange={(event) => setEditorContent(event.target.value)}
             disabled={status !== 'reviewing'}
+            aria-label={`Content for ${currentAsset?.replace(/_/g, ' ') ?? 'asset'}`}
+            placeholder="Generated content will appear here for review…"
             className="min-h-[280px] w-full rounded-md border border-input bg-background p-3 text-sm font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-70"
           />
           <p className="text-xs text-muted-foreground">

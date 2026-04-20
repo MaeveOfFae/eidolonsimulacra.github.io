@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { BookOpen, FileJson, Lightbulb, Package, Search, Edit3, RotateCcw, Copy, Trash2, MoreVertical, Plus } from 'lucide-react';
 import type { Blueprint } from '@char-gen/shared';
 import { api } from '@/lib/api';
@@ -16,7 +16,6 @@ type Section = {
 };
 
 export default function Blueprints() {
-  const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [actionMenuOpen, setActionMenuOpen] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<{ type: 'reset' | 'delete'; blueprint: Blueprint } | null>(null);
@@ -249,21 +248,11 @@ export default function Blueprints() {
                   return (
                   <div
                     key={blueprint.path}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => navigate(editorPath)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault();
-                        navigate(editorPath);
-                      }
-                    }}
-                    className="group app-panel cursor-pointer p-3 transition-colors hover:border-primary hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:p-4"
+                    className="group app-panel p-3 transition-colors hover:border-primary hover:bg-accent/30 sm:p-4"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <Link
                         to={editorPath}
-                        onClick={(event) => event.stopPropagation()}
                         className="flex-1 min-w-0"
                       >
                         <div className="flex flex-wrap items-center gap-2">
@@ -279,7 +268,6 @@ export default function Blueprints() {
                       <div className="flex items-center gap-1">
                         <Link
                           to={editorPath}
-                          onClick={(event) => event.stopPropagation()}
                           className="p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground"
                           title="Edit"
                         >

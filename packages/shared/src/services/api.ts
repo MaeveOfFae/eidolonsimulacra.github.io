@@ -72,7 +72,21 @@ function encodeBase64(value: string): string {
     return withBtoa.btoa(value);
   }
 
-  return Buffer.from(value, 'utf-8').toString('base64');
+  // Manual base64 encoding fallback for environments without btoa
+  const bytes = new TextEncoder().encode(value);
+  const lookup = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+  let result = '';
+  for (let i = 0; i < bytes.length; i += 3) {
+    const a = bytes[i]!;
+    const b = i + 1 < bytes.length ? bytes[i + 1]! : 0;
+    const c = i + 2 < bytes.length ? bytes[i + 2]! : 0;
+    const trio = (a << 16) | (b << 8) | c;
+    result += lookup[(trio >> 18) & 0x3F];
+    result += lookup[(trio >> 12) & 0x3F];
+    result += i + 1 < bytes.length ? lookup[(trio >> 6) & 0x3F] : '=';
+    result += i + 2 < bytes.length ? lookup[trio & 0x3F] : '=';
+  }
+  return result;
 }
 
 function getBrowserApiKeysHeader(): Record<string, string> {

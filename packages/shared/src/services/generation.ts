@@ -4,7 +4,7 @@
  */
 
 import type {
-  ChatMessage,
+  LLMChatMessage,
   GenerateResult,
 } from '../llm/types';
 import type { Template } from '../templates';
@@ -68,7 +68,7 @@ export async function generateCharacter(request: GenerationOptions): Promise<Gen
   });
 
   // Generate response
-  const messages: ChatMessage[] = [
+  const messages: LLMChatMessage[] = [
     { role: 'system', content: systemPrompt },
     { role: 'user', content: userPrompt },
   ];
@@ -110,7 +110,7 @@ export async function* generateCharacterStream(
   });
 
   // Generate response with streaming
-  const messages: ChatMessage[] = [
+  const messages: LLMChatMessage[] = [
     { role: 'system', content: systemPrompt },
     { role: 'user', content: userPrompt },
   ];
@@ -234,7 +234,7 @@ export async function generateAsset(
     apiKey: '',
   });
 
-  const messages: ChatMessage[] = [
+  const messages: LLMChatMessage[] = [
     { role: 'system', content: systemPrompt },
     { role: 'user', content: userPrompt },
   ];

@@ -177,10 +177,9 @@ export class ConfigManager {
         ...defaults.batch,
         ...(config.batch ?? {}),
       },
-      help: {
-        ...defaults.help,
-        ...(config.help ?? {}),
-      },
+      help: config.help
+        ? { ...defaults.help, ...config.help }
+        : defaults.help,
       feature_blueprints: {
         ...defaults.feature_blueprints,
         ...(normalizeFeatureBlueprintDefaults(config.feature_blueprints) ?? {}),
@@ -191,7 +190,7 @@ export class ConfigManager {
   private loadPersistPreference(defaultValue: boolean): boolean {
     try {
       const stored = readStoredValue([API_KEYS_PERSISTENCE_KEY, ...LEGACY_API_KEYS_PERSISTENCE_KEYS]);
-      if (stored?.sourceKey !== API_KEYS_PERSISTENCE_KEY) {
+      if (stored && stored.sourceKey !== API_KEYS_PERSISTENCE_KEY) {
         writeStoredValue(API_KEYS_PERSISTENCE_KEY, LEGACY_API_KEYS_PERSISTENCE_KEYS, stored.value);
       }
 

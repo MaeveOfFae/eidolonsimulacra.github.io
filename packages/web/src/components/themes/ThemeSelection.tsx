@@ -221,8 +221,11 @@ export default function ThemeSelection() {
           <Shield className={`h-4 w-4 flex-shrink-0 ${error ? 'text-destructive' : 'text-primary'}`} />
           {error || notice}
           <button
+            type="button"
             onClick={() => { setError(null); setNotice(null); }}
             className="ml-auto p-1 rounded hover:bg-black/10 transition-colors"
+            title="Dismiss"
+            aria-label="Dismiss notification"
           >
             <XCircle className="h-4 w-4" />
           </button>
@@ -317,6 +320,8 @@ export default function ThemeSelection() {
               accept="application/json"
               onChange={handleImportTheme}
               className="hidden"
+              title="Import theme file"
+              aria-label="Import theme file"
             />
           </div>
         </div>
@@ -410,6 +415,7 @@ export default function ThemeSelection() {
                     <div className="flex gap-2">
                       <input
                         type="color"
+                        title={field.label}
                         value={getThemeOverrideValue(field.section, field.key) || resolvedTheme?.[field.colorKey] || '#000000'}
                         onChange={(e) => handleThemeFieldChange(field.section, field.key, e.target.value)}
                         className="h-9 w-9 rounded-lg border border-border bg-background p-1 cursor-pointer"

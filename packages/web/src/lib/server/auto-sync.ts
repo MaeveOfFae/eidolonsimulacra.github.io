@@ -246,7 +246,13 @@ async function syncBlueprints(): Promise<void> {
 async function syncConfig(): Promise<void> {
   await Promise.all([
     serverClient.pushConfig(configManager.getConfig() as unknown as Record<string, unknown>),
-    serverClient.pushApiKeys(configManager.getApiKeys()),
+    serverClient.pushApiKeys(
+      Object.fromEntries(
+        Object.entries(configManager.getApiKeys()).filter(
+          (entry): entry is [string, string] => entry[1] !== undefined
+        )
+      )
+    ),
   ]);
 }
 

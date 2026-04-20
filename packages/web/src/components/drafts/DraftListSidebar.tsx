@@ -161,6 +161,7 @@ export function DraftListSidebar({ drafts, isLoading }: DraftListSidebarProps) {
               type="button"
               onClick={() => setSearch('')}
               className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              aria-label="Clear search"
             >
               <X className="h-3.5 w-3.5" />
             </button>
@@ -193,6 +194,7 @@ export function DraftListSidebar({ drafts, isLoading }: DraftListSidebarProps) {
           <select
             value={sortField}
             onChange={(e) => setSortField(e.target.value as SortField)}
+            title="Sort by"
             className="max-w-full rounded-md border border-input bg-background px-2 py-1 text-xs focus:border-primary focus:outline-none"
           >
             <option value="modified">Modified</option>
@@ -236,6 +238,7 @@ export function DraftListSidebar({ drafts, isLoading }: DraftListSidebarProps) {
               <select
                 value={selectedMode}
                 onChange={(e) => setSelectedMode(e.target.value)}
+                title="Filter by mode"
                 className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs"
               >
                 <option value="">All modes</option>
@@ -255,6 +258,7 @@ export function DraftListSidebar({ drafts, isLoading }: DraftListSidebarProps) {
               <select
                 value={selectedGenre}
                 onChange={(e) => setSelectedGenre(e.target.value)}
+                title="Filter by genre"
                 className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs"
               >
                 <option value="">All genres</option>

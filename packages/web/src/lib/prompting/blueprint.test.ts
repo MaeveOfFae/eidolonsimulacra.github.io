@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { loadBlueprint } from './blueprint';
+import { loadBlueprint, parseBlueprintFrontmatter } from './blueprint';
+import { lintBlueprintContent } from '@/components/blueprints/blueprintLint';
 
 describe('loadBlueprint', () => {
   beforeEach(() => {
@@ -30,9 +31,8 @@ describe('loadBlueprint', () => {
     expect(content).toBe('custom generator blueprint');
     expect(fetchSpy).not.toHaveBeenCalled();
   });
-});import { describe, expect, it } from 'vitest';
-import { parseBlueprintFrontmatter } from './blueprint';
-import { lintBlueprintContent } from '@/components/blueprints/blueprintLint';
+});
+
 
 describe('parseBlueprintFrontmatter', () => {
   it('reads feature metadata from CRLF frontmatter blocks', () => {

@@ -1308,6 +1308,7 @@ export default function Themes() {
                       value={duplicateDraft.description}
                       onChange={(event) => setDuplicateDraft({ ...duplicateDraft, description: event.target.value })}
                       rows={2}
+                      placeholder="description"
                       className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                     />
                     <div className="grid gap-3 md:grid-cols-2">

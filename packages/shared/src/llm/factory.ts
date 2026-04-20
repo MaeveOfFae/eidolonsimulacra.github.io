@@ -12,7 +12,8 @@ import type { OpenAICompatConfig } from './openai-compat';
 import { detectProviderFromModel, ProviderEndpoints } from './types';
 import { listModels as listModelsFromProvider, OpenAICompatEngine } from './openai-compat';
 
-export interface CreateEngineOptions extends LLMConfig {
+export interface CreateEngineOptions extends Omit<LLMConfig, 'provider'> {
+  provider?: LLMProvider;
   apiKeys?: Record<string, string>;
   defaultApiKey?: string;
 }

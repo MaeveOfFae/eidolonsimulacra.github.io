@@ -573,6 +573,7 @@ export default function Offspring() {
           <select
             value={parent1}
             onChange={(e) => setParent1(e.target.value)}
+            aria-label="Parent 1"
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <option value="">Select parent 1...</option>
@@ -599,6 +600,7 @@ export default function Offspring() {
           <select
             value={parent2}
             onChange={(e) => setParent2(e.target.value)}
+            aria-label="Parent 2"
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <option value="">Select parent 2...</option>
@@ -648,6 +650,7 @@ export default function Offspring() {
               setTemplate(e.target.value);
               setTemplateManuallySelected(true);
             }}
+            aria-label="Template"
             disabled={templatesLoading || templates.length === 0 || isGenerating}
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
           >
@@ -790,6 +793,7 @@ export default function Offspring() {
           <textarea
             value={offspringSeed}
             onChange={(event) => handleSeedChange(event.target.value)}
+            aria-label="Offspring seed"
             className="min-h-32 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
 

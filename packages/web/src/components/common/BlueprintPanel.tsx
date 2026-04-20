@@ -145,10 +145,11 @@ export function BlueprintPanel({
       {/* Blueprint Selector */}
       {availableBlueprints && availableBlueprints.length > 0 && (
         <div className="px-4 py-3 border-b border-border/40 bg-background/50">
-          <label className="text-xs font-medium text-muted-foreground mb-2 block">
+          <label htmlFor="blueprint-select" className="text-xs font-medium text-muted-foreground mb-2 block">
             Choose blueprint
           </label>
           <select
+            id="blueprint-select"
             value={blueprintName}
             onChange={(e) => onBlueprintSelect?.(e.target.value)}
             className="w-full px-3 py-2 rounded-md border border-border text-sm font-medium bg-background text-foreground"
@@ -168,6 +169,7 @@ export function BlueprintPanel({
           {isEditing ? (
             <div className="p-4 space-y-3">
               <textarea
+                aria-label="Edit blueprint content"
                 value={editedContent}
                 onChange={(e) => setEditedContent(e.target.value)}
                 className="w-full min-h-64 p-3 rounded-md border border-border bg-background text-sm font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"

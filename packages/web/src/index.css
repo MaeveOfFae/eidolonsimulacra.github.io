@@ -147,10 +147,16 @@ body.modal-open [data-global-assistant-root='true'] {
     position: relative;
     overflow: hidden;
     border-radius: 1.75rem;
-    border: 1px solid color-mix(in srgb, var(--app-border) 80%, transparent);
+    border: 1px solid var(--app-border);
     background:
       linear-gradient(135deg, color-mix(in srgb, var(--app-surface) 90%, white 10%), color-mix(in srgb, var(--app-bg) 96%, black 4%));
     box-shadow: 0 20px 56px -40px rgba(15, 23, 42, 0.42);
+  }
+
+  @supports (border-color: color-mix(in srgb, red 50%, blue)) {
+    .app-page-hero {
+      border: 1px solid color-mix(in srgb, var(--app-border) 80%, transparent);
+    }
   }
 
   .app-page-hero::before {
@@ -162,6 +168,7 @@ body.modal-open [data-global-assistant-root='true'] {
       linear-gradient(to right, color-mix(in srgb, var(--app-border) 45%, transparent) 1px, transparent 1px),
       linear-gradient(to bottom, color-mix(in srgb, var(--app-border) 45%, transparent) 1px, transparent 1px);
     background-size: 24px 24px;
+    -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.7), transparent 92%);
     mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.7), transparent 92%);
   }
 
@@ -216,9 +223,15 @@ body.modal-open [data-global-assistant-root='true'] {
 
   .app-page-metric {
     border-radius: 1rem;
-    border: 1px solid color-mix(in srgb, var(--app-border) 80%, transparent);
+    border: 1px solid var(--app-border);
     background: color-mix(in srgb, var(--app-bg) 68%, transparent);
     padding: 0.8rem 0.9rem;
+  }
+
+  @supports (border-color: color-mix(in srgb, red 50%, blue)) {
+    .app-page-metric {
+      border: 1px solid color-mix(in srgb, var(--app-border) 80%, transparent);
+    }
   }
 
   .app-page-metric-label {
@@ -240,25 +253,46 @@ body.modal-open [data-global-assistant-root='true'] {
   .app-panel {
     position: relative;
     border-radius: 1.25rem;
-    border: 1px solid color-mix(in srgb, var(--app-border) 78%, transparent);
+    border: 1px solid var(--app-border);
     background: color-mix(in srgb, var(--app-surface) 72%, transparent);
     box-shadow: 0 16px 34px -30px rgba(15, 23, 42, 0.38);
+    -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
+  }
+
+  @supports (border-color: color-mix(in srgb, red 50%, blue)) {
+    .app-panel {
+      border: 1px solid color-mix(in srgb, var(--app-border) 78%, transparent);
+    }
   }
 
   .app-panel-muted {
     border-radius: 1.25rem;
-    border: 1px solid color-mix(in srgb, var(--app-border) 78%, transparent);
+    border: 1px solid var(--app-border);
     background: color-mix(in srgb, var(--app-bg) 62%, transparent);
     box-shadow: 0 14px 30px -28px rgba(15, 23, 42, 0.3);
   }
 
+  @supports (border-color: color-mix(in srgb, red 50%, blue)) {
+    .app-panel-muted {
+      border: 1px solid color-mix(in srgb, var(--app-border) 78%, transparent);
+    }
+  }
+
   .app-note {
     border-radius: 1rem;
-    border: 1px solid color-mix(in srgb, var(--app-highlight) 28%, var(--app-border) 72%);
+    border: 1px solid var(--app-border);
+    background: var(--app-surface);
     background: color-mix(in srgb, var(--app-highlight) 8%, var(--app-surface) 92%);
     box-shadow: 0 14px 32px -34px rgba(15, 23, 42, 0.36);
+    -webkit-backdrop-filter: blur(8px);
     backdrop-filter: blur(8px);
+  }
+
+  @supports (border-color: color-mix(in srgb, red 50%, blue)) {
+    .app-note {
+      border: 1px solid color-mix(in srgb, var(--app-highlight) 28%, var(--app-border) 72%);
+    }
   }
 
   .app-pill {
@@ -344,11 +378,18 @@ body.modal-open [data-global-assistant-root='true'] {
     display: inline-flex;
     gap: 0.25rem;
     border-radius: 1rem;
-    border: 1px solid color-mix(in srgb, var(--app-border) 80%, transparent);
+    border: 1px solid var(--app-border);
     background: color-mix(in srgb, var(--app-surface) 68%, transparent);
     padding: 0.25rem;
     box-shadow: 0 16px 32px -32px rgba(15, 23, 42, 0.35);
+    -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
+  }
+
+  @supports (border-color: color-mix(in srgb, red 50%, blue)) {
+    .app-tab-group {
+      border: 1px solid color-mix(in srgb, var(--app-border) 80%, transparent);
+    }
   }
 
   .app-tab-button {
@@ -419,8 +460,14 @@ body.modal-open [data-global-assistant-root='true'] {
 
   .home-rail-card:hover {
     transform: translateY(-4px);
-    border-color: color-mix(in srgb, var(--app-highlight) 30%, var(--app-border) 70%);
+    border-color: var(--app-highlight);
     box-shadow: 0 22px 46px -30px rgba(15, 23, 42, 0.65);
+  }
+
+  @supports (border-color: color-mix(in srgb, red 50%, blue)) {
+    .home-rail-card:hover {
+      border-color: color-mix(in srgb, var(--app-highlight) 30%, var(--app-border) 70%);
+    }
   }
 
   .home-orbit {
