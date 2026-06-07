@@ -3,7 +3,7 @@ name: Seed Generator
 description: Generate batches of compressed, compiler-ready character seeds from genre and tag lines.
 invokable: true
 always: false
-version: 1.0
+version: 2.0
 feature_category: seed_generation
 ---
 

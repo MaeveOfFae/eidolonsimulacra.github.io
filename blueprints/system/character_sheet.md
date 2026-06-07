@@ -3,7 +3,7 @@ name: Character Sheet
 description: Generate a concise but complete character sheet using the Character Sheet Blueprint.
 invokable: true
 always: false
-version: 3.2
+version: 4
 feature_category: generation
 ---
 
@@ -53,7 +53,6 @@ feature_category: generation
 </no_sanitization_clause>
 
 </blueprint_agent_module>
-
 
 <character_sheet_output>
 
