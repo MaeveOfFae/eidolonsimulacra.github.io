@@ -6,7 +6,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  Server,
   LogIn,
   UserPlus,
   Loader2,
@@ -123,42 +122,51 @@ export default function AuthPage() {
 
   const serverConnected = Boolean(serverStatus?.connected);
   const isAuthenticated = Boolean(serverStatus?.authenticated);
+  const modeTitle = mode === 'login' ? 'Sign in' : 'Create account';
+  const modeSummary = mode === 'login'
+    ? 'Enter the server-backed account you use for sync.'
+    : 'Create a server-backed account for cross-device sync.';
 
   return (
-    <div className="app-page mx-auto max-w-5xl space-y-6 pb-12">
+    <div className="app-page mx-auto max-w-4xl space-y-5 pb-10">
       <section className="app-page-hero">
         <div className="app-page-hero-grid">
-          <div className="space-y-4">
+          <div className="space-y-3">
             <p className="app-page-eyebrow">Auth and sync</p>
             <h1 className="app-page-title">
               {mode === 'login' ? 'Reconnect to your sync server.' : 'Create an account for cross-device sync.'}
             </h1>
             <p className="app-page-summary">
-              This screen only matters if you are using the optional self-hosted sync service. Local browser storage still remains the default workflow for drafts, themes, and provider configuration.
+              Optional server auth for sync. Local browser storage still remains the default workflow for drafts, themes, and provider configuration.
             </p>
           </div>
 
-          <div className="app-panel-muted p-5">
-            <p className="app-page-eyebrow">Connection state</p>
-            <div className="mt-4 app-page-metrics">
-              <div className="app-page-metric">
-                <p className="app-page-metric-label">Server</p>
-                <div className="app-page-metric-value text-2xl">{serverConnected ? 'Online' : 'Offline'}</div>
-              </div>
-              <div className="app-page-metric">
-                <p className="app-page-metric-label">Session</p>
-                <div className="app-page-metric-value text-2xl">{isAuthenticated ? 'Active' : 'Guest'}</div>
-              </div>
-              <div className="app-page-metric">
-                <p className="app-page-metric-label">Mode</p>
-                <div className="app-page-metric-value text-2xl">{mode === 'login' ? 'Login' : 'Register'}</div>
-              </div>
+          <div className="app-panel-muted p-4">
+            <p className="app-page-eyebrow">Connection</p>
+            <div className="mt-3 flex flex-wrap gap-2 text-xs font-medium">
+              <span className={`rounded-full px-2.5 py-1 ${serverConnected ? 'bg-green-500/12 text-green-700 dark:text-green-400' : 'bg-destructive/12 text-destructive'}`}>
+                Server {serverConnected ? 'online' : 'offline'}
+              </span>
+              <span className={`rounded-full px-2.5 py-1 ${isAuthenticated ? 'bg-green-500/12 text-green-700 dark:text-green-400' : 'bg-muted text-muted-foreground'}`}>
+                Session {isAuthenticated ? 'active' : 'guest'}
+              </span>
+              <span className="rounded-full bg-muted px-2.5 py-1 text-muted-foreground">
+                {mode === 'login' ? 'Login flow' : 'Register flow'}
+              </span>
             </div>
+            {serverStatus?.user && (
+              <p className="mt-3 text-sm text-muted-foreground">
+                Logged in as <span className="font-medium text-foreground">{serverStatus.user.displayName}</span> ({serverStatus.user.email})
+              </p>
+            )}
+            {!serverConnected && serverStatus?.error && (
+              <p className="mt-3 text-xs text-red-600 dark:text-red-400">{serverStatus.error}</p>
+            )}
           </div>
         </div>
       </section>
 
-      <div className="mx-auto w-full max-w-md space-y-6">
+      <div className="mx-auto w-full max-w-md space-y-4">
         <button
           onClick={() => navigate(-1)}
           className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
@@ -167,77 +175,66 @@ export default function AuthPage() {
           Back
         </button>
 
-        <div className="app-panel p-6 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent">
-            <Server className="h-8 w-8 text-primary-foreground" />
-          </div>
-          <h1 className="text-2xl font-bold">
-            {mode === 'login' ? 'Welcome Back' : 'Create Account'}
-          </h1>
-          <p className="text-muted-foreground">
-            {mode === 'login'
-              ? 'Sign in to sync your data across devices'
-              : 'Register to start syncing your data'}
-          </p>
-        </div>
-
         {isCheckingServer ? (
-          <div className="app-panel flex items-center justify-center gap-2 p-4">
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          <div className="app-panel flex items-center justify-center gap-2 p-3.5">
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
             <span className="text-sm text-muted-foreground">Checking server connection...</span>
           </div>
         ) : serverStatus?.connected ? (
-          <div className="app-note flex items-center justify-center gap-2 border-green-500/50 bg-green-500/10 p-3 text-green-700 dark:text-green-400">
-            <CheckCircle2 className="h-5 w-5 text-green-500" />
-            <span className="text-sm">Server connected</span>
+          <div className="app-note flex items-center justify-between gap-3 border-green-500/50 bg-green-500/10 p-3 text-green-700 dark:text-green-400">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-green-500" />
+              <span className="text-sm">Server connected</span>
+            </div>
+            <span className="text-xs font-medium uppercase tracking-[0.18em]">
+              {isAuthenticated ? 'Authenticated' : 'Ready'}
+            </span>
           </div>
         ) : (
-          <div className="space-y-3">
-            <div className="app-note flex items-center justify-center gap-2 border-red-500/50 bg-red-500/10 p-3 text-red-600 dark:text-red-400">
-              <XCircle className="h-5 w-5 text-red-500" />
-              <span className="text-sm">
+          <div className="app-panel space-y-3 p-4">
+            <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
+              <XCircle className="h-4 w-4 text-red-500" />
+              <span className="text-sm font-medium">
                 {serverStatus?.error || 'Server not connected'}
               </span>
             </div>
 
-            <div className="app-panel space-y-3 p-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-medium text-sm">Server Configuration</h3>
-                <button
-                  onClick={() => setShowServerConfig(!showServerConfig)}
-                  className="text-xs text-primary hover:underline"
-                >
-                  {showServerConfig ? 'Hide' : 'Configure'}
-                </button>
-              </div>
-              {showServerConfig && (
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground">Server URL</label>
-                    <div className="mt-1 flex gap-2">
-                      <input
-                        type="url"
-                        value={serverUrl}
-                        onChange={(e) => setServerUrl(e.target.value)}
-                        placeholder="https://api.eidolonsimulacra.com"
-                        className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      />
-                      <button
-                        onClick={handleTestConnection}
-                        disabled={isCheckingServer || !serverUrl}
-                        className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-                      >
-                        {isCheckingServer ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          'Connect'
-                        )}
-                      </button>
-                    </div>
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-sm font-medium">Server configuration</h3>
+              <button
+                onClick={() => setShowServerConfig(!showServerConfig)}
+                className="text-xs font-medium text-primary hover:underline"
+              >
+                {showServerConfig ? 'Hide' : 'Configure'}
+              </button>
+            </div>
+            {showServerConfig && (
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Server URL</label>
+                  <div className="mt-1 flex gap-2">
+                    <input
+                      type="url"
+                      value={serverUrl}
+                      onChange={(e) => setServerUrl(e.target.value)}
+                      placeholder="https://api.eidolonsimulacra.com"
+                      className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    />
+                    <button
+                      onClick={handleTestConnection}
+                      disabled={isCheckingServer || !serverUrl}
+                      className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                    >
+                      {isCheckingServer ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        'Connect'
+                      )}
+                    </button>
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -248,7 +245,21 @@ export default function AuthPage() {
         )}
 
         {serverStatus?.connected && !serverStatus?.authenticated && (
-          <form onSubmit={handleSubmit} className="app-panel space-y-4 p-6">
+          <form onSubmit={handleSubmit} className="app-panel space-y-4 p-5">
+            <div className="flex items-start justify-between gap-3 border-b border-border/60 pb-3">
+              <div>
+                <h2 className="text-lg font-semibold">{modeTitle}</h2>
+                <p className="mt-1 text-sm text-muted-foreground">{modeSummary}</p>
+              </div>
+              <button
+                type="button"
+                onClick={toggleMode}
+                className="text-xs font-medium text-primary hover:underline"
+              >
+                {mode === 'login' ? 'Need an account?' : 'Have one already?'}
+              </button>
+            </div>
+
             {mode === 'register' && (
               <div>
                 <label htmlFor="displayName" className="text-sm font-medium">
@@ -312,7 +323,7 @@ export default function AuthPage() {
                 </label>
                 <input
                   id="confirmPassword"
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   value={formData.confirmPassword}
                   onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                   required
@@ -336,27 +347,12 @@ export default function AuthPage() {
               )}
               {mode === 'login' ? 'Sign In' : 'Create Account'}
             </button>
+
+            <p className="pt-1 text-center text-xs text-muted-foreground">
+              Your data is encrypted and stored on your own server.
+            </p>
           </form>
         )}
-
-        {serverStatus?.connected && (
-          <div className="app-panel p-4 text-center text-sm">
-            <span className="text-muted-foreground">
-              {mode === 'login' ? "Don't have an account?" : 'Already have an account?'}
-            </span>
-            <button
-              onClick={toggleMode}
-              className="ml-2 font-medium text-primary hover:underline"
-            >
-              {mode === 'login' ? 'Sign up' : 'Sign in'}
-            </button>
-          </div>
-        )}
-
-        {/* Info */}
-        <div className="text-center text-xs text-muted-foreground">
-          <p>Your data is encrypted and stored securely on your own server.</p>
-        </div>
       </div>
     </div>
   );

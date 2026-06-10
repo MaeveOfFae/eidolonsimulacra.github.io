@@ -7,8 +7,6 @@ import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Server,
-  CheckCircle2,
-  XCircle,
   Loader2,
   LogIn,
   LogOut,
@@ -94,7 +92,7 @@ export default function ServerSettings() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
         <h2 className="text-2xl font-bold flex items-center gap-2">
           <Server className="h-6 w-6" />
@@ -106,7 +104,7 @@ export default function ServerSettings() {
       </div>
 
       {/* Status Card */}
-      <div className="rounded-lg border border-border bg-card p-4">
+      <div className="app-panel p-4">
         <div className="flex items-center justify-between">
           <h3 className="font-semibold">Connection Status</h3>
           <button
@@ -118,27 +116,13 @@ export default function ServerSettings() {
             Refresh
           </button>
         </div>
-        <div className="mt-4 flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            {status?.connected ? (
-              <CheckCircle2 className="h-5 w-5 text-green-500" />
-            ) : (
-              <XCircle className="h-5 w-5 text-red-500" />
-            )}
-            <span className="text-sm">
-              {status?.connected ? 'Connected' : 'Disconnected'}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            {status?.authenticated ? (
-              <CheckCircle2 className="h-5 w-5 text-green-500" />
-            ) : (
-              <XCircle className="h-5 w-5 text-muted-foreground" />
-            )}
-            <span className="text-sm">
-              {status?.authenticated ? 'Authenticated' : 'Not authenticated'}
-            </span>
-          </div>
+        <div className="mt-3 flex flex-wrap gap-2 text-xs font-medium">
+          <span className={`rounded-full px-2.5 py-1 ${status?.connected ? 'bg-green-500/12 text-green-700 dark:text-green-400' : 'bg-destructive/12 text-destructive'}`}>
+            {status?.connected ? 'Server connected' : 'Server offline'}
+          </span>
+          <span className={`rounded-full px-2.5 py-1 ${status?.authenticated ? 'bg-green-500/12 text-green-700 dark:text-green-400' : 'bg-muted text-muted-foreground'}`}>
+            {status?.authenticated ? 'Authenticated' : 'Guest session'}
+          </span>
         </div>
         {status?.user && (
           <div className="mt-3 text-sm text-muted-foreground">
@@ -154,20 +138,20 @@ export default function ServerSettings() {
 
       {/* Error/Success Messages */}
       {error && (
-        <div className="rounded-md border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-600 dark:text-red-400">
+        <div className="app-note border-red-500/50 bg-red-500/10 p-3 text-sm text-red-600 dark:text-red-400">
           {error}
           <button onClick={clearMessages} className="ml-2 opacity-50 hover:opacity-100">×</button>
         </div>
       )}
       {success && (
-        <div className="rounded-md border border-green-500/50 bg-green-500/10 p-3 text-sm text-green-600 dark:text-green-400">
+        <div className="app-note border-green-500/50 bg-green-500/10 p-3 text-sm text-green-600 dark:text-green-400">
           {success}
           <button onClick={clearMessages} className="ml-2 opacity-50 hover:opacity-100">×</button>
         </div>
       )}
 
       {/* Server Configuration */}
-      <div className="rounded-lg border border-border bg-card">
+      <div className="app-panel">
         <div className="border-b border-border p-4">
           <h3 className="font-semibold">Server Configuration</h3>
         </div>
@@ -224,7 +208,7 @@ export default function ServerSettings() {
       </div>
 
       {/* Authentication */}
-      <div className="rounded-lg border border-border bg-card">
+      <div className="app-panel">
         <div className="border-b border-border p-4">
           <h3 className="font-semibold">Authentication</h3>
         </div>
@@ -278,7 +262,7 @@ export default function ServerSettings() {
       </div>
 
       {/* Quick Links */}
-      <div className="rounded-lg border border-border bg-muted/50 p-4">
+      <div className="app-panel-muted p-4">
         <h3 className="font-medium text-sm mb-2">Quick Links</h3>
         <div className="flex flex-wrap gap-4 text-sm">
           <Link to="/auth" className="inline-flex items-center gap-1 text-primary hover:underline">

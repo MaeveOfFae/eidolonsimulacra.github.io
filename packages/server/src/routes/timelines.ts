@@ -375,6 +375,17 @@ router.patch(
       return;
     }
 
+    const existingEvent = await prisma.timelineEvent.findFirst({
+      where: {
+        id: params.eventId,
+        timelineId: params.timelineId,
+      },
+    });
+    if (!existingEvent) {
+      res.status(404).json({ error: "Event not found" });
+      return;
+    }
+
     const event = await prisma.timelineEvent.update({
       where: { id: params.eventId },
       data,
@@ -403,7 +414,18 @@ router.delete(
       return;
     }
 
-    await prisma.timelineEvent.delete({ where: { id: params.eventId } });
+    const deleted = await prisma.timelineEvent.deleteMany({
+      where: {
+        id: params.eventId,
+        timelineId: params.timelineId,
+      },
+    });
+
+    if (deleted.count === 0) {
+      res.status(404).json({ error: "Event not found" });
+      return;
+    }
+
     res.json({ message: "Event deleted" });
   }
 );
@@ -432,9 +454,23 @@ router.post(
       return;
     }
 
+    const uniqueEventIds = [...new Set(eventIds as string[])];
+    const timelineEvents = await prisma.timelineEvent.findMany({
+      where: {
+        id: { in: uniqueEventIds },
+        timelineId: params.id,
+      },
+      select: { id: true },
+    });
+
+    if (timelineEvents.length !== uniqueEventIds.length) {
+      res.status(404).json({ error: "One or more events were not found in this timeline" });
+      return;
+    }
+
     // Update sort orders in transaction
     await prisma.$transaction(
-      eventIds.map((eventId: string, index: number) =>
+      uniqueEventIds.map((eventId: string, index: number) =>
         prisma.timelineEvent.update({
           where: { id: eventId },
           data: { sortOrder: index },

@@ -1,5 +1,5 @@
 // Authentication routes
-import { Router, Request, Response } from "express";
+import { Router, Request, Response, type CookieOptions } from "express";
 import bcrypt from "bcrypt";
 import { z } from "zod";
 import { prisma } from "../db.js";
@@ -42,6 +42,16 @@ const updateProfileSchema = z.object({
 
 const SALT_ROUNDS = 12;
 
+function getRefreshTokenCookieOptions(): CookieOptions {
+  return {
+    httpOnly: true,
+    secure: env.NODE_ENV === "production",
+    sameSite: env.NODE_ENV === "production" ? "none" : "lax",
+    maxAge: 30 * 24 * 60 * 60 * 1000,
+    path: "/api/auth",
+  };
+}
+
 async function createSession(userId: string, deviceInfo?: unknown, ipAddress?: string) {
   const payload = { userId, email: "" }; // Email fetched separately
   const refreshToken = generateRefreshToken(payload);
@@ -64,13 +74,11 @@ async function createSession(userId: string, deviceInfo?: unknown, ipAddress?: s
 }
 
 function setRefreshTokenCookie(res: Response, token: string): void {
-  res.cookie("refreshToken", token, {
-    httpOnly: true,
-    secure: env.NODE_ENV === "production",
-    sameSite: env.NODE_ENV === "production" ? "strict" : "lax",
-    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-    path: "/api/auth",
-  });
+  res.cookie("refreshToken", token, getRefreshTokenCookieOptions());
+}
+
+function clearRefreshTokenCookie(res: Response): void {
+  res.clearCookie("refreshToken", getRefreshTokenCookieOptions());
 }
 
 // =============================================================================
@@ -212,7 +220,7 @@ router.post("/logout", async (req: Request, res: Response): Promise<void> => {
     });
   }
 
-  res.clearCookie("refreshToken", { path: "/api/auth" });
+  clearRefreshTokenCookie(res);
   res.json({ message: "Logged out successfully" });
 });
 
@@ -321,7 +329,7 @@ router.delete("/me", authenticateToken, async (req: Request, res: Response): Pro
     where: { id: req.user!.userId },
   });
 
-  res.clearCookie("refreshToken", { path: "/api/auth" });
+  clearRefreshTokenCookie(res);
   res.json({ message: "Account deleted successfully" });
 });
 

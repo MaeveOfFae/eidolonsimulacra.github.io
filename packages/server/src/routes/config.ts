@@ -21,12 +21,16 @@ const configSchema = z.object({
   model: z.string().optional(),
   temperature: z.number().min(0).max(2).optional(),
   max_tokens: z.number().int().positive().optional(),
+  base_url: z.string().optional(),
+  api_proxy_key: z.string().optional(),
+  api_base_url: z.string().optional(),
   batch: z.object({
     max_concurrent: z.number().int().positive().optional(),
     rate_limit_delay: z.number().int().nonnegative().optional(),
   }).optional(),
   theme_name: z.string().optional(),
   theme: z.record(z.string(), z.unknown()).optional(),
+  feature_blueprints: z.record(z.string(), z.string()).optional(),
   help: z.object({
     first_run_completed: z.boolean().optional(),
     show_inline_tips: z.boolean().optional(),

@@ -141,7 +141,7 @@ class EidolonAPI {
    * Get the current API base URL
    */
   getApiBaseUrl(): string {
-    return this.customApiBaseUrl || this.getApiBaseUrl();
+    return this.customApiBaseUrl || this.baseUrl;
   }
 
   private buildHeaders(headers: HeaderInput = {}, contentType?: string): Headers {

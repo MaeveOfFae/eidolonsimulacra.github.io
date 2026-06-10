@@ -1,5 +1,5 @@
 // OAuth routes for Google and GitHub authentication
-import { Router, Request, Response } from "express";
+import { Router, Request, Response, type CookieOptions } from "express";
 import { randomBytes } from "crypto";
 import { prisma } from "../db.js";
 import { env } from "../env.js";
@@ -152,6 +152,16 @@ interface HandleOAuthResult {
   accessToken: string;
 }
 
+function getRefreshTokenCookieOptions(): CookieOptions {
+  return {
+    httpOnly: true,
+    secure: env.NODE_ENV === "production",
+    sameSite: env.NODE_ENV === "production" ? "none" : "lax",
+    maxAge: 30 * 24 * 60 * 60 * 1000,
+    path: "/api/auth",
+  };
+}
+
 async function handleOAuthLogin(
   userInfo: OAuthUserInfo,
   req: Request,
@@ -248,13 +258,7 @@ async function handleOAuthLogin(
   });
 
   // Set refresh token cookie
-  res.cookie("refreshToken", refreshToken, {
-    httpOnly: true,
-    secure: env.NODE_ENV === "production",
-    sameSite: "strict",
-    maxAge: 30 * 24 * 60 * 60 * 1000,
-    path: "/api/auth",
-  });
+  res.cookie("refreshToken", refreshToken, getRefreshTokenCookieOptions());
 
   return {
     user: {

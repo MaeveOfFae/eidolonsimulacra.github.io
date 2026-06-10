@@ -156,10 +156,10 @@ export default function Blueprints() {
   }
 
   return (
-    <div className="app-page space-y-5 pb-10 sm:space-y-6 sm:pb-12">
+    <div className="app-page space-y-4 pb-8 sm:space-y-5 sm:pb-10">
       <section className="app-page-hero">
         <div className="app-page-hero-grid">
-          <div className="space-y-4">
+          <div className="space-y-3">
             <p className="app-page-eyebrow">Blueprints</p>
             <h1 className="app-page-title">Manage blueprint files</h1>
             <p className="app-page-summary">
@@ -174,9 +174,9 @@ export default function Blueprints() {
             </button>
           </div>
 
-          <div className="app-panel-muted p-4 sm:p-5">
+          <div className="app-panel-muted p-4">
             <p className="app-page-eyebrow">Library</p>
-            <div className="mt-4 app-page-metrics">
+            <div className="mt-3 app-page-metrics">
               <div className="app-page-metric">
                 <p className="app-page-metric-label">Visible</p>
                 <div className="app-page-metric-value text-2xl">{visibleBlueprints}</div>
@@ -194,15 +194,28 @@ export default function Blueprints() {
         </div>
       </section>
 
-      <div data-tour-anchor="blueprints-search" className="relative max-w-xl">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <input
-          type="text"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search by name, description, or path"
-          className="w-full rounded-md border border-input bg-background py-2 pl-10 pr-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        />
+      <div data-tour-anchor="blueprints-search" className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="relative w-full max-w-xl">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="text"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search by name, description, or path"
+            className="w-full rounded-md border border-input bg-background py-2 pl-10 pr-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          />
+        </div>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span className="app-pill app-pill-muted">{visibleBlueprints} visible</span>
+          {normalizedQuery && (
+            <button
+              onClick={() => setQuery('')}
+              className="rounded-md border border-border px-2.5 py-1 text-xs font-medium text-foreground hover:bg-accent"
+            >
+              Clear
+            </button>
+          )}
+        </div>
       </div>
 
       <section data-tour-anchor="blueprints-tools" className="app-panel border-dashed p-4 sm:p-5">
@@ -232,23 +245,25 @@ export default function Blueprints() {
           No blueprints match the current search.
         </div>
       ) : (
-        <div data-tour-anchor="blueprints-list" className="space-y-5 sm:space-y-6">
+        <div data-tour-anchor="blueprints-list" className="space-y-4 sm:space-y-5">
           {filteredSections.map((section) => (
             <section key={section.title} className="space-y-3">
-              <div className="flex items-center gap-2">
-                {section.icon}
-                <h2 className="text-lg font-semibold">{section.title}</h2>
-                <span className="text-sm text-muted-foreground">{section.blueprints.length}</span>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  {section.icon}
+                  <h2 className="text-base font-semibold">{section.title}</h2>
+                </div>
+                <span className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">{section.blueprints.length}</span>
               </div>
 
-              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              <div className="grid gap-2.5 md:grid-cols-2 xl:grid-cols-3">
                 {section.blueprints.map((blueprint) => {
                   const hasOverride = overridePaths.has(blueprint.path);
                   const editorPath = `/blueprints/edit/${encodeURIComponent(blueprint.path)}`;
                   return (
                   <div
                     key={blueprint.path}
-                    className="group app-panel p-3 transition-colors hover:border-primary hover:bg-accent/30 sm:p-4"
+                    className="group app-panel p-3 transition-colors hover:border-primary/60 hover:bg-accent/30 sm:p-3.5"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <Link
@@ -263,7 +278,7 @@ export default function Blueprints() {
                             </span>
                           )}
                         </div>
-                        <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{blueprint.description || 'No description'}</p>
+                        <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">{blueprint.description || 'No description'}</p>
                       </Link>
                       <div className="flex items-center gap-1">
                         <Link
@@ -332,7 +347,7 @@ export default function Blueprints() {
                         </div>
                       </div>
                     </div>
-                    <div className="mt-4 flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                    <div className="mt-3 flex items-center justify-between gap-3 text-xs text-muted-foreground">
                       <span className="truncate pr-2">{blueprint.path}</span>
                       <span>v{blueprint.version}</span>
                     </div>

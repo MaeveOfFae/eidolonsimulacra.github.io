@@ -366,6 +366,17 @@ router.patch(
       return;
     }
 
+    const existingCharacter = await prisma.worldCharacter.findFirst({
+      where: {
+        id: params.characterId,
+        worldId: params.worldId,
+      },
+    });
+    if (!existingCharacter) {
+      res.status(404).json({ error: "Character not found" });
+      return;
+    }
+
     const character = await prisma.worldCharacter.update({
       where: { id: params.characterId },
       data,
@@ -394,7 +405,18 @@ router.delete(
       return;
     }
 
-    await prisma.worldCharacter.delete({ where: { id: params.characterId } });
+    const deleted = await prisma.worldCharacter.deleteMany({
+      where: {
+        id: params.characterId,
+        worldId: params.worldId,
+      },
+    });
+
+    if (deleted.count === 0) {
+      res.status(404).json({ error: "Character not found" });
+      return;
+    }
+
     res.json({ message: "Character removed from world" });
   }
 );
