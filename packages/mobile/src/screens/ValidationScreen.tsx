@@ -3,6 +3,7 @@ import { View, Text, ScrollView, TextInput, TouchableOpacity, ActivityIndicator,
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type { ValidationResponse } from '@char-gen/shared';
 import { api } from '../config/api';
+import CollapsibleTray from '../components/CollapsibleTray';
 
 export default function ValidationScreen() {
   const [path, setPath] = useState('');
@@ -49,13 +50,14 @@ export default function ValidationScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Validation</Text>
-      <Text style={styles.subtitle}>
-        Run the validator against a workspace path or one of your saved drafts.
-      </Text>
+      <Text style={styles.subtitle}>Run the validator on a path or saved draft.</Text>
 
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Validate Directory</Text>
-        <Text style={styles.helperText}>Use a workspace-relative path like drafts/... or another generated directory.</Text>
+      <CollapsibleTray
+        title="Validate path"
+        subtitle="Review ID or drafts/<id> path"
+        initiallyExpanded
+        preview={<Text style={styles.trayPreviewText}>{path.trim() || 'No path selected'}</Text>}
+      >
         <TextInput
           style={styles.input}
           value={path}
@@ -74,11 +76,13 @@ export default function ValidationScreen() {
           ) : null}
           <Text style={styles.primaryButtonText}>Validate Path</Text>
         </TouchableOpacity>
-      </View>
+      </CollapsibleTray>
 
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Validate Saved Draft</Text>
-        <Text style={styles.helperText}>Pick a saved draft by review ID and run the same validator.</Text>
+      <CollapsibleTray
+        title="Validate saved draft"
+        subtitle="Pick a draft and run the same validator"
+        preview={<Text style={styles.trayPreviewText}>{selectedDraftId || 'No draft selected'}</Text>}
+      >
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsContainer}>
           {draftsData?.drafts.map((draft) => (
             <TouchableOpacity
@@ -102,7 +106,7 @@ export default function ValidationScreen() {
           ) : null}
           <Text style={styles.secondaryButtonText}>Validate Draft</Text>
         </TouchableOpacity>
-      </View>
+      </CollapsibleTray>
 
       {mutationError ? (
         <View style={styles.errorCard}>
@@ -113,7 +117,12 @@ export default function ValidationScreen() {
       ) : null}
 
       {result ? (
-        <View style={styles.card}>
+        <CollapsibleTray
+          title="Results"
+          subtitle={result.path}
+          initiallyExpanded
+          preview={<Text style={styles.trayPreviewText}>{result.success ? 'Passed' : 'Failed'} • {findings.length} line{findings.length === 1 ? '' : 's'}</Text>}
+        >
           <View style={styles.resultHeader}>
             <View style={styles.resultHeaderText}>
               <Text style={styles.sectionTitle}>Validation Results</Text>
@@ -152,7 +161,7 @@ export default function ValidationScreen() {
               <Text style={styles.stderrText}>{result.errors}</Text>
             </View>
           ) : null}
-        </View>
+        </CollapsibleTray>
       ) : null}
     </ScrollView>
   );
@@ -190,6 +199,11 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     borderColor: '#2f2f2f',
+  },
+  trayPreviewText: {
+    color: '#9ca3af',
+    fontSize: 12,
+    lineHeight: 18,
   },
   sectionTitle: {
     fontSize: 18,

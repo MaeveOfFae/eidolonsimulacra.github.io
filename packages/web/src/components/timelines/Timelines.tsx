@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Clock, GitBranch } from 'lucide-react';
 import { api } from '@/lib/api';
+import HoverHelpPopover from '../common/HoverHelpPopover';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
 import GenerationHistoryPanel from './GenerationHistoryPanel';
 
@@ -96,10 +97,14 @@ export default function Timelines() {
             ))}
           </div>
 
-          <div className="mt-4 rounded-lg border border-dashed border-border bg-background/40 p-4 text-sm text-muted-foreground">
-            {generationCount === 0
-              ? 'Generate and save drafts first. Timeline history only becomes useful once there is branch data to inspect.'
-              : 'Saved drafts already populate the history panel. Event and conflict tooling should stay out of the way until the underlying timeline model is real.'}
+          <div className="mt-4 flex justify-start">
+            <HoverHelpPopover
+              title="When this screen becomes useful"
+              summary={generationCount === 0
+                ? 'Generate and save drafts first. Timeline history only becomes useful once there is branch data to inspect.'
+                : 'Saved drafts already populate the history panel. Event and conflict tooling should stay out of the way until the underlying timeline model is real.'}
+              label="When timeline history matters"
+            />
           </div>
         </section>
       </div>

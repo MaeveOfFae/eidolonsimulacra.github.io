@@ -55,7 +55,7 @@ export default function HelpCenterPage() {
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Tips</p>
             <p className="mt-2 text-3xl font-bold text-foreground">{helpState.dismissed_tips.length}</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Dismissed inline tips. {helpState.show_inline_tips ? 'Inline tips are currently enabled.' : 'Inline tips are currently hidden.'}
+              Dismissed help popups. {helpState.show_inline_tips ? 'Help popups are currently enabled.' : 'Help popups are currently hidden.'}
             </p>
           </div>
         </div>
@@ -67,8 +67,8 @@ export default function HelpCenterPage() {
           </div>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">
             {remainingTourCount > 0
-              ? 'Continue with the next incomplete guided tour below, then use the page-level help strips and inline tips on each workflow screen.'
-              : 'Use the page-level help strips and inline tips as needed. The current guided-tour set is fully complete for this browser profile.'}
+              ? 'Continue with the next incomplete guided tour below, then use the page-level hover help popups on each workflow screen.'
+              : 'Use the page-level hover help popups as needed. The current guided-tour set is fully complete for this browser profile.'}
           </p>
         </div>
       </section>

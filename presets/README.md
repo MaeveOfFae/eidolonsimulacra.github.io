@@ -5,7 +5,7 @@ This directory stores TOML export preset definitions for character asset bundles
 There are two related realities in the repo today:
 
 - `packages/shared/src/export/presets.ts` contains the shared preset application and formatting helpers.
-- The browser app currently exposes three built-in export modes directly in its in-browser API layer: `json`, `text`, and `combined`.
+- The shipping web and mobile apps currently expose three built-in export modes directly in their local API layers: `json`, `text`, and `combined`.
 
 So these preset files are still useful repository assets and reference definitions, but they are not the source of truth for the current browser export picker.
 
@@ -89,9 +89,9 @@ Use `{{user}}` for the user placeholder.
 
 ## Current Browser Export Behavior
 
-The shipping browser app currently offers:
+The shipping web and mobile apps currently offer:
 
-- `json`: a JSON file with metadata and assets
+- `json`: a Chub-compatible V2/V3 character card JSON with an `extensions.eidolon` payload for lossless round-tripping of internal assets and metadata
 - `text`: a plain text export with section headers per asset
 - `combined`: a markdown bundle with metadata and all assets
 

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { GitCompare } from 'lucide-react';
 import { getOrderedAssets, type Template } from '@char-gen/shared';
+import CollapsibleSection from '../common/CollapsibleSection';
 
 export interface TemplateComparisonPanelProps {
   templates: Template[];
@@ -71,21 +72,17 @@ export function TemplateComparisonPanel({
   }, [left, right]);
 
   return (
-    <section className="rounded-lg border border-border bg-card/60 p-4 text-sm text-muted-foreground">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h3 className="flex items-center gap-2 font-semibold text-foreground">
-            <GitCompare className="h-4 w-4 text-primary" />
-            Template Comparison
-          </h3>
-          <p className="mt-2">Compare asset sets, dependency contracts, and blueprint paths.</p>
-        </div>
-        <span className="app-pill app-pill-muted hidden sm:inline-flex">
-          Live
-        </span>
-      </div>
+    <CollapsibleSection
+      title="Template comparison"
+      subtitle="Compare asset sets, dependency contracts, and blueprint paths"
+      preview={`Left: ${selectedLeft || 'unset'} · Right: ${selectedRight || 'unset'}`}
+      meta={<GitCompare className="h-4 w-4 text-primary" />}
+      defaultExpanded={Boolean(selectedLeft && selectedRight)}
+      className="text-sm text-muted-foreground"
+      bodyClassName="space-y-4"
+    >
 
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-2">
         <label className="space-y-1">
           <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Left template</span>
           <select
@@ -116,11 +113,11 @@ export function TemplateComparisonPanel({
       </div>
 
       {!comparison ? (
-        <div className="mt-4 rounded-md border border-border p-3">
+        <div className="rounded-md border border-border p-3">
           Select two templates to compare their structure.
         </div>
       ) : (
-        <div className="mt-4 space-y-3">
+        <div className="space-y-3">
           <div className="grid gap-3 grid-cols-2 xl:grid-cols-4 text-xs">
             <div className="rounded-md border border-border p-3">
               <div className="font-medium text-foreground">Shared assets</div>
@@ -209,7 +206,7 @@ export function TemplateComparisonPanel({
           )}
         </div>
       )}
-    </section>
+    </CollapsibleSection>
   );
 }
 

@@ -16,6 +16,9 @@ export function WorldbookPlaceholder({
         Planned integration point for worldbook entries including locations, factions,
         historical events, and setting details that can be attached to multiple related drafts.
       </p>
+      <p className="mt-2">
+        The blueprint layer can now target lorebook synthesis from reference drafts, even though the live worldbook editor and generator route are still staged.
+      </p>
       <div className="mt-3 space-y-1">
         <p>World: {worldName ?? 'none created'}</p>
         <p>Settings: {settingCount ?? 0}</p>

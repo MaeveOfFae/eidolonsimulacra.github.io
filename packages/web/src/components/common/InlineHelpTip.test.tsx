@@ -32,7 +32,7 @@ describe('InlineHelpTip', () => {
       />
     );
 
-    expect(screen.getByText('Helpful title')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Helpful title' })).toBeInTheDocument();
     expect(screen.getByText('Helpful description')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Dismiss help tip' }));

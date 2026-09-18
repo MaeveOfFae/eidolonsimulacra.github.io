@@ -1,27 +1,84 @@
-import { useState, useMemo } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl, TextInput, ScrollView, ActivityIndicator } from 'react-native';
+import { useEffect, useState, useMemo } from 'react';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl, TextInput, ScrollView, ActivityIndicator, Alert, Modal, KeyboardAvoidingView, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { useQuery } from '@tanstack/react-query';
-import { type DraftMetadata, type ContentMode } from '@char-gen/shared';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { type DraftMetadata, type ContentMode, type Template } from '@char-gen/shared';
 import { api } from '../config/api';
-import { StarIcon, FolderIcon, MagnifyingGlassIcon, FunnelIcon } from '../components/Icons';
+import CollapsibleTray from '../components/CollapsibleTray';
+import { exportAllDrafts, importDrafts } from '../local/draft-store';
+import { StarIcon, FolderIcon, MagnifyingGlassIcon, PlusIcon } from '../components/Icons';
 import type { DraftsStackNavigationProp } from '../types/navigation';
+import { getErrorMessage } from '../utils/errors';
+import { pickTextFile, saveTextFile } from '../utils/file-transfer';
 
 type SortOption = 'created' | 'modified' | 'name';
 type FilterMode = 'all' | 'favorites';
 
 export default function DraftsScreen() {
   const navigation = useNavigation<DraftsStackNavigationProp<'DraftsList'>>();
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOption, setSortOption] = useState<SortOption>('created');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [filterMode, setFilterMode] = useState<FilterMode>('all');
   const [filterContentMode, setFilterContentMode] = useState<ContentMode | 'all'>('all');
-  const [showFilters, setShowFilters] = useState(false);
+  const [importTemplateName, setImportTemplateName] = useState('');
+  const [createModalVisible, setCreateModalVisible] = useState(false);
+  const [createSeed, setCreateSeed] = useState('');
+  const [createName, setCreateName] = useState('');
+  const [createGenre, setCreateGenre] = useState('');
+  const [createNotes, setCreateNotes] = useState('');
+  const [createMode, setCreateMode] = useState<ContentMode | 'Auto'>('Auto');
+  const [createTemplateName, setCreateTemplateName] = useState('');
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['drafts'],
     queryFn: () => api.getDrafts(),
+  });
+
+  const { data: templates = [] } = useQuery({
+    queryKey: ['templates'],
+    queryFn: () => api.getTemplates(),
+  });
+
+  const selectedImportTemplate = useMemo(
+    () => templates.find((candidate: Template) => candidate.name === importTemplateName),
+    [importTemplateName, templates]
+  );
+
+  useEffect(() => {
+    if (!importTemplateName && templates.length > 0) {
+      setImportTemplateName(templates[0].name);
+    }
+  }, [importTemplateName, templates]);
+
+  useEffect(() => {
+    if (!createTemplateName && templates.length > 0) {
+      setCreateTemplateName(templates[0].name);
+    }
+  }, [createTemplateName, templates]);
+
+  const createDraftMutation = useMutation({
+    mutationFn: (request: {
+      seed: string;
+      templateName: string;
+      mode?: ContentMode | 'Auto';
+      characterName?: string;
+      genre?: string;
+      notes?: string;
+    }) => api.createDraft(request),
+    onSuccess: async (draft) => {
+      await queryClient.invalidateQueries({ queryKey: ['drafts'] });
+      setCreateModalVisible(false);
+      setCreateSeed('');
+      setCreateName('');
+      setCreateGenre('');
+      setCreateNotes('');
+      navigation.navigate('DraftDetail', { draftId: draft.metadata.review_id });
+    },
+    onError: (mutationError: unknown) => {
+      Alert.alert('Error', getErrorMessage(mutationError, 'Failed to create draft'));
+    },
   });
 
   const filteredDrafts = useMemo(() => {
@@ -63,6 +120,83 @@ export default function DraftsScreen() {
 
     return drafts;
   }, [data?.drafts, searchQuery, filterMode, filterContentMode, sortOption, sortOrder]);
+
+  const handleExportAll = async () => {
+    try {
+      const contents = await exportAllDrafts();
+      const fileName = `eidolon-simulacra-mobile-drafts-${new Date().toISOString().split('T')[0]}.json`;
+      const result = await saveTextFile(contents, fileName, 'application/json');
+
+      if (!result.saved) {
+        return;
+      }
+
+      Alert.alert('Drafts exported', 'A draft backup file was prepared and opened in the system share sheet. Save it to Files, Downloads, or another destination there.');
+    } catch (error) {
+      Alert.alert('Error', getErrorMessage(error, 'Failed to export drafts'));
+    }
+  };
+
+  const handleImportFile = async () => {
+    try {
+      const file = await pickTextFile(['application/json', 'text/markdown', 'text/plain']);
+      if (!file) {
+        return;
+      }
+
+      const result = await importDrafts(file.contents, { sourceName: file.name, template: selectedImportTemplate });
+      await queryClient.invalidateQueries({ queryKey: ['drafts'] });
+
+      const remapMessage = result.remapped > 0
+        ? `\n\n${result.remapped} draft IDs were remapped to avoid overwriting existing characters.`
+        : '';
+      Alert.alert('Import complete', `Imported ${result.imported} draft${result.imported === 1 ? '' : 's'} from ${file.name}.${remapMessage}`);
+    } catch (error) {
+      Alert.alert('Error', getErrorMessage(error, 'Failed to import drafts'));
+    }
+  };
+
+  const closeCreateModal = () => {
+    if (createDraftMutation.isPending) {
+      return;
+    }
+
+    setCreateModalVisible(false);
+  };
+
+  const handleOpenCreateModal = () => {
+    if (templates.length === 0) {
+      Alert.alert('Templates unavailable', 'Create or import a template before starting a manual draft.');
+      return;
+    }
+
+    if (!createTemplateName && templates[0]?.name) {
+      setCreateTemplateName(templates[0].name);
+    }
+    setCreateModalVisible(true);
+  };
+
+  const handleCreateDraft = () => {
+    const seed = createSeed.trim();
+    if (!seed) {
+      Alert.alert('Seed required', 'Enter a seed before creating a manual draft.');
+      return;
+    }
+
+    if (!createTemplateName.trim()) {
+      Alert.alert('Template required', 'Choose a template for this draft.');
+      return;
+    }
+
+    createDraftMutation.mutate({
+      seed,
+      templateName: createTemplateName.trim(),
+      mode: createMode,
+      characterName: createName.trim() || undefined,
+      genre: createGenre.trim() || undefined,
+      notes: createNotes.trim() || undefined,
+    });
+  };
 
   const renderDraft = ({ item }: { item: DraftMetadata }) => (
     <TouchableOpacity
@@ -107,9 +241,28 @@ export default function DraftsScreen() {
   }
 
   const contentModes: ContentMode[] = ['SFW', 'NSFW', 'Platform-Safe', 'Auto'];
+  const hasActiveFilters = filterMode !== 'all' || filterContentMode !== 'all' || sortOption !== 'created' || sortOrder !== 'desc';
 
   return (
     <View style={styles.container}>
+      <ScrollView
+        horizontal
+        style={styles.toolbar}
+        contentContainerStyle={styles.toolbarContent}
+        showsHorizontalScrollIndicator={false}
+      >
+        <TouchableOpacity style={styles.toolbarButton} onPress={handleOpenCreateModal}>
+          <PlusIcon color="#ffffff" size={16} />
+          <Text style={styles.toolbarButtonText}>Create draft</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.toolbarButton, styles.toolbarButtonSecondary]} onPress={() => void handleImportFile()}>
+          <Text style={styles.toolbarButtonSecondaryText}>Import file</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.toolbarButton} onPress={() => void handleExportAll()}>
+          <Text style={styles.toolbarButtonText}>Export all</Text>
+        </TouchableOpacity>
+      </ScrollView>
+
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <View style={styles.searchInputContainer}>
@@ -127,18 +280,42 @@ export default function DraftsScreen() {
             </TouchableOpacity>
           )}
         </View>
-        <TouchableOpacity
-          style={[styles.filterButton, showFilters && styles.filterButtonActive]}
-          onPress={() => setShowFilters(!showFilters)}
-        >
-          <FunnelIcon color={showFilters ? '#fff' : '#9ca3af'} size={18} />
-        </TouchableOpacity>
       </View>
 
-      {/* Filters Panel */}
-      {showFilters && (
-        <View style={styles.filtersPanel}>
-          {/* Filter Mode */}
+      <View style={styles.filtersTrayWrap}>
+        <CollapsibleTray
+          title="Filters & import"
+          subtitle="Narrow the list and set the template used for imports"
+          initiallyExpanded={hasActiveFilters}
+          preview={
+            <Text style={styles.filterSummaryText} numberOfLines={1}>
+              {selectedImportTemplate?.name || 'No import template'} • {filterMode === 'favorites' ? 'favorites' : 'all drafts'} • {filterContentMode === 'all' ? 'all modes' : filterContentMode}
+            </Text>
+          }
+        >
+          {templates.length > 0 ? (
+            <View style={styles.filterRow}>
+              <Text style={styles.filterLabel}>Import</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={styles.filterChips}>
+                  {templates.map((candidate: Template) => {
+                    const selected = candidate.name === importTemplateName;
+
+                    return (
+                      <TouchableOpacity
+                        key={candidate.name}
+                        style={[styles.filterChip, selected && styles.filterChipActive]}
+                        onPress={() => setImportTemplateName(candidate.name)}
+                      >
+                        <Text style={[styles.filterChipText, selected && styles.filterChipTextActive]}>{candidate.name}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </ScrollView>
+            </View>
+          ) : null}
+
           <View style={styles.filterRow}>
             <Text style={styles.filterLabel}>Show</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -160,7 +337,6 @@ export default function DraftsScreen() {
             </ScrollView>
           </View>
 
-          {/* Content Mode Filter */}
           <View style={styles.filterRow}>
             <Text style={styles.filterLabel}>Mode</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -171,7 +347,7 @@ export default function DraftsScreen() {
                 >
                   <Text style={[styles.filterChipText, filterContentMode === 'all' && styles.filterChipTextActive]}>All</Text>
                 </TouchableOpacity>
-                {contentModes.map(mode => (
+                {contentModes.map((mode) => (
                   <TouchableOpacity
                     key={mode}
                     style={[styles.filterChip, filterContentMode === mode && styles.filterChipActive]}
@@ -184,12 +360,11 @@ export default function DraftsScreen() {
             </ScrollView>
           </View>
 
-          {/* Sort Options */}
           <View style={styles.filterRow}>
-            <Text style={styles.filterLabel}>Sort by</Text>
+            <Text style={styles.filterLabel}>Sort</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={styles.filterChips}>
-                {(['created', 'modified', 'name'] as SortOption[]).map(option => (
+                {(['created', 'modified', 'name'] as SortOption[]).map((option) => (
                   <TouchableOpacity
                     key={option}
                     style={[styles.filterChip, sortOption === option && styles.filterChipActive]}
@@ -211,8 +386,8 @@ export default function DraftsScreen() {
               </View>
             </ScrollView>
           </View>
-        </View>
-      )}
+        </CollapsibleTray>
+      </View>
 
       {/* Stats */}
       {data?.stats && (
@@ -243,11 +418,138 @@ export default function DraftsScreen() {
             <Text style={styles.emptyText}>
               {searchQuery || filterMode !== 'all' || filterContentMode !== 'all'
                 ? 'Try adjusting your search or filters'
-                : 'Generate your first character to get started'}
+                : 'Generate a character or create a manual draft to get started'}
             </Text>
+            {!searchQuery && filterMode === 'all' && filterContentMode === 'all' ? (
+              <TouchableOpacity style={styles.emptyActionButton} onPress={handleOpenCreateModal}>
+                <Text style={styles.emptyActionButtonText}>Create Manual Draft</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
         }
       />
+
+      <Modal
+        visible={createModalVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={closeCreateModal}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalContainer}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={closeCreateModal} disabled={createDraftMutation.isPending}>
+              <Text style={styles.modalCancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Create Draft</Text>
+            <TouchableOpacity onPress={handleCreateDraft} disabled={createDraftMutation.isPending}>
+              {createDraftMutation.isPending ? (
+                <ActivityIndicator size="small" color="#7c3aed" />
+              ) : (
+                <Text style={styles.modalSaveText}>Create</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.modalContent} contentContainerStyle={styles.modalContentContainer}>
+            <Text style={styles.modalHelpText}>Start a draft, then fill or refine assets in Draft Detail.</Text>
+
+            <View style={styles.editField}>
+              <Text style={styles.editLabel}>Character Name</Text>
+              <TextInput
+                style={styles.editInput}
+                value={createName}
+                onChangeText={setCreateName}
+                placeholder="Optional display name"
+                placeholderTextColor="#6b7280"
+              />
+            </View>
+
+            <View style={styles.editField}>
+              <Text style={styles.editLabel}>Template</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={styles.filterChips}>
+                  {templates.map((candidate: Template) => {
+                    const selected = candidate.name === createTemplateName;
+
+                    return (
+                      <TouchableOpacity
+                        key={candidate.name}
+                        style={[styles.filterChip, selected && styles.filterChipActive]}
+                        onPress={() => setCreateTemplateName(candidate.name)}
+                      >
+                        <Text style={[styles.filterChipText, selected && styles.filterChipTextActive]}>{candidate.name}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </ScrollView>
+            </View>
+
+            <View style={styles.editField}>
+              <Text style={styles.editLabel}>Seed</Text>
+              <TextInput
+                style={[styles.editInput, styles.editTextArea]}
+                value={createSeed}
+                onChangeText={setCreateSeed}
+                placeholder="Describe the character concept or prompt"
+                placeholderTextColor="#6b7280"
+                multiline
+                numberOfLines={5}
+                textAlignVertical="top"
+              />
+            </View>
+
+            <View style={styles.editField}>
+              <Text style={styles.editLabel}>Mode</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={styles.filterChips}>
+                  {(['Auto', 'SFW', 'NSFW', 'Platform-Safe'] as const).map((mode) => {
+                    const selected = mode === createMode;
+
+                    return (
+                      <TouchableOpacity
+                        key={mode}
+                        style={[styles.filterChip, selected && styles.filterChipActive]}
+                        onPress={() => setCreateMode(mode)}
+                      >
+                        <Text style={[styles.filterChipText, selected && styles.filterChipTextActive]}>{mode}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </ScrollView>
+            </View>
+
+            <View style={styles.editField}>
+              <Text style={styles.editLabel}>Genre</Text>
+              <TextInput
+                style={styles.editInput}
+                value={createGenre}
+                onChangeText={setCreateGenre}
+                placeholder="Optional genre"
+                placeholderTextColor="#6b7280"
+              />
+            </View>
+
+            <View style={styles.editField}>
+              <Text style={styles.editLabel}>Notes</Text>
+              <TextInput
+                style={[styles.editInput, styles.editTextArea]}
+                value={createNotes}
+                onChangeText={setCreateNotes}
+                placeholder="Optional review notes or canon reminders"
+                placeholderTextColor="#6b7280"
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+              />
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -256,6 +558,40 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0f0f0f',
+  },
+  toolbar: {
+    paddingHorizontal: 12,
+    paddingTop: 12,
+  },
+  toolbarContent: {
+    gap: 8,
+    paddingRight: 12,
+  },
+  toolbarButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    minWidth: 118,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    backgroundColor: '#7c3aed',
+  },
+  toolbarButtonSecondary: {
+    backgroundColor: '#1f1f1f',
+    borderWidth: 1,
+    borderColor: '#2f2f2f',
+  },
+  toolbarButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  toolbarButtonSecondaryText: {
+    color: '#d1d5db',
+    fontSize: 14,
+    fontWeight: '600',
   },
   centered: {
     flex: 1,
@@ -284,11 +620,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   searchContainer: {
-    flexDirection: 'row',
     padding: 12,
-    gap: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1f1f1f',
   },
   searchInputContainer: {
     flex: 1,
@@ -312,22 +644,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     padding: 4,
   },
-  filterButton: {
-    backgroundColor: '#1f1f1f',
-    borderRadius: 8,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
+  filtersTrayWrap: {
+    paddingHorizontal: 12,
+    paddingBottom: 8,
   },
-  filterButtonActive: {
-    backgroundColor: '#7c3aed',
-    borderColor: '#7c3aed',
+  filterSummaryText: {
+    color: '#9ca3af',
+    fontSize: 12,
+    lineHeight: 18,
   },
   filtersPanel: {
-    backgroundColor: '#1f1f1f',
-    borderBottomWidth: 1,
-    borderBottomColor: '#2f2f2f',
-    padding: 12,
+    padding: 0,
   },
   filterRow: {
     flexDirection: 'row',
@@ -431,5 +758,80 @@ const styles = StyleSheet.create({
     color: '#9ca3af',
     fontSize: 14,
     textAlign: 'center',
+  },
+  emptyActionButton: {
+    marginTop: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    backgroundColor: '#7c3aed',
+  },
+  emptyActionButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#0f0f0f',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#27272a',
+  },
+  modalTitle: {
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  modalCancelText: {
+    color: '#9ca3af',
+    fontSize: 16,
+  },
+  modalSaveText: {
+    color: '#7c3aed',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalContent: {
+    flex: 1,
+  },
+  modalContentContainer: {
+    padding: 20,
+    paddingBottom: 32,
+  },
+  modalHelpText: {
+    color: '#9ca3af',
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  editField: {
+    marginBottom: 20,
+  },
+  editLabel: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  editInput: {
+    backgroundColor: '#18181b',
+    borderWidth: 1,
+    borderColor: '#27272a',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    color: '#ffffff',
+    fontSize: 16,
+  },
+  editTextArea: {
+    minHeight: 120,
+    textAlignVertical: 'top',
   },
 });

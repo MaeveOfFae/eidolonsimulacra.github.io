@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { GitCompare, Loader2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { DraftMetadata } from '@char-gen/shared';
+import CollapsibleSection from '../common/CollapsibleSection';
 import { cn } from '../../utils/cn';
 
 export interface DraftComparisonPanelProps {
@@ -112,18 +113,18 @@ export function DraftComparisonPanel({
     : 0;
 
   return (
-    <section className="min-w-0 overflow-hidden rounded-lg border border-dashed border-border bg-card/60 p-4 text-sm text-muted-foreground">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h3 className="font-semibold text-foreground">Draft Comparison</h3>
-          <p className="mt-2">Side-by-side comparison for shared assets, plus template and mode drift between two saved drafts.</p>
-          <p className="mt-2 break-all">Left: {selectedLeftDraftId || 'unset'} · Right: {selectedRightDraftId || 'unset'}</p>
-        </div>
-        <GitCompare className="h-5 w-5 text-primary" />
-      </div>
+    <CollapsibleSection
+      title="Draft comparison"
+      subtitle="Shared assets, plus template and mode drift between two saved drafts"
+      preview={`Left: ${selectedLeftDraftId || 'unset'} · Right: ${selectedRightDraftId || 'unset'}`}
+      meta={<GitCompare className="h-4 w-4 text-primary" />}
+      defaultExpanded={Boolean(selectedLeftDraftId && selectedRightDraftId)}
+      className="border-dashed text-sm text-muted-foreground"
+      bodyClassName="space-y-4"
+    >
 
       {draftOptions.length > 1 && (
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2">
           <label className="space-y-2">
             <span className="text-xs font-medium text-foreground">Left draft</span>
             <select
@@ -159,20 +160,20 @@ export function DraftComparisonPanel({
       )}
 
       {(leftDraft.isLoading || rightDraft.isLoading) && (
-        <div className="mt-4 flex items-center gap-2">
+        <div className="flex items-center gap-2">
           <Loader2 className="h-4 w-4 animate-spin" />
           Loading draft comparison...
         </div>
       )}
 
       {!selectedLeftDraftId || !selectedRightDraftId ? (
-        <div className="mt-4 rounded-md border border-border p-3">
+        <div className="rounded-md border border-border p-3">
           Select at least two drafts to unlock comparison.
         </div>
       ) : null}
 
       {comparison && leftDraft.data && rightDraft.data && (
-        <div className="mt-4 space-y-3">
+        <div className="space-y-3">
           <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
             <div className="min-w-0 rounded-md border border-border p-3">
               <div className="font-medium text-foreground">{leftDraft.data.metadata.character_name || leftDraft.data.metadata.seed}</div>
@@ -260,7 +261,7 @@ export function DraftComparisonPanel({
           {/* TODO: Add merge and branch actions once review state can safely preserve alternate asset revisions. */}
         </div>
       )}
-    </section>
+    </CollapsibleSection>
   );
 }
 

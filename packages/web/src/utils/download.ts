@@ -1,3 +1,5 @@
+import { isDesktopRuntime } from '../lib/runtime';
+
 interface DownloadResponse {
   blob: Blob;
   filename: string | null;
@@ -6,11 +8,66 @@ interface DownloadResponse {
 
 interface SaveResult {
   saved: boolean;
-  method: 'tauri' | 'share' | 'download' | 'new-tab' | 'cancelled';
+  method: 'tauri' | 'file-system-access' | 'share' | 'download' | 'new-tab' | 'cancelled';
 }
+
+interface PickFileOptions {
+  accept?: string;
+}
+
+interface FilePickerAcceptType {
+  description?: string;
+  accept: Record<string, string[]>;
+}
+
+interface FilePickerOpenOptions {
+  multiple?: boolean;
+  excludeAcceptAllOption?: boolean;
+  types?: FilePickerAcceptType[];
+}
+
+interface FilePickerSaveOptions {
+  suggestedName?: string;
+  excludeAcceptAllOption?: boolean;
+  types?: FilePickerAcceptType[];
+}
+
+interface BrowserFileHandle {
+  getFile(): Promise<File>;
+}
+
+interface BrowserWritableStream {
+  write(data: Blob | BufferSource | string): Promise<void>;
+  close(): Promise<void>;
+}
+
+interface BrowserSaveFileHandle {
+  createWritable(): Promise<BrowserWritableStream>;
+}
+
+type FilePickerWindow = Window & {
+  showOpenFilePicker?: (options?: FilePickerOpenOptions) => Promise<BrowserFileHandle[]>;
+  showSaveFilePicker?: (options?: FilePickerSaveOptions) => Promise<BrowserSaveFileHandle>;
+};
 
 type ShareCapableNavigator = Navigator & {
   canShare?: (data?: ShareData) => boolean;
+};
+
+const EXTENSION_TO_MIME: Record<string, string> = {
+  '.json': 'application/json',
+  '.md': 'text/markdown',
+  '.txt': 'text/plain',
+  '.png': 'image/png',
+  '.zip': 'application/zip',
+};
+
+const MIME_TO_EXTENSIONS: Record<string, string[]> = {
+  'application/json': ['.json'],
+  'application/zip': ['.zip'],
+  'image/png': ['.png'],
+  'text/markdown': ['.md'],
+  'text/plain': ['.txt'],
 };
 
 function sanitizeFilename(filename: string): string {
@@ -28,6 +85,77 @@ function extensionFor(filename: string): string | null {
   return extension ? extension : null;
 }
 
+function basename(path: string): string {
+  const normalized = path.replace(/\\/g, '/');
+  const parts = normalized.split('/');
+  return parts.at(-1) || 'imported-file';
+}
+
+function parseAcceptTokens(accept?: string): { extensions: string[]; browserTypes?: FilePickerAcceptType[] } {
+  if (!accept) {
+    return { extensions: [] };
+  }
+
+  const tokens = accept
+    .split(',')
+    .map((token) => token.trim().toLowerCase())
+    .filter((token) => token.length > 0);
+
+  const extensions = new Set<string>();
+  const browserAccept = new Map<string, Set<string>>();
+
+  for (const token of tokens) {
+    if (token.startsWith('.')) {
+      extensions.add(token.slice(1));
+      const mimeType = EXTENSION_TO_MIME[token];
+      if (mimeType) {
+        const values = browserAccept.get(mimeType) ?? new Set<string>();
+        values.add(token);
+        browserAccept.set(mimeType, values);
+      }
+      continue;
+    }
+
+    if (!token.includes('/')) {
+      continue;
+    }
+
+    const knownExtensions = MIME_TO_EXTENSIONS[token] ?? [];
+    if (knownExtensions.length > 0) {
+      const values = browserAccept.get(token) ?? new Set<string>();
+      for (const extension of knownExtensions) {
+        values.add(extension);
+        extensions.add(extension.slice(1));
+      }
+      browserAccept.set(token, values);
+    }
+  }
+
+  if (browserAccept.size === 0) {
+    return { extensions: Array.from(extensions) };
+  }
+
+  return {
+    extensions: Array.from(extensions),
+    browserTypes: [{
+      description: 'Supported files',
+      accept: Object.fromEntries(Array.from(browserAccept.entries()).map(([mimeType, values]) => [mimeType, Array.from(values)])),
+    }],
+  };
+}
+
+function inferMimeType(filename: string, fallback: string | null = null): string {
+  const extension = extensionFor(filename);
+  if (extension) {
+    const mapped = EXTENSION_TO_MIME[`.${extension}`];
+    if (mapped) {
+      return mapped;
+    }
+  }
+
+  return fallback ?? 'application/octet-stream';
+}
+
 function buildDialogFilters(filename: string, contentType: string | null) {
   const extension = extensionFor(filename);
   if (!extension) {
@@ -36,6 +164,15 @@ function buildDialogFilters(filename: string, contentType: string | null) {
 
   const filterName = contentType ?? `${extension.toUpperCase()} file`;
   return [{ name: filterName, extensions: [extension] }];
+}
+
+function buildOpenDialogFilters(accept?: string) {
+  const { extensions } = parseAcceptTokens(accept);
+  if (extensions.length === 0) {
+    return undefined;
+  }
+
+  return [{ name: 'Supported files', extensions }];
 }
 
 function isProbablyMobileBrowser(): boolean {
@@ -110,6 +247,37 @@ async function saveWithBrowser(blob: Blob, filename: string): Promise<SaveResult
   return { saved: true, method: 'download' };
 }
 
+async function saveWithBrowserFilePicker(download: DownloadResponse, filename: string): Promise<SaveResult | null> {
+  if (typeof window === 'undefined' || isProbablyMobileBrowser()) {
+    return null;
+  }
+
+  const filePickerWindow = window as FilePickerWindow;
+  if (typeof filePickerWindow.showSaveFilePicker !== 'function') {
+    return null;
+  }
+
+  const { browserTypes } = parseAcceptTokens(download.contentType ?? undefined);
+
+  try {
+    const handle = await filePickerWindow.showSaveFilePicker({
+      suggestedName: filename,
+      excludeAcceptAllOption: Boolean(browserTypes?.length),
+      types: browserTypes,
+    });
+    const writable = await handle.createWritable();
+    await writable.write(download.blob);
+    await writable.close();
+    return { saved: true, method: 'file-system-access' };
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      return { saved: false, method: 'cancelled' };
+    }
+
+    return null;
+  }
+}
+
 async function saveWithTauri(download: DownloadResponse, filename: string): Promise<SaveResult> {
   const { invoke } = await import('@tauri-apps/api/core');
   const bytes = new Uint8Array(await download.blob.arrayBuffer());
@@ -126,13 +294,105 @@ async function saveWithTauri(download: DownloadResponse, filename: string): Prom
   return { saved: true, method: 'tauri' };
 }
 
+async function openWithTauri(accept?: string): Promise<File | null> {
+  const [{ open }, { readFile }] = await Promise.all([
+    import('@tauri-apps/plugin-dialog'),
+    import('@tauri-apps/plugin-fs'),
+  ]);
+  const selected = await open({
+    multiple: false,
+    filters: buildOpenDialogFilters(accept),
+  });
+
+  if (!selected || Array.isArray(selected)) {
+    return null;
+  }
+
+  const bytes = await readFile(selected);
+  const name = basename(selected);
+  return new File([bytes], name, { type: inferMimeType(name) });
+}
+
+async function openWithBrowserFilePicker(accept?: string): Promise<File | null> {
+  if (typeof window === 'undefined' || isProbablyMobileBrowser()) {
+    return null;
+  }
+
+  const filePickerWindow = window as FilePickerWindow;
+  if (typeof filePickerWindow.showOpenFilePicker !== 'function') {
+    return null;
+  }
+
+  const { browserTypes } = parseAcceptTokens(accept);
+
+  try {
+    const handles = await filePickerWindow.showOpenFilePicker({
+      multiple: false,
+      excludeAcceptAllOption: Boolean(browserTypes?.length),
+      types: browserTypes,
+    });
+    const handle = handles[0];
+    return handle ? handle.getFile() : null;
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      return null;
+    }
+
+    return null;
+  }
+}
+
+function openWithInputFallback(options: PickFileOptions, input: HTMLInputElement): Promise<File | null> {
+  const originalAccept = input.accept;
+
+  return new Promise((resolve) => {
+    let settled = false;
+
+    const finish = (file: File | null) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      input.accept = originalAccept;
+      input.value = '';
+      input.removeEventListener('change', handleChange);
+      input.removeEventListener('cancel', handleCancel);
+      window.removeEventListener('focus', handleFocus);
+      resolve(file);
+    };
+
+    const handleChange = () => finish(input.files?.[0] ?? null);
+    const handleCancel = () => finish(null);
+    const handleFocus = () => {
+      window.setTimeout(() => {
+        if (!settled && !(input.files?.length)) {
+          finish(null);
+        }
+      }, 250);
+    };
+
+    if (options.accept) {
+      input.accept = options.accept;
+    }
+
+    input.addEventListener('change', handleChange, { once: true });
+    input.addEventListener('cancel', handleCancel as EventListener, { once: true });
+    window.addEventListener('focus', handleFocus, { once: true });
+    input.click();
+  });
+}
+
 export async function saveDownload(download: DownloadResponse, fallbackFilename: string): Promise<SaveResult> {
   const filename = sanitizeFilename(download.filename ?? fallbackFilename);
 
-  const { isTauri } = await import('@tauri-apps/api/core');
-
-  if (isTauri()) {
+  if (isDesktopRuntime()) {
     return saveWithTauri(download, filename);
+  }
+
+  const filePickerResult = await saveWithBrowserFilePicker(download, filename);
+  if (filePickerResult) {
+    return filePickerResult;
   }
 
   const shared = await shareWithBrowser(download, filename);
@@ -159,4 +419,21 @@ export async function saveBlobDownload(blob: Blob, filename: string, contentType
     },
     filename
   );
+}
+
+export async function pickFile(options: PickFileOptions = {}, fallbackInput?: HTMLInputElement | null): Promise<File | null> {
+  if (isDesktopRuntime()) {
+    return openWithTauri(options.accept);
+  }
+
+  const picked = await openWithBrowserFilePicker(options.accept);
+  if (picked) {
+    return picked;
+  }
+
+  if (fallbackInput) {
+    return openWithInputFallback(options, fallbackInput);
+  }
+
+  throw new Error('File import is unavailable in this browser.');
 }

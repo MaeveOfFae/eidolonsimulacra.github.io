@@ -72,6 +72,11 @@ function SortableAsset({ asset, onEdit, onRemove }: {
         {asset.description && (
           <p className="text-xs text-muted-foreground truncate">{asset.description}</p>
         )}
+        {asset.import_aliases && asset.import_aliases.length > 0 && (
+          <p className="text-[11px] text-muted-foreground truncate">
+            Imports: {asset.import_aliases.join(', ')}
+          </p>
+        )}
       </div>
 
       {/* Actions */}

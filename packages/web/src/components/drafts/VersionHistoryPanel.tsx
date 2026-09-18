@@ -1,8 +1,10 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Clock3, GitCommitHorizontal, Loader2 } from 'lucide-react';
+import { Clock3, Loader2 } from 'lucide-react';
 import { api } from '@/lib/api';
+import CollapsibleSection from '../common/CollapsibleSection';
 import { DraftStorage } from '@/lib/storage/draft-db';
+import { isDesktopRuntime } from '@/lib/runtime';
 
 export interface VersionHistoryPanelProps {
   draftId?: string;
@@ -29,6 +31,7 @@ export function VersionHistoryPanel({
   draftId,
   assetName,
 }: VersionHistoryPanelProps) {
+  const desktopRuntime = isDesktopRuntime();
   const draftQuery = useQuery({
     queryKey: ['draft', draftId, 'version-history'],
     queryFn: () => api.getDraft(draftId || ''),
@@ -52,35 +55,31 @@ export function VersionHistoryPanel({
   const parentCount = draft?.metadata.parent_drafts?.length ?? 0;
 
   return (
-    <section className="min-w-0 overflow-hidden rounded-lg border border-dashed border-border bg-card/60 p-4 text-sm text-muted-foreground">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h3 className="flex items-center gap-2 font-semibold text-foreground">
-            <GitCommitHorizontal className="h-4 w-4 text-primary" />
-            Version Activity
-          </h3>
-          <p className="mt-1">Recent timestamps and asset touches from browser storage.</p>
-        </div>
-        <span className="app-pill app-pill-muted">
-          Local
-        </span>
-      </div>
+    <CollapsibleSection
+      title="Version activity"
+      subtitle={`Recent timestamps and asset touches from ${desktopRuntime ? 'desktop app data' : 'browser storage'}`}
+      preview={draftId || 'Select a draft to inspect activity'}
+      meta={<span className="app-pill app-pill-muted">Local</span>}
+      defaultExpanded={Boolean(assetName)}
+      className="border-dashed text-sm text-muted-foreground"
+      bodyClassName="space-y-4"
+    >
 
       {(draftQuery.isLoading || activityQuery.isLoading) && (
-        <div className="mt-4 flex items-center gap-2">
+        <div className="flex items-center gap-2">
           <Loader2 className="h-4 w-4 animate-spin" />
           Loading draft activity...
         </div>
       )}
 
       {!draftId ? (
-        <div className="mt-4 rounded-md border border-border p-3">
+        <div className="rounded-md border border-border p-3">
           Select a draft to inspect activity.
         </div>
       ) : null}
 
       {draft && (
-        <div className="mt-4 space-y-3">
+        <div className="space-y-3">
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 text-xs">
             <div className="rounded-md border border-border p-3">
               <div className="font-medium text-foreground">Created</div>
@@ -137,7 +136,7 @@ export function VersionHistoryPanel({
           </div>
         </div>
       )}
-    </section>
+    </CollapsibleSection>
   );
 }
 

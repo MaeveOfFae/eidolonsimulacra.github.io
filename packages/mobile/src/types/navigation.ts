@@ -7,10 +7,13 @@ export type HomeStackParamList = {
   HomeRoot: undefined;
   SeedGenerator: undefined;
   Validation: undefined;
+  TokenOptimization: { text?: string; draftId?: string; assetName?: string } | undefined;
   Lineage: undefined;
   Blueprints: undefined;
   BlueprintEditor: { path: string };
   BatchGenerate: undefined;
+  Compare: { character1?: string; character2?: string } | undefined;
+  Offspring: { parent1?: string; parent2?: string } | undefined;
 };
 
 export type DraftsStackParamList = {
@@ -24,8 +27,6 @@ export type RootTabParamList = {
   Generate: { seed?: string } | undefined;
   Drafts: NavigatorScreenParams<DraftsStackParamList> | undefined;
   Templates: undefined;
-  Compare: { character1?: string; character2?: string } | undefined;
-  Offspring: { parent1?: string; parent2?: string } | undefined;
   Settings: undefined;
 };
 
@@ -40,14 +41,17 @@ export type HomeStackNavigationProp<RouteName extends keyof HomeStackParamList> 
 >;
 
 export type DraftsStackNavigationProp<RouteName extends keyof DraftsStackParamList> =
-  NativeStackNavigationProp<DraftsStackParamList, RouteName>;
+  CompositeNavigationProp<
+    NativeStackNavigationProp<DraftsStackParamList, RouteName>,
+    BottomTabNavigationProp<RootTabParamList>
+  >;
 
 export type RootTabNavigationProp<RouteName extends keyof RootTabParamList> =
   BottomTabNavigationProp<RootTabParamList, RouteName>;
 
 export type GenerateRouteProp = RouteProp<RootTabParamList, 'Generate'>;
-export type CompareRouteProp = RouteProp<RootTabParamList, 'Compare'>;
-export type OffspringRouteProp = RouteProp<RootTabParamList, 'Offspring'>;
+export type CompareRouteProp = RouteProp<HomeStackParamList, 'Compare'>;
+export type OffspringRouteProp = RouteProp<HomeStackParamList, 'Offspring'>;
 export type DraftDetailRouteProp = RouteProp<DraftsStackParamList, 'DraftDetail'>;
 export type ChatRouteProp = RouteProp<DraftsStackParamList, 'Chat'>;
 export type BlueprintEditorRouteProp = RouteProp<HomeStackParamList, 'BlueprintEditor'>;

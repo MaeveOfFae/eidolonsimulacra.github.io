@@ -2,6 +2,7 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-nati
 import { useNavigation } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../config/api';
+import CollapsibleTray from '../components/CollapsibleTray';
 import { SparklesIcon, FolderIcon, StarIcon, DocumentTextIcon, GitCompareIcon } from '../components/Icons';
 import type { HomeScreenNavigationProp } from '../types/navigation';
 
@@ -17,10 +18,9 @@ export default function HomeScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.header}>
         <Text style={styles.title}>Eidolon Simulacra</Text>
-        <Text style={styles.subtitle}>Create rich, consistent simulacra with AI</Text>
+        <Text style={styles.subtitle}>Generate, refine, and manage drafts.</Text>
       </View>
 
-      {/* Quick Actions */}
       <View style={styles.actionsGrid}>
         <TouchableOpacity
           style={styles.actionCard}
@@ -28,7 +28,7 @@ export default function HomeScreen() {
         >
           <SparklesIcon color="#7c3aed" size={32} />
           <Text style={styles.actionTitle}>Generate</Text>
-          <Text style={styles.actionDesc}>Create a new simulacrum</Text>
+          <Text style={styles.actionDesc}>New character</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -37,12 +37,15 @@ export default function HomeScreen() {
         >
           <FolderIcon color="#7c3aed" size={32} />
           <Text style={styles.actionTitle}>Drafts</Text>
-          <Text style={styles.actionDesc}>Browse saved simulacra</Text>
+          <Text style={styles.actionDesc}>Saved work</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={styles.toolsContainer}>
-        <Text style={styles.sectionTitle}>Tools</Text>
+      <CollapsibleTray
+        title="Tools"
+        subtitle="Secondary generation flows"
+        preview={<Text style={styles.trayPreviewText}>Seeds • Optimize • Batch • Validation</Text>}
+      >
         <View style={styles.actionsGrid}>
           <TouchableOpacity
             style={styles.actionCard}
@@ -50,7 +53,7 @@ export default function HomeScreen() {
           >
             <SparklesIcon color="#7c3aed" size={32} />
             <Text style={styles.actionTitle}>Seed Generator</Text>
-            <Text style={styles.actionDesc}>Generate concepts from genre lines</Text>
+            <Text style={styles.actionDesc}>Spin concepts</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -59,17 +62,26 @@ export default function HomeScreen() {
           >
             <DocumentTextIcon color="#7c3aed" size={32} />
             <Text style={styles.actionTitle}>Validation</Text>
-            <Text style={styles.actionDesc}>Run pack checks on drafts or paths</Text>
+            <Text style={styles.actionDesc}>Check packs</Text>
           </TouchableOpacity>
         </View>
         <View style={styles.actionsGrid}>
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => navigation.navigate('TokenOptimization')}
+          >
+            <DocumentTextIcon color="#7c3aed" size={32} />
+            <Text style={styles.actionTitle}>Token Optimization</Text>
+            <Text style={styles.actionDesc}>Tighten wording</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity
             style={styles.actionCard}
             onPress={() => navigation.navigate('Lineage')}
           >
             <GitCompareIcon color="#7c3aed" size={32} />
             <Text style={styles.actionTitle}>Lineage</Text>
-            <Text style={styles.actionDesc}>Browse family trees and offspring branches</Text>
+            <Text style={styles.actionDesc}>Family tree</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -78,7 +90,7 @@ export default function HomeScreen() {
           >
             <DocumentTextIcon color="#7c3aed" size={32} />
             <Text style={styles.actionTitle}>Blueprints</Text>
-            <Text style={styles.actionDesc}>Browse prompt blueprints and template files</Text>
+            <Text style={styles.actionDesc}>Templates</Text>
           </TouchableOpacity>
         </View>
         <View style={styles.actionsGrid}>
@@ -88,16 +100,22 @@ export default function HomeScreen() {
           >
             <FolderIcon color="#7c3aed" size={32} />
             <Text style={styles.actionTitle}>Batch Generate</Text>
-            <Text style={styles.actionDesc}>Run multiple seeds with current batch settings</Text>
+            <Text style={styles.actionDesc}>Multiple seeds</Text>
           </TouchableOpacity>
 
           <View style={styles.actionCardPlaceholder} />
         </View>
-      </View>
+      </CollapsibleTray>
 
-      {/* Stats */}
-      <View style={styles.statsContainer}>
-        <Text style={styles.sectionTitle}>Quick Stats</Text>
+      <CollapsibleTray
+        title="Stats"
+        subtitle="Current library snapshot"
+        preview={
+          <Text style={styles.trayPreviewText}>
+            {statsData?.stats?.total_drafts ?? '--'} drafts • {statsData?.stats?.favorites ?? '--'} favorites
+          </Text>
+        }
+      >
         <View style={styles.statsGrid}>
           <View style={styles.statCard}>
             <Text style={styles.statValue}>{statsData?.stats?.total_drafts ?? '--'}</Text>
@@ -114,12 +132,15 @@ export default function HomeScreen() {
             <Text style={styles.statLabel}>Genres</Text>
           </View>
         </View>
-      </View>
+      </CollapsibleTray>
 
-      {/* Recent */}
       {statsData?.drafts && statsData.drafts.length > 0 && (
-        <View style={styles.recentContainer}>
-          <Text style={styles.sectionTitle}>Recent Characters</Text>
+        <CollapsibleTray
+          title="Recent"
+          subtitle="Jump back into your latest drafts"
+          initiallyExpanded
+          preview={<Text style={styles.trayPreviewText}>{statsData.drafts[0]?.character_name || statsData.drafts[0]?.seed}</Text>}
+        >
           {statsData.drafts.slice(0, 5).map((draft) => (
             <TouchableOpacity
               key={draft.review_id}
@@ -138,7 +159,7 @@ export default function HomeScreen() {
               {draft.favorite && <StarIcon color="#eab308" size={20} />}
             </TouchableOpacity>
           ))}
-        </View>
+        </CollapsibleTray>
       )}
     </ScrollView>
   );
@@ -151,9 +172,10 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 16,
+    gap: 16,
   },
   header: {
-    marginBottom: 24,
+    marginBottom: 4,
   },
   title: {
     fontSize: 28,
@@ -168,7 +190,12 @@ const styles = StyleSheet.create({
   actionsGrid: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 24,
+    marginBottom: 12,
+  },
+  trayPreviewText: {
+    color: '#9ca3af',
+    fontSize: 12,
+    lineHeight: 18,
   },
   toolsContainer: {
     marginBottom: 8,

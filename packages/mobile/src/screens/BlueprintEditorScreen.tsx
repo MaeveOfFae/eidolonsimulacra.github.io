@@ -4,6 +4,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Blueprint } from '@char-gen/shared';
 import { api } from '../config/api';
+import CollapsibleTray from '../components/CollapsibleTray';
 import type { BlueprintEditorRouteProp, HomeStackNavigationProp } from '../types/navigation';
 
 interface BlueprintFormData {
@@ -147,8 +148,12 @@ export default function BlueprintEditorScreen() {
         </Text>
       ) : null}
 
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Frontmatter</Text>
+      <CollapsibleTray
+        title="Frontmatter"
+        subtitle={`${formData.versionMajor}.${formData.versionMinor} • ${formData.invokable ? 'invokable' : 'manual only'}`}
+        preview={<Text style={styles.trayPreviewText} numberOfLines={1}>{formData.description || formData.name || 'No description'}</Text>}
+        style={styles.card}
+      >
         <Text style={styles.fieldLabel}>Name</Text>
         <TextInput
           style={styles.input}
@@ -203,10 +208,15 @@ export default function BlueprintEditorScreen() {
         <View style={styles.previewCard}>
           <Text style={styles.previewText}>{yamlPreview}</Text>
         </View>
-      </View>
+      </CollapsibleTray>
 
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Content</Text>
+      <CollapsibleTray
+        title={showPreview ? 'Content preview' : 'Content'}
+        subtitle={showPreview ? 'Read-only markdown preview' : 'Editable markdown body'}
+        preview={<Text style={styles.trayPreviewText}>{showPreview ? 'Preview mode' : 'Edit mode'}</Text>}
+        initiallyExpanded
+        style={styles.card}
+      >
         {showPreview ? (
           <View style={styles.previewCard}>
             <Text style={styles.previewText}>{content || 'No content yet.'}</Text>
@@ -222,7 +232,7 @@ export default function BlueprintEditorScreen() {
             textAlignVertical="top"
           />
         )}
-      </View>
+      </CollapsibleTray>
     </ScrollView>
   );
 }
@@ -318,11 +328,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   card: {
-    backgroundColor: '#1f1f1f',
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-    borderRadius: 12,
-    padding: 16,
+    marginBottom: 0,
+  },
+  trayPreviewText: {
+    color: '#9ca3af',
+    fontSize: 12,
+    lineHeight: 18,
   },
   sectionTitle: {
     color: '#fff',

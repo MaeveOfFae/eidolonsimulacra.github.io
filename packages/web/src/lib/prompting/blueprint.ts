@@ -8,6 +8,7 @@ import type {
   Template,
 } from '@char-gen/shared';
 import { configManager } from '../config/manager';
+import { readPersistedJson } from '../persistence/storage.js';
 
 const BLUEPRINT_OVERRIDES_STORAGE_KEY = 'eidolon.web.blueprints.overrides';
 const LEGACY_BLUEPRINT_OVERRIDES_STORAGE_KEYS = ['bpui.web.blueprints.overrides'];
@@ -33,6 +34,8 @@ const BLUEPRINT_PATH_ALIASES: Record<string, string> = {
   rpbotgenerator: 'system/generator.md',
   seed_generator: 'system/seed_generator.md',
   offspring_generator: 'system/offspring_generator.md',
+  lorebook_generator: 'system/lorebook_generator.md',
+  worldbook_generator: 'system/lorebook_generator.md',
   system_prompt: 'system/system_prompt.md',
   post_history: 'system/post_history.md',
   character_sheet: 'system/character_sheet.md',
@@ -52,25 +55,13 @@ function resolveBlueprintPath(nameOrPath: string): string {
 }
 
 function getStoredBlueprintOverride(path: string): string | undefined {
-  if (typeof window === 'undefined') {
-    return undefined;
-  }
-
-  for (const storageKey of [BLUEPRINT_OVERRIDES_STORAGE_KEY, ...LEGACY_BLUEPRINT_OVERRIDES_STORAGE_KEYS]) {
-    const raw = window.localStorage.getItem(storageKey);
-    if (!raw) {
-      continue;
-    }
-
-    try {
-      const parsed = JSON.parse(raw) as Record<string, string>;
-      const override = parsed[path];
-      if (typeof override === 'string' && override.trim().length > 0) {
-        return override;
-      }
-    } catch {
-      continue;
-    }
+  const overrides = readPersistedJson<Record<string, string>>(
+    [BLUEPRINT_OVERRIDES_STORAGE_KEY, ...LEGACY_BLUEPRINT_OVERRIDES_STORAGE_KEYS],
+    {}
+  );
+  const override = overrides[path];
+  if (typeof override === 'string' && override.trim().length > 0) {
+    return override;
   }
 
   return undefined;
@@ -123,6 +114,7 @@ const DEFAULT_FEATURE_BLUEPRINTS: Partial<Record<FeatureCategory, string>> = {
   orchestration: 'blueprints/system/generator.md',
   seed_generation: 'blueprints/system/seed_generator.md',
   offspring_generation: 'blueprints/system/offspring_generator.md',
+  worldbook_generation: 'blueprints/system/lorebook_generator.md',
   intro_scene_generation: 'blueprints/system/intro_scene.md',
 };
 
@@ -215,6 +207,7 @@ export async function listBlueprints(baseUrl: string = BLUEPRINT_REPO_URL): Prom
   const systemBlueprints = [
     'generator',
     'offspring_generator',
+    'lorebook_generator',
   ];
 
   const blueprints: Blueprint[] = [];

@@ -1,10 +1,17 @@
 import {
-  OFFICIAL_TEMPLATE,
+  applyDraftFilters,
+  buildDraftExportArtifact,
+  buildBlueprintList,
+  buildDraftListResponse,
+  buildLineageResponse,
+  buildMissingTemplateBlueprintWarnings,
+  buildStoredTemplateRecord,
+  buildSimilarityResult,
   detectProviderFromModel,
-  validateAssetContent,
+  fetchProviderModels as fetchSharedProviderModels,
+  getFallbackModels,
+  validateDraftAssets,
   validateTemplate as validateTemplateDefinition,
-  getOrderedAssets,
-  type AssetName,
   type ApiKeys,
   type Blueprint,
   type BlueprintList,
@@ -27,11 +34,12 @@ import {
   type GenerateBatchRequest,
   type GenerateRequest,
   type GenerationComplete,
-  type LineageNode,
+  type LorebookGenerationRequest,
   type LLMProvider,
   type LineageResponse,
   type ModelsResponse,
   type OffspringRequest,
+  type OptimizeTextRequest,
   type RefineRequest,
   type SeedGenerationRequest,
   type SeedGenerationResponse,
@@ -46,12 +54,43 @@ import {
   type ThemePresetCreate,
   type ThemePresetUpdate,
   type ThemeRenameRequest,
+  type TimelineEventRecord,
+  type TimelineRecord,
   type UpdateTemplateRequest,
   type ValidatePathRequest,
   type ValidationResponse,
+  type WorldCharacterRecord,
+  type WorldFactionRecord,
+  type WorldLocationRecord,
+  type WorldRecord,
 } from '@char-gen/shared';
-import { MODEL_SUGGESTIONS, buildProviderHeaders, createEngine, getDefaultBaseUrl } from './llm/factory.js';
+import { MODEL_SUGGESTIONS, createEngine, getDefaultBaseUrl } from './llm/factory.js';
 import { configManager } from './config/manager.js';
+import { readPersistedJson, writePersistedJson } from './persistence/storage.js';
+import { isDesktopRuntime, isSelfContainedDesktopRuntime } from './runtime.js';
+import {
+  addLocalTimelineEvent,
+  addLocalWorldCharacter,
+  addLocalWorldFaction,
+  addLocalWorldLocation,
+  createLocalTimeline,
+  createLocalWorld,
+  deleteLocalTimeline,
+  deleteLocalTimelineEvent,
+  deleteLocalWorld,
+  deleteLocalWorldCharacter,
+  deleteLocalWorldFaction,
+  deleteLocalWorldLocation,
+  getLocalTimeline,
+  getLocalWorld,
+  getLocalWorlds,
+  updateLocalTimeline,
+  updateLocalTimelineEvent,
+  updateLocalWorld,
+  updateLocalWorldCharacter,
+  updateLocalWorldFaction,
+  updateLocalWorldLocation,
+} from './storage/desktop-lore-db.js';
 import { DraftStorage, type AssetWriteOptions } from './storage/draft-db.js';
 import { GenerationService } from './services/generation.js';
 import {
@@ -67,17 +106,33 @@ import {
   getTemplateRecord,
   inferCharacterDisplayNameForTemplate,
   isCustomBlueprintPath,
+  resolveTemplateBlueprintContent,
   resolveTemplateDefinition,
   saveBlueprintOverrides,
   saveStoredTemplates,
 } from './templates/browser.js';
 import { serverClient } from './server/client.js';
 import { queueAutoSync } from './server/auto-sync.js';
+import { buildOptimizeTextMessages } from '@char-gen/shared';
 
 export interface DownloadResponse {
   blob: Blob;
   filename: string | null;
   contentType: string | null;
+}
+
+export interface CreateDraftRequest {
+  seed: string;
+  templateName: string;
+  mode?: DraftMetadata['mode'];
+  characterName?: string;
+  genre?: string;
+  notes?: string;
+  tags?: string[];
+  customInstructions?: string;
+  componentSendOrder?: string[];
+  connectedDraftIds?: string[];
+  assets?: Record<string, string>;
 }
 
 type StreamEventType = 'status' | 'chunk' | 'complete' | 'error' | 'batch_start' | 'batch_complete' | 'batch_error';
@@ -260,26 +315,20 @@ type CachedModelsEntry = {
   cachedAt: number;
 };
 
-type OpenAICompatibleModelsPayload = {
-  data?: Array<{
-    id?: string;
-    name?: string;
-    context_length?: number;
-    architecture?: {
-      input_modalities?: string[];
-    };
-    supported_parameters?: string[];
-  }>;
-};
-
 const modelsCache = new Map<string, CachedModelsEntry>();
 
 const EXPORT_PRESETS: ExportPresetSummary[] = [
   {
-    name: 'json',
+    name: 'Official PNG Character Card',
+    path: 'png',
+    format: 'png',
+    description: 'Export a standard PNG character card with embedded V2/V3 card data.',
+  },
+  {
+    name: 'Official V2/V3 Card JSON',
     path: 'json',
     format: 'json',
-    description: 'Export the full draft as JSON.',
+    description: 'Export a Chub-compatible V2/V3 character card JSON with Eidolon round-trip extensions.',
   },
   {
     name: 'text',
@@ -1265,42 +1314,11 @@ export class APIError extends Error {
 }
 
 function readStorage<T>(keys: string | readonly string[], fallback: T): T {
-  if (typeof window === 'undefined') {
-    return fallback;
-  }
-
-  const keyList = Array.isArray(keys) ? [...keys] : [keys];
-  const [currentKey, ...legacyKeys] = keyList;
-
-  try {
-    for (const key of keyList) {
-      const raw = window.localStorage.getItem(key);
-      if (!raw) {
-        continue;
-      }
-
-      const parsed = JSON.parse(raw) as T;
-      if (key !== currentKey) {
-        window.localStorage.setItem(currentKey, JSON.stringify(parsed));
-        legacyKeys.forEach((legacyKey) => window.localStorage.removeItem(legacyKey));
-      }
-
-      return parsed;
-    }
-  } catch {
-    return fallback;
-  }
-
-  return fallback;
+  return readPersistedJson(keys, fallback);
 }
 
 function writeStorage<T>(key: string, legacyKeys: readonly string[], value: T): void {
-  if (typeof window === 'undefined') {
-    return;
-  }
-
-  window.localStorage.setItem(key, JSON.stringify(value));
-  legacyKeys.forEach((legacyKey) => window.localStorage.removeItem(legacyKey));
+  writePersistedJson(key, legacyKeys, value);
 }
 
 function slugifyFileName(value: string): string {
@@ -1357,274 +1375,12 @@ function dispatchBrowserSyncEvent(eventName: string): void {
   window.dispatchEvent(new CustomEvent(eventName));
 }
 
-function isArchivedDraft(metadata: DraftMetadata): boolean {
-  return typeof metadata.archived_at === 'string' && metadata.archived_at.trim().length > 0;
-}
-
-function buildDraftListResponse(
-  metadata: DraftMetadata[],
-  total: number,
-  statsSource: DraftMetadata[] = metadata,
-  archiveSource: DraftMetadata[] = statsSource
-): DraftListResponse {
-  const stats = statsSource.reduce<DraftListResponse['stats']>((accumulator, draft) => {
-    accumulator.total_drafts += 1;
-    if (isArchivedDraft(draft)) {
-      accumulator.archived_drafts += 1;
-    }
-    if (draft.favorite) {
-      accumulator.favorites += 1;
-    }
-
-    const genre = draft.genre || 'unknown';
-    const mode = draft.mode || 'unknown';
-    accumulator.by_genre[genre] = (accumulator.by_genre[genre] || 0) + 1;
-    accumulator.by_mode[mode] = (accumulator.by_mode[mode] || 0) + 1;
-    return accumulator;
-  }, {
-    total_drafts: 0,
-    archived_drafts: archiveSource.filter((draft) => isArchivedDraft(draft)).length,
-    favorites: 0,
-    by_genre: {},
-    by_mode: {},
-  });
-
-  return {
-    drafts: metadata,
-    total,
-    stats,
-  };
-}
-
-function applyDraftFilters(metadata: DraftMetadata[], filters?: DraftFilters): DraftMetadata[] {
-  let result = [...metadata];
-
-  if (!filters?.include_archived) {
-    if (filters?.archived) {
-      result = result.filter((draft) => isArchivedDraft(draft));
-    } else {
-      result = result.filter((draft) => !isArchivedDraft(draft));
-    }
-  }
-
-  if (filters?.search) {
-    const query = filters.search.toLowerCase();
-    result = result.filter((draft) => [draft.character_name, draft.seed, draft.genre, draft.notes]
-      .filter(Boolean)
-      .some((value) => String(value).toLowerCase().includes(query))
-    );
-  }
-
-  if (filters?.genre) {
-    result = result.filter((draft) => draft.genre === filters.genre);
-  }
-
-  if (filters?.mode) {
-    result = result.filter((draft) => draft.mode === filters.mode);
-  }
-
-  if (filters?.favorite !== undefined) {
-    result = result.filter((draft) => draft.favorite === filters.favorite);
-  }
-
-  if (filters?.tags?.length) {
-    result = result.filter((draft) => filters.tags?.every((tag) => draft.tags?.includes(tag)));
-  }
-
-  const sortOrder = filters?.sort_order === 'asc' ? 1 : -1;
-  const sortBy = filters?.sort_by ?? 'modified';
-  result.sort((left, right) => {
-    const leftValue = sortBy === 'name'
-      ? (left.character_name || left.seed || '')
-      : (sortBy === 'created' ? left.created : left.modified) || '';
-    const rightValue = sortBy === 'name'
-      ? (right.character_name || right.seed || '')
-      : (sortBy === 'created' ? right.created : right.modified) || '';
-    return leftValue.localeCompare(rightValue) * sortOrder;
-  });
-
-  const offset = filters?.offset ?? 0;
-  const limit = filters?.limit;
-  if (limit !== undefined) {
-    result = result.slice(offset, offset + limit);
-  } else if (offset > 0) {
-    result = result.slice(offset);
-  }
-
-  return result;
-}
-
-function validateDraftAssets(draft: Draft): ValidationResponse {
-  const findings: string[] = [];
-  const template = resolveTemplateDefinition(draft.metadata.template_name) || OFFICIAL_TEMPLATE;
-  const requiredAssets = getOrderedAssets(template).filter((asset) => asset.required);
-
-  requiredAssets.forEach((asset) => {
-    const content = draft.assets[asset.name];
-    if (!content?.trim()) {
-      findings.push(`- missing required asset ${asset.name}`);
-    }
-  });
-
-  Object.entries(draft.assets).forEach(([assetName, content]) => {
-    if (!content.trim()) {
-      findings.push(`- ${assetName}: asset is empty`);
-      return;
-    }
-
-    const issues = validateAssetContent(assetName as AssetName, content);
-    if (issues.length > 0) {
-      findings.push(`- ${assetName}: ${Array.from(new Set(issues)).join(', ')}`);
-    }
-  });
-
-  if (findings.length === 0) {
-    findings.push('OK: no obvious placeholder violations found in saved assets.');
-  } else {
-    findings.unshift('VALIDATION FAILED');
-  }
-
-  return {
-    path: draft.metadata.review_id,
-    output: findings.join('\n'),
-    errors: '',
-    exit_code: findings[0] === 'VALIDATION FAILED' ? 1 : 0,
-    success: findings[0] !== 'VALIDATION FAILED',
-  };
-}
-
-function tokenizeDraft(draft: Draft): Set<string> {
-  const corpus = `${draft.metadata.character_name || ''}\n${draft.metadata.seed}\n${Object.values(draft.assets).join('\n')}`
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]+/g, ' ')
-    .split(/\s+/)
-    .filter((token) => token.length > 3);
-  return new Set(corpus);
-}
-
-function toCompatibility(score: number): SimilarityResult['compatibility'] {
-  if (score >= 0.7) {
-    return 'high';
-  }
-  if (score >= 0.45) {
-    return 'medium';
-  }
-  return 'low';
-}
-
-function buildSimilarityResult(left: Draft, right: Draft): SimilarityResult {
-  const leftTokens = tokenizeDraft(left);
-  const rightTokens = tokenizeDraft(right);
-  const common = [...leftTokens].filter((token) => rightTokens.has(token));
-  const leftOnly = [...leftTokens].filter((token) => !rightTokens.has(token));
-  const rightOnly = [...rightTokens].filter((token) => !leftTokens.has(token));
-  const unionCount = new Set([...leftTokens, ...rightTokens]).size || 1;
-  const score = common.length / unionCount;
-  const conflictPotential = Math.min(1, (leftOnly.length + rightOnly.length) / Math.max(unionCount, 1));
-  const synergyPotential = Math.min(1, score + 0.15);
-
-  return {
-    character1_name: left.metadata.character_name || left.metadata.seed,
-    character2_name: right.metadata.character_name || right.metadata.seed,
-    overall_score: score,
-    compatibility: toCompatibility(score),
-    conflict_potential: conflictPotential,
-    synergy_potential: synergyPotential,
-    commonalities: common.slice(0, 8),
-    differences: [...leftOnly.slice(0, 4), ...rightOnly.slice(0, 4)],
-    relationship_suggestions: score >= 0.6
-      ? ['Shared themes suggest an easy alliance arc.', 'Overlapping traits support collaborative scenes.']
-      : ['Use the contrast between their goals for tension.', 'Differences suggest rivalry or uneasy partnership.'],
-    meta_analysis: {
-      archetype_match: score,
-      narrative_compatibility: synergyPotential,
-      audience_appeal: Math.max(score, 0.35),
-    },
-  };
-}
-
-function buildLineageResponse(metadata: DraftMetadata[]): LineageResponse {
-  const childMap = new Map<string, string[]>();
-  metadata.forEach((draft) => {
-    draft.parent_drafts?.forEach((parentId) => {
-      const children = childMap.get(parentId) ?? [];
-      children.push(draft.review_id);
-      childMap.set(parentId, children);
-    });
-  });
-
-  const metadataMap = new Map(metadata.map((draft) => [draft.review_id, draft]));
-  const generationCache = new Map<string, number>();
-  const getGeneration = (reviewId: string): number => {
-    if (generationCache.has(reviewId)) {
-      return generationCache.get(reviewId)!;
-    }
-    const draft = metadataMap.get(reviewId);
-    if (!draft?.parent_drafts?.length) {
-      generationCache.set(reviewId, 0);
-      return 0;
-    }
-    const generation = 1 + Math.max(...draft.parent_drafts.map((parentId) => getGeneration(parentId)));
-    generationCache.set(reviewId, generation);
-    return generation;
-  };
-
-  const nodes: LineageNode[] = metadata.map((draft) => {
-    const parentIds = draft.parent_drafts ?? [];
-    const childIds = childMap.get(draft.review_id) ?? [];
-    const generation = getGeneration(draft.review_id);
-    const parentNames = parentIds.map((parentId) => metadataMap.get(parentId)?.character_name || parentId);
-    const childNames = childIds.map((childId) => metadataMap.get(childId)?.character_name || childId);
-
-    return {
-      id: draft.review_id,
-      review_id: draft.review_id,
-      draft_name: draft.seed,
-      character_name: draft.character_name || draft.seed,
-      generation,
-      is_root: parentIds.length === 0,
-      is_leaf: childIds.length === 0,
-      offspring_type: draft.offspring_type,
-      mode: draft.mode,
-      model: draft.model,
-      created: draft.created,
-      parent_ids: parentIds,
-      child_ids: childIds,
-      parent_names: parentNames,
-      child_names: childNames,
-      sibling_names: parentIds.flatMap((parentId) => (childMap.get(parentId) ?? []).filter((id) => id !== draft.review_id)).map((id) => metadataMap.get(id)?.character_name || id),
-      num_ancestors: parentIds.length,
-      num_descendants: childIds.length,
-    };
-  });
-
-  const roots = nodes.filter((node) => node.is_root).map((node) => node.id);
-  const maxGeneration = nodes.reduce((max, node) => Math.max(max, node.generation), 0);
-
-  return {
-    nodes,
-    roots,
-    max_generation: maxGeneration,
-    stats: {
-      total_characters: nodes.length,
-      root_characters: nodes.filter((node) => node.is_root).length,
-      leaf_characters: nodes.filter((node) => node.is_leaf).length,
-      generations: maxGeneration + 1,
-    },
-  };
-}
-
-function createDownload(content: string, filename: string, type: string): DownloadResponse {
+function createDownload(content: string | Uint8Array, filename: string, type: string): DownloadResponse {
   return {
     blob: new Blob([content], { type }),
     filename,
     contentType: type,
   };
-}
-
-function escapeAssetContentForMarkdownBundle(content: string): string {
-  // Prevent in-body markdown headings from being parsed as top-level asset sections on re-import.
-  return content.replace(/^##/gm, '\\##');
 }
 
 async function generateWithCurrentConfig(messages: ChatMessage[]): Promise<AsyncIterable<{ content?: string; done?: boolean }>> {
@@ -1650,54 +1406,6 @@ export class EidolonBrowserAPI {
 
   private configSyncPromise: Promise<boolean> | null = null;
 
-  private async fetchOpenAICompatibleModels(
-    provider: string,
-    apiKey: string,
-    baseUrl: string
-  ): Promise<ModelsResponse> {
-    const url = `${baseUrl}/models`;
-    const headers = buildProviderHeaders(provider as LLMProvider, apiKey);
-
-    const response = await fetch(url, {
-      method: 'GET',
-      headers,
-    });
-
-    if (!response.ok) {
-      let error = `HTTP ${response.status}`;
-      try {
-        const payload = await response.json() as { error?: { message?: string } | string };
-        if (typeof payload.error === 'string') {
-          error = payload.error;
-        } else if (payload.error?.message) {
-          error = payload.error.message;
-        }
-      } catch {
-        // Keep the HTTP status fallback.
-      }
-
-      throw new APIError(response.status, error);
-    }
-
-    const payload = await response.json() as OpenAICompatibleModelsPayload;
-    const models = (payload.data || [])
-      .filter((model): model is NonNullable<OpenAICompatibleModelsPayload['data']>[number] & { id: string } => Boolean(model?.id))
-      .map((model) => ({
-        id: model.id,
-        name: model.name || model.id,
-        provider,
-        context_length: model.context_length,
-        supports_vision: model.architecture?.input_modalities?.includes('image') || false,
-        supports_tools: model.supported_parameters?.includes('tools') || false,
-      }));
-
-    return {
-      provider,
-      models,
-      cached: false,
-    };
-  }
-
   private async loadProviderModels(provider: string, refresh: boolean = false): Promise<ModelsResponse> {
     const apiKeys = configManager.getApiKeys();
     const config = configManager.getConfig();
@@ -1713,11 +1421,7 @@ export class EidolonBrowserAPI {
       };
     }
 
-    const fallbackModels = (MODEL_SUGGESTIONS[typedProvider] || []).map((id) => ({
-      id,
-      name: id,
-      provider,
-    }));
+    const fallbackModels = getFallbackModels(typedProvider);
     const supportsRemoteListing = ['openrouter', 'openai', 'deepseek', 'zai', 'moonshot'].includes(provider);
 
     if (!apiKey || !supportsRemoteListing) {
@@ -1735,7 +1439,7 @@ export class EidolonBrowserAPI {
     }
 
     try {
-      const response = await this.fetchOpenAICompatibleModels(provider, apiKey, baseUrl);
+      const response = await fetchSharedProviderModels(typedProvider, apiKey, baseUrl);
       modelsCache.set(cacheKey, {
         response,
         cachedAt: Date.now(),
@@ -1940,6 +1644,8 @@ export class EidolonBrowserAPI {
           offspringType?: string;
           customInstructions?: string;
           componentSendOrder?: string[];
+          connectedDraftIds?: string[];
+          cardMetadata?: DraftMetadata['card_metadata'];
           assets: Record<string, string>;
           createdAt: string;
           updatedAt: string;
@@ -1969,6 +1675,8 @@ export class EidolonBrowserAPI {
                 offspring_type: serverDraft.offspringType,
                 custom_instructions: serverDraft.customInstructions,
                 component_send_order: serverDraft.componentSendOrder,
+                connected_drafts: serverDraft.connectedDraftIds,
+                card_metadata: serverDraft.cardMetadata,
               },
               assets: serverDraft.assets,
             });
@@ -1998,6 +1706,8 @@ export class EidolonBrowserAPI {
                 offspring_type: serverDraft.offspringType,
                 custom_instructions: serverDraft.customInstructions,
                 component_send_order: serverDraft.componentSendOrder,
+                connected_drafts: serverDraft.connectedDraftIds,
+                card_metadata: serverDraft.cardMetadata,
               },
               assets: serverDraft.assets,
             });
@@ -2210,19 +1920,12 @@ export class EidolonBrowserAPI {
     if (records.some((record) => record.template.name === template.name)) {
       throw new APIError(409, `Template ${template.name} already exists`);
     }
-    const created: Template = {
-      name: template.name,
-      version: template.version,
-      description: template.description,
-      assets: template.assets,
-      is_official: false,
-    };
-    const record = { template: created, blueprint_contents: template.blueprint_contents };
+    const record = buildStoredTemplateRecord<StoredTemplateRecord>(template);
     records.push(record);
     saveStoredTemplates(records);
     queueAutoSync('templates');
 
-    return created;
+    return record.template;
   }
 
   async updateTemplate(name: string, template: UpdateTemplateRequest): Promise<Template> {
@@ -2248,16 +1951,9 @@ export class EidolonBrowserAPI {
       }
     }
 
-    records[index] = {
-      template: {
-        name: template.name,
-        version: template.version,
-        description: template.description,
-        assets: template.assets,
-        is_official: false,
-      },
-      blueprint_contents: template.blueprint_contents,
-    };
+    records[index] = buildStoredTemplateRecord<StoredTemplateRecord>(template, {
+      templateRoot: records[index].template_root,
+    });
     saveStoredTemplates(records);
     queueAutoSync('templates');
 
@@ -2292,9 +1988,10 @@ export class EidolonBrowserAPI {
       throw new APIError(404, `Template ${name} not found`);
     }
     const validation = validateTemplateDefinition(record.template);
-    const warnings = record.template.assets
-      .filter((asset) => !record.blueprint_contents[asset.blueprint_file || `${asset.name}.md`])
-      .map((asset) => `Missing blueprint content for ${asset.name}`);
+    const warnings = buildMissingTemplateBlueprintWarnings(
+      record.template,
+      (assetName) => resolveTemplateBlueprintContent(record.template.name, assetName) ?? null
+    );
     return { errors: validation.errors, warnings };
   }
 
@@ -2343,6 +2040,48 @@ export class EidolonBrowserAPI {
     if (!draft) {
       throw new APIError(404, `Draft ${reviewId} not found`);
     }
+    return draft;
+  }
+
+  async createDraft(request: CreateDraftRequest): Promise<Draft> {
+    const seed = request.seed.trim();
+    const templateName = request.templateName.trim();
+
+    if (!seed) {
+      throw new APIError(400, 'Seed is required');
+    }
+
+    if (!templateName) {
+      throw new APIError(400, 'Template is required');
+    }
+
+    const reviewId = crypto.randomUUID();
+    const timestamp = new Date().toISOString();
+    const draft: Draft = {
+      path: reviewId,
+      metadata: {
+        review_id: reviewId,
+        seed,
+        mode: request.mode ?? 'Auto',
+        model: configManager.getConfig().model,
+        created: timestamp,
+        modified: timestamp,
+        favorite: false,
+        template_name: templateName,
+        character_name: request.characterName?.trim() || seed,
+        genre: request.genre?.trim() || undefined,
+        notes: request.notes?.trim() || undefined,
+        tags: (request.tags ?? []).map((tag) => tag.trim()).filter(Boolean),
+        custom_instructions: request.customInstructions?.trim() || undefined,
+        component_send_order: request.componentSendOrder,
+        connected_drafts: (request.connectedDraftIds ?? []).map((draftId) => draftId.trim()).filter(Boolean),
+      },
+      assets: request.assets ?? {},
+    };
+
+    await DraftStorage.saveDraft(draft);
+    queueAutoSync('drafts');
+
     return draft;
   }
 
@@ -2395,7 +2134,7 @@ export class EidolonBrowserAPI {
 
   async validateDraft(reviewId: string): Promise<ValidationResponse> {
     const draft = await this.getDraft(reviewId);
-    return validateDraftAssets(draft);
+    return validateDraftAssets(draft, { resolveTemplate: resolveTemplateDefinition });
   }
 
   async validatePath(request: ValidatePathRequest): Promise<ValidationResponse> {
@@ -2404,13 +2143,13 @@ export class EidolonBrowserAPI {
     if (!draft) {
       return {
         path: request.path,
-        output: 'VALIDATION FAILED\n- Browser-only mode can validate saved IndexedDB drafts by review ID only.',
+        output: `VALIDATION FAILED\n- ${isDesktopRuntime() ? 'Desktop draft storage' : 'Browser-only mode'} can validate saved drafts by review ID only.`,
         errors: '',
         exit_code: 1,
         success: false,
       };
     }
-    return validateDraftAssets(draft);
+    return validateDraftAssets(draft, { resolveTemplate: resolveTemplateDefinition });
   }
 
   generate(_request: GenerateRequest): BrowserStream {
@@ -2441,7 +2180,7 @@ export class EidolonBrowserAPI {
 
   generateAsset(request: GenerateAssetRequest): BrowserStream {
     return new BrowserStream(async ({ emit, signal }) => {
-      for await (const progress of GenerationService.generateAsset(request)) {
+      for await (const progress of GenerationService.generateAsset(request, true, { signal })) {
         if (signal.aborted) {
           return;
         }
@@ -2463,7 +2202,7 @@ export class EidolonBrowserAPI {
 
   previewBlueprint(request: BlueprintPreviewRequest): BrowserStream {
     return new BrowserStream(async ({ emit, signal }) => {
-      for await (const progress of GenerationService.previewBlueprint(request)) {
+      for await (const progress of GenerationService.previewBlueprint(request, true, { signal })) {
         if (signal.aborted) {
           return;
         }
@@ -2523,6 +2262,8 @@ export class EidolonBrowserAPI {
             seed,
             mode: request.mode,
             template: request.template,
+            selected_assets: request.selected_assets,
+            connected_draft_ids: request.connected_draft_ids,
           }, { signal })) {
             if (signal.aborted) {
               return;
@@ -2672,33 +2413,44 @@ export class EidolonBrowserAPI {
     });
   }
 
+  generateLorebook(request: LorebookGenerationRequest): BrowserStream {
+    return new BrowserStream(async ({ emit, signal }) => {
+      for await (const progress of GenerationService.generateLorebook(request, { signal })) {
+        if (signal.aborted) {
+          return;
+        }
+        if (progress.type === 'status') {
+          emit('status', {
+            stage: progress.stage,
+            asset: progress.asset,
+            progress: progress.progress,
+          });
+        }
+        if (progress.type === 'chunk') {
+          emit('chunk', { content: progress.content || '' });
+        }
+        if (progress.type === 'complete') {
+          emit('complete', { content: progress.content || '' });
+        }
+        if (progress.type === 'error') {
+          emit('error', { error: progress.error || 'Lorebook generation failed' });
+        }
+      }
+    });
+  }
+
   async getExportPresets(): Promise<ExportPresetSummary[]> {
     return EXPORT_PRESETS;
   }
 
   async exportDraft(request: ExportRequest): Promise<DownloadResponse> {
     const draft = await this.getDraft(request.draft_id);
-    const preset = request.preset || 'json';
+    const preset = request.preset === 'text' || request.preset === 'combined' || request.preset === 'png' ? request.preset : 'json';
     const includeMetadata = request.include_metadata !== false;
     const fileBase = slugifyFileName(draft.metadata.character_name || draft.metadata.seed || draft.metadata.review_id);
+    const artifact = buildDraftExportArtifact(draft, preset, includeMetadata);
 
-    if (preset === 'text') {
-      const content = Object.entries(draft.assets)
-        .map(([assetName, value]) => `## ${assetName}\n\n${escapeAssetContentForMarkdownBundle(value)}`)
-        .join('\n\n');
-      return createDownload(content, `${fileBase}.txt`, 'text/plain');
-    }
-
-    if (preset === 'combined') {
-      const sections = [
-        `# ${draft.metadata.character_name || draft.metadata.seed}`,
-        includeMetadata ? `## Metadata\n\n${JSON.stringify(draft.metadata, null, 2)}` : '',
-        ...Object.entries(draft.assets).map(([assetName, value]) => `## ${assetName}\n\n${escapeAssetContentForMarkdownBundle(value)}`),
-      ].filter(Boolean);
-      return createDownload(sections.join('\n\n'), `${fileBase}.md`, 'text/markdown');
-    }
-
-    return createDownload(JSON.stringify({ metadata: includeMetadata ? draft.metadata : undefined, assets: draft.assets }, null, 2), `${fileBase}.json`, 'application/json');
+    return createDownload(artifact.content, `${fileBase}.${artifact.extension}`, artifact.contentType);
   }
 
   async getBlueprints(): Promise<BlueprintList> {
@@ -2741,14 +2493,179 @@ export class EidolonBrowserAPI {
     }
 
     const values = [...getBlueprintCatalog().values()];
-    return {
-      core: values.filter((blueprint) => blueprint.category === 'core'),
-      system: values.filter((blueprint) => blueprint.category === 'system'),
-      templates: {
-        local: values.filter((blueprint) => blueprint.category === 'template'),
-      },
-      examples: values.filter((blueprint) => blueprint.category === 'example'),
-    };
+    return buildBlueprintList(values);
+  }
+
+  async getWorlds(params?: { search?: string; genre?: string; includePublic?: boolean }): Promise<{ worlds: WorldRecord[] }> {
+    if (isSelfContainedDesktopRuntime()) {
+      return getLocalWorlds(params);
+    }
+
+    if (!serverClient.isEnabled() || !serverClient.hasAccessToken()) {
+      return { worlds: [] };
+    }
+
+    return serverClient.getWorlds(params);
+  }
+
+  async getWorld(id: string): Promise<{ world: WorldRecord }> {
+    if (isSelfContainedDesktopRuntime()) {
+      return getLocalWorld(id);
+    }
+
+    return serverClient.getWorld(id);
+  }
+
+  async createWorld(data: { name: string; description?: string; genre?: string; setting?: string; notes?: string; tags?: string[]; isPublic?: boolean }): Promise<{ world: WorldRecord }> {
+    if (isSelfContainedDesktopRuntime()) {
+      return createLocalWorld(data);
+    }
+
+    return serverClient.createWorld(data);
+  }
+
+  async updateWorld(id: string, data: Record<string, unknown>): Promise<{ world: WorldRecord }> {
+    if (isSelfContainedDesktopRuntime()) {
+      return updateLocalWorld(id, data);
+    }
+
+    return serverClient.updateWorld(id, data);
+  }
+
+  async deleteWorld(id: string): Promise<{ message: string }> {
+    if (isSelfContainedDesktopRuntime()) {
+      return deleteLocalWorld(id);
+    }
+
+    return serverClient.deleteWorld(id);
+  }
+
+  async addWorldCharacter(worldId: string, data: { draftId?: string; characterName: string; role?: string; notes?: string }): Promise<{ character: WorldCharacterRecord }> {
+    if (isSelfContainedDesktopRuntime()) {
+      return addLocalWorldCharacter(worldId, data);
+    }
+
+    return serverClient.addWorldCharacter(worldId, data);
+  }
+
+  async updateWorldCharacter(worldId: string, characterId: string, data: Record<string, unknown>): Promise<{ character: WorldCharacterRecord }> {
+    if (isSelfContainedDesktopRuntime()) {
+      return updateLocalWorldCharacter(worldId, characterId, data);
+    }
+
+    return serverClient.updateWorldCharacter(worldId, characterId, data);
+  }
+
+  async deleteWorldCharacter(worldId: string, characterId: string): Promise<{ message: string }> {
+    if (isSelfContainedDesktopRuntime()) {
+      return deleteLocalWorldCharacter(worldId, characterId);
+    }
+
+    return serverClient.deleteWorldCharacter(worldId, characterId);
+  }
+
+  async addWorldFaction(worldId: string, data: { name: string; description?: string; role?: string; notes?: string; tags?: string[] }): Promise<{ faction: WorldFactionRecord }> {
+    if (isSelfContainedDesktopRuntime()) {
+      return addLocalWorldFaction(worldId, data);
+    }
+
+    return serverClient.addWorldFaction(worldId, data);
+  }
+
+  async updateWorldFaction(worldId: string, factionId: string, data: Record<string, unknown>): Promise<{ faction: WorldFactionRecord }> {
+    if (isSelfContainedDesktopRuntime()) {
+      return updateLocalWorldFaction(worldId, factionId, data);
+    }
+
+    return serverClient.updateWorldFaction(worldId, factionId, data);
+  }
+
+  async deleteWorldFaction(worldId: string, factionId: string): Promise<{ message: string }> {
+    if (isSelfContainedDesktopRuntime()) {
+      return deleteLocalWorldFaction(worldId, factionId);
+    }
+
+    return serverClient.deleteWorldFaction(worldId, factionId);
+  }
+
+  async addWorldLocation(worldId: string, data: { name: string; description?: string; category?: string; notes?: string; tags?: string[] }): Promise<{ location: WorldLocationRecord }> {
+    if (isSelfContainedDesktopRuntime()) {
+      return addLocalWorldLocation(worldId, data);
+    }
+
+    return serverClient.addWorldLocation(worldId, data);
+  }
+
+  async updateWorldLocation(worldId: string, locationId: string, data: Record<string, unknown>): Promise<{ location: WorldLocationRecord }> {
+    if (isSelfContainedDesktopRuntime()) {
+      return updateLocalWorldLocation(worldId, locationId, data);
+    }
+
+    return serverClient.updateWorldLocation(worldId, locationId, data);
+  }
+
+  async deleteWorldLocation(worldId: string, locationId: string): Promise<{ message: string }> {
+    if (isSelfContainedDesktopRuntime()) {
+      return deleteLocalWorldLocation(worldId, locationId);
+    }
+
+    return serverClient.deleteWorldLocation(worldId, locationId);
+  }
+
+  async getTimeline(id: string): Promise<{ timeline: TimelineRecord }> {
+    if (isSelfContainedDesktopRuntime()) {
+      return getLocalTimeline(id);
+    }
+
+    return serverClient.getTimeline(id);
+  }
+
+  async createTimeline(data: { worldId: string; name: string; description?: string; startDate?: string; endDate?: string; tags?: string[] }): Promise<{ timeline: TimelineRecord }> {
+    if (isSelfContainedDesktopRuntime()) {
+      return createLocalTimeline(data);
+    }
+
+    return serverClient.createTimeline(data);
+  }
+
+  async updateTimeline(id: string, data: Record<string, unknown>): Promise<{ timeline: TimelineRecord }> {
+    if (isSelfContainedDesktopRuntime()) {
+      return updateLocalTimeline(id, data);
+    }
+
+    return serverClient.updateTimeline(id, data);
+  }
+
+  async deleteTimeline(id: string): Promise<{ message: string }> {
+    if (isSelfContainedDesktopRuntime()) {
+      return deleteLocalTimeline(id);
+    }
+
+    return serverClient.deleteTimeline(id);
+  }
+
+  async addTimelineEvent(timelineId: string, data: { title: string; description?: string; eventDate?: string; sortOrder?: number; tags?: string[]; metadata?: Record<string, unknown> }): Promise<{ event: TimelineEventRecord }> {
+    if (isSelfContainedDesktopRuntime()) {
+      return addLocalTimelineEvent(timelineId, data);
+    }
+
+    return serverClient.addTimelineEvent(timelineId, data);
+  }
+
+  async updateTimelineEvent(timelineId: string, eventId: string, data: Record<string, unknown>): Promise<{ event: TimelineEventRecord }> {
+    if (isSelfContainedDesktopRuntime()) {
+      return updateLocalTimelineEvent(timelineId, eventId, data);
+    }
+
+    return serverClient.updateTimelineEvent(timelineId, eventId, data);
+  }
+
+  async deleteTimelineEvent(timelineId: string, eventId: string): Promise<{ message: string }> {
+    if (isSelfContainedDesktopRuntime()) {
+      return deleteLocalTimelineEvent(timelineId, eventId);
+    }
+
+    return serverClient.deleteTimelineEvent(timelineId, eventId);
   }
 
   async getBlueprint(path: string): Promise<Blueprint> {
@@ -2900,6 +2817,27 @@ export class EidolonBrowserAPI {
         },
       ];
 
+      const stream = await generateWithCurrentConfig(messages);
+      let fullContent = '';
+      for await (const chunk of stream) {
+        if (signal.aborted) {
+          return;
+        }
+        if (chunk.content) {
+          fullContent += chunk.content;
+          emit('chunk', { content: chunk.content });
+        }
+        if (chunk.done) {
+          break;
+        }
+      }
+      emit('complete', { content: fullContent });
+    });
+  }
+
+  optimizeText(request: OptimizeTextRequest): BrowserStream {
+    return new BrowserStream(async ({ emit, signal }) => {
+      const messages = buildOptimizeTextMessages(request);
       const stream = await generateWithCurrentConfig(messages);
       let fullContent = '';
       for await (const chunk of stream) {

@@ -15,7 +15,7 @@ import {
   resolveThemeColors,
 } from '../../theme/theme';
 import { api } from '../../lib/api.js';
-import { saveBlobDownload } from '../../utils/download';
+import { pickFile, saveBlobDownload } from '../../utils/download';
 
 type ThemeImportPayload = {
   version?: number;
@@ -179,12 +179,8 @@ export default function ThemeSelection() {
     setError(null);
   };
 
-  const handleImportThemeClick = () => {
-    importInputRef.current?.click();
-  };
-
-  const handleImportTheme = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const handleImportTheme = async () => {
+    const file = await pickFile({ accept: 'application/json,.json' }, importInputRef.current);
     if (!file) return;
 
     try {
@@ -205,8 +201,6 @@ export default function ThemeSelection() {
       setError(err instanceof Error ? err.message : 'Theme import failed');
       setNotice(null);
     }
-
-    event.target.value = '';
   };
 
   return (
@@ -307,7 +301,7 @@ export default function ThemeSelection() {
               </button>
               <button
                 type="button"
-                onClick={handleImportThemeClick}
+                onClick={() => void handleImportTheme()}
                 className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg border border-border px-3 py-2 text-sm hover:bg-accent transition-colors"
               >
                 <Upload className="h-4 w-4" />
@@ -318,7 +312,6 @@ export default function ThemeSelection() {
               ref={importInputRef}
               type="file"
               accept="application/json"
-              onChange={handleImportTheme}
               className="hidden"
               title="Import theme file"
               aria-label="Import theme file"
@@ -366,9 +359,9 @@ export default function ThemeSelection() {
                     </div>
                     <p className="text-sm opacity-80 line-clamp-2">{theme.description || 'No description'}</p>
                     <div className="flex gap-2 mt-3">
-                      {[theme.colors.background, theme.colors.surface, theme.colors.accent, theme.colors.highlight].map((color) => (
+                      {[theme.colors.background, theme.colors.surface, theme.colors.accent, theme.colors.highlight].map((color, index) => (
                         <span
-                          key={`${theme.name}-${color}`}
+                          key={`${theme.name}-preview-${index}-${color}`}
                           className="h-6 w-6 rounded-full border border-black/10"
                           style={{ backgroundColor: color }}
                         />

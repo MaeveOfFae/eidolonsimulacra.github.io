@@ -1,4 +1,5 @@
 // Drafts CRUD routes
+import { MAX_CONNECTED_DRAFT_REFERENCES } from "@char-gen/shared/types";
 import { Router, Request, Response } from "express";
 import { z } from "zod";
 import { prisma, Prisma } from "../db.js";
@@ -7,6 +8,35 @@ import { validateBody, validateQuery, validateParams } from "../middleware/valid
 
 const router: Router = Router();
 router.use(authenticateToken);
+
+const connectedDraftIdsSchema = z.array(z.string().trim().min(1)).max(MAX_CONNECTED_DRAFT_REFERENCES);
+const relatedLorebookSchema = z.object({
+  id: z.number().optional(),
+  book: z.string().nullable().optional(),
+  path: z.string().optional(),
+  version: z.string().optional(),
+  commit_ref: z.string().optional(),
+});
+const cardMetadataSchema = z.object({
+  avatar: z.string().optional(),
+  creator: z.string().optional(),
+  character_version: z.string().optional(),
+  depth_prompt: z.object({
+    depth: z.number(),
+    prompt: z.string(),
+  }).optional(),
+  chub: z.object({
+    id: z.number().optional(),
+    preset: z.string().nullable().optional(),
+    full_path: z.string().optional(),
+    custom_css: z.string().nullable().optional(),
+    extensions: z.array(z.unknown()).optional(),
+    expressions: z.unknown().optional(),
+    alt_expressions: z.record(z.string(), z.unknown()).optional(),
+    background_image: z.string().optional(),
+    related_lorebooks: z.array(relatedLorebookSchema).optional(),
+  }).optional(),
+});
 
 // Validation Schemas
 const createDraftSchema = z.object({
@@ -26,6 +56,8 @@ const createDraftSchema = z.object({
   componentSendOrder: z.array(z.string()).optional(),
   assets: z.record(z.string()),
   parentDraftIds: z.array(z.string()).optional(),
+  connectedDraftIds: connectedDraftIdsSchema.optional(),
+  cardMetadata: cardMetadataSchema.optional(),
 });
 
 const updateDraftSchema = createDraftSchema.partial();
@@ -47,7 +79,96 @@ const pushDraftSchema = z.object({
   componentSendOrder: z.array(z.string()).optional(),
   assets: z.record(z.string()),
   parentDraftIds: z.array(z.string()).optional(),
+  connectedDraftIds: connectedDraftIdsSchema.optional(),
+  cardMetadata: cardMetadataSchema.optional(),
 });
+
+function normalizeConnectedDraftIds(reviewId: string, draftIds?: string[]): string[] {
+  const normalized: string[] = [];
+  const seen = new Set<string>();
+
+  for (const draftId of draftIds ?? []) {
+    const trimmedDraftId = draftId.trim();
+    if (!trimmedDraftId || trimmedDraftId === reviewId || seen.has(trimmedDraftId)) {
+      continue;
+    }
+
+    seen.add(trimmedDraftId);
+    normalized.push(trimmedDraftId);
+
+    if (normalized.length >= MAX_CONNECTED_DRAFT_REFERENCES) {
+      break;
+    }
+  }
+
+  return normalized;
+}
+
+function toPrismaJsonValue(value: unknown): Prisma.InputJsonValue | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
+}
+
+function buildDraftWriteData(
+  userId: string,
+  draftData: z.infer<typeof createDraftSchema> | z.infer<typeof pushDraftSchema>
+): Prisma.DraftUncheckedCreateInput {
+  return {
+    userId,
+    reviewId: draftData.reviewId,
+    seed: draftData.seed,
+    mode: draftData.mode ?? "Auto",
+    model: draftData.model,
+    archivedAt: draftData.archivedAt ? new Date(draftData.archivedAt) : null,
+    characterName: draftData.characterName,
+    templateName: draftData.templateName,
+    genre: draftData.genre,
+    notes: draftData.notes,
+    favorite: draftData.favorite ?? false,
+    tags: draftData.tags ?? [],
+    offspringType: draftData.offspringType,
+    customInstructions: draftData.customInstructions,
+    componentSendOrder: draftData.componentSendOrder ?? [],
+    connectedDraftIds: normalizeConnectedDraftIds(draftData.reviewId, draftData.connectedDraftIds),
+    cardMetadata: toPrismaJsonValue(draftData.cardMetadata),
+    assets: draftData.assets,
+  };
+}
+
+function buildDraftUpdateData(
+  draftData: Partial<z.infer<typeof createDraftSchema>>,
+  currentReviewId: string,
+  options: { preserveArchivedAtWhenMissing?: boolean } = {}
+): Prisma.DraftUncheckedUpdateInput {
+  const reviewId = draftData.reviewId ?? currentReviewId;
+
+  return {
+    reviewId: draftData.reviewId,
+    seed: draftData.seed,
+    mode: draftData.mode,
+    model: draftData.model,
+    archivedAt: draftData.archivedAt === undefined && options.preserveArchivedAtWhenMissing
+      ? undefined
+      : draftData.archivedAt ? new Date(draftData.archivedAt) : draftData.archivedAt === undefined ? null : null,
+    characterName: draftData.characterName,
+    templateName: draftData.templateName,
+    genre: draftData.genre,
+    notes: draftData.notes,
+    favorite: draftData.favorite,
+    tags: draftData.tags,
+    offspringType: draftData.offspringType,
+    customInstructions: draftData.customInstructions,
+    componentSendOrder: draftData.componentSendOrder,
+    connectedDraftIds: draftData.connectedDraftIds === undefined
+      ? undefined
+      : normalizeConnectedDraftIds(reviewId, draftData.connectedDraftIds),
+    cardMetadata: toPrismaJsonValue(draftData.cardMetadata),
+    assets: draftData.assets,
+  };
+}
 
 const draftQuerySchema = z.object({
   search: z.string().optional(),
@@ -174,22 +295,7 @@ router.post(
       try {
         const reviewId = draftData.reviewId
         const draftWriteData: Prisma.DraftUncheckedCreateInput = {
-          userId,
-          reviewId: draftData.reviewId,
-          seed: draftData.seed,
-          mode: draftData.mode ?? "Auto",
-          model: draftData.model,
-          archivedAt: draftData.archivedAt ? new Date(draftData.archivedAt) : null,
-          characterName: draftData.characterName,
-          templateName: draftData.templateName,
-          genre: draftData.genre,
-          notes: draftData.notes,
-          favorite: draftData.favorite ?? false,
-          tags: draftData.tags ?? [],
-          offspringType: draftData.offspringType,
-          customInstructions: draftData.customInstructions,
-          componentSendOrder: draftData.componentSendOrder ?? [],
-          assets: draftData.assets,
+          ...buildDraftWriteData(userId, draftData),
         }
 
         const existing = await prisma.draft.findFirst({
@@ -213,6 +319,8 @@ router.post(
               offspringType: draftWriteData.offspringType,
               customInstructions: draftWriteData.customInstructions,
               componentSendOrder: draftWriteData.componentSendOrder,
+              connectedDraftIds: draftWriteData.connectedDraftIds,
+              cardMetadata: draftWriteData.cardMetadata,
               assets: draftWriteData.assets,
             },
           })
@@ -263,11 +371,7 @@ router.post("/", validateBody(createDraftSchema), async (req: Request, res: Resp
 
     const draft = await prisma.draft.create({
       data: {
-        ...data,
-        userId,
-        archivedAt: data.archivedAt ? new Date(data.archivedAt) : null,
-        tags: data.tags || [],
-        assets: data.assets || {},
+        ...buildDraftWriteData(userId, data),
       },
     })
     res.status(201).json({ draft })
@@ -288,12 +392,7 @@ router.put("/:id", validateParams(draftParamsSchema), validateBody(createDraftSc
 
     const draft = await prisma.draft.update({
       where: { id },
-      data: {
-        ...data,
-        archivedAt: data.archivedAt ? new Date(data.archivedAt) : null,
-        tags: data.tags || [],
-        assets: data.assets || {},
-      },
+      data: buildDraftUpdateData(data, existing.reviewId),
     })
     res.json({ draft })
   }
@@ -313,10 +412,7 @@ router.patch("/:id", validateParams(draftParamsSchema), validateBody(updateDraft
 
     const draft = await prisma.draft.update({
       where: { id },
-      data: {
-        ...data,
-        archivedAt: data.archivedAt === undefined ? undefined : data.archivedAt ? new Date(data.archivedAt) : null,
-      },
+      data: buildDraftUpdateData(data, existing.reviewId, { preserveArchivedAtWhenMissing: true }),
     })
     res.json({ draft })
   }

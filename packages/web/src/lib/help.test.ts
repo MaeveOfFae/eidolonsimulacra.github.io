@@ -18,4 +18,8 @@ describe('help configuration', () => {
   it('resolves the draft review page using prefix matching', () => {
     expect(resolvePageHelp('/drafts/example-review-id')?.id).toBe('draft-review');
   });
+
+  it('resolves token optimization help for the optimize route', () => {
+    expect(resolvePageHelp('/optimize')?.id).toBe('token-optimization');
+  });
 });

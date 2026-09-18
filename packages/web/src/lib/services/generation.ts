@@ -9,6 +9,7 @@ import type {
   Draft,
   GenerateRequest,
   GenerateAssetRequest,
+  LorebookGenerationRequest,
   OffspringRequest,
   SeedGenerationRequest,
   ChatMessage,
@@ -19,21 +20,22 @@ import {
   parseBlueprintOutput as parseGeneratedBlueprintOutput,
 } from '@char-gen/shared';
 import { createEngine } from '../llm/factory.js';
-import { unwrapSingleCodeFence } from '../content-format.js';
+import { stripReasoningArtifacts, unwrapSingleCodeFence } from '../content-format.js';
 import { configManager } from '../config/manager.js';
 import { queueAutoSync } from '../server/auto-sync.js';
 import { DraftStorage } from '../storage/draft-db.js';
 import {
   buildOrchestratorPrompt,
   buildAssetPrompt,
+  buildLorebookPrompt,
   buildSeedGenPrompt,
   buildSimilarityPrompt,
   buildOffspringPrompt,
   formatMessages,
 } from '../prompting/builder.js';
+import type { ImportedSourceContext, ReferenceSuiteContext } from '../prompting/builder.js';
 import {
   inferCharacterDisplayNameForTemplate,
-  resolveTemplateAssets,
   resolveTemplateBlueprintContent,
   resolveTemplateDefinition,
 } from '../templates/browser.js';
@@ -41,6 +43,7 @@ import {
   parseSeedGenerationResponse,
   resolveSeedGenerationInput,
 } from '../seed-generator.js';
+import { loadReferenceSuites, normalizeConnectedReferenceIds } from '../prompting/reference-context.js';
 
 /**
  * Progress callback for generation
@@ -62,6 +65,7 @@ export interface GenerationProgress {
 export interface ExtendedGenerateRequest extends GenerateRequest {
   blueprint_override?: string;
   additional_instructions?: string[];
+  imported_source?: ImportedSourceContext;
 }
 
 /**
@@ -71,14 +75,56 @@ export interface ExtendedOffspringRequest extends OffspringRequest {
   blueprint_override?: string;
 }
 
+type AssetGenerationRequest = GenerateAssetRequest & {
+  reference_suites?: ReferenceSuiteContext[];
+  imported_source?: ImportedSourceContext;
+};
+
 interface GenerationRunOptions {
   signal?: AbortSignal;
+}
+
+const DEFAULT_GENERATION_MAX_TOKENS = 4096;
+
+interface StreamDisplayState {
+  rawContent: string;
+  visibleContent: string;
 }
 
 /**
  * Generation Service
  */
 export class GenerationService {
+  private static createStreamDisplayState(): StreamDisplayState {
+    return {
+      rawContent: '',
+      visibleContent: '',
+    };
+  }
+
+  private static sanitizeModelContent(content: string): string {
+    return stripReasoningArtifacts(content);
+  }
+
+  private static appendVisibleChunk(state: StreamDisplayState, chunkContent: string): string {
+    state.rawContent += chunkContent;
+    const nextVisibleContent = this.sanitizeModelContent(state.rawContent);
+    const visibleDelta = nextVisibleContent.startsWith(state.visibleContent)
+      ? nextVisibleContent.slice(state.visibleContent.length)
+      : '';
+
+    state.visibleContent = nextVisibleContent;
+    return visibleDelta;
+  }
+
+  private static resolveGenerationMaxTokens(config: Config): number {
+    const configuredMaxTokens = typeof config.max_tokens === 'number' && Number.isFinite(config.max_tokens)
+      ? Math.max(1, Math.round(config.max_tokens))
+      : DEFAULT_GENERATION_MAX_TOKENS;
+
+    return configuredMaxTokens;
+  }
+
   private static resolveConfiguredProvider(config: Config): LLMProvider | undefined {
     if (config.engine_mode === 'explicit' && config.engine !== 'auto' && config.engine !== 'openai_compatible') {
       return config.engine as LLMProvider;
@@ -106,12 +152,12 @@ export class GenerationService {
       baseUrl: config.base_url,
       proxyKey: config.api_proxy_key,
       temperature: config.temperature,
-      maxTokens: config.max_tokens,
+      maxTokens: this.resolveGenerationMaxTokens(config),
     });
   }
 
   private static sanitizeGeneratedSeed(content: string): string {
-    return unwrapSingleCodeFence(content)
+    return unwrapSingleCodeFence(this.sanitizeModelContent(content))
       .replace(/^['"]|['"]$/g, '');
   }
 
@@ -137,6 +183,8 @@ export class GenerationService {
       stream = true,
       blueprint_override,
       additional_instructions = [],
+      connected_draft_ids = [],
+      imported_source,
     } = request;
 
     yield { type: 'status', stage: 'initializing' };
@@ -146,6 +194,10 @@ export class GenerationService {
 
     // Get template assets
     const templateDefinition = template ? resolveTemplateDefinition(template) : undefined;
+    const connectedDraftIds = normalizeConnectedReferenceIds(connected_draft_ids);
+    const referenceSuites = await loadReferenceSuites(connectedDraftIds, {
+      resolveTemplate: (templateName) => templateName ? resolveTemplateDefinition(templateName) : undefined,
+    });
 
     yield { type: 'status', stage: 'building_prompt' };
 
@@ -156,7 +208,9 @@ export class GenerationService {
       templateDefinition,
       undefined,
       blueprint_override,
-      additional_instructions
+      additional_instructions,
+      referenceSuites,
+      imported_source,
     );
 
     yield { type: 'status', stage: 'generating' };
@@ -166,21 +220,36 @@ export class GenerationService {
     let fullContent = '';
 
     if (stream) {
+      const streamState = this.createStreamDisplayState();
       for await (const chunk of engine.generateStream(messages, { signal: options.signal })) {
         if (chunk.content) {
-          fullContent += chunk.content;
-          yield {
-            type: 'chunk',
-            content: chunk.content,
-          };
+          const visibleChunk = this.appendVisibleChunk(streamState, chunk.content);
+          fullContent = streamState.visibleContent;
+          if (visibleChunk) {
+            yield {
+              type: 'chunk',
+              content: visibleChunk,
+            };
+          }
         }
         if (chunk.done) {
           break;
         }
       }
+
+      if (!fullContent.trim() && !options.signal?.aborted) {
+        const fallbackResult = await engine.generate(messages, { signal: options.signal });
+        fullContent = this.sanitizeModelContent(fallbackResult.content);
+        if (fullContent) {
+          yield {
+            type: 'chunk',
+            content: fullContent,
+          };
+        }
+      }
     } else {
       const result = await engine.generate(messages, { signal: options.signal });
-      fullContent = result.content;
+      fullContent = this.sanitizeModelContent(result.content);
     }
 
     yield { type: 'status', stage: 'parsing' };
@@ -212,6 +281,7 @@ export class GenerationService {
         favorite: false,
         template_name: template,
         character_name: characterName,
+        connected_drafts: connectedDraftIds.length > 0 ? connectedDraftIds : undefined,
       },
       assets,
     };
@@ -229,26 +299,37 @@ export class GenerationService {
    * Generate a single asset
    */
   static async *generateAsset(
-    request: GenerateAssetRequest,
-    stream: boolean = true
+    request: AssetGenerationRequest,
+    stream: boolean = true,
+    options: GenerationRunOptions = {}
   ): AsyncIterable<GenerationProgress> {
     const blueprintContent = resolveTemplateBlueprintContent(request.template, request.asset_name);
-    yield* this.generateAssetWithBlueprint(request, blueprintContent, stream);
+    yield* this.generateAssetWithBlueprint(request, blueprintContent, stream, options);
   }
 
   static async *previewBlueprint(
-    request: GenerateAssetRequest & { blueprint_content: string },
-    stream: boolean = true
+    request: AssetGenerationRequest & { blueprint_content: string },
+    stream: boolean = true,
+    options: GenerationRunOptions = {}
   ): AsyncIterable<GenerationProgress> {
-    yield* this.generateAssetWithBlueprint(request, request.blueprint_content, stream);
+    yield* this.generateAssetWithBlueprint(request, request.blueprint_content, stream, options);
   }
 
   private static async *generateAssetWithBlueprint(
-    request: GenerateAssetRequest,
+    request: AssetGenerationRequest,
     blueprintContent: string | undefined,
-    stream: boolean
+    stream: boolean,
+    options: GenerationRunOptions = {}
   ): AsyncIterable<GenerationProgress> {
-    const { seed, mode = 'Auto', asset_name, prior_assets, additional_instructions = [] } = request;
+    const {
+      seed,
+      mode = 'Auto',
+      asset_name,
+      prior_assets,
+      additional_instructions = [],
+      reference_suites = [],
+      imported_source,
+    } = request;
 
     yield { type: 'status', stage: 'initializing' };
 
@@ -264,7 +345,10 @@ export class GenerationService {
       prior_assets,
       blueprintContent,
       undefined,
-      additional_instructions
+      additional_instructions,
+      reference_suites,
+      request.template,
+      imported_source,
     );
 
     yield {
@@ -282,22 +366,31 @@ export class GenerationService {
     let fullContent = '';
 
     if (stream) {
-      for await (const chunk of engine.generateStream(messages)) {
+      const streamState = this.createStreamDisplayState();
+      for await (const chunk of engine.generateStream(messages, { signal: options.signal })) {
         if (chunk.content) {
-          fullContent += chunk.content;
-          yield {
-            type: 'chunk',
-            content: chunk.content,
-            asset: asset_name,
-          };
+          const visibleChunk = this.appendVisibleChunk(streamState, chunk.content);
+          fullContent = streamState.visibleContent;
+          if (visibleChunk) {
+            yield {
+              type: 'chunk',
+              content: visibleChunk,
+              asset: asset_name,
+            };
+          }
         }
         if (chunk.done) {
           break;
         }
       }
+
+      if (!fullContent.trim() && !options.signal?.aborted) {
+        const fallbackResult = await engine.generate(messages, { signal: options.signal });
+        fullContent = this.sanitizeModelContent(fallbackResult.content);
+      }
     } else {
-      const result = await engine.generate(messages);
-      fullContent = result.content;
+      const result = await engine.generate(messages, { signal: options.signal });
+      fullContent = this.sanitizeModelContent(result.content);
     }
 
     yield {
@@ -354,17 +447,32 @@ export class GenerationService {
     // Generate seed
     const messages = formatMessages(systemPrompt, userPrompt);
     let fullContent = '';
+    const streamState = this.createStreamDisplayState();
 
     for await (const chunk of engine.generateStream(messages, { signal: options.signal })) {
       if (chunk.content) {
-        fullContent += chunk.content;
-        yield {
-          type: 'chunk',
-          content: chunk.content,
-        };
+        const visibleChunk = this.appendVisibleChunk(streamState, chunk.content);
+        fullContent = streamState.visibleContent;
+        if (visibleChunk) {
+          yield {
+            type: 'chunk',
+            content: visibleChunk,
+          };
+        }
       }
       if (chunk.done) {
         break;
+      }
+    }
+
+    if (!fullContent.trim() && !options.signal?.aborted) {
+      const fallbackResult = await engine.generate(messages, { signal: options.signal });
+      fullContent = this.sanitizeModelContent(fallbackResult.content);
+      if (fullContent) {
+        yield {
+          type: 'chunk',
+          content: fullContent,
+        };
       }
     }
 
@@ -459,6 +567,89 @@ export class GenerationService {
     };
   }
 
+  static async *generateLorebook(
+    request: LorebookGenerationRequest,
+    options: GenerationRunOptions = {}
+  ): AsyncIterable<GenerationProgress> {
+    const draftIds = normalizeConnectedReferenceIds(request.draft_ids);
+    if (draftIds.length === 0) {
+      yield {
+        type: 'error',
+        error: 'Select at least one reference draft to generate a lorebook packet.',
+      };
+      return;
+    }
+
+    yield { type: 'status', stage: 'loading_references' };
+
+    const referenceSuites = await loadReferenceSuites(draftIds, {
+      preferredAssetOrder: [
+        'lorebook',
+        'character_sheet',
+        'post_history',
+        'intro_scene',
+        'intro_page',
+        'system_prompt',
+      ],
+      includeAssetPrefixes: ['lorebook_'],
+      resolveTemplate: (templateName) => templateName ? resolveTemplateDefinition(templateName) : undefined,
+    });
+
+    if (referenceSuites.length === 0) {
+      yield {
+        type: 'error',
+        error: 'The selected drafts did not contain enough usable reference context for lorebook generation.',
+      };
+      return;
+    }
+
+    yield { type: 'status', stage: 'building_prompt' };
+
+    const engine = this.createConfiguredEngine();
+    const [systemPrompt, userPrompt] = await buildLorebookPrompt(referenceSuites, {
+      focus: request.focus,
+      blueprintContent: request.blueprint_content,
+    });
+
+    yield { type: 'status', stage: 'generating' };
+
+    const messages = formatMessages(systemPrompt, userPrompt);
+    let fullContent = '';
+    const streamState = this.createStreamDisplayState();
+
+    for await (const chunk of engine.generateStream(messages, { signal: options.signal })) {
+      if (chunk.content) {
+        const visibleChunk = this.appendVisibleChunk(streamState, chunk.content);
+        fullContent = streamState.visibleContent;
+        if (visibleChunk) {
+          yield {
+            type: 'chunk',
+            content: visibleChunk,
+          };
+        }
+      }
+      if (chunk.done) {
+        break;
+      }
+    }
+
+    if (!fullContent.trim() && !options.signal?.aborted) {
+      const fallbackResult = await engine.generate(messages, { signal: options.signal });
+      fullContent = this.sanitizeModelContent(fallbackResult.content);
+      if (fullContent) {
+        yield {
+          type: 'chunk',
+          content: fullContent,
+        };
+      }
+    }
+
+    yield {
+      type: 'complete',
+      content: unwrapSingleCodeFence(fullContent).trim(),
+    };
+  }
+
   /**
    * Generate seeds from genre lines
    */
@@ -483,7 +674,7 @@ export class GenerationService {
       provider,
       baseUrl: config.base_url,
       temperature: config.temperature,
-      maxTokens: config.max_tokens,
+      maxTokens: this.resolveGenerationMaxTokens(config),
     });
 
     yield { type: 'status', stage: 'building_prompt' };
@@ -501,7 +692,7 @@ export class GenerationService {
     const result = await engine.generate(messages);
 
     // Parse seeds (one per line)
-    const seeds = parseSeedGenerationResponse(result.content);
+    const seeds = parseSeedGenerationResponse(this.sanitizeModelContent(result.content));
 
     yield {
       type: 'complete',
@@ -534,7 +725,7 @@ export class GenerationService {
       provider,
       baseUrl: config.base_url,
       temperature: config.temperature,
-      maxTokens: config.max_tokens,
+      maxTokens: this.resolveGenerationMaxTokens(config),
     });
 
     yield { type: 'status', stage: 'generating' };
@@ -547,17 +738,32 @@ export class GenerationService {
 
     // Generate response
     let fullContent = '';
+    const streamState = this.createStreamDisplayState();
 
     for await (const chunk of engine.generateStream(chatMessages)) {
       if (chunk.content) {
-        fullContent += chunk.content;
-        yield {
-          type: 'chunk',
-          content: chunk.content,
-        };
+        const visibleChunk = this.appendVisibleChunk(streamState, chunk.content);
+        fullContent = streamState.visibleContent;
+        if (visibleChunk) {
+          yield {
+            type: 'chunk',
+            content: visibleChunk,
+          };
+        }
       }
       if (chunk.done) {
         break;
+      }
+    }
+
+    if (!fullContent.trim()) {
+      const fallbackResult = await engine.generate(chatMessages);
+      fullContent = this.sanitizeModelContent(fallbackResult.content);
+      if (fullContent) {
+        yield {
+          type: 'chunk',
+          content: fullContent,
+        };
       }
     }
 
@@ -599,7 +805,7 @@ export class GenerationService {
       provider,
       baseUrl: config.base_url,
       temperature: config.temperature,
-      maxTokens: config.max_tokens,
+      maxTokens: this.resolveGenerationMaxTokens(config),
     });
 
     // Build similarity prompt
@@ -608,13 +814,14 @@ export class GenerationService {
 
     // Generate analysis
     const result = await engine.generate(messages);
+    const sanitizedContent = this.sanitizeModelContent(result.content);
 
     // Parse JSON response
     try {
-      return JSON.parse(result.content);
+      return JSON.parse(sanitizedContent);
     } catch {
       // Return text if JSON parsing fails
-      return { raw: result.content };
+      return { raw: sanitizedContent };
     }
   }
 

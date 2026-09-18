@@ -26,6 +26,7 @@ const assetDefinitionSchema = z.object({
   depends_on: z.array(z.string()),
   description: z.string(),
   blueprint_file: z.string().optional(),
+  import_aliases: z.array(z.string()).optional(),
 });
 
 const createTemplateSchema = z.object({

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Calendar, Clock, MapPin } from 'lucide-react';
+import HoverHelpPopover from '../common/HoverHelpPopover';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
 
 const PLANNED_EVENT_MODULES = [
@@ -49,8 +50,12 @@ export default function Events() {
         </div>
       </section>
 
-      <div className="app-note p-4 text-sm text-muted-foreground">
-        Events remain hidden as a real workflow until timelines, locations, and shared participant state are wired into persistent world data.
+      <div className="flex justify-start">
+        <HoverHelpPopover
+          title="Why events are still hidden"
+          summary="Events remain hidden as a real workflow until timelines, locations, and shared participant state are wired into persistent world data."
+          label="Why this route is staged"
+        />
       </div>
 
       <section className="app-panel p-4 sm:p-5">

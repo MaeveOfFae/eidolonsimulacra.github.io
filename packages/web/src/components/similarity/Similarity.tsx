@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import { GitCompare, Loader2, Users, AlertCircle, CheckCircle } from 'lucide-react';
 import type { SimilarityResult } from '@char-gen/shared';
 import { api } from '@/lib/api';
+import CollapsibleSection from '../common/CollapsibleSection';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
 
 const PLANNED_SIMILARITY_MODULES = [
@@ -103,9 +104,7 @@ export default function Similarity() {
           <div className="space-y-4">
             <p className="app-page-eyebrow">Comparative analysis</p>
             <h1 className="app-page-title">Measure how two reviewed drafts align, clash, or reinforce each other.</h1>
-            <p className="app-page-summary">
-              Similarity analysis compares structural and thematic overlap between two characters, then optionally adds an LLM-assisted relationship read for story hooks, conflict areas, and synergy.
-            </p>
+            <p className="app-page-summary">Compare structural overlap, then optionally add an LLM relationship read.</p>
           </div>
 
           <div className="app-panel-muted p-5">
@@ -128,7 +127,12 @@ export default function Similarity() {
         </div>
       </section>
 
-      <div className="app-panel min-w-0 space-y-6 p-6">
+      <CollapsibleSection
+        title="Comparison setup"
+        subtitle="Pick two drafts and choose whether to include the deeper LLM read"
+        preview={`${character1 || 'Unset'} · ${character2 || 'Unset'}${includeLLM ? ' • deep analysis' : ''}`}
+        defaultExpanded
+      >
         <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         {/* Character 1 */}
           <div className="min-w-0 space-y-2">
@@ -191,7 +195,7 @@ export default function Similarity() {
             Compare
           </button>
         </div>
-      </div>
+      </CollapsibleSection>
 
       {compareMutation.isError && (
         <div className="app-note flex items-center gap-2 border-destructive bg-destructive/10 p-4 text-destructive">
@@ -202,6 +206,12 @@ export default function Similarity() {
 
       {/* Results */}
       {result && (
+        <CollapsibleSection
+          title="Results"
+          subtitle={`${result.character1_name} vs ${result.character2_name}`}
+          preview={`${(result.overall_score * 100).toFixed(0)}% match • ${result.compatibility} compatibility`}
+          defaultExpanded
+        >
         <div className="space-y-6">
           {/* Overview */}
           <div className="app-panel min-w-0 overflow-hidden p-6">
@@ -324,19 +334,23 @@ export default function Similarity() {
             </div>
           )}
         </div>
+        </CollapsibleSection>
       )}
 
       {!result && !compareMutation.isPending && (
         <div className="app-panel p-8 text-center">
           <GitCompare className="mx-auto h-12 w-12 text-muted-foreground" />
           <h3 className="mt-4 text-lg font-semibold">Select Two Characters</h3>
-          <p className="text-muted-foreground">
-            Choose two characters from your drafts to analyze their similarities and potential relationships
-          </p>
+          <p className="text-muted-foreground">Choose two drafts to analyze their overlap and potential relationship.</p>
         </div>
       )}
 
-      <section className="app-panel border-dashed p-5">
+      <CollapsibleSection
+        title="Staged modules"
+        subtitle="Clustering and graph views stay outside the live comparison flow"
+        preview="Not live"
+        className="border-dashed"
+      >
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
             <h2 className="text-lg font-semibold">Staged similarity modules</h2>
@@ -360,7 +374,7 @@ export default function Similarity() {
             </article>
           ))}
         </div>
-      </section>
+      </CollapsibleSection>
     </div>
   );
 }

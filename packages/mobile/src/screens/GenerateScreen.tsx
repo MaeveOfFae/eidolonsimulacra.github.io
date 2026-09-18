@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -11,10 +11,57 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { type ContentMode, type GenerationComplete } from '@char-gen/shared';
+import { detectAndParseCharacter, type ContentMode, type GenerationComplete, type ImportedCharacter, type Template } from '@char-gen/shared';
 import { api } from '../config/api';
-import { SparklesIcon, DocumentTextIcon } from '../components/Icons';
+import CollapsibleTray from '../components/CollapsibleTray';
+import { SparklesIcon, DocumentTextIcon, TrashIcon } from '../components/Icons';
 import type { GenerateRouteProp, RootTabNavigationProp } from '../types/navigation';
+import { getErrorMessage } from '../utils/errors';
+import { pickCharacterImportFile } from '../utils/file-transfer';
+
+function getDefaultSelectedTemplateAssets(templateDefinition?: Template): string[] {
+  if (!templateDefinition) {
+    return [];
+  }
+
+  return templateDefinition.assets
+    .filter((asset) => {
+      if (asset.required) {
+        return true;
+      }
+
+      if (asset.name === 'system_prompt' || asset.name === 'post_history') {
+        return false;
+      }
+
+      return true;
+    })
+    .map((asset) => asset.name);
+}
+
+function normalizeAssetSelection(selection: readonly string[], templateDefinition?: Template): string[] {
+  if (!templateDefinition) {
+    return [];
+  }
+
+  const templateAssetNames = new Set(templateDefinition.assets.map((asset) => asset.name));
+  const requiredAssetNames = new Set(
+    templateDefinition.assets.filter((asset) => asset.required).map((asset) => asset.name)
+  );
+  const selected = new Set<string>();
+
+  selection.forEach((assetName) => {
+    if (templateAssetNames.has(assetName)) {
+      selected.add(assetName);
+    }
+  });
+
+  requiredAssetNames.forEach((assetName) => selected.add(assetName));
+
+  return templateDefinition.assets
+    .map((asset) => asset.name)
+    .filter((assetName) => selected.has(assetName));
+}
 
 export default function GenerateScreen() {
   const navigation = useNavigation<RootTabNavigationProp<'Generate'>>();
@@ -27,11 +74,28 @@ export default function GenerateScreen() {
   const [output, setOutput] = useState('');
   const [error, setError] = useState('');
   const [result, setResult] = useState<GenerationComplete | null>(null);
+  const [generationStage, setGenerationStage] = useState<string>('');
+  const [importedCharacter, setImportedCharacter] = useState<Pick<ImportedCharacter, 'name' | 'sourceFormat' | 'sourcePreset' | 'assets'> | null>(null);
+  const [importedTemplateName, setImportedTemplateName] = useState<string | null>(null);
+  const [selectedTemplateAssets, setSelectedTemplateAssets] = useState<string[]>([]);
 
-  const { data: templates } = useQuery({
+  const { data: templates, isLoading: templatesLoading } = useQuery({
     queryKey: ['templates'],
     queryFn: () => api.getTemplates(),
   });
+
+  const selectedTemplate = useMemo(
+    () => templates?.find((candidate: Template) => candidate.name === template)
+      ?? templates?.find((candidate: Template) => candidate.is_default)
+      ?? templates?.[0],
+    [template, templates]
+  );
+  const effectiveImportTemplateName = selectedTemplate?.name ?? null;
+  const importedAssetNames = importedCharacter ? Object.keys(importedCharacter.assets) : [];
+  const optionalTemplateAssets = useMemo(
+    () => selectedTemplate?.assets.filter((asset) => !asset.required) ?? [],
+    [selectedTemplate]
+  );
 
   useEffect(() => {
     const incomingSeed = route.params?.seed;
@@ -40,23 +104,116 @@ export default function GenerateScreen() {
     }
   }, [route.params, seed]);
 
+  useEffect(() => {
+    if (!selectedTemplate) {
+      setSelectedTemplateAssets([]);
+      return;
+    }
+
+    setSelectedTemplateAssets((previous) => {
+      if (previous.length === 0) {
+        return getDefaultSelectedTemplateAssets(selectedTemplate);
+      }
+
+      return normalizeAssetSelection(previous, selectedTemplate);
+    });
+  }, [selectedTemplate]);
+
+  const handleImportCharacter = async () => {
+    if (!selectedTemplate) {
+      Alert.alert('Templates loading', 'Wait for templates to finish loading before importing a character.');
+      return;
+    }
+
+    try {
+      const file = await pickCharacterImportFile();
+      if (!file) {
+        return;
+      }
+
+      const character = detectAndParseCharacter(file.payload, file.name, {
+        template: selectedTemplate,
+      });
+      setImportedCharacter({
+        name: character.name,
+        sourceFormat: character.sourceFormat,
+        sourcePreset: character.sourcePreset,
+        assets: character.assets,
+      });
+      setImportedTemplateName(effectiveImportTemplateName);
+      setSeed((current) => current.trim() || character.name);
+      setError('');
+      Alert.alert('Character imported', `${character.name} loaded as structured source material for rehash.`);
+    } catch (importError) {
+      Alert.alert('Import failed', getErrorMessage(importError, 'Failed to import character file'));
+    }
+  };
+
+  const handleClearImportedCharacter = () => {
+    setImportedCharacter(null);
+    setImportedTemplateName(null);
+  };
+
+  const handleToggleOptionalAsset = (assetName: string) => {
+    if (!selectedTemplate) {
+      return;
+    }
+
+    const isRequired = selectedTemplate.assets.find((asset) => asset.name === assetName)?.required;
+    if (isRequired) {
+      return;
+    }
+
+    setSelectedTemplateAssets((previous) => {
+      const next = new Set(previous);
+      if (next.has(assetName)) {
+        next.delete(assetName);
+      } else {
+        next.add(assetName);
+      }
+
+      return normalizeAssetSelection(Array.from(next), selectedTemplate);
+    });
+  };
+
   const handleGenerate = async () => {
     if (!seed.trim()) return;
+
+    if (importedCharacter && importedTemplateName && effectiveImportTemplateName && importedTemplateName !== effectiveImportTemplateName) {
+      Alert.alert(
+        'Re-import required',
+        `Imported source was mapped for ${importedTemplateName}. Re-import it after changing the template to ${effectiveImportTemplateName}.`
+      );
+      return;
+    }
 
     setIsGenerating(true);
     setOutput('');
     setError('');
     setResult(null);
+    setGenerationStage('Preparing local generation...');
 
     try {
       const stream = api.generate({
         seed,
         mode,
         template: template || undefined,
-        stream: true
+        stream: true,
+        selected_assets: selectedTemplateAssets,
+        imported_source: importedCharacter ? {
+          label: importedCharacter.name,
+          source: importedCharacter.sourcePreset || importedCharacter.sourceFormat,
+          assets: importedCharacter.assets,
+        } : undefined,
       });
 
       stream.subscribe((event) => {
+        if (event.event === 'status' && 'stage' in event.data) {
+          const data = event.data as { stage?: string; progress?: number; asset?: string };
+          if (data.stage) {
+            setGenerationStage(describeGenerationStage(data.stage, data.progress, data.asset));
+          }
+        }
         if (event.event === 'chunk' && 'content' in event.data) {
           const data = event.data as { content: string };
           setOutput((prev) => prev + data.content);
@@ -64,6 +221,7 @@ export default function GenerateScreen() {
         if (event.event === 'complete') {
           const data = event.data as GenerationComplete;
           setResult(data);
+          setGenerationStage('Generation complete.');
           // Refresh drafts list
           queryClient.invalidateQueries({ queryKey: ['drafts'] });
         }
@@ -71,6 +229,7 @@ export default function GenerateScreen() {
 
       stream.onError_((err) => {
         setError(err);
+        setGenerationStage('');
         setIsGenerating(false);
       });
 
@@ -81,6 +240,7 @@ export default function GenerateScreen() {
       await stream.start();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Generation failed');
+      setGenerationStage('');
       setIsGenerating(false);
     }
   };
@@ -89,13 +249,12 @@ export default function GenerateScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Generate Character</Text>
-      <Text style={styles.subtitle}>Enter a seed concept to create a character</Text>
+      <Text style={styles.title}>Generate</Text>
+      <Text style={styles.subtitle}>Start from a seed or imported source.</Text>
 
       <View style={styles.form}>
-        {/* Seed Input */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Seed Concept</Text>
+        <View style={styles.heroCard}>
+          <Text style={styles.label}>Seed</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
             value={seed}
@@ -105,76 +264,156 @@ export default function GenerateScreen() {
             multiline
             numberOfLines={4}
           />
+          <TouchableOpacity
+            style={[styles.generateButton, (!seed.trim() || isGenerating) && styles.generateButtonDisabled]}
+            onPress={handleGenerate}
+            disabled={!seed.trim() || isGenerating}
+          >
+            {isGenerating ? (
+              <View style={styles.buttonContent}>
+                <ActivityIndicator color="#fff" size="small" />
+                <Text style={styles.generateButtonText}>Generating...</Text>
+              </View>
+            ) : (
+              <View style={styles.buttonContent}>
+                <SparklesIcon color="#fff" size={20} />
+                <Text style={styles.generateButtonText}>Generate</Text>
+              </View>
+            )}
+          </TouchableOpacity>
         </View>
 
-        {/* Template Selection */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Template</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={styles.templateChips}>
-              <TouchableOpacity
-                style={[styles.templateChip, !template && styles.templateChipActive]}
-                onPress={() => setTemplate('')}
-              >
-                <Text style={[styles.templateChipText, !template && styles.templateChipTextActive]}>
-                  Default
-                </Text>
-              </TouchableOpacity>
-              {templates?.map((t) => (
+        <CollapsibleTray
+          title="Setup"
+          subtitle="Template, mode, and import source"
+          initiallyExpanded={Boolean(importedCharacter)}
+          preview={
+            <Text style={styles.setupPreviewText} numberOfLines={1}>
+              {(selectedTemplate?.name || 'Default')} • {mode}
+              {importedCharacter ? ` • ${importedCharacter.name}` : ''}
+            </Text>
+          }
+        >
+          <TouchableOpacity
+            style={styles.secondaryActionButton}
+            onPress={() => void handleImportCharacter()}
+            disabled={isGenerating || templatesLoading || !selectedTemplate}
+          >
+            <View style={styles.buttonContent}>
+              <DocumentTextIcon color="#d1d5db" size={18} />
+              <Text style={styles.secondaryActionButtonText}>{templatesLoading ? 'Loading templates...' : 'Import source'}</Text>
+            </View>
+          </TouchableOpacity>
+
+          {importedCharacter ? (
+            <View style={styles.importedSourceCard}>
+              <View style={styles.importedSourceHeader}>
+                <View style={styles.importedSourceInfo}>
+                  <Text style={styles.importedSourceTitle}>{importedCharacter.name}</Text>
+                  <Text style={styles.importedSourceMeta}>
+                    {importedCharacter.sourcePreset || importedCharacter.sourceFormat}
+                    {importedTemplateName ? ` • ${importedTemplateName}` : ''}
+                  </Text>
+                  <Text style={styles.importedSourceMeta}>
+                    {importedAssetNames.length} mapped asset{importedAssetNames.length === 1 ? '' : 's'}
+                  </Text>
+                </View>
                 <TouchableOpacity
-                  key={t.name}
-                  style={[styles.templateChip, template === t.name && styles.templateChipActive]}
-                  onPress={() => setTemplate(t.name)}
+                  style={styles.clearImportedButton}
+                  onPress={handleClearImportedCharacter}
+                  disabled={isGenerating}
                 >
-                  <DocumentTextIcon
-                    color={template === t.name ? '#fff' : '#9ca3af'}
-                    size={14}
-                  />
-                  <Text style={[styles.templateChipText, template === t.name && styles.templateChipTextActive]}>
-                    {t.name}
+                  <TrashIcon color="#fca5a5" size={18} />
+                </TouchableOpacity>
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={styles.templateChips}>
+                  {importedAssetNames.map((assetName) => (
+                    <View key={assetName} style={styles.importedAssetChip}>
+                      <Text style={styles.importedAssetChipText}>{assetName}</Text>
+                    </View>
+                  ))}
+                </View>
+              </ScrollView>
+            </View>
+          ) : null}
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Template</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={styles.templateChips}>
+                <TouchableOpacity
+                  style={[styles.templateChip, !template && styles.templateChipActive]}
+                  onPress={() => setTemplate('')}
+                >
+                  <Text style={[styles.templateChipText, !template && styles.templateChipTextActive]}>
+                    Default
+                  </Text>
+                </TouchableOpacity>
+                {templates?.map((t) => (
+                  <TouchableOpacity
+                    key={t.name}
+                    style={[styles.templateChip, template === t.name && styles.templateChipActive]}
+                    onPress={() => setTemplate(t.name)}
+                  >
+                    <DocumentTextIcon
+                      color={template === t.name ? '#fff' : '#9ca3af'}
+                      size={14}
+                    />
+                    <Text style={[styles.templateChipText, template === t.name && styles.templateChipTextActive]}>
+                      {t.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Content Mode</Text>
+            <View style={styles.modeButtons}>
+              {modes.map((m) => (
+                <TouchableOpacity
+                  key={m}
+                  style={[styles.modeButton, mode === m && styles.modeButtonActive]}
+                  onPress={() => setMode(m)}
+                >
+                  <Text style={[styles.modeButtonText, mode === m && styles.modeButtonTextActive]}>
+                    {m}
                   </Text>
                 </TouchableOpacity>
               ))}
             </View>
-          </ScrollView>
-        </View>
-
-        {/* Mode Selection */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Content Mode</Text>
-          <View style={styles.modeButtons}>
-            {modes.map((m) => (
-              <TouchableOpacity
-                key={m}
-                style={[styles.modeButton, mode === m && styles.modeButtonActive]}
-                onPress={() => setMode(m)}
-              >
-                <Text style={[styles.modeButtonText, mode === m && styles.modeButtonTextActive]}>
-                  {m}
-                </Text>
-              </TouchableOpacity>
-            ))}
           </View>
-        </View>
 
-        {/* Generate Button */}
-        <TouchableOpacity
-          style={[styles.generateButton, (!seed.trim() || isGenerating) && styles.generateButtonDisabled]}
-          onPress={handleGenerate}
-          disabled={!seed.trim() || isGenerating}
-        >
-          {isGenerating ? (
-            <View style={styles.buttonContent}>
-              <ActivityIndicator color="#fff" size="small" />
-              <Text style={styles.generateButtonText}>Generating...</Text>
+          {optionalTemplateAssets.length > 0 ? (
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Optional blueprint assets</Text>
+              <Text style={styles.helperText}>Toggle non-required assets for this run.</Text>
+              <View style={styles.optionalAssetList}>
+                {optionalTemplateAssets.map((asset) => {
+                  const enabled = selectedTemplateAssets.includes(asset.name);
+                  return (
+                    <TouchableOpacity
+                      key={asset.name}
+                      style={[styles.optionalAssetRow, enabled && styles.optionalAssetRowEnabled]}
+                      onPress={() => handleToggleOptionalAsset(asset.name)}
+                      disabled={isGenerating}
+                    >
+                      <View style={[styles.checkbox, enabled && styles.checkboxEnabled]}>
+                        {enabled ? <Text style={styles.checkboxMark}>✓</Text> : null}
+                      </View>
+                      <View style={styles.optionalAssetTextWrap}>
+                        <Text style={styles.optionalAssetName}>{asset.name}</Text>
+                        {asset.description ? <Text style={styles.optionalAssetDescription}>{asset.description}</Text> : null}
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             </View>
-          ) : (
-            <View style={styles.buttonContent}>
-              <SparklesIcon color="#fff" size={20} />
-              <Text style={styles.generateButtonText}>Generate</Text>
-            </View>
-          )}
-        </TouchableOpacity>
+          ) : null}
+        </CollapsibleTray>
       </View>
 
       {/* Error */}
@@ -216,9 +455,26 @@ export default function GenerateScreen() {
       )}
 
       {/* Output Preview */}
+      {isGenerating && generationStage && !output && !result ? (
+        <CollapsibleTray title="Status" subtitle={generationStage} initiallyExpanded style={styles.outputContainer}>
+          <View style={styles.outputBox}>
+            <Text style={styles.outputText}>{generationStage}</Text>
+            <View style={styles.typingIndicator}>
+              <View style={styles.typingDot} />
+              <View style={[styles.typingDot, styles.typingDot2]} />
+              <View style={[styles.typingDot, styles.typingDot3]} />
+            </View>
+          </View>
+        </CollapsibleTray>
+      ) : null}
+
       {output && !result && (
-        <View style={styles.outputContainer}>
-          <Text style={styles.outputTitle}>Generating...</Text>
+        <CollapsibleTray
+          title="Live output"
+          subtitle={generationStage || 'Streaming preview'}
+          initiallyExpanded
+          style={styles.outputContainer}
+        >
           <View style={styles.outputBox}>
             <Text style={styles.outputText}>{output}</Text>
             {isGenerating && (
@@ -229,20 +485,52 @@ export default function GenerateScreen() {
               </View>
             )}
           </View>
-        </View>
+        </CollapsibleTray>
       )}
 
       {/* Full Output (after completion) */}
       {output && result && (
-        <View style={styles.outputContainer}>
-          <Text style={styles.outputTitle}>Generated Content</Text>
+        <CollapsibleTray
+          title="Generated content"
+          subtitle={`${result.character_name || 'Character'} • ${(result.duration_ms / 1000).toFixed(1)}s`}
+          initiallyExpanded
+          style={styles.outputContainer}
+        >
           <View style={styles.outputBox}>
             <Text style={styles.outputText}>{output}</Text>
           </View>
-        </View>
+        </CollapsibleTray>
       )}
     </ScrollView>
   );
+}
+
+function describeGenerationStage(stage: string, progress?: number, asset?: string): string {
+  const percent = typeof progress === 'number' ? ` (${Math.round(progress * 100)}%)` : '';
+  const assetLabel = asset ? ` ${asset.replace(/_/g, ' ')}` : '';
+
+  switch (stage) {
+    case 'initializing':
+      return `Initializing local generation${percent}`;
+    case 'loading_references':
+      return `Loading local references${percent}`;
+    case 'building_asset_prompt':
+      return `Preparing${assetLabel}${percent}`;
+    case 'contacting_provider':
+      return `Submitting${assetLabel} to provider${percent}`;
+    case 'provider_generating':
+      return `Provider is generating${assetLabel}${percent}`;
+    case 'asset_complete':
+      return `Completed${assetLabel}${percent}`;
+    case 'saving':
+      return `Saving draft locally${percent}`;
+    case 'complete':
+      return 'Generation complete.';
+    case 'deriving_seed':
+      return 'Deriving offspring seed...';
+    default:
+      return `${stage.replace(/_/g, ' ')}${percent}`;
+  }
 }
 
 const styles = StyleSheet.create({
@@ -252,6 +540,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 16,
+    gap: 16,
   },
   title: {
     fontSize: 24,
@@ -262,10 +551,17 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 14,
     color: '#9ca3af',
-    marginBottom: 24,
+    marginBottom: 4,
   },
   form: {
-    marginBottom: 24,
+    gap: 16,
+  },
+  heroCard: {
+    backgroundColor: '#171717',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#2f2f2f',
+    padding: 16,
   },
   inputGroup: {
     marginBottom: 16,
@@ -274,6 +570,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: '#fff',
+    marginBottom: 8,
+  },
+  helperText: {
+    color: '#9ca3af',
+    fontSize: 12,
     marginBottom: 8,
   },
   input: {
@@ -288,6 +589,70 @@ const styles = StyleSheet.create({
   textArea: {
     minHeight: 100,
     textAlignVertical: 'top',
+  },
+  secondaryActionButton: {
+    backgroundColor: '#1f1f1f',
+    borderRadius: 8,
+    padding: 14,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#2f2f2f',
+  },
+  secondaryActionButtonText: {
+    color: '#d1d5db',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  setupPreviewText: {
+    color: '#9ca3af',
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  importedSourceCard: {
+    backgroundColor: '#111827',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#4f46e5',
+    gap: 10,
+  },
+  importedSourceHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  importedSourceInfo: {
+    flex: 1,
+  },
+  importedSourceTitle: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  importedSourceMeta: {
+    color: '#c4b5fd',
+    fontSize: 12,
+    marginBottom: 2,
+  },
+  clearImportedButton: {
+    padding: 6,
+    borderRadius: 8,
+    backgroundColor: '#3f1d1d',
+  },
+  importedAssetChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+    backgroundColor: '#1e1b4b',
+    borderWidth: 1,
+    borderColor: '#4338ca',
+  },
+  importedAssetChipText: {
+    color: '#ddd6fe',
+    fontSize: 12,
+    fontWeight: '500',
   },
   templateChips: {
     flexDirection: 'row',
@@ -320,6 +685,58 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+  },
+  optionalAssetList: {
+    gap: 8,
+  },
+  optionalAssetRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    borderWidth: 1,
+    borderColor: '#2f2f2f',
+    backgroundColor: '#111111',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+  },
+  optionalAssetRowEnabled: {
+    borderColor: '#7c3aed',
+    backgroundColor: '#2a1a45',
+  },
+  checkbox: {
+    width: 18,
+    height: 18,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#52525b',
+    marginTop: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxEnabled: {
+    borderColor: '#7c3aed',
+    backgroundColor: '#7c3aed',
+  },
+  checkboxMark: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
+    lineHeight: 12,
+  },
+  optionalAssetTextWrap: {
+    flex: 1,
+    gap: 2,
+  },
+  optionalAssetName: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  optionalAssetDescription: {
+    color: '#9ca3af',
+    fontSize: 12,
+    lineHeight: 16,
   },
   modeButton: {
     paddingHorizontal: 16,
@@ -419,13 +836,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   outputContainer: {
-    marginTop: 8,
-  },
-  outputTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#9ca3af',
-    marginBottom: 8,
+    marginTop: 0,
   },
   outputBox: {
     backgroundColor: '#1f1f1f',

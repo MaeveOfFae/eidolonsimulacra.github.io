@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { CheckCircle2, Circle, Loader2, XCircle, FileText, Clock, RotateCcw, Save } from 'lucide-react';
-import type { GenerationComplete, Template } from '@char-gen/shared';
+import type { GenerationComplete, ImportedCharacter, Template } from '@char-gen/shared';
 import { GenerationService } from '../../lib/services/generation.js';
 import { configManager } from '../../lib/config/manager.js';
 import { queueAutoSync } from '../../lib/server/auto-sync.js';
@@ -10,13 +10,19 @@ import {
   matchesActiveGenerationSession,
   saveActiveGenerationSession,
   type ActiveGenerationSession,
+  type ImportedCharacterSnapshot,
 } from '../../lib/services/generation-session.js';
 import { inferCharacterDisplayNameForTemplate } from '../../lib/templates/browser.js';
+import { loadReferenceSuites, normalizeConnectedReferenceIds } from '../../lib/prompting/reference-context.js';
 
 interface GenerationProgressProps {
   seed: string;
   mode: 'SFW' | 'NSFW' | 'Platform-Safe' | 'Auto';
   template?: string;
+  selectedAssets?: string[];
+  connectedDraftIds?: string[];
+  importedCharacter?: Pick<ImportedCharacter, 'name' | 'sourceFormat' | 'sourcePreset' | 'assets'> | null;
+  importedCharacterTemplateName?: string | null;
   templates: Template[];
   onComplete: (data: GenerationComplete) => void;
   onError: (error: string) => void;
@@ -81,6 +87,10 @@ export default function GenerationProgress({
   seed,
   mode,
   template,
+  selectedAssets = [],
+  connectedDraftIds = [],
+  importedCharacter = null,
+  importedCharacterTemplateName = null,
   templates,
   onComplete,
   onError,
@@ -103,7 +113,72 @@ export default function GenerationProgress({
     () => templates.find((candidate) => candidate.name === template),
     [template, templates]
   );
+  const referenceDraftIds = useMemo(
+    () => normalizeConnectedReferenceIds(connectedDraftIds),
+    [connectedDraftIds]
+  );
+  const importedCharacterSnapshot = useMemo<ImportedCharacterSnapshot | undefined>(() => {
+    if (!importedCharacter) {
+      return undefined;
+    }
+
+    return {
+      name: importedCharacter.name,
+      sourceFormat: importedCharacter.sourceFormat,
+      ...(importedCharacter.sourcePreset ? { sourcePreset: importedCharacter.sourcePreset } : {}),
+      ...(importedCharacterTemplateName ? { templateName: importedCharacterTemplateName } : {}),
+      assets: Object.fromEntries(Object.entries(importedCharacter.assets).sort(([left], [right]) => left.localeCompare(right))),
+    };
+  }, [importedCharacter, importedCharacterTemplateName]);
+  const importedSourceContext = useMemo(() => {
+    if (!importedCharacterSnapshot) {
+      return undefined;
+    }
+
+    return {
+      label: importedCharacterSnapshot.name,
+      source: importedCharacterSnapshot.sourcePreset || importedCharacterSnapshot.sourceFormat,
+      assets: importedCharacterSnapshot.assets,
+      template: selectedTemplate,
+    };
+  }, [importedCharacterSnapshot, selectedTemplate]);
   const assetOrder = useMemo(() => sortTemplateAssets(selectedTemplate), [selectedTemplate]);
+  const activeAssetOrder = useMemo(() => {
+    if (!selectedTemplate || assetOrder.length === 0) {
+      return assetOrder;
+    }
+
+    const selectedSet = new Set(selectedAssets);
+    const assetsByName = new Map(selectedTemplate.assets.map((asset) => [asset.name, asset] as const));
+
+    // Required assets are always active.
+    selectedTemplate.assets
+      .filter((asset) => asset.required)
+      .forEach((asset) => selectedSet.add(asset.name));
+
+    // Ensure dependency closure for any selected asset.
+    const visited = new Set<string>();
+    const includeDependencies = (assetName: string) => {
+      if (visited.has(assetName)) {
+        return;
+      }
+
+      visited.add(assetName);
+      const asset = assetsByName.get(assetName);
+      if (!asset) {
+        return;
+      }
+
+      asset.depends_on.forEach((dependencyName) => {
+        selectedSet.add(dependencyName);
+        includeDependencies(dependencyName);
+      });
+    };
+
+    Array.from(selectedSet).forEach(includeDependencies);
+
+    return assetOrder.filter((assetName) => selectedSet.has(assetName));
+  }, [assetOrder, selectedAssets, selectedTemplate]);
 
   const updateAssetStatus = useCallback((assetName: string, nextStatus: AssetProgress['status'], content?: string) => {
     setAssets((previous) => previous.map((asset) => (
@@ -116,7 +191,7 @@ export default function GenerationProgress({
   const getApprovedAssets = useCallback((upToIndex: number, currentOverride?: { name: string; content: string }) => {
     const approved: Record<string, string> = {};
     for (let index = 0; index < upToIndex; index += 1) {
-      const assetName = assetOrder[index];
+      const assetName = activeAssetOrder[index];
       const content = assetDrafts[assetName];
       if (content) {
         approved[assetName] = content;
@@ -126,10 +201,19 @@ export default function GenerationProgress({
       approved[currentOverride.name] = currentOverride.content;
     }
     return approved;
-  }, [assetDrafts, assetOrder]);
+  }, [activeAssetOrder, assetDrafts]);
+
+  const loadConnectedReferenceSuites = useCallback(
+    async () => loadReferenceSuites(referenceDraftIds, {
+      resolveTemplate: (templateName) => templateName
+        ? templates.find((candidate) => candidate.name === templateName)
+        : undefined,
+    }),
+    [referenceDraftIds, templates]
+  );
 
   const generateAsset = useCallback(async (assetIndex: number, approvedAssets: Record<string, string>) => {
-    const assetName = assetOrder[assetIndex];
+    const assetName = activeAssetOrder[assetIndex];
     if (!assetName) {
       return;
     }
@@ -141,11 +225,14 @@ export default function GenerationProgress({
     setStatus('generating');
     setCurrentAsset(assetName);
     setEditorContent('');
+    setError(null);
     updateAssetStatus(assetName, 'generating');
+
+    let fullContent = '';
 
     try {
       // Use client-side GenerationService for single asset generation
-      let fullContent = '';
+      const referenceSuites = await loadConnectedReferenceSuites();
 
       for await (const progress of GenerationService.generateAsset({
         seed,
@@ -153,7 +240,9 @@ export default function GenerationProgress({
         template,
         asset_name: assetName,
         prior_assets: approvedAssets,
-      })) {
+        reference_suites: referenceSuites,
+        imported_source: importedSourceContext,
+      }, true, { signal: controller.signal })) {
         if (controller.signal.aborted) {
           return;
         }
@@ -185,11 +274,11 @@ export default function GenerationProgress({
       }
       const message = generationError instanceof Error ? generationError.message : 'Asset generation failed';
       setError(message);
-      updateAssetStatus(assetName, 'error');
-      setStatus('error');
-      onError(message);
+      updateAssetStatus(assetName, 'error', fullContent || undefined);
+      setEditorContent(fullContent);
+      setStatus('reviewing');
     }
-  }, [assetOrder, mode, onError, seed, template, updateAssetStatus]);
+  }, [activeAssetOrder, importedSourceContext, loadConnectedReferenceSuites, mode, seed, template, updateAssetStatus]);
 
   const saveApprovedDraft = useCallback(async (approvedAssets: Record<string, string>) => {
     abortControllerRef.current?.abort();
@@ -214,6 +303,7 @@ export default function GenerationProgress({
           favorite: false,
           template_name: template,
           character_name: nextCharacterName,
+          connected_drafts: referenceDraftIds.length > 0 ? referenceDraftIds : undefined,
         },
         assets: approvedAssets,
       };
@@ -231,13 +321,11 @@ export default function GenerationProgress({
         duration_ms: Date.now() - startTime,
       });
     } catch (saveError) {
-      const message = saveError instanceof Error ? saveError.message : 'Failed to save draft';
-      setError(message);
-      setStatus('error');
-      clearActiveGenerationSession();
-      onError(message);
+      const message = saveError instanceof Error ? saveError.message : 'Unknown storage error';
+      setError(`Failed to save draft: ${message}`);
+      setStatus('reviewing');
     }
-  }, [mode, onComplete, onError, seed, startTime, template]);
+  }, [mode, onComplete, referenceDraftIds, seed, startTime, template]);
 
   // Update elapsed time every second
   useEffect(() => {
@@ -251,7 +339,7 @@ export default function GenerationProgress({
 
   // Initialize assets from template
   useEffect(() => {
-    if (assetOrder.length === 0) {
+    if (activeAssetOrder.length === 0) {
       setAssets([]);
       setResumeAction({ type: 'idle' });
       return;
@@ -259,11 +347,18 @@ export default function GenerationProgress({
 
     const storedSession = restoredSessionRef.current;
     const canResume = storedSession
-      && matchesActiveGenerationSession(storedSession, { seed, mode, template })
-      && Object.keys(storedSession.assetDrafts).every((assetName) => assetOrder.includes(assetName));
+      && matchesActiveGenerationSession(storedSession, {
+        seed,
+        mode,
+        template,
+        selectedAssets: activeAssetOrder,
+        connectedDraftIds: referenceDraftIds,
+        importedCharacter: importedCharacterSnapshot,
+      })
+      && Object.keys(storedSession.assetDrafts).every((assetName) => activeAssetOrder.includes(assetName));
 
     if (!canResume) {
-      setAssets(assetOrder.map((name) => ({ name, status: 'pending' })));
+      setAssets(activeAssetOrder.map((name) => ({ name, status: 'pending' })));
       setAssetDrafts({});
       setCurrentAsset(null);
       setEditorContent('');
@@ -274,10 +369,10 @@ export default function GenerationProgress({
     }
 
     const approvedAssets = storedSession.assetDrafts;
-    const restoredCurrentAsset = storedSession.currentAsset && assetOrder.includes(storedSession.currentAsset)
+    const restoredCurrentAsset = storedSession.currentAsset && activeAssetOrder.includes(storedSession.currentAsset)
       ? storedSession.currentAsset
       : null;
-    const restoredAssets = assetOrder.map((name) => {
+    const restoredAssets = activeAssetOrder.map((name) => {
       if (approvedAssets[name]) {
         return { name, status: 'complete' as const, content: approvedAssets[name] };
       }
@@ -300,14 +395,14 @@ export default function GenerationProgress({
       return;
     }
 
-    if (Object.keys(approvedAssets).length >= assetOrder.length) {
+    if (Object.keys(approvedAssets).length >= activeAssetOrder.length) {
       setStatus('saving');
       setResumeAction({ type: 'save', approvedAssets });
       return;
     }
 
-    const nextAssetName = restoredCurrentAsset || assetOrder[Object.keys(approvedAssets).length];
-    const nextAssetIndex = assetOrder.indexOf(nextAssetName);
+    const nextAssetName = restoredCurrentAsset || activeAssetOrder[Object.keys(approvedAssets).length];
+    const nextAssetIndex = activeAssetOrder.indexOf(nextAssetName);
 
     setStatus('initializing');
     setResumeAction({
@@ -315,11 +410,11 @@ export default function GenerationProgress({
       assetIndex: nextAssetIndex >= 0 ? nextAssetIndex : 0,
       approvedAssets,
     });
-  }, [assetOrder, mode, seed, template]);
+  }, [activeAssetOrder, importedCharacterSnapshot, mode, referenceDraftIds, seed, template]);
 
   // Start generation
   useEffect(() => {
-    if (resumeAction.type === 'idle' || assetOrder.length === 0) {
+    if (resumeAction.type === 'idle' || activeAssetOrder.length === 0) {
       return;
     }
 
@@ -343,7 +438,7 @@ export default function GenerationProgress({
       window.clearTimeout(timeoutId);
       abortControllerRef.current?.abort();
     };
-  }, [assetOrder.length, generateAsset, resumeAction, saveApprovedDraft]);
+  }, [activeAssetOrder.length, generateAsset, resumeAction, saveApprovedDraft]);
 
   useEffect(() => {
     if (status === 'complete' || status === 'error') {
@@ -356,6 +451,9 @@ export default function GenerationProgress({
       seed,
       mode,
       template,
+      selectedAssets: activeAssetOrder,
+      connectedDraftIds: referenceDraftIds,
+      importedCharacter: importedCharacterSnapshot,
       assetDrafts,
       currentAsset,
       currentAssetContent: currentStatus === 'reviewing' ? editorContent : '',
@@ -363,7 +461,7 @@ export default function GenerationProgress({
       startedAt: startTime,
       updatedAt: Date.now(),
     });
-  }, [assetDrafts, currentAsset, editorContent, mode, seed, startTime, status, template]);
+  }, [activeAssetOrder, assetDrafts, currentAsset, editorContent, importedCharacterSnapshot, mode, referenceDraftIds, seed, startTime, status, template]);
 
   const handleCancel = useCallback(() => {
     abortControllerRef.current?.abort();
@@ -376,28 +474,40 @@ export default function GenerationProgress({
       return;
     }
 
-    const assetIndex = assetOrder.indexOf(currentAsset);
-    const approved = getApprovedAssets(assetIndex, { name: currentAsset, content: editorContent });
+    const assetIndex = activeAssetOrder.indexOf(currentAsset);
+    if (assetIndex < 0) {
+      return;
+    }
+    const hasCurrentContent = editorContent.trim().length > 0;
+    const approved = hasCurrentContent
+      ? getApprovedAssets(assetIndex, { name: currentAsset, content: editorContent })
+      : getApprovedAssets(assetIndex);
+    setError(null);
     setAssetDrafts(approved);
-    updateAssetStatus(currentAsset, 'complete', editorContent);
+    if (hasCurrentContent) {
+      updateAssetStatus(currentAsset, 'complete', editorContent);
+    }
 
     const nextIndex = assetIndex + 1;
-    if (nextIndex < assetOrder.length) {
+    if (nextIndex < activeAssetOrder.length) {
       await generateAsset(nextIndex, approved);
       return;
     }
 
     await saveApprovedDraft(approved);
-  }, [assetOrder, currentAsset, editorContent, generateAsset, getApprovedAssets, saveApprovedDraft, updateAssetStatus]);
+  }, [activeAssetOrder.length, currentAsset, editorContent, generateAsset, getApprovedAssets, saveApprovedDraft, updateAssetStatus]);
 
   const handleRegenerate = useCallback(async () => {
     if (!currentAsset) {
       return;
     }
-    const assetIndex = assetOrder.indexOf(currentAsset);
+    const assetIndex = activeAssetOrder.indexOf(currentAsset);
+    if (assetIndex < 0) {
+      return;
+    }
     const approved = getApprovedAssets(assetIndex);
     await generateAsset(assetIndex, approved);
-  }, [assetOrder, currentAsset, generateAsset, getApprovedAssets]);
+  }, [activeAssetOrder, currentAsset, generateAsset, getApprovedAssets]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -407,6 +517,12 @@ export default function GenerationProgress({
 
   const completedCount = assets.filter(a => a.status === 'complete').length;
   const progress = assets.length > 0 ? (completedCount / assets.length) * 100 : 0;
+  const currentAssetIndex = currentAsset ? activeAssetOrder.indexOf(currentAsset) : -1;
+  const isFinalAsset = currentAssetIndex >= 0 && currentAssetIndex === activeAssetOrder.length - 1;
+  const canSaveWithoutCurrentAsset = status === 'reviewing'
+    && isFinalAsset
+    && completedCount > 0
+    && !editorContent.trim();
 
   const getStageLabel = (s: typeof status) => {
     switch (s) {
@@ -465,6 +581,9 @@ export default function GenerationProgress({
           {characterName && (
             <p className="text-sm text-muted-foreground">Character: {characterName}</p>
           )}
+          {referenceDraftIds.length > 0 && (
+            <p className="text-sm text-muted-foreground">Connected references: {referenceDraftIds.length}</p>
+          )}
         </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-1 text-sm text-muted-foreground">
@@ -522,6 +641,21 @@ export default function GenerationProgress({
             <FileText className="h-4 w-4" />
             <span>{currentAsset.replace(/_/g, ' ')}</span>
           </div>
+          {error && (
+            <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {error}
+            </div>
+          )}
+          {error?.startsWith('Failed to save draft:') && (
+            <p className="text-xs text-muted-foreground">
+              The current generation session is still open. Retry Save Draft after fixing the issue.
+            </p>
+          )}
+          {canSaveWithoutCurrentAsset && (
+            <p className="text-xs text-muted-foreground">
+              You can save the draft without this asset and regenerate or add it later from review.
+            </p>
+          )}
           <textarea
             value={editorContent}
             onChange={(event) => setEditorContent(event.target.value)}
@@ -544,7 +678,7 @@ export default function GenerationProgress({
             </button>
             <button
               onClick={() => void handleContinue()}
-              disabled={status !== 'reviewing' || !editorContent.trim()}
+              disabled={status !== 'reviewing' || (!editorContent.trim() && !canSaveWithoutCurrentAsset)}
               className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
               <Save className="h-4 w-4" />

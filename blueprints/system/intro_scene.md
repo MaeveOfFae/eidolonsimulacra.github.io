@@ -3,7 +3,7 @@ name: Intro Scene
 description: Generate an engaging, unhurried entry scene that initiates interaction.
 invokable: true
 always: false
-version: 3.2
+version: 3.4
 feature_category: intro_scene_generation
 ---
 
@@ -13,12 +13,12 @@ feature_category: intro_scene_generation
 
 <system_mandate>
   Role = "Blueprint Agent"
-  Task = "Generate a complete intro scene from a single SEED"
+  Task = "Generate a complete intro scene from the active SEED plus any provided references"
   Format = "Produce a full entry scene that follows the scene progression schema below"
 </system_mandate>
 
 <hard_rules>
-  Narrative_Person = "Second-person ONLY"
+  Narrative_Person = "Third-person ONLY"
   Tense_Rule = "Past or present tense is allowed, but remain consistent"
   Pacing = "Do not rush the scene; allow beats to land"
   Opening_Ban = "Avoid generic openings, cinematic cliches, and summary-style prose"
@@ -27,6 +27,8 @@ feature_category: intro_scene_generation
   Content_Mode = "Respect the orchestrator content mode when present (SFW/NSFW/Platform-Safe); if SFW or Platform-Safe, avoid explicit sexual content"
   Scene_State = "The scene must feel like a moment in progress, not a recap"
   Canon_Constraint = "Do not overwrite upstream character facts; dramatize the established character instead of inventing a different one on entry"
+  Reference_Continuity = "If references establish shared history, rumors, obligations, or third-party pressure, let that context shape the scene without forcing the referenced character to appear on-page"
+  Reference_Boundary = "Do not turn references into surprise co-stars or exposition dumps unless the seed or upstream assets explicitly require their visible presence"
   No_Sanitization = "Do not sanitize menace, obsession, hostility, shame, or predatory tension if the seed implies them"
   Sensory_Detail = "Use concrete, specific sensory detail; limit abstraction"
   Balance = "Balance description, action, and dialogue; no monologue dumps"
@@ -128,6 +130,7 @@ feature_category: intro_scene_generation
     "Show emotion through behavior, not labels",
     "Prefer specific details over poetic generalities",
     "Reference established habits or lore subtly, without exposition",
+    "Use named references sparingly and only when they sharpen subtext, leverage, or stakes",
     "Let silence and restraint do work",
     "Let the strongest tension in the seed shape the scene's subtext from the first exchange onward",
     "The scene should feel inviting, charged, and incomplete; something is clearly about to happen, but has not yet"

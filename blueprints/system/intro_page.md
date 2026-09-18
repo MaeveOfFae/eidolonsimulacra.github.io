@@ -3,7 +3,7 @@ name: Intro Page
 description: Generate a character intro page with Markdown.
 invokable: true
 always: false
-version: 3.2
+version: 3.3
 feature_category: generation
 ---
 
@@ -13,7 +13,7 @@ feature_category: generation
 
 <system_mandate>
   Role = "Blueprint Agent"
-  Task = "Generate a character intro page as a single Markdown snippet"
+  Task = "Generate a character intro page as a single Markdown snippet from the active character context plus any provided references"
   Format = "Keep the layout lean and replace every placeholder with character-specific text"
   Version_Note = "Version tracks the format spec for this blueprint, not a bundle version"
 </system_mandate>
@@ -21,10 +21,12 @@ feature_category: generation
 <critical_requirements>
   Placeholder_Replacement = "Replace every {PLACEHOLDER} token with concrete values; do not leave any placeholder tokens in the final output"
   Completion = "The output must be a complete, ready-to-use Markdown document with NO placeholders remaining"
-  Hard_Ban = "NEVER emit example or prior character names such as seed or test names when generating a new character"
+  Hard_Ban = "NEVER emit example, placeholder, or irrelevant prior character names carried over from tests, seed fragments, or prompt scaffolding. Only use a referenced character name when it is explicit canon context for this new character"
   User_Safety = "Do not narrate user thoughts, actions, decisions, or consent; frame the user as an observer, not an actor"
   Content_Mode = "Respect the orchestrator content mode when present (SFW/NSFW/Platform-Safe); if SFW or Platform-Safe, avoid explicit sexual content"
   Cross_Asset_Coherence = "Keep every section aligned with the upstream system prompt, character sheet, and intro scene; do not beautify away contradictions or rough edges"
+  Reference_Continuity = "If references are provided, use them to ground the Background and Relationships sections in real shared context, factions, obligations, rivalries, or history"
+  Identity_Distinction = "Keep the current character distinct; do not let references overwrite the page into another character's profile"
   Tone_Guardrail = "Do not turn the page into sanitized marketing copy; preserve the character's pressure points, damage, hunger, and friction when the seed implies them"
   Output_Constraint = "Output ONLY the finished intro page markdown content with no commentary, explanations, or surrounding code fences"
 </critical_requirements>
@@ -51,7 +53,7 @@ feature_category: generation
     Goals_Body = "{DETAILED GOALS AND MOTIVATIONS FROM CHARACTER'S PERSPECTIVE}"
     Divider_6 = "---"
     Relationships_Header = "## Relationships"
-    Relationships_Body = "{DETAILED RELATIONSHIPS WITH OTHER CHARACTERS FROM CHARACTER'S PERSPECTIVE}"
+    Relationships_Body = "{DETAILED RELATIONSHIPS WITH OTHER CHARACTERS OR RELEVANT CANON FIGURES FROM CHARACTER'S PERSPECTIVE}"
   </document_layout>
 
   Placeholder_Finalization = "Replace all placeholder tokens with actual content before output"

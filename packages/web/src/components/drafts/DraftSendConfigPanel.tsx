@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, ArrowDown, ArrowUp, RotateCcw, Save } from 'lucide-react';
 import type { Draft, DraftMetadata, Template } from '@char-gen/shared';
+import CollapsibleSection from '../common/CollapsibleSection';
 import {
   getDefaultDraftComponentSendOrder,
   getDraftSendOrderWarnings,
@@ -64,7 +65,7 @@ export default function DraftSendConfigPanel({
     setComponentOrder(persistedOrder);
     setSaveNotice(null);
     setSaveError(null);
-  }, [persistedInstructions, persistedOrderKey]);
+  }, [persistedInstructions, persistedOrder, persistedOrderKey]);
 
   const sendOrderWarnings = useMemo(
     () => getDraftSendOrderWarnings(componentOrder, template),
@@ -119,18 +120,22 @@ export default function DraftSendConfigPanel({
   };
 
   return (
-    <section className="app-panel space-y-4 p-4 sm:p-5">
-      <div className="space-y-1">
-        <h2 className="text-lg font-semibold">{title}</h2>
-        <p className="text-sm text-muted-foreground">{description}</p>
-      </div>
+    <CollapsibleSection
+      title={title}
+      subtitle={description}
+      preview={`${componentOrder.length} component${componentOrder.length === 1 ? '' : 's'}${hasUnsavedChanges ? ' • unsaved changes' : ''}`}
+      defaultExpanded={Boolean(transientInstructions)}
+      density="compact"
+      className="app-panel"
+      bodyClassName="space-y-3"
+    >
 
-      <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-foreground">
+      <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2.5 text-sm text-foreground">
         These settings affect outbound generation context only. They do not change the asset card order shown elsewhere on the page.
       </div>
 
       {(saveNotice || saveError) && (
-        <div className={`rounded-xl border px-4 py-3 text-sm ${saveError ? 'border-destructive/40 bg-destructive/10 text-destructive' : 'border-primary/30 bg-primary/10 text-foreground'}`}>
+        <div className={`rounded-lg border px-3 py-2.5 text-sm ${saveError ? 'border-destructive/40 bg-destructive/10 text-destructive' : 'border-primary/30 bg-primary/10 text-foreground'}`}>
           {saveError || saveNotice}
         </div>
       )}
@@ -146,7 +151,7 @@ export default function DraftSendConfigPanel({
             setSaveError(null);
           }}
           placeholder="Describe what should consistently be emphasized whenever this draft is sent back through generation."
-          className="min-h-[112px] w-full rounded-xl border border-input bg-background px-3 py-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="min-h-[92px] w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         />
         <p className="text-xs text-muted-foreground">
           This block is persisted with the draft and merged into later refinement or regeneration requests.
@@ -154,7 +159,7 @@ export default function DraftSendConfigPanel({
       </div>
 
       {transientInstructions && (
-        <div className="space-y-2 rounded-xl border border-border/60 bg-background/40 p-4">
+        <div className="space-y-2 rounded-lg border border-border/60 bg-background/40 p-3">
           <label className="text-sm font-medium" htmlFor="draft-send-transient-instructions">
             {transientInstructions.label || 'Transient send-only instructions'}
           </label>
@@ -163,7 +168,7 @@ export default function DraftSendConfigPanel({
             value={transientInstructions.value}
             onChange={(event) => transientInstructions.onChange(event.target.value)}
             placeholder={transientInstructions.placeholder || 'Temporary instructions for this session only.'}
-            className="min-h-[96px] w-full rounded-xl border border-input bg-background px-3 py-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="min-h-[84px] w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             disabled={transientInstructions.disabled}
           />
           <p className="text-xs text-muted-foreground">
@@ -191,14 +196,14 @@ export default function DraftSendConfigPanel({
           </button>
         </div>
 
-        <div className="space-y-2 rounded-xl border border-border/60 bg-background/40 p-3 sm:p-4">
+        <div className="space-y-2 rounded-lg border border-border/60 bg-background/40 p-2.5 sm:p-3">
           {componentOrder.map((assetName, index) => {
             const templateAsset = template?.assets.find((asset) => asset.name === assetName);
             const assetExists = Object.prototype.hasOwnProperty.call(draft.assets, assetName);
             const isTemplateAsset = templateAssetNames.has(assetName);
 
             return (
-              <div key={assetName} className="flex items-center gap-3 rounded-lg border border-border/60 bg-background px-3 py-2.5">
+              <div key={assetName} className="flex items-center gap-2.5 rounded-lg border border-border/60 bg-background px-2.5 py-2">
                 <div className="w-7 text-center text-xs font-medium text-muted-foreground">{index + 1}</div>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
@@ -210,7 +215,7 @@ export default function DraftSendConfigPanel({
                     )}
                     {!isTemplateAsset && (
                       <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium uppercase tracking-[0.14em] text-secondary-foreground">
-                        Extra
+                        Supplemental
                       </span>
                     )}
                   </div>
@@ -284,6 +289,6 @@ export default function DraftSendConfigPanel({
           Reset unsaved changes
         </button>
       </div>
-    </section>
+    </CollapsibleSection>
   );
 }

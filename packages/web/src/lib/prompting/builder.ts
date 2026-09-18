@@ -3,10 +3,12 @@
  * Builds LLM prompts for character generation, similarity, etc.
  */
 
-import type {
-  ChatMessage,
-  ContentMode,
-  Template,
+import {
+  buildAssetContextLines,
+  selectRelevantPriorAssets,
+  type ChatMessage,
+  type ContentMode,
+  type Template,
 } from '@char-gen/shared';
 import {
   loadBlueprint,
@@ -14,9 +16,20 @@ import {
   templateToAssets,
   topologicalSort,
 } from './blueprint.js';
-import { resolveTemplateBlueprintContent } from '../templates/browser.js';
+import { resolveTemplateBlueprintContent, resolveTemplateDefinition } from '../templates/browser.js';
 
-type JsonPromptValue = null | boolean | number | string | JsonPromptValue[] | { [key: string]: JsonPromptValue };
+export interface ReferenceSuiteContext {
+  label: string;
+  assets: Record<string, string>;
+  template?: Template;
+}
+
+export interface ImportedSourceContext {
+  label: string;
+  source: string;
+  assets: Record<string, string>;
+  template?: Template;
+}
 
 function buildTemplateOverrideSection(template: Template): string {
   const assets = templateToAssets(template);
@@ -123,129 +136,63 @@ function buildParentSuiteSection(
   }
 
   assetNames.forEach((assetName) => {
-    lines.push(...buildAssetContextSection(`### ${assetName}:`, assetName, parentAssets[assetName] || ''));
+    lines.push(...buildAssetContextLines(`### ${assetName}:`, assetName, parentAssets[assetName] || ''));
   });
 
   return lines;
 }
 
-function isJsonRecord(value: JsonPromptValue): value is { [key: string]: JsonPromptValue } {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function normalizeJsonScalar(value: null | boolean | number | string): string | null {
-  if (value === null) {
-    return null;
-  }
-
-  if (typeof value === 'string') {
-    const normalized = value.replace(/\s+/g, ' ').trim();
-    if (!normalized) {
-      return null;
-    }
-
-    return normalized.length > 240 ? `${normalized.slice(0, 237)}...` : normalized;
-  }
-
-  return String(value);
-}
-
-function collectJsonContextLines(
-  value: JsonPromptValue,
-  path: string,
-  lines: string[],
-  depth: number = 0
-): void {
-  if (lines.length >= 60 || depth > 4) {
-    return;
-  }
-
-  if (Array.isArray(value)) {
-    if (value.length === 0) {
-      return;
-    }
-
-    const scalarValues = value
-      .map((entry) => (entry === null || typeof entry === 'boolean' || typeof entry === 'number' || typeof entry === 'string'
-        ? normalizeJsonScalar(entry)
-        : null))
-      .filter((entry): entry is string => Boolean(entry));
-
-    if (scalarValues.length === value.length) {
-      lines.push(`- ${path}: ${scalarValues.slice(0, 8).join(', ')}`);
-      if (value.length > 8) {
-        lines.push(`- ${path}: (${value.length - 8} more values omitted)`);
-      }
-      return;
-    }
-
-    value.slice(0, 3).forEach((entry, index) => {
-      collectJsonContextLines(entry, `${path}[${index}]`, lines, depth + 1);
-    });
-
-    if (value.length > 3) {
-      lines.push(`- ${path}: (${value.length - 3} more items omitted)`);
-    }
-    return;
-  }
-
-  if (isJsonRecord(value)) {
-    const entries = Object.entries(value);
-    entries.slice(0, 15).forEach(([key, entryValue]) => {
-      const nextPath = path ? `${path}.${key}` : key;
-      collectJsonContextLines(entryValue, nextPath, lines, depth + 1);
-    });
-
-    if (entries.length > 15 && lines.length < 60) {
-      lines.push(`- ${path || 'root'}: (${entries.length - 15} more fields omitted)`);
-    }
-    return;
-  }
-
-  const normalized = normalizeJsonScalar(value);
-  if (!normalized) {
-    return;
-  }
-
-  lines.push(`- ${path}: ${normalized}`);
-}
-
-function buildAssetContextSection(
-  heading: string,
-  assetName: string,
-  assetContent: string,
-  jsonInstruction: string = 'Use the extracted fields below. Do not assume access to any external file.'
-): string[] {
-  const structuredHeading = heading.endsWith(':') ? heading.slice(0, -1) : heading;
-  const trimmed = assetContent.trim();
-  if (!trimmed) {
-    return [heading, '```', '', '```', ''];
-  }
-
-  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
-    try {
-      const parsed = JSON.parse(trimmed) as JsonPromptValue;
-      const structuredLines: string[] = [];
-      collectJsonContextLines(parsed, '', structuredLines);
-
-      if (structuredLines.length > 0) {
-        return [
-          `${structuredHeading} (structured JSON context):`,
-          jsonInstruction,
-          ...structuredLines,
-          '',
-        ];
-      }
-    } catch {
-      // Fall back to raw text below when the asset only looks like JSON.
-    }
-  }
-
-  return [heading, '```', assetContent, '```', ''];
-}
-
 function buildPriorAssetContext(priorName: string, priorContent: string): string[] {
-  return buildAssetContextSection(`### ${priorName}:`, priorName, priorContent);
+  return buildAssetContextLines(`### ${priorName}:`, priorName, priorContent);
+}
+
+function buildImportedSourceSection(
+  importedSource: ImportedSourceContext,
+  options: { assetName?: string; template?: Template } = {}
+): string[] {
+  const referenceTemplate = options.template ?? importedSource.template;
+  const relevantAssets = options.assetName && referenceTemplate
+    ? selectRelevantPriorAssets(referenceTemplate, options.assetName, importedSource.assets)
+    : { ...importedSource.assets };
+
+  if (options.assetName) {
+    const currentAsset = importedSource.assets[options.assetName];
+    if (typeof currentAsset === 'string' && currentAsset.trim().length > 0) {
+      relevantAssets[options.assetName] = currentAsset;
+    }
+  }
+
+  const orderedNames = getOrderedTemplateAssetNames(referenceTemplate);
+  const assetNames = orderedNames.length > 0
+    ? orderedNames.filter((assetName) => assetName in relevantAssets)
+    : Object.keys(relevantAssets);
+  const remainingAssetNames = Object.keys(relevantAssets).filter((assetName) => !assetNames.includes(assetName));
+  const finalAssetNames = [...assetNames, ...remainingAssetNames];
+
+  if (finalAssetNames.length === 0) {
+    return [];
+  }
+
+  const lines: string[] = [
+    '\n## Imported Character Source Material',
+    `Source label: ${importedSource.label}`,
+    `Imported from: ${importedSource.source}`,
+    'Treat the following imported card assets as source material for this rehash.',
+    'Preserve compatible facts, tone, relationship logic, and constraints when they fit the active seed and blueprint.',
+    'Do not copy them blindly as final output; rewrite them into the requested asset format.',
+  ];
+
+  if (referenceTemplate) {
+    lines.push(`Template context: ${referenceTemplate.name} (${referenceTemplate.version})`);
+  }
+
+  finalAssetNames.forEach((assetName) => {
+    lines.push(...buildAssetContextLines(`### ${assetName}:`, assetName, relevantAssets[assetName] || '', {
+      jsonInstruction: 'Treat the extracted fields below as imported source material. Do not assume access to any external file.',
+    }));
+  });
+
+  return lines;
 }
 
 /**
@@ -257,7 +204,9 @@ export async function buildOrchestratorPrompt(
   template?: Template,
   baseUrl?: string,
   blueprintOverride?: string,
-  additionalInstructions: string[] = []
+  additionalInstructions: string[] = [],
+  referenceSuites: ReferenceSuiteContext[] = [],
+  importedSource?: ImportedSourceContext,
 ): Promise<[system: string, user: string]> {
   // Load orchestrator blueprint - respects settings and override
   let orchestrator = await resolveFeatureBlueprint('orchestration', blueprintOverride, baseUrl);
@@ -273,6 +222,21 @@ export async function buildOrchestratorPrompt(
     userLines.push(`Mode: ${mode}`);
   }
   userLines.push(`SEED: ${seed}`);
+
+  if (importedSource) {
+    userLines.push(...buildImportedSourceSection(importedSource, { template }));
+  }
+
+  if (referenceSuites.length > 0) {
+    userLines.push('');
+    userLines.push('CONNECTED CHARACTER REFERENCES:');
+    userLines.push('Treat these suites as secondary canon anchors for continuity, shared setting pressure, and existing entanglements.');
+    userLines.push('Do not let them override the active seed or collapse the new character into a duplicate.');
+
+    referenceSuites.forEach((suite, index) => {
+      userLines.push(...buildParentSuiteSection(`REFERENCE ${index + 1}`, suite.label, suite.assets, suite.template));
+    });
+  }
 
   if (additionalInstructions.length > 0) {
     userLines.push('');
@@ -295,15 +259,32 @@ export async function buildAssetPrompt(
   priorAssets: Record<string, string> = {},
   blueprintContent: string | null = null,
   baseUrl?: string,
-  additionalInstructions: string[] = []
+  additionalInstructions: string[] = [],
+  referenceSuites: ReferenceSuiteContext[] = [],
+  templateName?: string,
+  importedSource?: ImportedSourceContext,
 ): Promise<[system: string, user: string]> {
   // Load blueprint content
   const blueprint = blueprintContent || await loadBlueprint(assetName, baseUrl);
 
   const systemPrompt = `# BLUEPRINT: ${assetName}\n\n${blueprint}`;
+  const relevantPriorAssets = selectRelevantPriorAssets(
+    templateName ? resolveTemplateDefinition(templateName) : undefined,
+    assetName,
+    priorAssets
+  );
 
   const userLines: string[] = [];
+  userLines.push(`TARGET ASSET: ${assetName}`);
+  userLines.push(`TASK: Generate only the requested ${assetName} asset.`);
+  userLines.push('Do not regenerate, restate, or summarize any other asset unless it is quoted below as supporting context.');
+
+  if (assetName === 'a1111') {
+    userLines.push('OUTPUT: Return only the final raw A1111 prompt lines. Do not write narration, scene prose, explanations, headings, labels, or code fences.');
+  }
+
   if (mode) {
+    userLines.push('');
     userLines.push(`Mode: ${mode}`);
   }
   userLines.push(`SEED: ${seed}`);
@@ -319,10 +300,27 @@ export async function buildAssetPrompt(
     });
   }
 
+  if (referenceSuites.length > 0) {
+    userLines.push('\n---\n## Connected Character References:\n');
+    userLines.push('Treat these suites as established canon anchors for relationship continuity, shared world state, and cross-character consistency.');
+    userLines.push('Use them to keep the new character interconnected without duplicating an existing suite or overriding the active seed.');
+
+    referenceSuites.forEach((suite, index) => {
+      userLines.push(...buildParentSuiteSection(`REFERENCE ${index + 1}`, suite.label, suite.assets, suite.template));
+    });
+  }
+
+  if (importedSource) {
+    userLines.push(...buildImportedSourceSection(importedSource, {
+      assetName,
+      template: templateName ? resolveTemplateDefinition(templateName) : undefined,
+    }));
+  }
+
   // Add prior assets as context
-  if (priorAssets && Object.keys(priorAssets).length > 0) {
+  if (Object.keys(relevantPriorAssets).length > 0) {
     userLines.push('\n---\n## Prior Assets (for context):\n');
-    for (const [priorName, priorContent] of Object.entries(priorAssets)) {
+    for (const [priorName, priorContent] of Object.entries(relevantPriorAssets)) {
       userLines.push(...buildPriorAssetContext(priorName, priorContent));
     }
   }
@@ -340,6 +338,33 @@ export async function buildSeedGenPrompt(
   const systemPrompt = blueprintContent?.trim() || await resolveFeatureBlueprint('seed_generation');
 
   return [systemPrompt, genreLines];
+}
+
+export async function buildLorebookPrompt(
+  referenceSuites: ReferenceSuiteContext[],
+  options: {
+    focus?: string;
+    blueprintContent?: string;
+  } = {}
+): Promise<[system: string, user: string]> {
+  const systemPrompt = options.blueprintContent?.trim() || await resolveFeatureBlueprint('worldbook_generation');
+
+  const userLines: string[] = [
+    `REFERENCE_DRAFT_COUNT: ${referenceSuites.length}`,
+    'TASK: Synthesize a connected lorebook/worldbook packet from these reference drafts.',
+    'CONSTRAINT: Do not generate a new standalone character. Extract connected canon, events, places, factions, moments, and recurring pressure instead.',
+  ];
+
+  if (options.focus?.trim()) {
+    userLines.push('');
+    userLines.push(`FOCUS: ${options.focus.trim()}`);
+  }
+
+  referenceSuites.forEach((suite, index) => {
+    userLines.push(...buildParentSuiteSection(`REFERENCE DRAFT ${index + 1}`, suite.label, suite.assets, suite.template));
+  });
+
+  return [systemPrompt, userLines.join('\n')];
 }
 
 /**
@@ -564,9 +589,13 @@ The user is working on an Eidolon Simulacra project using the blueprint system. 
 ${blueprint}
 \`\`\`
 
-${buildAssetContextSection(`## Current Asset: ${label}`, assetName, currentContent, 'Use the extracted fields below as the active asset content. Do not assume access to any external file.').join('\n')}
+${buildAssetContextLines(`## Current Asset: ${label}`, assetName, currentContent, {
+  jsonInstruction: 'Use the extracted fields below as the active asset content. Do not assume access to any external file.',
+}).join('\n')}
 
-${buildAssetContextSection('## Character Sheet (for context)', 'character_sheet', characterSheet, 'Use the extracted character-sheet fields below to maintain consistency. Do not assume access to any external file.').join('\n')}
+${buildAssetContextLines('## Character Sheet (for context)', 'character_sheet', characterSheet, {
+  jsonInstruction: 'Use the extracted character-sheet fields below to maintain consistency. Do not assume access to any external file.',
+}).join('\n')}
 
 ## Your Role:
 

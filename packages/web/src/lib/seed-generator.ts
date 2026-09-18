@@ -1,5 +1,6 @@
 import type { SeedGenerationRequest } from '@char-gen/shared';
 import { serverClient, type SyncedSeedRecord } from './server/client.js';
+import { readPersistedJson, writePersistedJson } from './persistence/storage.js';
 
 import seedGenerationPrompt from '../../../../blueprints/system/seed_generator.md?raw';
 
@@ -45,6 +46,7 @@ const SEED_FAVORITES_SYNC_STATE_STORAGE_KEY = 'eidolon.web.seedGenerator.favorit
 const ARCHIVED_SEED_RUNS_SYNC_STATE_STORAGE_KEY = 'eidolon.web.seedGenerator.archivedSeedRuns.syncState';
 const MAX_SEED_HISTORY = 12;
 export const DEFAULT_SEED_COUNT = 12;
+export const DEFAULT_SEED_COVERAGE_MODE: SeedCoverageMode = 'blended';
 export const SEED_FAVORITES_CHANGED_EVENT = 'seed-favorites-changed';
 export const SEED_HISTORY_CHANGED_EVENT = 'seed-history-changed';
 
@@ -66,42 +68,11 @@ interface WriteSeedRunHistoryOptions {
 }
 
 function readStorage<T>(keys: string | readonly string[], fallback: T): T {
-  if (typeof window === 'undefined') {
-    return fallback;
-  }
-
-  const keyList = Array.isArray(keys) ? [...keys] : [keys];
-  const [currentKey, ...legacyKeys] = keyList;
-
-  try {
-    for (const key of keyList) {
-      const raw = window.localStorage.getItem(key);
-      if (!raw) {
-        continue;
-      }
-
-      const parsed = JSON.parse(raw) as T;
-      if (key !== currentKey) {
-        window.localStorage.setItem(currentKey, JSON.stringify(parsed));
-        legacyKeys.forEach((legacyKey) => window.localStorage.removeItem(legacyKey));
-      }
-
-      return parsed;
-    }
-  } catch {
-    return fallback;
-  }
-
-  return fallback;
+  return readPersistedJson(keys, fallback);
 }
 
 function writeStorage<T>(key: string, legacyKeys: readonly string[], value: T): void {
-  if (typeof window === 'undefined') {
-    return;
-  }
-
-  window.localStorage.setItem(key, JSON.stringify(value));
-  legacyKeys.forEach((legacyKey) => window.localStorage.removeItem(legacyKey));
+  writePersistedJson(key, legacyKeys, value);
 }
 
 function emitFavoriteSeedsChanged(favorites: FavoriteSeedRecord[]): void {
@@ -304,7 +275,7 @@ export function buildSeedGenerationLines(
     .map((line) => line.trim())
     .filter(Boolean);
 
-  const controlLines = [`count=${sanitizeSeedCount(controls.count)}`, controls.coverageMode];
+  const controlLines = [`count=${sanitizeSeedCount(controls.count)}`, DEFAULT_SEED_COVERAGE_MODE];
   return [...controlLines, ...cleaned].join('\n');
 }
 
@@ -365,7 +336,7 @@ function normalizeSeedRunRecord(value: unknown): SeedRunRecord | null {
     return null;
   }
 
-  const coverageMode = request.coverageMode === 'blended' ? 'blended' : 'per-genre';
+  const coverageMode = DEFAULT_SEED_COVERAGE_MODE;
   const count = typeof request.count === 'number' && Number.isFinite(request.count)
     ? Math.max(1, Math.round(request.count))
     : seeds.length;

@@ -2,15 +2,20 @@
  * Character Card Import Parser
  *
  * Parses external character card formats (TavernAI/SillyTavern v1/v2, Chub AI,
- * PNG-embedded cards) and maps their fields back to internal draft assets using
- * the reverse of the export preset field mappings.
+ * PNG-embedded cards) and maps their fields plus Eidolon extension payloads
+ * back to internal draft assets.
  */
 
 import type {
+  CharacterCardMetadata,
+  CharacterImportOptions,
+  DraftMetadata,
   ImportedCharacter,
   ImportedCharacterFormat,
   ExportPreset,
+  Template,
 } from '../types';
+import { extractPngCharaChunk, parseEmbeddedPngBytes, pngBytesToDataUrl } from '../png-card';
 
 // ============================================================================
 // Format Detection
@@ -20,50 +25,444 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+const EIDOLON_EXTENSION_KEYS = ['eidolon', 'eidolon_simulacra', 'eidolonsimulacra'] as const;
+
+function readString(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function readStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .filter((entry): entry is string => typeof entry === 'string')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+}
+
+function readNumber(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function cloneJsonValue<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
+function mergeCardMetadata(base: CharacterCardMetadata | undefined, override: CharacterCardMetadata | undefined): CharacterCardMetadata | undefined {
+  if (!base && !override) {
+    return undefined;
+  }
+
+  const merged: CharacterCardMetadata = {};
+  const source = base ? cloneJsonValue(base) : undefined;
+  const next = override ? cloneJsonValue(override) : undefined;
+
+  const avatar = next?.avatar ?? source?.avatar;
+  if (avatar) {
+    merged.avatar = avatar;
+  }
+
+  const creator = next?.creator ?? source?.creator;
+  if (creator) {
+    merged.creator = creator;
+  }
+
+  const characterVersion = next?.character_version ?? source?.character_version;
+  if (characterVersion) {
+    merged.character_version = characterVersion;
+  }
+
+  const depthPrompt = next?.depth_prompt ?? source?.depth_prompt;
+  if (depthPrompt) {
+    merged.depth_prompt = cloneJsonValue(depthPrompt);
+  }
+
+  const sourceChub = source?.chub;
+  const nextChub = next?.chub;
+  if (sourceChub || nextChub) {
+    merged.chub = {
+      ...(sourceChub ? cloneJsonValue(sourceChub) : {}),
+      ...(nextChub ? cloneJsonValue(nextChub) : {}),
+    };
+  }
+
+  return Object.keys(merged).length > 0 ? merged : undefined;
+}
+
+function readCardMetadataRecord(value: unknown): CharacterCardMetadata | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  const metadata: CharacterCardMetadata = {};
+  const avatar = readString(value.avatar);
+  if (avatar) {
+    metadata.avatar = avatar;
+  }
+
+  const creator = readString(value.creator);
+  if (creator) {
+    metadata.creator = creator;
+  }
+
+  const characterVersion = readString(value.character_version);
+  if (characterVersion) {
+    metadata.character_version = characterVersion;
+  }
+
+  if (isRecord(value.depth_prompt)) {
+    const depth = readNumber(value.depth_prompt.depth);
+    const prompt = readString(value.depth_prompt.prompt) ?? '';
+    if (depth !== undefined) {
+      metadata.depth_prompt = { depth, prompt };
+    }
+  }
+
+  if (isRecord(value.chub)) {
+    const chub: NonNullable<CharacterCardMetadata['chub']> = {};
+    const id = readNumber(value.chub.id);
+    if (id !== undefined) {
+      chub.id = id;
+    }
+
+    if (value.chub.preset === null || typeof value.chub.preset === 'string') {
+      chub.preset = value.chub.preset === null ? null : value.chub.preset.trim() || null;
+    }
+
+    const fullPath = readString(value.chub.full_path);
+    if (fullPath) {
+      chub.full_path = fullPath;
+    }
+
+    if (value.chub.custom_css === null || typeof value.chub.custom_css === 'string') {
+      chub.custom_css = value.chub.custom_css === null ? null : value.chub.custom_css.trim() || null;
+    }
+
+    const backgroundImage = readString(value.chub.background_image);
+    if (backgroundImage) {
+      chub.background_image = backgroundImage;
+    }
+
+    if (Array.isArray(value.chub.extensions)) {
+      chub.extensions = cloneJsonValue(value.chub.extensions);
+    }
+
+    if (value.chub.expressions !== undefined) {
+      chub.expressions = cloneJsonValue(value.chub.expressions);
+    }
+
+    if (isRecord(value.chub.alt_expressions)) {
+      chub.alt_expressions = cloneJsonValue(value.chub.alt_expressions);
+    }
+
+    if (Array.isArray(value.chub.related_lorebooks)) {
+      chub.related_lorebooks = value.chub.related_lorebooks
+        .filter((entry): entry is Record<string, unknown> => isRecord(entry))
+        .map((entry) => {
+          const record: NonNullable<NonNullable<CharacterCardMetadata['chub']>['related_lorebooks']>[number] = {};
+          const id = readNumber(entry.id);
+          if (id !== undefined) {
+            record.id = id;
+          }
+          if (entry.book === null || typeof entry.book === 'string') {
+            record.book = entry.book === null ? null : entry.book;
+          }
+          const path = readString(entry.path);
+          if (path) {
+            record.path = path;
+          }
+          const version = readString(entry.version);
+          if (version) {
+            record.version = version;
+          }
+          const commitRef = readString(entry.commit_ref);
+          if (commitRef) {
+            record.commit_ref = commitRef;
+          }
+          return record;
+        })
+        .filter((entry) => Object.keys(entry).length > 0);
+    }
+
+    if (Object.keys(chub).length > 0) {
+      metadata.chub = chub;
+    }
+  }
+
+  return Object.keys(metadata).length > 0 ? metadata : undefined;
+}
+
+function readCardCandidates(data: Record<string, unknown>): Record<string, unknown>[] {
+  return isRecord(data.data) ? [data, data.data] : [data];
+}
+
+function hasCardSpec(data: Record<string, unknown>): boolean {
+  const spec = readString(data.spec);
+  const specVersion = readString(data.spec_version) ?? readString(data.specVersion);
+
+  if (spec === 'chara_card_v2') {
+    return true;
+  }
+
+  if (!specVersion) {
+    return false;
+  }
+
+  return specVersion === '2'
+    || specVersion === '2.0'
+    || specVersion === '3'
+    || specVersion === '3.0'
+    || specVersion.startsWith('2.')
+    || specVersion.startsWith('3.');
+}
+
+function readEidolonExtension(data: Record<string, unknown>): Record<string, unknown> | null {
+  if (!isRecord(data.extensions)) {
+    return null;
+  }
+
+  for (const key of EIDOLON_EXTENSION_KEYS) {
+    if (isRecord(data.extensions[key])) {
+      return data.extensions[key];
+    }
+  }
+
+  return null;
+}
+
+function hasChubSignals(data: Record<string, unknown>): boolean {
+  return Array.isArray(data.tags)
+    || typeof data.creator === 'string'
+    || typeof data.creator_notes === 'string'
+    || typeof data.system_prompt === 'string'
+    || typeof data.post_history_instructions === 'string'
+    || Array.isArray(data.alternate_greetings)
+    || readEidolonExtension(data) !== null;
+}
+
+function mergeNoteValues(primary?: string | null, secondary?: string | null): string | undefined {
+  const parts = [primary, secondary]
+    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    .map((value) => value.trim());
+
+  if (parts.length === 0) {
+    return undefined;
+  }
+
+  if (parts.length === 1) {
+    return parts[0];
+  }
+
+  return Array.from(new Set(parts)).join('\n\n');
+}
+
+function collectSections(sections: Array<{ title?: string; value?: string | null }>): string | null {
+  const normalized: Array<{ title?: string; value: string }> = [];
+
+  for (const section of sections) {
+    const value = section.value?.trim();
+    if (!value) {
+      continue;
+    }
+
+    normalized.push({
+      title: section.title?.trim(),
+      value,
+    });
+  }
+
+  if (normalized.length === 0) {
+    return null;
+  }
+
+  if (normalized.length === 1 && !normalized[0].title) {
+    return normalized[0].value;
+  }
+
+  return normalized
+    .map((section) => section.title ? `## ${section.title}\n\n${section.value}` : section.value)
+    .join('\n\n');
+}
+
+function extractEidolonAssets(data: Record<string, unknown>): Record<string, string> {
+  const extension = readEidolonExtension(data);
+  if (!extension || !isRecord(extension.assets)) {
+    return {};
+  }
+
+  return Object.fromEntries(
+    Object.entries(extension.assets)
+      .filter((entry): entry is [string, string] => typeof entry[1] === 'string' && entry[1].trim().length > 0)
+      .map(([key, value]) => [key, value.trim()])
+  );
+}
+
+function extractImportedMetadata(data: Record<string, unknown>, name: string): Partial<DraftMetadata> | undefined {
+  const extension = readEidolonExtension(data);
+  const rawMetadata = extension && isRecord(extension.metadata) ? extension.metadata : null;
+  const metadata: Partial<DraftMetadata> = {};
+
+  const assignString = (key: keyof DraftMetadata, ...candidates: unknown[]) => {
+    for (const candidate of candidates) {
+      const value = readString(candidate);
+      if (value) {
+        (metadata as Record<string, unknown>)[key] = value;
+        return;
+      }
+    }
+  };
+
+  if (rawMetadata) {
+    const existingCardMetadata = readCardMetadataRecord(rawMetadata.card_metadata ?? rawMetadata.cardMetadata);
+    if (existingCardMetadata) {
+      metadata.card_metadata = existingCardMetadata;
+    }
+
+    assignString('seed', rawMetadata.seed);
+    assignString('model', rawMetadata.model);
+    assignString('created', rawMetadata.created, rawMetadata.createdAt);
+    assignString('modified', rawMetadata.modified, rawMetadata.updatedAt);
+    assignString('genre', rawMetadata.genre);
+    assignString('notes', rawMetadata.notes);
+    assignString('character_name', rawMetadata.character_name, rawMetadata.characterName);
+    assignString('template_name', rawMetadata.template_name, rawMetadata.templateName);
+    assignString('custom_instructions', rawMetadata.custom_instructions, rawMetadata.customInstructions);
+    assignString('offspring_type', rawMetadata.offspring_type, rawMetadata.offspringType);
+
+    if (rawMetadata.mode === 'SFW' || rawMetadata.mode === 'NSFW' || rawMetadata.mode === 'Platform-Safe' || rawMetadata.mode === 'Auto') {
+      metadata.mode = rawMetadata.mode;
+    }
+
+    if (typeof rawMetadata.favorite === 'boolean') {
+      metadata.favorite = rawMetadata.favorite;
+    }
+
+    const componentSendOrder = readStringArray(rawMetadata.component_send_order ?? rawMetadata.componentSendOrder);
+    if (componentSendOrder.length > 0) {
+      metadata.component_send_order = componentSendOrder;
+    }
+
+    const rawTags = readStringArray(rawMetadata.tags);
+    if (rawTags.length > 0) {
+      metadata.tags = rawTags;
+    }
+  }
+
+  const importedCardMetadata = readCardMetadataRecord({
+    avatar: data.avatar,
+    creator: data.creator,
+    character_version: data.character_version,
+    depth_prompt: isRecord(data.extensions) ? data.extensions.depth_prompt : undefined,
+    chub: isRecord(data.extensions) ? data.extensions.chub : undefined,
+  });
+  const cardMetadata = mergeCardMetadata(metadata.card_metadata, importedCardMetadata);
+  if (cardMetadata) {
+    metadata.card_metadata = cardMetadata;
+  }
+
+  const tags = readStringArray(data.tags);
+  if (tags.length > 0) {
+    metadata.tags = Array.from(new Set([...(metadata.tags ?? []), ...tags]));
+  }
+
+  if (!metadata.notes) {
+    const notes = readString(data.creator_notes);
+    if (notes) {
+      metadata.notes = notes;
+    }
+  }
+
+  metadata.character_name = metadata.character_name ?? name;
+
+  return Object.keys(metadata).length > 0 ? metadata : undefined;
+}
+
+function buildCharacterSheetAsset(data: Record<string, unknown>): string | null {
+  const description = readString(data.description);
+  const personality = readString(data.personality);
+  const creatorNotes = readString(data.creator_notes);
+
+  if (description) {
+    return description;
+  }
+
+  if (personality) {
+    return personality;
+  }
+
+  return creatorNotes;
+}
+
+function buildPostHistoryAsset(data: Record<string, unknown>): string | null {
+  const mesExample = readString(data.mes_example);
+  const postHistoryInstructions = readString(data.post_history_instructions);
+  const unwrappedExample = mesExample ? unwrapContent(mesExample) : null;
+  const unwrappedInstructions = postHistoryInstructions ? unwrapContent(postHistoryInstructions) : null;
+
+  if (unwrappedExample && unwrappedInstructions && unwrappedInstructions !== unwrappedExample) {
+    return [
+      'Example Dialogue',
+      '',
+      unwrappedExample,
+      '',
+      'Post-History Instructions',
+      '',
+      unwrappedInstructions,
+    ].join('\n');
+  }
+
+  return unwrappedExample ?? unwrappedInstructions;
+}
+
+function buildIntroSceneAsset(data: Record<string, unknown>): string | null {
+  const firstMes = readString(data.first_mes);
+  if (firstMes) {
+    return firstMes;
+  }
+
+  const alternateGreetings = readStringArray(data.alternate_greetings);
+  return alternateGreetings[0] ?? null;
+}
+
 /**
  * Detect the format of a parsed JSON character card.
  */
 export function detectJsonFormat(data: unknown): ImportedCharacterFormat {
   if (!isRecord(data)) return 'unknown';
 
-  // TavernAI v2 has explicit spec field
-  if (data.spec === 'chara_card_v2' || data.spec_version === '2.0') {
-    return 'tavernai_v2';
-  }
+  const candidates = readCardCandidates(data);
+  const hasAnyChubSignals = candidates.some((candidate) => hasChubSignals(candidate));
 
-  // TavernAI v2 wraps data under "data" key
-  if (isRecord(data.data) && (data.data.spec === 'chara_card_v2' || data.data.spec_version === '2.0')) {
-    return 'tavernai_v2';
-  }
-
-  // Chub AI typically has a specific structure
-  if (typeof data.creator_notes === 'string' && typeof data.first_mes === 'string' && typeof data.description === 'string') {
-    // Could be either Chub or TavernAI v1 — check for Chub-specific fields
-    if (Array.isArray(data.tags) && typeof data.creator === 'string') {
-      // Has Chub-like metadata but also TavernAI fields; treat as tavernai_v1
-      // since the field layout is compatible
-      return 'tavernai_v1';
+  for (const candidate of candidates) {
+    if (hasCardSpec(candidate)) {
+      return hasChubSignals(candidate) || hasAnyChubSignals ? 'chubai' : 'tavernai_v2';
     }
+  }
+
+  const cardData = isRecord(data.data) ? data.data : data;
+
+  if (
+    typeof cardData.description === 'string' &&
+    typeof cardData.first_mes === 'string' &&
+    hasChubSignals(cardData)
+  ) {
+    return 'chubai';
   }
 
   // TavernAI v1: has name + description + first_mes at top level
   if (
-    typeof data.name === 'string' &&
-    typeof data.description === 'string' &&
-    typeof data.first_mes === 'string'
+    typeof cardData.name === 'string' &&
+    typeof cardData.description === 'string' &&
+    typeof cardData.first_mes === 'string'
   ) {
     return 'tavernai_v1';
-  }
-
-  // Check if data is wrapped under "data" (common in various card formats)
-  if (isRecord(data.data)) {
-    const inner = data.data;
-    if (
-      typeof inner.name === 'string' &&
-      typeof inner.description === 'string'
-    ) {
-      return 'tavernai_v1';
-    }
   }
 
   return 'unknown';
@@ -74,114 +473,6 @@ export function detectJsonFormat(data: unknown): ImportedCharacterFormat {
  */
 export function isPngFilename(filename: string): boolean {
   return filename.toLowerCase().endsWith('.png');
-}
-
-// ============================================================================
-// PNG Character Card Extraction
-// ============================================================================
-
-/**
- * Decode a Uint8Array of ASCII bytes to a string without TextDecoder.
- */
-function decodeAscii(bytes: Uint8Array): string {
-  let result = '';
-  for (let i = 0; i < bytes.length; i++) {
-    result += String.fromCharCode(bytes[i]);
-  }
-  return result;
-}
-
-/**
- * Base64 character set for decoding.
- */
-const BASE64_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-
-/**
- * Decode a base64 string to a UTF-8 string without relying on atob.
- */
-function decodeBase64(base64: string): string | null {
-  try {
-    // Strip whitespace/padding
-    const cleaned = base64.replace(/[\s=]+/g, '');
-    const len = cleaned.length;
-
-    if (len % 4 !== 0) return null;
-
-    const bytes: number[] = [];
-    let i = 0;
-
-    while (i < len) {
-      const b0 = BASE64_CHARS.indexOf(cleaned[i]);
-      const b1 = BASE64_CHARS.indexOf(cleaned[i + 1]);
-      const b2 = BASE64_CHARS.indexOf(cleaned[i + 2]);
-      const b3 = BASE64_CHARS.indexOf(cleaned[i + 3]);
-
-      if (b0 === -1 || b1 === -1) return null;
-
-      bytes.push((b0 << 2) | (b1 >> 4));
-      if (b2 !== -1) bytes.push(((b1 & 0x0F) << 4) | (b2 >> 2));
-      if (b3 !== -1) bytes.push(((b2 & 0x03) << 6) | b3);
-
-      i += 4;
-    }
-
-    return decodeAscii(new Uint8Array(bytes));
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Extract the `chara` tEXt chunk from a PNG ArrayBuffer.
- * TavernAI/SillyTavern embed character data as base64-encoded JSON in the tEXt chunk.
- */
-export function extractPngCharaChunk(buffer: ArrayBuffer): string | null {
-  const view = new DataView(buffer);
-  const signature = [137, 80, 78, 71, 13, 10, 26, 10];
-
-  // Verify PNG signature
-  for (let i = 0; i < 8; i++) {
-    if (view.getUint8(i) !== signature[i]) {
-      return null;
-    }
-  }
-
-  let offset = 8;
-  const bytes = new Uint8Array(buffer);
-
-  while (offset < bytes.length) {
-    const chunkLength = view.getUint32(offset);
-    const chunkType = String.fromCharCode(
-      bytes[offset + 4],
-      bytes[offset + 5],
-      bytes[offset + 6],
-      bytes[offset + 7],
-    );
-
-    if (chunkType === 'tEXt') {
-      // tEXt chunk: keyword (null-terminated) + text data
-      const chunkData = bytes.slice(offset + 8, offset + 8 + chunkLength);
-      const nullIndex = chunkData.indexOf(0);
-
-      if (nullIndex !== -1) {
-        const keyword = decodeAscii(chunkData.slice(0, nullIndex));
-
-        if (keyword === 'chara') {
-          const textData = chunkData.slice(nullIndex + 1);
-          const base64Str = decodeAscii(textData);
-
-          return decodeBase64(base64Str);
-        }
-      }
-    }
-
-    // Move to next chunk: 4 (length) + 4 (type) + chunkLength + 4 (CRC)
-    offset += 12 + chunkLength;
-
-    if (chunkType === 'IEND') break;
-  }
-
-  return null;
 }
 
 // ============================================================================
@@ -232,7 +523,12 @@ export function buildReverseMapping(preset: ExportPreset): Record<string, string
  * We try to extract just the content portion.
  */
 function unwrapContent(content: string, wrapper?: string): string {
-  if (!wrapper) return content;
+  const normalizedContent = content
+    .replace(/^\{\{original\}\}\s*/i, '')
+    .replace(/^<START>\s*/i, '')
+    .trim();
+
+  if (!wrapper) return normalizedContent;
 
   // Common wrapper pattern: <START>\n...{{char}}: {{content}} or similar
   // Try to find the content after the last {{char}}: or {{content}} placeholder
@@ -244,7 +540,7 @@ function unwrapContent(content: string, wrapper?: string): string {
   // If the wrapper contains <START>, try to strip it
   if (wrapper.includes('<START>')) {
     // Remove <START> prefix lines
-    const lines = content.split('\n');
+    const lines = normalizedContent.split('\n');
     const startIndex = lines.findIndex(line =>
       line.trim().toLowerCase() === '<start>' ||
       line.trim().startsWith('{{user}}:') ||
@@ -263,7 +559,7 @@ function unwrapContent(content: string, wrapper?: string): string {
     }
   }
 
-  return content;
+  return normalizedContent;
 }
 
 function stringifyUnknown(value: unknown): string | null {
@@ -453,61 +749,309 @@ function flattenCardData(raw: Record<string, unknown>): Record<string, unknown> 
   return raw;
 }
 
+function getValueAtImportPath(data: Record<string, unknown>, importPath: string): unknown {
+  const trimmedPath = importPath.trim();
+  if (!trimmedPath) {
+    return undefined;
+  }
+
+  const direct = data[trimmedPath];
+  if (direct !== undefined) {
+    return direct;
+  }
+
+  const segments = trimmedPath.split('.').filter(Boolean);
+  if (segments.length === 0) {
+    return undefined;
+  }
+
+  let current: unknown = data;
+  for (const segment of segments) {
+    if (!isRecord(current) || !(segment in current)) {
+      return undefined;
+    }
+    current = current[segment];
+  }
+
+  return current;
+}
+
+function formatImportedAliasValue(alias: string, value: unknown): string | null {
+  const normalizedAlias = alias.trim().toLowerCase();
+
+  if (normalizedAlias === 'character_book' || normalizedAlias === 'lorebook' || normalizedAlias === 'world_info') {
+    return formatLorebookSource(normalizedAlias, value);
+  }
+
+  if (normalizedAlias === 'mes_example' || normalizedAlias === 'system_prompt' || normalizedAlias === 'post_history_instructions') {
+    const text = readString(value);
+    return text ? unwrapContent(text) : null;
+  }
+
+  if (normalizedAlias === 'alternate_greetings' && Array.isArray(value)) {
+    const values = readStringArray(value);
+    return values.length > 0 ? JSON.stringify(values, null, 2) : null;
+  }
+
+  return stringifyUnknown(value);
+}
+
+function getDefaultAssetNamesForImportAlias(alias: string, data: Record<string, unknown>): string[] {
+  const normalizedAlias = alias.trim().toLowerCase();
+  switch (normalizedAlias) {
+    case 'description':
+      return ['character_sheet'];
+    case 'system_prompt':
+    case 'personality':
+      return ['system_prompt', 'personality'];
+    case 'first_mes':
+      return ['intro_scene'];
+    case 'mes_example':
+    case 'post_history_instructions':
+      return ['post_history'];
+    case 'scenario':
+      return ['intro_page'];
+    case 'creator_notes':
+      return ['creator_notes'];
+    case 'avatar':
+      return ['avatar'];
+    case 'creator':
+      return ['creator'];
+    case 'character_version':
+      return ['character_version'];
+    case 'alternate_greetings':
+      return ['alternate_greetings'];
+    case 'character_book':
+    case 'lorebook':
+    case 'world_info': {
+      const assets = extractLorebookAssets(data).assets;
+      return Object.keys(assets).length > 0 ? Object.keys(assets) : ['character_book'];
+    }
+    case 'extensions.chub':
+      return ['chub_extension'];
+    case 'extensions.depth_prompt':
+      return ['depth_prompt'];
+    default:
+      return [];
+  }
+}
+
+function applyTemplateImportAliases(
+  character: ImportedCharacter,
+  data: Record<string, unknown>,
+  options?: CharacterImportOptions,
+): ImportedCharacter {
+  const templateAssets = options?.template?.assets ?? [];
+  if (templateAssets.length === 0) {
+    return character;
+  }
+
+  const nextAssets = { ...character.assets };
+  const nextUnmappedFields = character.unmappedFields ? { ...character.unmappedFields } : undefined;
+  const templateAssetNames = new Set(templateAssets.map((asset) => asset.name));
+  const consumedDefaultAssets = new Set<string>();
+
+  for (const asset of templateAssets) {
+    const aliases = (asset.import_aliases ?? [])
+      .map((alias) => alias.trim())
+      .filter((alias) => alias.length > 0);
+
+    if (aliases.length === 0) {
+      continue;
+    }
+
+    for (const alias of aliases) {
+      const value = getValueAtImportPath(data, alias);
+      const formatted = formatImportedAliasValue(alias, value);
+      if (!formatted) {
+        continue;
+      }
+
+      nextAssets[asset.name] = formatted;
+
+      const defaultAssetNames = getDefaultAssetNamesForImportAlias(alias, data);
+      for (const defaultAssetName of defaultAssetNames) {
+        if (defaultAssetName !== asset.name && !templateAssetNames.has(defaultAssetName)) {
+          consumedDefaultAssets.add(defaultAssetName);
+        }
+      }
+
+      if (nextUnmappedFields) {
+        delete nextUnmappedFields[alias];
+        const rootAlias = alias.split('.')[0];
+        delete nextUnmappedFields[rootAlias];
+      }
+
+      break;
+    }
+  }
+
+  for (const assetName of consumedDefaultAssets) {
+    delete nextAssets[assetName];
+  }
+
+  return {
+    ...character,
+    assets: nextAssets,
+    unmappedFields: nextUnmappedFields && Object.keys(nextUnmappedFields).length > 0 ? nextUnmappedFields : undefined,
+  };
+}
+
 /**
  * Parse a TavernAI v1 or v2 character card.
  */
-export function parseTavernAICard(raw: unknown): ImportedCharacter {
+export function parseTavernAICard(
+  raw: unknown,
+  sourceFormat: 'tavernai_v1' | 'tavernai_v2' = 'tavernai_v1',
+  options?: CharacterImportOptions,
+): ImportedCharacter {
   if (!isRecord(raw)) {
     throw new Error('Invalid TavernAI card: expected JSON object');
   }
 
   const data = flattenCardData(raw);
-  const assets: Record<string, string> = {};
+  const assets: Record<string, string> = extractEidolonAssets(data);
   const unmappedFields: Record<string, string> = {};
   const lorebook = extractLorebookAssets(data);
+  const metadata = extractImportedMetadata(data, typeof data.name === 'string' ? data.name.trim() : 'Imported Character');
 
   // Extract character name
   const name = typeof data.name === 'string' ? data.name.trim() : 'Imported Character';
 
-  // Map known fields to internal assets
-  for (const [externalField, internalAsset] of Object.entries(TAVERNAI_FIELD_MAP)) {
-    const value = data[externalField];
-    if (typeof value === 'string' && value.trim()) {
-      assets[internalAsset] = unwrapContent(value.trim());
+  if (!assets.character_sheet) {
+    const characterSheet = buildCharacterSheetAsset(data);
+    if (characterSheet) {
+      assets.character_sheet = characterSheet;
     }
   }
 
-  Object.assign(assets, lorebook.assets);
+  if (!assets.system_prompt) {
+    const systemPrompt = readString(data.system_prompt)
+      ? unwrapContent(readString(data.system_prompt)!)
+      : readString(data.personality);
+    if (systemPrompt) {
+      assets.system_prompt = systemPrompt;
+    }
+  }
+
+  const personality = readString(data.personality);
+  if (personality && personality !== assets.system_prompt && !assets.personality) {
+    assets.personality = personality;
+  }
+
+  if (!assets.post_history) {
+    const postHistory = buildPostHistoryAsset(data);
+    if (postHistory) {
+      assets.post_history = postHistory;
+    }
+  }
+
+  if (!assets.intro_scene) {
+    const introScene = buildIntroSceneAsset(data);
+    if (introScene) {
+      assets.intro_scene = introScene;
+    }
+  }
+
+  if (!assets.intro_page) {
+    const scenario = readString(data.scenario);
+    if (scenario) {
+      assets.intro_page = scenario;
+    }
+  }
+
+  const creatorNotes = readString(data.creator_notes);
+  if (creatorNotes && !assets.creator_notes) {
+    assets.creator_notes = creatorNotes;
+  }
+
+  const avatar = readString(data.avatar);
+  if (avatar && !assets.avatar) {
+    assets.avatar = avatar;
+  }
+  if (avatar && !assets.card_image && parseEmbeddedPngBytes(avatar)) {
+    assets.card_image = avatar;
+  }
+
+  const creator = readString(data.creator);
+  if (creator && !assets.creator) {
+    assets.creator = creator;
+  }
+
+  const characterVersion = readString(data.character_version);
+  if (characterVersion && !assets.character_version) {
+    assets.character_version = characterVersion;
+  }
+
+  if (data.character_book !== undefined && !assets.character_book) {
+    const serializedCharacterBook = stringifyUnknown(data.character_book);
+    if (serializedCharacterBook) {
+      assets.character_book = serializedCharacterBook;
+    }
+  }
+
+  const extensions = isRecord(data.extensions) ? data.extensions : null;
+
+  if (extensions && isRecord(extensions.chub) && !assets.chub_extension) {
+    assets.chub_extension = JSON.stringify(extensions.chub, null, 2);
+  }
+
+  if (extensions && isRecord(extensions.depth_prompt) && !assets.depth_prompt) {
+    assets.depth_prompt = JSON.stringify(extensions.depth_prompt, null, 2);
+  }
+
+  const alternateGreetings = readStringArray(data.alternate_greetings);
+  if (alternateGreetings.length > 0 && !assets.alternate_greetings) {
+    assets.alternate_greetings = JSON.stringify(alternateGreetings, null, 2);
+  }
+
+  for (const [assetName, value] of Object.entries(lorebook.assets)) {
+    if (!assets[assetName]) {
+      assets[assetName] = value;
+    }
+  }
 
   // Collect unmapped fields for reference
-  const mappedKeys = new Set([...Object.keys(TAVERNAI_FIELD_MAP), ...lorebook.sourceKeys]);
-  const skipKeys = new Set(['name', 'spec', 'spec_version', 'data']);
+  const mappedKeys = new Set([
+    ...Object.keys(TAVERNAI_FIELD_MAP),
+    ...lorebook.sourceKeys,
+    'system_prompt',
+    'post_history_instructions',
+    'creator_notes',
+    'alternate_greetings',
+    'avatar',
+    'creator',
+    'character_version',
+    'tags',
+    'extensions',
+  ]);
+  const skipKeys = new Set(['name', 'spec', 'spec_version', 'specVersion', 'data']);
 
   for (const [key, value] of Object.entries(data)) {
     if (skipKeys.has(key) || mappedKeys.has(key)) continue;
-    if (typeof value === 'string' && value.trim()) {
-      unmappedFields[key] = value.trim();
-    } else if (Array.isArray(value) && value.length > 0) {
-      unmappedFields[key] = JSON.stringify(value);
+    const serialized = stringifyUnknown(value);
+    if (serialized) {
+      unmappedFields[key] = serialized;
     }
   }
 
-  return {
+  return applyTemplateImportAliases({
     name,
     assets,
-    sourceFormat: 'tavernai_v1',
-    sourcePreset: 'TavernAI / SillyTavern',
+    sourceFormat,
+    sourcePreset: sourceFormat === 'tavernai_v2' ? 'TavernAI / SillyTavern V2/V3' : 'TavernAI / SillyTavern',
     unmappedFields: Object.keys(unmappedFields).length > 0 ? unmappedFields : undefined,
-  };
+    metadata,
+  }, data, options);
 }
 
 /**
  * Parse a Chub AI character card.
  */
-export function parseChubAICard(raw: unknown): ImportedCharacter {
+export function parseChubAICard(raw: unknown, options?: CharacterImportOptions): ImportedCharacter {
   // Chub AI uses essentially the same field layout as TavernAI
   // but we keep separate parsers for format-specific quirks
-  const result = parseTavernAICard(raw);
+  const result = parseTavernAICard(raw, 'tavernai_v2', options);
   return {
     ...result,
     sourceFormat: 'chubai',
@@ -518,7 +1062,7 @@ export function parseChubAICard(raw: unknown): ImportedCharacter {
 /**
  * Serialize unknown JSON into a single raw text asset so later steps can interpret it.
  */
-export function parseGenericCharacter(raw: unknown, filename?: string): ImportedCharacter {
+export function parseGenericCharacter(raw: unknown, filename?: string, options?: CharacterImportOptions): ImportedCharacter {
   if (!isRecord(raw)) {
     throw new Error('Invalid character data: expected JSON object');
   }
@@ -532,14 +1076,17 @@ export function parseGenericCharacter(raw: unknown, filename?: string): Imported
       ? data.character_name.trim()
       : filename?.replace(/\.[^.]+$/, '') || 'Imported Character';
 
-  return {
+  return applyTemplateImportAliases({
     name: nameCandidate,
     assets: {
       character_sheet: rawText,
       ...lorebook.assets,
     },
     sourceFormat: 'unknown',
-  };
+    metadata: {
+      character_name: nameCandidate,
+    },
+  }, data, options);
 }
 
 /**
@@ -555,6 +1102,9 @@ export function parsePlainTextContent(text: string, filename?: string): Imported
       character_sheet: text,
     },
     sourceFormat: 'plain_text',
+    metadata: {
+      character_name: name,
+    },
   };
 }
 
@@ -599,6 +1149,7 @@ function safeParseJsonValue(text: string): unknown {
 export function detectAndParseCharacter(
   data: string | ArrayBuffer,
   filename?: string,
+  options?: CharacterImportOptions,
 ): ImportedCharacter {
   // Handle PNG files (ArrayBuffer)
   if (data instanceof ArrayBuffer) {
@@ -610,11 +1161,15 @@ export function detectAndParseCharacter(
           try {
             const format = detectJsonFormat(jsonData);
             const result = format === 'chubai'
-              ? parseChubAICard(jsonData)
+              ? parseChubAICard(jsonData, options)
               : format !== 'unknown'
-                ? parseTavernAICard(jsonData)
-                : parseGenericCharacter(jsonData, filename);
-            return { ...result, sourceFormat: 'png_card' };
+                ? parseTavernAICard(jsonData, format === 'tavernai_v2' ? 'tavernai_v2' : 'tavernai_v1', options)
+                : parseGenericCharacter(jsonData, filename, options);
+            const nextAssets = { ...result.assets };
+            if (!nextAssets.card_image) {
+              nextAssets.card_image = pngBytesToDataUrl(new Uint8Array(data));
+            }
+            return { ...result, assets: nextAssets, sourceFormat: 'png_card' };
           } catch {
             // Structured parse failed; fall through to plain text
           }
@@ -656,14 +1211,14 @@ export function detectAndParseCharacter(
 
       switch (format) {
         case 'tavernai_v1':
-          return parseTavernAICard(jsonObj);
+          return parseTavernAICard(jsonObj, 'tavernai_v1', options);
         case 'tavernai_v2':
-          return parseTavernAICard(jsonObj);
+          return parseTavernAICard(jsonObj, 'tavernai_v2', options);
         case 'chubai':
-          return parseChubAICard(jsonObj);
+          return parseChubAICard(jsonObj, options);
         case 'unknown':
         default:
-          return parseGenericCharacter(jsonObj, filename);
+          return parseGenericCharacter(jsonObj, filename, options);
       }
     } catch {
       // Structured parsing failed — fall through to plain text

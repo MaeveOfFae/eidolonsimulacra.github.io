@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   CheckCircle,
@@ -15,8 +15,9 @@ import {
 } from 'lucide-react';
 import type { ThemeColors, ThemePreset } from '@char-gen/shared';
 import { api } from '@/lib/api';
+import { isSelfContainedDesktopRuntime } from '@/lib/runtime';
 import { EDITABLE_THEME_SECTIONS, resolveThemeColors, applyThemeToDocument } from '../../theme/theme';
-import { saveDownload } from '../../utils/download';
+import { pickFile, saveDownload } from '../../utils/download';
 import SyncControls from '../common/SyncControls';
 
 interface ThemeDuplicateDraft {
@@ -187,8 +188,9 @@ function renderColorValue(value: string) {
 }
 
 export default function Themes({ showHeader = true, showSyncControls = true }: ThemeEditorProps) {
+  const selfContainedDesktop = isSelfContainedDesktopRuntime();
   const queryClient = useQueryClient();
-  const importInputId = 'theme-import-input';
+  const importInputRef = useRef<HTMLInputElement | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -541,8 +543,8 @@ export default function Themes({ showHeader = true, showSyncControls = true }: T
 
   const isBusy = createMutation.isPending || activateMutation.isPending || updateCurrentCustomMutation.isPending || updateMetadataMutation.isPending || duplicateMutation.isPending || renameMutation.isPending || deleteMutation.isPending || exportMutation.isPending || importMutation.isPending;
 
-  const handleImportChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const handleImport = async () => {
+    const file = await pickFile({ accept: 'application/json,.json' }, importInputRef.current);
     if (!file) {
       return;
     }
@@ -568,8 +570,6 @@ export default function Themes({ showHeader = true, showSyncControls = true }: T
       setNotice(null);
       setImportDraft(null);
     }
-
-    event.target.value = '';
   };
 
   if (configLoading || themesLoading) {
@@ -603,18 +603,18 @@ export default function Themes({ showHeader = true, showSyncControls = true }: T
           </div>
         )}
         <div className="flex flex-wrap items-center gap-3">
-          <label
-            htmlFor={importInputId}
+          <button
+            type="button"
+            onClick={() => void handleImport()}
             className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-input px-3 py-2 text-sm hover:bg-accent"
           >
             <Upload className="h-4 w-4" />
             Import preset
-          </label>
+          </button>
           <input
-            id={importInputId}
+            ref={importInputRef}
             type="file"
             accept="application/json"
-            onChange={handleImportChange}
             className="hidden"
           />
           {activeTheme && (
@@ -626,7 +626,7 @@ export default function Themes({ showHeader = true, showSyncControls = true }: T
         </div>
       </div>
 
-      {showSyncControls && (
+      {showSyncControls && !selfContainedDesktop && (
         <div className="rounded-lg border border-border bg-card p-4">
           <SyncControls
             dataType="themes"
@@ -743,8 +743,12 @@ export default function Themes({ showHeader = true, showSyncControls = true }: T
                   resolvedCurrentTheme.button,
                   resolvedCurrentTheme.tok_brackets,
                   resolvedCurrentTheme.highlight,
-                ].map((color) => (
-                  <span key={color} className="h-8 w-8 rounded-full border border-black/10" style={{ backgroundColor: color }} />
+                ].map((color, index) => (
+                  <span
+                    key={`current-preview-${index}-${color}`}
+                    className="h-8 w-8 rounded-full border border-black/10"
+                    style={{ backgroundColor: color }}
+                  />
                 ))}
               </div>
             </div>
@@ -872,17 +876,17 @@ export default function Themes({ showHeader = true, showSyncControls = true }: T
                       <div className="text-xs font-medium text-muted-foreground">Existing</div>
                       <div className="text-xs font-medium text-muted-foreground">Imported</div>
                       {section.changes.map((change) => (
-                        <>
-                          <div key={`${section.title}-${change.label}-label`} className="rounded-md border border-border px-3 py-2 text-sm">
+                        <div key={`${section.title}-${change.label}`} className="contents">
+                          <div className="rounded-md border border-border px-3 py-2 text-sm">
                             {change.label}
                           </div>
-                          <div key={`${section.title}-${change.label}-existing`} className="rounded-md border border-border px-3 py-2">
+                          <div className="rounded-md border border-border px-3 py-2">
                             {renderColorValue(change.existingValue)}
                           </div>
-                          <div key={`${section.title}-${change.label}-imported`} className="rounded-md border border-border px-3 py-2">
+                          <div className="rounded-md border border-border px-3 py-2">
                             {renderColorValue(change.importedValue)}
                           </div>
-                        </>
+                        </div>
                       ))}
                     </div>
                   </div>
@@ -1100,8 +1104,12 @@ export default function Themes({ showHeader = true, showSyncControls = true }: T
                     )}
                   </div>
                   <div className="flex gap-2">
-                    {[theme.colors.background, theme.colors.surface, theme.colors.accent, theme.colors.button].map((color) => (
-                      <span key={`${theme.name}-${color}`} className={`${isCompact ? 'h-5 w-5' : 'h-6 w-6'} rounded-full border border-black/10`} style={{ backgroundColor: color }} />
+                    {[theme.colors.background, theme.colors.surface, theme.colors.accent, theme.colors.button].map((color, index) => (
+                      <span
+                        key={`${theme.name}-card-${index}-${color}`}
+                        className={`${isCompact ? 'h-5 w-5' : 'h-6 w-6'} rounded-full border border-black/10`}
+                        style={{ backgroundColor: color }}
+                      />
                     ))}
                   </div>
                 </div>

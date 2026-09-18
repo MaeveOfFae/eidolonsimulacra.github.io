@@ -1,5 +1,6 @@
 import type { Draft, ThemePreset } from '@char-gen/shared';
 import { configManager } from '../config/manager.js';
+import { readPersistedJson } from '../persistence/storage.js';
 import { parseBlueprintFrontmatter } from '../prompting/blueprint.js';
 import { DraftStorage } from '../storage/draft-db.js';
 import { getAllFavoriteSeeds, getArchivedSeedRuns, markArchivedSeedRunsSynced, markFavoriteSeedsSynced } from '../seed-generator.js';
@@ -9,6 +10,7 @@ import {
   getStoredTemplates,
   isCustomBlueprintPath,
 } from '../templates/browser.js';
+import { isSelfContainedDesktopRuntime } from '../runtime.js';
 import { serverClient } from './client.js';
 
 export type AutoSyncDomain = 'drafts' | 'themes' | 'templates' | 'seeds' | 'blueprints' | 'config';
@@ -27,24 +29,7 @@ let autoSyncTimer: ReturnType<typeof setTimeout> | null = null;
 let activeFlush: Promise<void> | null = null;
 
 function readCustomThemes(): ThemePreset[] {
-  if (typeof window === 'undefined') {
-    return [];
-  }
-
-  for (const key of [CUSTOM_THEMES_STORAGE_KEY, ...LEGACY_CUSTOM_THEMES_STORAGE_KEYS]) {
-    const raw = window.localStorage.getItem(key);
-    if (!raw) {
-      continue;
-    }
-
-    try {
-      return JSON.parse(raw) as ThemePreset[];
-    } catch {
-      return [];
-    }
-  }
-
-  return [];
+  return readPersistedJson([CUSTOM_THEMES_STORAGE_KEY, ...LEGACY_CUSTOM_THEMES_STORAGE_KEYS], [] as ThemePreset[]);
 }
 
 function mapDraftForSync(draft: Draft) {
@@ -92,6 +77,9 @@ function mapDraftForSync(draft: Draft) {
     componentSendOrder: normalizedSendOrder && normalizedSendOrder.length > 0 ? normalizedSendOrder : undefined,
     parentDraftIds: Array.isArray(draft.metadata.parent_drafts)
       ? draft.metadata.parent_drafts.filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
+      : undefined,
+    connectedDraftIds: Array.isArray(draft.metadata.connected_drafts)
+      ? draft.metadata.connected_drafts.filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
       : undefined,
     assets: normalizedAssets,
   };
@@ -331,6 +319,10 @@ export function queueAutoSync(
   domains: AutoSyncDomain | AutoSyncDomain[],
   options: QueueAutoSyncOptions = {}
 ): void {
+  if (isSelfContainedDesktopRuntime()) {
+    return;
+  }
+
   const nextDomains = Array.isArray(domains) ? domains : [domains];
   nextDomains.forEach((domain) => pendingDomains.add(domain));
 
@@ -356,5 +348,9 @@ export function queueAutoSync(
  * to immediately push pending data when needed.
  */
 export function triggerAutoSyncFlush(): Promise<void> {
+  if (isSelfContainedDesktopRuntime()) {
+    return Promise.resolve();
+  }
+
   return flushPendingAutoSync();
 }

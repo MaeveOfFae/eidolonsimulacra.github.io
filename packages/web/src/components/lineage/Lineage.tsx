@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { GitBranch, Loader2, RefreshCw, ArrowRight, Users } from 'lucide-react';
 import type { LineageNode } from '@char-gen/shared';
 import { api } from '@/lib/api';
+import CollapsibleSection from '../common/CollapsibleSection';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
 
 const PLANNED_LINEAGE_MODULES = [
@@ -151,9 +152,7 @@ export default function Lineage() {
           <div className="space-y-4">
             <p className="app-page-eyebrow">Family graph</p>
             <h1 className="app-page-title">Trace offspring branches back through reviewed draft history.</h1>
-            <p className="app-page-summary">
-              This screen is the lineage map for generated descendants, parent relationships, and generation depth. Use it to inspect ancestry before jumping back into review or similarity analysis.
-            </p>
+            <p className="app-page-summary">Inspect ancestry before jumping back into review, offspring, or comparison work.</p>
             <button
               onClick={() => void refetch()}
               className="app-button app-button-secondary"
@@ -183,6 +182,11 @@ export default function Lineage() {
         </div>
       </section>
 
+      <CollapsibleSection
+        title="Stats"
+        subtitle="Current lineage coverage"
+        preview={`${data?.stats.total_characters ?? 0} characters • ${data?.stats.generations ?? 0} generations`}
+      >
       <div className="grid gap-4 sm:grid-cols-4">
         <div className="app-panel p-4">
           <div className="text-2xl font-bold">{data?.stats.total_characters ?? 0}</div>
@@ -201,7 +205,14 @@ export default function Lineage() {
           <div className="text-sm text-muted-foreground">Generations</div>
         </div>
       </div>
+      </CollapsibleSection>
 
+      <CollapsibleSection
+        title="Filters"
+        subtitle="Generation, depth, and root or leaf-only views"
+        preview={`${generationFilter === 'all' ? 'all generations' : `generation ${generationFilter}`} • depth ${maxDepth}${rootsOnly ? ' • roots only' : ''}${leavesOnly ? ' • leaves only' : ''}`}
+        defaultExpanded
+      >
       <div className="app-panel p-4">
         <div className="grid gap-4 md:grid-cols-[1fr_auto_auto_auto] md:items-end">
           <div>
@@ -260,9 +271,15 @@ export default function Lineage() {
           </label>
         </div>
       </div>
+      </CollapsibleSection>
 
       <div className="grid gap-6 xl:grid-cols-[1.3fr_0.9fr]">
-        <section className="app-panel p-4">
+        <CollapsibleSection
+          title="Family tree"
+          subtitle={`${renderedTree.length} visible node${renderedTree.length === 1 ? '' : 's'}`}
+          preview={selectedNode?.character_name || 'Select a node to inspect details'}
+          defaultExpanded
+        >
           <div className="mb-4 flex items-center gap-2">
             <GitBranch className="h-5 w-5 text-primary" />
             <h2 className="text-lg font-semibold">Family Tree</h2>
@@ -285,9 +302,14 @@ export default function Lineage() {
               ))}
             </div>
           )}
-        </section>
+        </CollapsibleSection>
 
-        <section className="app-panel p-4">
+        <CollapsibleSection
+          title="Character details"
+          subtitle={selectedNode?.character_name || 'Select a character'}
+          preview={selectedNode ? `Generation ${selectedNode.generation}${selectedNode.mode ? ` • ${selectedNode.mode}` : ''}` : 'No character selected'}
+          defaultExpanded={false}
+        >
           <div className="mb-4 flex items-center gap-2">
             <Users className="h-5 w-5 text-primary" />
             <h2 className="text-lg font-semibold">Character Details</h2>
@@ -357,10 +379,15 @@ export default function Lineage() {
               </div>
             </div>
           )}
-        </section>
+        </CollapsibleSection>
       </div>
 
-      <section className="app-panel border-dashed p-5">
+      <CollapsibleSection
+        title="Staged modules"
+        subtitle="Bigger visualization and export layers stay out of the live inspector"
+        preview="Not live"
+        className="border-dashed"
+      >
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
             <h2 className="text-lg font-semibold">Staged lineage modules</h2>
@@ -384,7 +411,7 @@ export default function Lineage() {
             </article>
           ))}
         </div>
-      </section>
+      </CollapsibleSection>
     </div>
   );
 }

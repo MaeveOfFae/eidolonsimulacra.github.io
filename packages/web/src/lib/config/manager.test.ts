@@ -14,6 +14,7 @@ describe('ConfigManager feature blueprint persistence', () => {
     expect(config.feature_blueprints?.orchestration).toBe('blueprints/system/generator.md');
     expect(config.feature_blueprints?.seed_generation).toBe('blueprints/system/seed_generator.md');
     expect(config.feature_blueprints?.offspring_generation).toBe('blueprints/system/offspring_generator.md');
+    expect(config.feature_blueprints?.worldbook_generation).toBe('blueprints/system/lorebook_generator.md');
     expect(config.feature_blueprints?.intro_scene_generation).toBe('blueprints/system/intro_scene.md');
   });
 
@@ -25,6 +26,7 @@ describe('ConfigManager feature blueprint persistence', () => {
         orchestration: 'generator',
         seed_generation: 'seed_generator',
         offspring_generation: 'offspring_generator',
+        worldbook_generation: 'lorebook_generator',
         intro_scene_generation: 'intro_scene',
       },
     });
@@ -35,6 +37,7 @@ describe('ConfigManager feature blueprint persistence', () => {
     expect(config.feature_blueprints?.orchestration).toBe('blueprints/system/generator.md');
     expect(config.feature_blueprints?.seed_generation).toBe('blueprints/system/seed_generator.md');
     expect(config.feature_blueprints?.offspring_generation).toBe('blueprints/system/offspring_generator.md');
+    expect(config.feature_blueprints?.worldbook_generation).toBe('blueprints/system/lorebook_generator.md');
     expect(config.feature_blueprints?.intro_scene_generation).toBe('blueprints/system/intro_scene.md');
   });
 });

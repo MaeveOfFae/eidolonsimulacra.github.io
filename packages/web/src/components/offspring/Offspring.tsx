@@ -12,6 +12,7 @@ import {
 } from '@/lib/services/generation-session';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
 import { BlueprintPanel } from '../common/BlueprintPanel';
+import CollapsibleSection from '../common/CollapsibleSection';
 import GenerationProgress from '../generation/GenerationProgress';
 import { configManager } from '@/lib/config/manager';
 
@@ -516,9 +517,7 @@ export default function Offspring() {
           <div className="space-y-4">
             <p className="app-page-eyebrow">Character offspring</p>
             <h1 className="app-page-title">Create a descendant from two characters</h1>
-            <p className="app-page-summary">
-              Pick two parent drafts, synthesize offspring traits, then generate. The result inherits cues from both parents.
-            </p>
+            <p className="app-page-summary">Pick two parent drafts, synthesize the seed, then generate.</p>
           </div>
 
           <div className="app-panel-muted p-5">
@@ -545,25 +544,38 @@ export default function Offspring() {
         </div>
       </section>
 
-      {blueprint && !blueprintLoading && (
-        <BlueprintPanel
-          blueprintName={selectedBlueprintPath}
-          blueprintContent={effectiveOffspringBlueprint || blueprint.content}
-          title="Offspring Blueprint"
-          description={blueprint.description}
-          editable
-          availableBlueprints={availableBlueprints}
-          onBlueprintSelect={handleBlueprintSelect}
-          onContentChange={setOffspringBlueprintOverride}
-        />
-      )}
+      <CollapsibleSection
+        title="Blueprint override"
+        subtitle="Inspect or replace the offspring blueprint only when you need to change compilation behavior"
+        preview={selectedBlueprintPath || blueprint?.path || 'No blueprint selected'}
+        className="app-panel-muted"
+      >
+        {blueprint && !blueprintLoading && (
+          <BlueprintPanel
+            blueprintName={selectedBlueprintPath}
+            blueprintContent={effectiveOffspringBlueprint || blueprint.content}
+            title="Offspring Blueprint"
+            description={blueprint.description}
+            editable
+            availableBlueprints={availableBlueprints}
+            onBlueprintSelect={handleBlueprintSelect}
+            onContentChange={setOffspringBlueprintOverride}
+          />
+        )}
 
-      {blueprintError && !blueprintLoading && (
-        <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
-          {blueprintError}
-        </div>
-      )}
+        {blueprintError && !blueprintLoading && (
+          <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+            {blueprintError}
+          </div>
+        )}
+      </CollapsibleSection>
 
+      <CollapsibleSection
+        title="Parents"
+        subtitle="Choose two source drafts"
+        preview={`${parent1 ? getParentName(parent1) : 'Parent 1'} • ${parent2 ? getParentName(parent2) : 'Parent 2'}`}
+        defaultExpanded
+      >
       <div className="grid gap-6 md:grid-cols-2">
         <div className="app-panel p-6">
           <div className="flex items-center gap-2 mb-4">
@@ -619,8 +631,14 @@ export default function Offspring() {
           )}
         </div>
       </div>
+      </CollapsibleSection>
 
-      <div className="app-panel space-y-4 p-6">
+      <CollapsibleSection
+        title="Options"
+        subtitle="Mode and output template"
+        preview={`${mode} • ${template || 'No template selected'}`}
+        defaultExpanded
+      >
         <h2 className="text-lg font-semibold">Options</h2>
 
         <div className="space-y-2">
@@ -721,20 +739,15 @@ export default function Offspring() {
             Select two different parent drafts.
           </div>
         )}
-      </div>
+      </CollapsibleSection>
 
-      <div className="app-panel min-w-0 overflow-hidden space-y-4 p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-semibold">Generation Tracking</h2>
-            <p className="text-sm text-muted-foreground">
-              Seed synthesis happens first. After review, the normal asset-by-asset generator takes over below.
-            </p>
-          </div>
-          <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${stage === 'error' ? 'bg-destructive/10 text-destructive' : stage === 'complete' ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : stage === 'cancelled' ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300' : 'bg-muted text-muted-foreground'}`}>
-            {getStageLabel(stage)}
-          </span>
-        </div>
+      <CollapsibleSection
+        title="Generation tracking"
+        subtitle="Seed synthesis happens first, then the normal asset workflow takes over"
+        preview={getStageLabel(stage)}
+        meta={<span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${stage === 'error' ? 'bg-destructive/10 text-destructive' : stage === 'complete' ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : stage === 'cancelled' ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300' : 'bg-muted text-muted-foreground'}`}>{getStageLabel(stage)}</span>}
+        defaultExpanded={stage !== 'idle' || Boolean(offspringSeed) || Boolean(output) || Boolean(result)}
+      >
 
         {stage === 'cancelled' && (
           <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-300">
@@ -762,7 +775,7 @@ export default function Offspring() {
             );
           })}
         </div>
-      </div>
+      </CollapsibleSection>
 
       {error && (
         <div className="app-note border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
@@ -777,18 +790,13 @@ export default function Offspring() {
       )}
 
       {offspringSeed && !isGeneratingSeed && !isRunningAssetWorkflow && !result && (
-        <div className="app-panel min-w-0 overflow-hidden space-y-4 p-6">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h2 className="text-lg font-semibold">Review Seed</h2>
-              <p className="text-sm text-muted-foreground">
-                Edit the synthesized offspring seed before compiling the selected template asset-by-asset.
-              </p>
-            </div>
-            <span className="shrink-0 rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-300">
-              Seed Ready
-            </span>
-          </div>
+        <CollapsibleSection
+          title="Review seed"
+          subtitle="Edit the synthesized offspring seed before compiling assets"
+          preview={offspringSeed.slice(0, 140) + (offspringSeed.length > 140 ? '...' : '')}
+          meta={<span className="shrink-0 rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-300">Seed Ready</span>}
+          defaultExpanded
+        >
 
           <textarea
             value={offspringSeed}
@@ -814,7 +822,7 @@ export default function Offspring() {
               Regenerate Seed
             </button>
           </div>
-        </div>
+        </CollapsibleSection>
       )}
 
       {isRunningAssetWorkflow && offspringSeed && (
@@ -830,7 +838,13 @@ export default function Offspring() {
       )}
 
       {result && (
-        <div className="app-note border-green-500/50 bg-green-500/10 p-6 text-green-700 dark:text-green-400">
+        <CollapsibleSection
+          title="Result"
+          subtitle={result.characterName}
+          preview={`${getParentName(parent1)} + ${getParentName(parent2)}`}
+          defaultExpanded
+          className="app-note border-green-500/50 bg-green-500/10 text-green-700 dark:text-green-400"
+        >
           <div className="flex items-center gap-2 mb-4">
             <CheckCircle className="h-5 w-5 text-green-500" />
             <h2 className="text-lg font-semibold text-green-500">Offspring Created!</h2>
@@ -847,29 +861,36 @@ export default function Offspring() {
           >
             View Character
           </Link>
-        </div>
+        </CollapsibleSection>
       )}
 
       {output && (
-        <div className="space-y-2">
-          <h2 className="text-lg font-semibold">Generated Seed</h2>
+        <CollapsibleSection
+          title="Generated seed"
+          subtitle={stage === 'review_seed' ? 'Ready for review' : getStageLabel(stage)}
+          preview={`${output.slice(0, 140)}${output.length > 140 ? '...' : ''}`}
+          defaultExpanded={stage === 'review_seed' || stage === 'generating' || stage === 'generating_character'}
+        >
           <div className="app-panel max-h-96 overflow-auto p-4">
             <pre className="whitespace-pre-wrap break-words text-sm">{output}</pre>
           </div>
-        </div>
+        </CollapsibleSection>
       )}
 
       {!parent1 && !parent2 && !isGenerating && (
         <div className="app-panel p-8 text-center">
           <Baby className="mx-auto h-12 w-12 text-muted-foreground" />
           <h3 className="mt-4 text-lg font-semibold">Select Two Parents</h3>
-          <p className="text-muted-foreground">
-            Choose two characters to combine their traits into a new character
-          </p>
+          <p className="text-muted-foreground">Choose two drafts to blend into a new character.</p>
         </div>
       )}
 
-      <section className="app-panel border-dashed p-5">
+      <CollapsibleSection
+        title="Staged modules"
+        subtitle="Inheritance analysis stays out of the live generation flow"
+        preview="Not live"
+        className="border-dashed"
+      >
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
             <h2 className="text-lg font-semibold">Staged offspring modules</h2>
@@ -893,7 +914,7 @@ export default function Offspring() {
             </article>
           ))}
         </div>
-      </section>
+      </CollapsibleSection>
     </div>
   );
 }

@@ -1,18 +1,20 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { X, Upload, FileText, AlertCircle, CheckCircle2, ChevronDown, ChevronRight } from 'lucide-react';
-import type { ImportedCharacter } from '@char-gen/shared';
+import type { ImportedCharacter, Template } from '@char-gen/shared';
 import { detectAndParseCharacter, formatSourceLabel } from '@char-gen/shared';
+import { pickFile } from '../../utils/download';
 
 interface ImportCharacterModalProps {
   onClose: () => void;
   onImport: (character: ImportedCharacter) => void;
+  template?: Pick<Template, 'name' | 'assets'>;
 }
 
 type ImportStep = 'upload' | 'preview' | 'done';
 
 const ACCEPTED_EXTENSIONS = ['.json', '.png', '.txt', '.md'];
 
-export default function ImportCharacterModal({ onClose, onImport }: ImportCharacterModalProps) {
+export default function ImportCharacterModal({ onClose, onImport, template }: ImportCharacterModalProps) {
   const [step, setStep] = useState<ImportStep>('upload');
   const [parseError, setParseError] = useState<string | null>(null);
   const [importedCharacter, setImportedCharacter] = useState<ImportedCharacter | null>(null);
@@ -36,13 +38,13 @@ export default function ImportCharacterModal({ onClose, onImport }: ImportCharac
       if (filename.endsWith('.png')) {
         // Read as ArrayBuffer for PNG parsing
         const buffer = await file.arrayBuffer();
-        const character = detectAndParseCharacter(buffer, file.name);
+        const character = detectAndParseCharacter(buffer, file.name, { template });
         setImportedCharacter(character);
         setStep('preview');
       } else {
         // Read as text for JSON/text parsing
         const text = await file.text();
-        const character = detectAndParseCharacter(text, file.name);
+        const character = detectAndParseCharacter(text, file.name, { template });
         setImportedCharacter(character);
         setStep('preview');
       }
@@ -51,11 +53,20 @@ export default function ImportCharacterModal({ onClose, onImport }: ImportCharac
       setParseError(err instanceof Error ? err.message : 'Failed to parse character file');
       setStep('upload');
     }
-  }, []);
+  }, [template]);
 
   const handleFileSelect = useCallback((files: FileList | null) => {
     if (!files || files.length === 0) return;
     void processFile(files[0]);
+  }, [processFile]);
+
+  const handleBrowse = useCallback(async () => {
+    const file = await pickFile({ accept: ACCEPTED_EXTENSIONS.join(',') }, fileInputRef.current);
+    if (!file) {
+      return;
+    }
+
+    await processFile(file);
   }, [processFile]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -130,7 +141,7 @@ export default function ImportCharacterModal({ onClose, onImport }: ImportCharac
                   onDrop={handleDrop}
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => void handleBrowse()}
                   className={`cursor-pointer rounded-xl border-2 border-dashed p-8 text-center transition-colors ${
                     isDragOver
                       ? 'border-primary bg-primary/10'
@@ -153,7 +164,6 @@ export default function ImportCharacterModal({ onClose, onImport }: ImportCharac
                   ref={fileInputRef}
                   type="file"
                   accept={ACCEPTED_EXTENSIONS.join(',')}
-                  onChange={(e) => handleFileSelect(e.target.files)}
                   aria-label="Choose character file to import"
                   className="hidden"
                 />

@@ -1,14 +1,16 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Play, Pause, Upload, X, CheckCircle, XCircle, Loader2, List } from 'lucide-react';
-import type { ContentMode } from '@char-gen/shared';
+import { Play, Pause, Upload, X, CheckCircle, XCircle, Loader2, List, Users, Plus } from 'lucide-react';
+import { MAX_CONNECTED_DRAFT_REFERENCES, type ContentMode } from '@char-gen/shared';
 import { api } from '@/lib/api';
+import CollapsibleSection from '../common/CollapsibleSection';
 import {
   clearActiveBatchGenerationSession,
   loadActiveBatchGenerationSession,
   saveActiveBatchGenerationSession,
 } from '@/lib/services/generation-session';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
+import { normalizeConnectedReferenceIds } from '@/lib/prompting/reference-context';
 
 const PLANNED_BATCH_MODULES = [
   {
@@ -28,16 +30,66 @@ interface BatchJob {
   error?: string;
 }
 
+function getDefaultSelectedTemplateAssets(templateDefinition?: { assets: Array<{ name: string; required: boolean }> }): string[] {
+  if (!templateDefinition) {
+    return [];
+  }
+
+  return templateDefinition.assets
+    .filter((asset) => {
+      if (asset.required) {
+        return true;
+      }
+
+      if (asset.name === 'system_prompt' || asset.name === 'post_history') {
+        return false;
+      }
+
+      return true;
+    })
+    .map((asset) => asset.name);
+}
+
+function normalizeAssetSelection(
+  selection: readonly string[],
+  templateDefinition?: { assets: Array<{ name: string; required: boolean }> }
+): string[] {
+  if (!templateDefinition) {
+    return [];
+  }
+
+  const templateAssetNames = new Set(templateDefinition.assets.map((asset) => asset.name));
+  const requiredNames = new Set(
+    templateDefinition.assets.filter((asset) => asset.required).map((asset) => asset.name)
+  );
+  const selected = new Set<string>();
+
+  selection.forEach((assetName) => {
+    if (templateAssetNames.has(assetName)) {
+      selected.add(assetName);
+    }
+  });
+
+  requiredNames.forEach((assetName) => selected.add(assetName));
+
+  return templateDefinition.assets
+    .map((asset) => asset.name)
+    .filter((assetName) => selected.has(assetName));
+}
+
 export default function BatchGenerate() {
   const [seeds, setSeeds] = useState<string[]>([]);
   const [mode, setMode] = useState<ContentMode>('SFW');
   const [template, setTemplate] = useState<string>('');
+  const [selectedConnectedDraftIds, setSelectedConnectedDraftIds] = useState<string[]>([]);
+  const [pendingConnectedDraftId, setPendingConnectedDraftId] = useState('');
   const [parallel, setParallel] = useState(true);
   const [maxConcurrent, setMaxConcurrent] = useState(3);
   const [jobs, setJobs] = useState<BatchJob[]>([]);
   const [isRunning, setIsRunning] = useState(false);
   const [currentSeed, setCurrentSeed] = useState<string>('');
   const [inputText, setInputText] = useState('');
+  const [selectedTemplateAssets, setSelectedTemplateAssets] = useState<string[]>([]);
   const [resumeNotice, setResumeNotice] = useState<string | null>(null);
   const restoredSessionRef = useRef(loadActiveBatchGenerationSession());
   const abortRef = useRef<(() => void) | null>(null);
@@ -46,6 +98,24 @@ export default function BatchGenerate() {
     queryKey: ['templates'],
     queryFn: () => api.getTemplates(),
   });
+
+  const { data: draftsData } = useQuery({
+    queryKey: ['drafts'],
+    queryFn: () => api.getDrafts(),
+  });
+
+  const connectedDraftLookup = new Map((draftsData?.drafts ?? []).map((draft) => [draft.review_id, draft] as const));
+  const availableConnectedDrafts = (draftsData?.drafts ?? []).filter((draft) => !selectedConnectedDraftIds.includes(draft.review_id));
+  const selectedTemplate = useMemo(
+    () => templates?.find((candidate) => candidate.name === template)
+      ?? templates?.find((candidate) => candidate.is_default)
+      ?? templates?.[0],
+    [template, templates]
+  );
+  const optionalTemplateAssets = useMemo(
+    () => selectedTemplate?.assets.filter((asset) => !asset.required) ?? [],
+    [selectedTemplate]
+  );
 
   useEffect(() => {
     const session = restoredSessionRef.current;
@@ -56,6 +126,8 @@ export default function BatchGenerate() {
     setSeeds(session.seeds);
     setMode(session.mode);
     setTemplate(session.template || '');
+    setSelectedTemplateAssets(session.selectedAssets ?? []);
+    setSelectedConnectedDraftIds(normalizeConnectedReferenceIds(session.connectedDraftIds));
     setParallel(session.parallel);
     setMaxConcurrent(session.maxConcurrent);
     setInputText(session.inputText);
@@ -72,6 +144,21 @@ export default function BatchGenerate() {
 
     restoredSessionRef.current = null;
   }, []);
+
+  useEffect(() => {
+    if (!selectedTemplate) {
+      setSelectedTemplateAssets([]);
+      return;
+    }
+
+    setSelectedTemplateAssets((previous) => {
+      if (previous.length === 0) {
+        return getDefaultSelectedTemplateAssets(selectedTemplate);
+      }
+
+      return normalizeAssetSelection(previous, selectedTemplate);
+    });
+  }, [selectedTemplate]);
 
   const handleAddSeeds = () => {
     const newSeeds = inputText
@@ -95,8 +182,29 @@ export default function BatchGenerate() {
     setJobs([]);
     setCurrentSeed('');
     setInputText('');
+    setSelectedConnectedDraftIds([]);
+    setPendingConnectedDraftId('');
     setResumeNotice(null);
     clearActiveBatchGenerationSession();
+  };
+
+  const handleAddConnectedDraft = () => {
+    if (!pendingConnectedDraftId) {
+      return;
+    }
+
+    setSelectedConnectedDraftIds((previous) => {
+      if (previous.includes(pendingConnectedDraftId) || previous.length >= MAX_CONNECTED_DRAFT_REFERENCES) {
+        return previous;
+      }
+
+      return [...previous, pendingConnectedDraftId];
+    });
+    setPendingConnectedDraftId('');
+  };
+
+  const handleRemoveConnectedDraft = (draftId: string) => {
+    setSelectedConnectedDraftIds((previous) => previous.filter((candidate) => candidate !== draftId));
   };
 
   const handleRunBatch = async () => {
@@ -110,6 +218,8 @@ export default function BatchGenerate() {
       const stream = api.generateBatch(seeds, {
         mode,
         template: template || undefined,
+        selected_assets: selectedTemplateAssets,
+        connected_draft_ids: selectedConnectedDraftIds.length > 0 ? selectedConnectedDraftIds : undefined,
         parallel,
         max_concurrent: maxConcurrent,
       });
@@ -159,6 +269,28 @@ export default function BatchGenerate() {
     }
   };
 
+  const handleToggleOptionalAsset = (assetName: string) => {
+    if (!selectedTemplate) {
+      return;
+    }
+
+    const isRequired = selectedTemplate.assets.find((asset) => asset.name === assetName)?.required;
+    if (isRequired) {
+      return;
+    }
+
+    setSelectedTemplateAssets((previous) => {
+      const next = new Set(previous);
+      if (next.has(assetName)) {
+        next.delete(assetName);
+      } else {
+        next.add(assetName);
+      }
+
+      return normalizeAssetSelection(Array.from(next), selectedTemplate);
+    });
+  };
+
   const handleStop = () => {
     if (abortRef.current) {
       abortRef.current();
@@ -174,6 +306,8 @@ export default function BatchGenerate() {
       || inputText.trim()
       || jobs.length > 0
       || template
+      || selectedTemplateAssets.length > 0
+      || selectedConnectedDraftIds.length > 0
       || mode !== 'SFW'
       || !parallel
       || maxConcurrent !== 3
@@ -189,6 +323,8 @@ export default function BatchGenerate() {
       seeds,
       mode,
       template: template || undefined,
+      selectedAssets: selectedTemplateAssets,
+      connectedDraftIds: selectedConnectedDraftIds,
       parallel,
       maxConcurrent,
       inputText,
@@ -197,7 +333,7 @@ export default function BatchGenerate() {
       status: isRunning ? 'running' : jobs.length > 0 ? 'ready' : 'configuring',
       updatedAt: Date.now(),
     });
-  }, [currentSeed, inputText, isRunning, jobs, maxConcurrent, mode, parallel, seeds, template]);
+  }, [currentSeed, inputText, isRunning, jobs, maxConcurrent, mode, parallel, seeds, selectedConnectedDraftIds, selectedTemplateAssets, template]);
 
   useEffect(() => {
     if (!isRunning && seeds.length === 0 && !inputText.trim() && jobs.length === 0) {
@@ -230,6 +366,7 @@ export default function BatchGenerate() {
     progress_percent: Number(progress.toFixed(0)),
     completed_jobs: completedCount,
     error_jobs: errorCount,
+    connected_reference_count: selectedConnectedDraftIds.length,
   });
 
   return (
@@ -239,9 +376,7 @@ export default function BatchGenerate() {
           <div className="space-y-4">
             <p className="app-page-eyebrow">Batch generation</p>
             <h1 className="app-page-title">Generate multiple characters at once</h1>
-            <p className="app-page-summary">
-              Queue seeds, set mode and template, then monitor progress. Great for throughput-focused work.
-            </p>
+            <p className="app-page-summary">Queue seeds, set defaults, and monitor progress.</p>
           </div>
 
           <div className="app-panel-muted p-5">
@@ -264,7 +399,12 @@ export default function BatchGenerate() {
         </div>
       </section>
 
-      <div className="app-panel min-w-0 overflow-hidden space-y-3 p-6">
+      <CollapsibleSection
+        title="Seeds"
+        subtitle="Queue one seed per line"
+        preview={`${seeds.length} queued`}
+        defaultExpanded
+      >
         <div className="flex items-center gap-2">
           <List className="h-5 w-5 text-primary" />
           <h2 className="text-lg font-semibold">Seeds</h2>
@@ -326,9 +466,13 @@ export default function BatchGenerate() {
             </div>
           </div>
         )}
-      </div>
+      </CollapsibleSection>
 
-      <div className="app-panel min-w-0 overflow-hidden space-y-4 p-6">
+      <CollapsibleSection
+        title="Options"
+        subtitle="Mode, template, references, and concurrency"
+        preview={`${mode} • ${template || 'Default'} • ${parallel ? `parallel ${maxConcurrent}` : 'serial'}`}
+      >
         <h2 className="text-lg font-semibold">Options</h2>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -373,6 +517,102 @@ export default function BatchGenerate() {
           </div>
         </div>
 
+        {optionalTemplateAssets.length > 0 && (
+          <div className="space-y-3 rounded-lg border border-border/60 bg-background/40 p-4">
+            <div>
+              <label className="text-sm font-medium">Optional blueprint assets</label>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Toggle non-required assets for every seed in this batch run.
+              </p>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {optionalTemplateAssets.map((asset) => {
+                const enabled = selectedTemplateAssets.includes(asset.name);
+                return (
+                  <label
+                    key={asset.name}
+                    className="flex items-start gap-3 rounded-md border border-border/70 bg-background px-3 py-2 text-sm"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={enabled}
+                      onChange={() => handleToggleOptionalAsset(asset.name)}
+                      disabled={isRunning}
+                      className="mt-0.5 rounded border-input"
+                    />
+                    <span className="min-w-0">
+                      <span className="block font-medium text-foreground">{asset.name}</span>
+                      {asset.description && (
+                        <span className="block text-xs text-muted-foreground">{asset.description}</span>
+                      )}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        <div className="space-y-3 rounded-lg border border-border/60 bg-background/40 p-4">
+          <div>
+            <label className="text-sm font-medium">Connected character references</label>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Attach up to {MAX_CONNECTED_DRAFT_REFERENCES} saved drafts as continuity anchors for every seed in this batch.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <select
+              value={pendingConnectedDraftId}
+              onChange={(e) => setPendingConnectedDraftId(e.target.value)}
+              disabled={isRunning || availableConnectedDrafts.length === 0 || selectedConnectedDraftIds.length >= MAX_CONNECTED_DRAFT_REFERENCES}
+              aria-label="Batch connected draft reference"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+            >
+              <option value="">Add a saved draft...</option>
+              {availableConnectedDrafts.map((draft) => (
+                <option key={draft.review_id} value={draft.review_id}>
+                  {draft.character_name || draft.review_id}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={handleAddConnectedDraft}
+              disabled={!pendingConnectedDraftId || isRunning || selectedConnectedDraftIds.length >= MAX_CONNECTED_DRAFT_REFERENCES}
+              className="inline-flex items-center justify-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm hover:bg-accent disabled:opacity-50"
+            >
+              <Plus className="h-4 w-4" />
+              Add reference
+            </button>
+          </div>
+          {selectedConnectedDraftIds.length > 0 ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                <Users className="h-4 w-4 text-primary" />
+                {selectedConnectedDraftIds.length} connected reference{selectedConnectedDraftIds.length === 1 ? '' : 's'} selected
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {selectedConnectedDraftIds.map((draftId) => (
+                  <span key={draftId} className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-foreground">
+                    {connectedDraftLookup.get(draftId)?.character_name || draftId}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveConnectedDraft(draftId)}
+                      disabled={isRunning}
+                      aria-label={`Remove ${(connectedDraftLookup.get(draftId)?.character_name || draftId)}`}
+                      className="text-muted-foreground hover:text-foreground disabled:opacity-50"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">No connected references selected.</p>
+          )}
+        </div>
+
         {/* Parallel Settings */}
         <div className="flex flex-wrap items-center gap-4">
           <label className="flex items-center gap-2">
@@ -402,10 +642,15 @@ export default function BatchGenerate() {
             </div>
           )}
         </div>
-      </div>
+      </CollapsibleSection>
 
       {jobs.length > 0 && (
-        <div className="app-panel min-w-0 overflow-hidden space-y-4 p-6">
+        <CollapsibleSection
+          title="Progress"
+          subtitle="Live queue status"
+          preview={`${completedCount}/${jobs.length} complete${errorCount > 0 ? ` • ${errorCount} failed` : ''}`}
+          defaultExpanded
+        >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-lg font-semibold">Progress</h2>
             <span className="text-sm text-muted-foreground">
@@ -466,7 +711,7 @@ export default function BatchGenerate() {
               ))}
             </div>
           </div>
-        </div>
+        </CollapsibleSection>
       )}
 
       <div className="flex flex-wrap gap-4">
@@ -490,7 +735,12 @@ export default function BatchGenerate() {
         )}
       </div>
 
-      <section className="app-panel border-dashed p-5">
+      <CollapsibleSection
+        title="Staged modules"
+        subtitle="Scheduling and reusable batch presets stay out of the live flow"
+        preview="Not live"
+        className="border-dashed"
+      >
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
             <h2 className="text-lg font-semibold">Staged batch modules</h2>
@@ -514,7 +764,7 @@ export default function BatchGenerate() {
             </article>
           ))}
         </div>
-      </section>
+      </CollapsibleSection>
     </div>
   );
 }

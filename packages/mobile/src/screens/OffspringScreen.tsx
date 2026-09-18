@@ -4,8 +4,18 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { type ContentMode } from '@char-gen/shared';
 import { api } from '../config/api';
+import CollapsibleTray from '../components/CollapsibleTray';
 import { BabyIcon, UsersIcon } from '../components/Icons';
 import type { HomeStackNavigationProp, OffspringRouteProp } from '../types/navigation';
+
+function summarizeText(content: string, maxLength = 160): string {
+  const trimmed = content.replace(/\s+/g, ' ').trim();
+  if (trimmed.length <= maxLength) {
+    return trimmed;
+  }
+
+  return `${trimmed.slice(0, maxLength - 3).trimEnd()}...`;
+}
 
 export default function OffspringScreen() {
   const navigation = useNavigation<HomeStackNavigationProp<'Lineage'>>();
@@ -117,79 +127,78 @@ export default function OffspringScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Header */}
       <View style={styles.header}>
         <BabyIcon color="#7c3aed" size={28} />
-        <Text style={styles.title}>Offspring Generator</Text>
+        <Text style={styles.title}>Offspring</Text>
       </View>
-      <Text style={styles.subtitle}>
-        Create a child character from two parent characters
-      </Text>
+      <Text style={styles.subtitle}>Blend two drafts into a new character.</Text>
 
-      {/* Parent Selection */}
-      <View style={styles.selectionContainer}>
-        {/* Parent 1 */}
-        <View style={styles.parentCard}>
-          <View style={styles.parentHeader}>
-            <UsersIcon color="#7c3aed" size={20} />
-            <Text style={styles.parentLabel}>Parent 1</Text>
-          </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={styles.chipContainer}>
-              {drafts.filter(d => d.review_id !== parent2).map((draft) => (
-                <TouchableOpacity
-                  key={draft.review_id}
-                  onPress={() => setParent1(draft.review_id)}
-                  style={[styles.chip, parent1 === draft.review_id && styles.chipActive]}
-                >
-                  <Text style={[styles.chipText, parent1 === draft.review_id && styles.chipTextActive]} numberOfLines={1}>
-                    {draft.character_name || draft.review_id}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+      <CollapsibleTray
+        title="Parents"
+        subtitle="Choose two source drafts"
+        initiallyExpanded
+        preview={<Text style={styles.trayPreviewText}>{parent1 ? getParentName(parent1) : 'Parent 1'} • {parent2 ? getParentName(parent2) : 'Parent 2'}</Text>}
+      >
+        <View style={styles.selectionContainer}>
+          <View style={styles.parentCard}>
+            <View style={styles.parentHeader}>
+              <UsersIcon color="#7c3aed" size={20} />
+              <Text style={styles.parentLabel}>Parent 1</Text>
             </View>
-          </ScrollView>
-          {parent1 && (
-            <Text style={styles.selectedText}>Selected: {getParentName(parent1)}</Text>
-          )}
-        </View>
-
-        {/* Connector */}
-        <View style={styles.connector}>
-          <View style={styles.connectorLine} />
-          <BabyIcon color="#7c3aed" size={20} />
-          <View style={styles.connectorLine} />
-        </View>
-
-        {/* Parent 2 */}
-        <View style={styles.parentCard}>
-          <View style={styles.parentHeader}>
-            <UsersIcon color="#a78bfa" size={20} />
-            <Text style={styles.parentLabel}>Parent 2</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={styles.chipContainer}>
+                {drafts.filter((draft) => draft.review_id !== parent2).map((draft) => (
+                  <TouchableOpacity
+                    key={draft.review_id}
+                    onPress={() => setParent1(draft.review_id)}
+                    style={[styles.chip, parent1 === draft.review_id && styles.chipActive]}
+                  >
+                    <Text style={[styles.chipText, parent1 === draft.review_id && styles.chipTextActive]} numberOfLines={1}>
+                      {draft.character_name || draft.review_id}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+            {parent1 ? <Text style={styles.selectedText}>Selected: {getParentName(parent1)}</Text> : null}
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={styles.chipContainer}>
-              {drafts.filter(d => d.review_id !== parent1).map((draft) => (
-                <TouchableOpacity
-                  key={draft.review_id}
-                  onPress={() => setParent2(draft.review_id)}
-                  style={[styles.chip, parent2 === draft.review_id && styles.chipActive]}
-                >
-                  <Text style={[styles.chipText, parent2 === draft.review_id && styles.chipTextActive]} numberOfLines={1}>
-                    {draft.character_name || draft.review_id}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </ScrollView>
-          {parent2 && (
-            <Text style={styles.selectedText}>Selected: {getParentName(parent2)}</Text>
-          )}
-        </View>
-      </View>
 
-      {/* Mode Selection */}
-      <View style={styles.section}>
+          <View style={styles.connector}>
+            <View style={styles.connectorLine} />
+            <BabyIcon color="#7c3aed" size={20} />
+            <View style={styles.connectorLine} />
+          </View>
+
+          <View style={styles.parentCard}>
+            <View style={styles.parentHeader}>
+              <UsersIcon color="#a78bfa" size={20} />
+              <Text style={styles.parentLabel}>Parent 2</Text>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={styles.chipContainer}>
+                {drafts.filter((draft) => draft.review_id !== parent1).map((draft) => (
+                  <TouchableOpacity
+                    key={draft.review_id}
+                    onPress={() => setParent2(draft.review_id)}
+                    style={[styles.chip, parent2 === draft.review_id && styles.chipActive]}
+                  >
+                    <Text style={[styles.chipText, parent2 === draft.review_id && styles.chipTextActive]} numberOfLines={1}>
+                      {draft.character_name || draft.review_id}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+            {parent2 ? <Text style={styles.selectedText}>Selected: {getParentName(parent2)}</Text> : null}
+          </View>
+        </View>
+      </CollapsibleTray>
+
+      <CollapsibleTray
+        title="Options"
+        subtitle="Mode for the generated draft"
+        preview={<Text style={styles.trayPreviewText}>{mode}</Text>}
+      >
         <Text style={styles.sectionLabel}>Content Mode</Text>
         <View style={styles.modeContainer}>
           {modes.map((m) => (
@@ -202,9 +211,8 @@ export default function OffspringScreen() {
             </TouchableOpacity>
           ))}
         </View>
-      </View>
+      </CollapsibleTray>
 
-      {/* Generate Button */}
       <TouchableOpacity
         onPress={isGenerating ? handleCancel : handleGenerate}
         disabled={!parent1 || !parent2}
@@ -227,10 +235,13 @@ export default function OffspringScreen() {
         )}
       </TouchableOpacity>
 
-      {/* Result */}
       {result && (
-        <View style={styles.resultCard}>
-          <Text style={styles.resultTitle}>Offspring Created!</Text>
+        <CollapsibleTray
+          title="Result"
+          subtitle={result.characterName}
+          initiallyExpanded
+          preview={<Text style={styles.trayPreviewText}>{getParentName(parent1)} + {getParentName(parent2)}</Text>}
+        >
           <View style={styles.resultInfo}>
             <Text style={styles.resultLabel}>Character</Text>
             <Text style={styles.resultValue}>{result.characterName}</Text>
@@ -243,38 +254,36 @@ export default function OffspringScreen() {
             style={styles.viewButton}
             onPress={() => {
               if (result?.draftId) {
-                // Navigate to Drafts tab, then to the draft detail
                 navigation.navigate('Drafts', {
                   screen: 'DraftDetail',
                   params: { draftId: result.draftId }
                 });
               } else {
-                // Fallback: just go to drafts list
                 navigation.navigate('Drafts');
               }
             }}
           >
             <Text style={styles.viewButtonText}>View Character</Text>
           </TouchableOpacity>
-        </View>
+        </CollapsibleTray>
       )}
 
-      {/* Output Preview */}
       {output && (
-        <View style={styles.outputCard}>
-          <Text style={styles.outputTitle}>Generation Output</Text>
+        <CollapsibleTray
+          title="Generation output"
+          subtitle={isGenerating ? 'Streaming' : 'Complete'}
+          initiallyExpanded={isGenerating}
+          preview={<Text style={styles.trayPreviewText}>{summarizeText(output)}</Text>}
+        >
           <Text style={styles.outputText}>{output}</Text>
-        </View>
+        </CollapsibleTray>
       )}
 
-      {/* Empty State */}
       {!parent1 && !parent2 && !isGenerating && (
         <View style={styles.emptyState}>
           <BabyIcon color="#6b7280" size={48} />
           <Text style={styles.emptyTitle}>Select Two Parents</Text>
-          <Text style={styles.emptyText}>
-            Choose two characters to combine their traits into a new character
-          </Text>
+          <Text style={styles.emptyText}>Choose two drafts to blend into a new character.</Text>
         </View>
       )}
     </ScrollView>
@@ -294,6 +303,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 16,
+    gap: 16,
   },
   header: {
     flexDirection: 'row',
@@ -309,11 +319,15 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 14,
     color: '#9ca3af',
-    marginBottom: 24,
+    marginBottom: 4,
+  },
+  trayPreviewText: {
+    color: '#9ca3af',
+    fontSize: 12,
+    lineHeight: 18,
   },
   selectionContainer: {
     gap: 0,
-    marginBottom: 24,
   },
   parentCard: {
     backgroundColor: '#1f1f1f',
@@ -408,7 +422,6 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 8,
     alignItems: 'center',
-    marginBottom: 24,
   },
   generateButtonDisabled: {
     backgroundColor: '#3f3f46',

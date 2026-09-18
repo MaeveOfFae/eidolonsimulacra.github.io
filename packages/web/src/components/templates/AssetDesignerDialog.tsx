@@ -13,6 +13,48 @@ interface AssetDesignerDialogProps {
   existingAssets?: string[];
 }
 
+const IMPORT_ALIAS_GROUPS = [
+  {
+    title: 'Core card fields',
+    aliases: [
+      'description',
+      'first_mes',
+      'mes_example',
+      'system_prompt',
+      'personality',
+      'scenario',
+      'creator_notes',
+    ],
+  },
+  {
+    title: 'Card metadata',
+    aliases: [
+      'avatar',
+      'creator',
+      'character_version',
+      'alternate_greetings',
+      'character_book',
+    ],
+  },
+  {
+    title: 'Nested extension paths',
+    aliases: [
+      'extensions.chub',
+      'extensions.chub.full_path',
+      'extensions.depth_prompt',
+      'lorebook',
+      'world_info',
+    ],
+  },
+] as const;
+
+function parseImportAliases(value: string): string[] {
+  return value
+    .split(',')
+    .map((alias) => alias.trim())
+    .filter((alias) => alias.length > 0);
+}
+
 export default function AssetDesignerDialog({
   open,
   onClose,
@@ -30,6 +72,7 @@ export default function AssetDesignerDialog({
   const [showBlueprintBrowser, setShowBlueprintBrowser] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dependsOn, setDependsOn] = useState<string[]>([]);
+  const [importAliases, setImportAliases] = useState('');
   const [blueprintContentValue, setBlueprintContentValue] = useState('');
 
   // Initialize with existing asset data
@@ -39,6 +82,7 @@ export default function AssetDesignerDialog({
       setDescription(asset.description);
       setRequired(asset.required);
       setDependsOn(asset.depends_on || []);
+      setImportAliases((asset.import_aliases ?? []).join(', '));
       setBlueprintContentValue(blueprintContent || '');
       if (asset.blueprint_file) {
         setCustomBlueprint(asset.blueprint_file);
@@ -53,6 +97,7 @@ export default function AssetDesignerDialog({
       setCustomBlueprint('');
       setSelectedBlueprint(null);
       setDependsOn([]);
+      setImportAliases('');
       setBlueprintContentValue('');
     }
   }, [asset, blueprintContent, open]);
@@ -94,6 +139,10 @@ export default function AssetDesignerDialog({
       required,
       depends_on: dependsOn,
       blueprint_file: getBlueprintPath(),
+      import_aliases: importAliases
+        .split(',')
+        .map((alias) => alias.trim())
+        .filter((alias) => alias.length > 0),
     };
 
     onSave(newAsset, blueprintContentValue);
@@ -107,6 +156,7 @@ export default function AssetDesignerDialog({
       setCustomBlueprint('');
       setSelectedBlueprint(null);
       setDependsOn([]);
+      setImportAliases('');
       setBlueprintContentValue('');
     }
   };
@@ -123,6 +173,17 @@ export default function AssetDesignerDialog({
         ? prev.filter(d => d !== dep)
         : [...prev, dep]
     );
+  };
+
+  const currentImportAliases = parseImportAliases(importAliases);
+
+  const addImportAlias = (alias: string) => {
+    const normalizedAliases = parseImportAliases(importAliases);
+    if (normalizedAliases.includes(alias)) {
+      return;
+    }
+
+    setImportAliases([...normalizedAliases, alias].join(', '));
   };
 
   if (!open) return null;
@@ -310,6 +371,62 @@ export default function AssetDesignerDialog({
                 </div>
               </div>
             )}
+
+            <div>
+              <label className="block text-sm font-medium mb-1.5">
+                Import Aliases
+              </label>
+              <input
+                type="text"
+                value={importAliases}
+                onChange={(e) => setImportAliases(e.target.value)}
+                placeholder="e.g., creator_notes, character_book, extensions.chub.full_path"
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Optional external field names to map into this asset when importing character cards for this template.
+              </p>
+
+              <div className="mt-3 rounded-lg border border-border/60 bg-background/40 p-3 space-y-3">
+                <div>
+                  <div className="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                    Common Import Fields
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Click a field to add it. Aliases are matched in order, and dot paths let you target nested Chub metadata.
+                  </p>
+                </div>
+
+                {IMPORT_ALIAS_GROUPS.map((group) => (
+                  <div key={group.title} className="space-y-2">
+                    <div className="text-xs font-medium text-foreground">{group.title}</div>
+                    <div className="flex flex-wrap gap-2">
+                      {group.aliases.map((alias) => {
+                        const selected = currentImportAliases.includes(alias);
+
+                        return (
+                          <button
+                            key={alias}
+                            type="button"
+                            onClick={() => addImportAlias(alias)}
+                            disabled={selected}
+                            className={cn(
+                              'rounded-full border px-2.5 py-1 text-[11px] font-mono transition-colors',
+                              selected
+                                ? 'border-primary/40 bg-primary/10 text-primary'
+                                : 'border-border bg-background text-muted-foreground hover:border-primary/35 hover:text-foreground'
+                            )}
+                            title={selected ? 'Already added' : `Add ${alias}`}
+                          >
+                            {alias}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
 
             <div>
               <label className="block text-sm font-medium mb-1.5">

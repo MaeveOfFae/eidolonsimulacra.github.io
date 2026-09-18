@@ -3,6 +3,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { CheckCircle, FolderSearch, Loader2, ShieldAlert, ShieldCheck } from 'lucide-react';
 import type { ValidationResponse } from '@char-gen/shared';
 import { api } from '@/lib/api';
+import CollapsibleSection from '../common/CollapsibleSection';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
 
 export default function Validation() {
@@ -59,9 +60,7 @@ export default function Validation() {
           <div className="space-y-3">
             <p className="app-page-eyebrow">Validation</p>
             <h1 className="app-page-title">Run structural checks</h1>
-            <p className="app-page-summary">
-              Validate a path or draft before export.
-            </p>
+            <p className="app-page-summary">Validate a path or saved draft before export.</p>
           </div>
 
           <div className="app-panel-muted p-3.5">
@@ -81,7 +80,12 @@ export default function Validation() {
       </section>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <section className="app-panel space-y-4 p-5">
+        <CollapsibleSection
+          title="Validate path"
+          subtitle="Run the validator against a saved draft path"
+          preview={path.trim() || 'No path selected'}
+          defaultExpanded
+        >
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <FolderSearch className="h-4 w-4 text-primary" />
@@ -106,9 +110,15 @@ export default function Validation() {
               Validate
             </button>
           </div>
-        </section>
+        </CollapsibleSection>
 
-        <section data-tour-anchor="validation-draft-panel" className="app-panel space-y-4 p-5">
+        <CollapsibleSection
+          title="Validate draft"
+          subtitle="Pick a reviewed draft and run the same checks"
+          preview={selectedDraftId || 'No draft selected'}
+          defaultExpanded={Boolean(selectedDraftId)}
+          className="min-w-0"
+        >
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <ShieldAlert className="h-4 w-4 text-primary" />
@@ -140,7 +150,7 @@ export default function Validation() {
               Validate Draft
             </button>
           </div>
-        </section>
+        </CollapsibleSection>
       </div>
 
       {mutationError && (
@@ -150,7 +160,12 @@ export default function Validation() {
       )}
 
       {result && (
-        <section data-tour-anchor="validation-results" className="app-panel space-y-3 p-5">
+        <CollapsibleSection
+          title="Results"
+          subtitle={result.path}
+          preview={`${result.success ? 'Passed' : 'Failed'}${findings.length > 0 ? ` • ${findings.length} line${findings.length === 1 ? '' : 's'}` : ''}`}
+          defaultExpanded
+        >
           <div className="flex items-start justify-between gap-4">
             <div>
               <h2 className="text-base font-semibold">Validation Results</h2>
@@ -181,7 +196,7 @@ export default function Validation() {
               <pre className="whitespace-pre-wrap text-xs text-destructive">{result.errors}</pre>
             </div>
           )}
-        </section>
+        </CollapsibleSection>
       )}
 
     </div>

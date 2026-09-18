@@ -4,6 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
 import type { LineageNode } from '@char-gen/shared';
 import { api } from '../config/api';
+import CollapsibleTray from '../components/CollapsibleTray';
 import type { HomeStackNavigationProp } from '../types/navigation';
 
 function LineageRow({
@@ -124,34 +125,44 @@ export default function LineageScreen() {
       <View style={styles.headerRow}>
         <View style={styles.headerTextWrap}>
           <Text style={styles.title}>Lineage</Text>
-          <Text style={styles.subtitle}>Browse character family trees and offspring branches.</Text>
+          <Text style={styles.subtitle}>Browse roots, branches, and descendants.</Text>
         </View>
         <TouchableOpacity style={styles.refreshButton} onPress={() => void refetch()}>
           <Text style={styles.refreshButtonText}>{isFetching ? 'Refreshing...' : 'Refresh'}</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={styles.statsGrid}>
-        <View style={styles.statCard}>
-          <Text style={styles.statValue}>{data?.stats.total_characters ?? 0}</Text>
-          <Text style={styles.statLabel}>Characters</Text>
+      <CollapsibleTray
+        title="Stats"
+        subtitle="Library lineage snapshot"
+        preview={<Text style={styles.trayPreviewText}>{data?.stats.total_characters ?? 0} characters • {data?.stats.generations ?? 0} generations</Text>}
+      >
+        <View style={styles.statsGrid}>
+          <View style={styles.statCard}>
+            <Text style={styles.statValue}>{data?.stats.total_characters ?? 0}</Text>
+            <Text style={styles.statLabel}>Characters</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statValue}>{data?.stats.root_characters ?? 0}</Text>
+            <Text style={styles.statLabel}>Roots</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statValue}>{data?.stats.leaf_characters ?? 0}</Text>
+            <Text style={styles.statLabel}>Leaves</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statValue}>{data?.stats.generations ?? 0}</Text>
+            <Text style={styles.statLabel}>Generations</Text>
+          </View>
         </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statValue}>{data?.stats.root_characters ?? 0}</Text>
-          <Text style={styles.statLabel}>Roots</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statValue}>{data?.stats.leaf_characters ?? 0}</Text>
-          <Text style={styles.statLabel}>Leaves</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statValue}>{data?.stats.generations ?? 0}</Text>
-          <Text style={styles.statLabel}>Generations</Text>
-        </View>
-      </View>
+      </CollapsibleTray>
 
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Filters</Text>
+      <CollapsibleTray
+        title="Filters"
+        subtitle="Generation, roots or leaves, and depth"
+        initiallyExpanded
+        preview={<Text style={styles.trayPreviewText}>{generationFilter === 'all' ? 'all generations' : `Gen ${generationFilter}`} • {rootsOnly ? 'roots' : leavesOnly ? 'leaves' : 'all nodes'} • depth {maxDepth}</Text>}
+      >
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
           <TouchableOpacity
             style={[styles.chip, generationFilter === 'all' && styles.chipActive]}
@@ -205,10 +216,14 @@ export default function LineageScreen() {
             </TouchableOpacity>
           </View>
         </View>
-      </View>
+      </CollapsibleTray>
 
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Family Tree</Text>
+      <CollapsibleTray
+        title="Family tree"
+        subtitle={`${renderedTree.length} visible node${renderedTree.length === 1 ? '' : 's'}`}
+        initiallyExpanded
+        preview={<Text style={styles.trayPreviewText}>{selectedNode ? selectedNode.character_name : 'Select a node to inspect details'}</Text>}
+      >
         {renderedTree.length === 0 ? (
           <Text style={styles.emptyText}>No lineage data matches the current filters.</Text>
         ) : (
@@ -224,10 +239,14 @@ export default function LineageScreen() {
             ))}
           </View>
         )}
-      </View>
+      </CollapsibleTray>
 
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Character Details</Text>
+      <CollapsibleTray
+        title="Details"
+        subtitle={selectedNode ? selectedNode.character_name : 'Select a character'}
+        initiallyExpanded={false}
+        preview={<Text style={styles.trayPreviewText}>{selectedNode ? `Gen ${selectedNode.generation}${selectedNode.mode ? ` • ${selectedNode.mode}` : ''}` : 'No character selected'}</Text>}
+      >
         {!selectedNode ? (
           <Text style={styles.emptyText}>Select a character to inspect lineage details.</Text>
         ) : (
@@ -304,7 +323,7 @@ export default function LineageScreen() {
             </View>
           </View>
         )}
-      </View>
+      </CollapsibleTray>
     </ScrollView>
   );
 }
@@ -342,6 +361,11 @@ const styles = StyleSheet.create({
   subtitle: {
     color: '#9ca3af',
     fontSize: 14,
+  },
+  trayPreviewText: {
+    color: '#9ca3af',
+    fontSize: 12,
+    lineHeight: 18,
   },
   refreshButton: {
     alignSelf: 'flex-start',

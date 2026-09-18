@@ -92,6 +92,8 @@ model Draft {
   offspringType  String?
   customInstructions String?
   componentSendOrder String[] @default([])
+  connectedDraftIds String[] @default([])
+  cardMetadata   Json?    @map("card_metadata")
   assets         Json     @default("{}") // Record<string, string>
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -268,6 +270,8 @@ model World {
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   timelines Timeline[]
   characters WorldCharacter[]
+  factions WorldFaction[]
+  locations WorldLocation[]
 
   @@unique([userId, name])
   @@index([userId])
@@ -290,6 +294,44 @@ model WorldCharacter {
   @@unique([worldId, characterName])
   @@index([worldId])
   @@map("world_characters")
+}
+
+model WorldFaction {
+  id          String   @id @default(uuid())
+  worldId     String
+  name        String
+  description String?
+  role        String?
+  notes       String?
+  tags        String[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  world World @relation(fields: [worldId], references: [id], onDelete: Cascade)
+
+  @@unique([worldId, name])
+  @@index([worldId])
+  @@map("world_factions")
+}
+
+model WorldLocation {
+  id          String   @id @default(uuid())
+  worldId     String
+  name        String
+  description String?
+  category    String?
+  notes       String?
+  tags        String[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  world World @relation(fields: [worldId], references: [id], onDelete: Cascade)
+
+  @@unique([worldId, name])
+  @@index([worldId])
+  @@map("world_locations")
 }
 
 // =============================================================================

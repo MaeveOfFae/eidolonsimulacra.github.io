@@ -4,10 +4,9 @@
 import 'react';
 
 declare module 'react' {
-  // Override to allow the older refs property that React Native types expect
-  interface Component<P = {}, S = {}, SS = any> {
-    refs: {
-      [key: string]: React.ReactInstance;
-    };
+  // Keep legacy refs compatible with older React Native component instance types
+  // without forcing every host component instance to define the property.
+  interface Component {
+    refs?: Record<string, React.ReactInstance>;
   }
 }

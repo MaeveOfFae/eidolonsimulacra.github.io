@@ -5,18 +5,19 @@ import {
   Baby,
   Dice1,
   FolderOpen,
-  GitCompare,
   Layers,
   PlayCircle,
   RotateCcw,
   Settings,
   ShieldCheck,
   Sparkles,
+  ScissorsLineDashed,
   Zap,
 } from 'lucide-react';
 import type { DraftMetadata } from '@char-gen/shared';
 import { api } from '@/lib/api';
 import { getGuidedTour, gettingStartedSteps, guidedTours } from '@/lib/help';
+import CollapsibleSection from './common/CollapsibleSection';
 import { useGuidedTour } from './common/GuidedTourContext';
 import { useAssistantScreenContext } from './common/useAssistantContext';
 
@@ -71,6 +72,12 @@ const EXPLORATION_ACTIONS = [
     icon: ShieldCheck,
   },
   {
+    to: '/optimize',
+    label: 'Token Optimization',
+    description: 'Shorten text without losing relevant data.',
+    icon: ScissorsLineDashed,
+  },
+  {
     to: '/batch',
     label: 'Batch',
     description: 'Run multiple seeds in sequence.',
@@ -112,58 +119,71 @@ interface LaneCardProps {
   icon: React.ComponentType<{ className?: string }>;
 }
 
-function LaneCard({ to, eyebrow, title, description, detail, icon: Icon }: LaneCardProps) {
+function WorkflowStepRow({ to, eyebrow, title, description, detail, icon: Icon }: LaneCardProps) {
   return (
-    <Link to={to} className="group flex flex-col rounded-2xl border border-border/60 bg-card/75 p-5 transition-all duration-300 hover:border-primary/40 hover:bg-card/95 hover:-translate-y-0.5">
-      <div className="space-y-3">
-        <p className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground font-semibold" style={{ fontFamily: '"IBM Plex Mono", monospace' }}>
-          {eyebrow}
-        </p>
-        <div className="flex items-start justify-between gap-3">
-          <h3 className="text-lg font-semibold text-foreground" style={{ fontFamily: '"Space Grotesk", sans-serif' }}>
+    <Link to={to} className="group flex items-start justify-between gap-4 rounded-2xl border border-border/60 bg-background/35 px-4 py-4 transition-all duration-300 hover:border-primary/35 hover:bg-background/55">
+      <div className="flex min-w-0 items-start gap-3">
+        <div className="rounded-xl border border-border/60 bg-background/60 p-2 text-primary transition-colors duration-300 group-hover:bg-primary/10">
+          <Icon className="h-4 w-4" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground font-semibold" style={{ fontFamily: '"IBM Plex Mono", monospace' }}>
+            {eyebrow}
+          </p>
+          <h3 className="mt-2 text-base font-semibold text-foreground" style={{ fontFamily: '"Space Grotesk", sans-serif' }}>
             {title}
           </h3>
-          <div className="rounded-lg border border-border/60 bg-background/60 p-2 text-primary transition-transform duration-300 group-hover:bg-primary/10 shrink-0">
-            <Icon className="h-4 w-4" />
-          </div>
+          <p className="mt-1.5 text-sm leading-6 text-muted-foreground">{description}</p>
+          <p className="mt-2 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground" style={{ fontFamily: '"IBM Plex Mono", monospace' }}>
+            {detail}
+          </p>
         </div>
-        <p className="text-sm leading-6 text-muted-foreground">{description}</p>
       </div>
-
-      <div className="mt-5 flex items-center justify-between gap-2 border-t border-border/60 pt-3">
-        <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground font-medium" style={{ fontFamily: '"IBM Plex Mono", monospace' }}>
-          {detail}
-        </span>
-        <span className="text-primary transition-transform duration-300 group-hover:translate-x-0.5">
-          <ArrowRight className="h-4 w-4" />
-        </span>
-      </div>
+      <span className="shrink-0 text-primary transition-transform duration-300 group-hover:translate-x-0.5">
+        <ArrowRight className="h-4 w-4" />
+      </span>
     </Link>
   );
 }
 
-interface ActionLinkProps {
+interface ToolLinkProps {
   to: string;
   label: string;
   description: string;
   icon: React.ComponentType<{ className?: string }>;
 }
 
-function ActionLink({ to, label, description, icon: Icon }: ActionLinkProps) {
+function ToolLink({ to, label, description, icon: Icon }: ToolLinkProps) {
   return (
-    <Link to={to} className="group flex h-full flex-col justify-between rounded-2xl border border-border/60 bg-card/70 p-4 transition-all duration-300 hover:border-primary/35 hover:bg-card/90 hover:-translate-y-0.5">
-      <div className="space-y-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="rounded-lg border border-border/60 bg-background/60 p-2 text-primary">
-            <Icon className="h-4 w-4" />
-          </div>
-          <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform duration-300 group-hover:translate-x-1 group-hover:text-primary shrink-0" />
-        </div>
-        <div>
-          <h3 className="text-base font-semibold text-foreground">{label}</h3>
-          <p className="mt-1.5 text-sm leading-5 text-muted-foreground">{description}</p>
-        </div>
+    <Link
+      to={to}
+      className="group inline-flex items-center gap-3 rounded-xl border border-border/60 bg-background/45 px-3.5 py-3 text-sm text-foreground transition-colors hover:border-primary/35 hover:text-primary"
+    >
+      <div className="rounded-lg border border-border/60 bg-background/60 p-1.5 text-primary">
+        <Icon className="h-3.5 w-3.5" />
       </div>
+      <div className="min-w-0">
+        <div className="font-medium">{label}</div>
+        <div className="text-xs text-muted-foreground transition-colors group-hover:text-muted-foreground">{description}</div>
+      </div>
+    </Link>
+  );
+}
+
+interface GettingStartedRowProps {
+  to: string;
+  title: string;
+  description: string;
+}
+
+function GettingStartedRow({ to, title, description }: GettingStartedRowProps) {
+  return (
+    <Link to={to} className="group flex items-start justify-between gap-3 rounded-xl border border-border/60 bg-background/40 px-4 py-3 transition-colors hover:border-primary/35 hover:bg-background/60">
+      <div className="min-w-0">
+        <div className="text-sm font-semibold text-foreground">{title}</div>
+        <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p>
+      </div>
+      <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-primary transition-transform duration-300 group-hover:translate-x-0.5" />
     </Link>
   );
 }
@@ -217,7 +237,7 @@ export default function Home() {
   const activeTourStep = activeTour?.steps[activeStepIndex] ?? null;
 
   return (
-    <div className="space-y-10 pb-10">
+    <div className="space-y-8 pb-10">
       <section className="home-panel home-grid-bg overflow-hidden rounded-[2rem] border border-border/60 px-6 py-8 sm:px-8 sm:py-10">
         <div className="pointer-events-none absolute inset-0 opacity-80">
           <div className="home-orbit absolute -left-12 top-14 h-44 w-44 rounded-full border border-primary/25 bg-primary/10 blur-2xl" />
@@ -230,26 +250,24 @@ export default function Home() {
             <div className="space-y-5">
               <div className="space-y-3">
                 <p className="home-kicker">Workspace</p>
-                <h1 className="max-w-4xl text-5xl font-semibold tracking-tight text-foreground sm:text-6xl" style={{ fontFamily: '"Space Grotesk", sans-serif' }}>
-                  Draft first. Organize later.
+                <h1 className="max-w-4xl text-4xl font-semibold tracking-tight text-foreground sm:text-5xl" style={{ fontFamily: '"Space Grotesk", sans-serif' }}>
+                  Return to the next useful task.
                 </h1>
-                <p className="max-w-2xl text-base leading-7 text-muted-foreground">
-                  Use one clear path: set the model, pick a template, generate a draft, then review it in the library.
-                </p>
+                <p className="max-w-2xl text-base leading-7 text-muted-foreground">Keep setup, generation, and review in view without surfacing every tool at once.</p>
               </div>
 
               <div className="flex flex-wrap gap-2">
                 <Link to="/generate" className="inline-flex items-center gap-2 rounded-2xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
                   <Zap className="h-4 w-4" />
-                  Start fresh draft
+                  Start a draft
                 </Link>
                 <Link to="/drafts" className="inline-flex items-center gap-2 rounded-2xl border border-border/60 bg-background/55 px-5 py-3 text-sm font-semibold text-foreground transition-colors hover:border-primary/35 hover:text-primary">
                   <FolderOpen className="h-4 w-4" />
-                  View library
+                  Open library
                 </Link>
                 <Link to="/settings" className="inline-flex items-center gap-2 rounded-2xl border border-border/60 bg-background/55 px-5 py-3 text-sm font-semibold text-foreground transition-colors hover:border-primary/35 hover:text-primary">
                   <Settings className="h-4 w-4" />
-                  Settings
+                  Configure runtime
                 </Link>
               </div>
             </div>
@@ -263,33 +281,17 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="space-y-5">
-        <div className="max-w-2xl">
-          <h2 className="text-2xl font-semibold tracking-tight text-foreground" style={{ fontFamily: '"Space Grotesk", sans-serif' }}>
-            Main workflow
-          </h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Four steps. One path.
-          </p>
-        </div>
-
-        <div className="grid gap-4 xl:grid-cols-4 md:grid-cols-2">
-          {WORKFLOW_LANES.map((lane) => (
-            <LaneCard key={lane.to} {...lane} />
-          ))}
-        </div>
-      </section>
-
-      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
+      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
+        <div className="space-y-6">
         <div className="rounded-[1.75rem] border border-border/60 p-6 sm:p-7">
           <div className="mb-6">
             <h2 className="text-2xl font-semibold text-foreground" style={{ fontFamily: '"Space Grotesk", sans-serif' }}>
-              {recentDrafts.length > 0 ? 'Your recent drafts' : 'No drafts yet'}
+              {recentDrafts.length > 0 ? 'Continue working' : 'Start here'}
             </h2>
             <p className="mt-2 text-sm text-muted-foreground">
               {recentDrafts.length > 0
-                ? 'Quick access to your latest work. Use the library for the full list.'
-                : 'Start with a fresh draft or import from the library.'}
+                ? 'Jump back into the latest draft without scanning the full library.'
+                : 'Use the shortest path from setup to a first saved draft.'}
             </p>
           </div>
 
@@ -305,8 +307,15 @@ export default function Home() {
               ))}
             </div>
           ) : (
-            <div className="rounded-[1.5rem] border border-dashed border-border/70 bg-background/40 p-6 text-center text-sm text-muted-foreground">
-              <p>Generate your first draft or check the library.</p>
+            <div className="space-y-3 rounded-[1.5rem] border border-dashed border-border/70 bg-background/40 p-4">
+              {gettingStartedSteps.slice(0, 4).map((step) => (
+                <GettingStartedRow
+                  key={step.id}
+                  to={step.to}
+                  title={step.title}
+                  description={step.description}
+                />
+              ))}
             </div>
           )}
 
@@ -318,20 +327,47 @@ export default function Home() {
           </div>
         </div>
 
-        <aside className="space-y-6">
-          <section className="rounded-[1.75rem] border border-border/60 p-6">
-            <h3 className="text-lg font-semibold text-foreground" style={{ fontFamily: '"Space Grotesk", sans-serif' }}>
-              {activeTour && activeTourStep
-                ? 'Continue tour'
-                : nextIncompleteTour
-                  ? 'Try a tour'
-                  : 'Tours done'}
-            </h3>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {completedTours}/{guidedTours.length} completed
-            </p>
+        <CollapsibleSection
+          title="Supporting tools"
+          subtitle="Keep these nearby without giving them the same weight as the main workflow"
+          preview={EXPLORATION_ACTIONS.map((action) => action.label).slice(0, 3).join(' • ')}
+          className="rounded-[1.75rem]"
+        >
+          <div className="grid gap-3 md:grid-cols-2">
+            {EXPLORATION_ACTIONS.map((action) => (
+              <ToolLink key={action.to} {...action} />
+            ))}
+          </div>
+        </CollapsibleSection>
+        </div>
 
-            <div className="mt-4 flex flex-wrap gap-2">
+        <aside className="space-y-6">
+          <CollapsibleSection
+            title="Next steps"
+            subtitle="Keep one path visible from setup through review"
+            preview={WORKFLOW_LANES.map((lane) => lane.eyebrow).join(' • ')}
+            defaultExpanded
+            className="rounded-[1.75rem]"
+          >
+            <div className="space-y-2">
+              {WORKFLOW_LANES.map((lane) => (
+                <WorkflowStepRow key={lane.to} {...lane} />
+              ))}
+            </div>
+          </CollapsibleSection>
+
+          <CollapsibleSection
+            title="Guided help"
+            subtitle={activeTour && activeTourStep
+              ? `Next stop: ${activeTourStep.title}`
+              : nextIncompleteTour
+                ? `${completedTours}/${guidedTours.length} tours completed`
+                : 'All guided tours are complete.'}
+            preview={activeTour ? 'Resume active tour' : nextIncompleteTour ? nextIncompleteTour.title : 'All tours complete'}
+            defaultExpanded={Boolean(activeTour)}
+            className="rounded-[1.75rem]"
+          >
+            <div className="flex flex-wrap gap-2">
               {activeTour ? (
                 <button
                   type="button"
@@ -362,46 +398,13 @@ export default function Home() {
                   Restart
                 </button>
               ) : null}
-            </div>
-          </section>
-
-          <section className="rounded-[1.75rem] border border-border/60 p-6">
-            <h3 className="text-lg font-semibold text-foreground" style={{ fontFamily: '"Space Grotesk", sans-serif' }}>
-              Quick actions
-            </h3>
-            <div className="mt-4 space-y-2">
-              <Link to="/generate" className="flex items-center justify-between rounded-xl border border-border/60 bg-background/50 px-4 py-3 text-sm font-medium text-foreground transition-colors hover:border-primary/35 hover:text-primary">
-                Start a draft
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-              <Link to="/templates" className="flex items-center justify-between rounded-xl border border-border/60 bg-background/50 px-4 py-3 text-sm font-medium text-foreground transition-colors hover:border-primary/35 hover:text-primary">
-                Manage templates
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-              <Link to="/help" className="flex items-center justify-between rounded-xl border border-border/60 bg-background/50 px-4 py-3 text-sm font-medium text-foreground transition-colors hover:border-primary/35 hover:text-primary">
+              <Link to="/help" className="inline-flex items-center gap-2 rounded-2xl border border-border/60 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary/35 hover:text-primary">
+                <PlayCircle className="h-4 w-4" />
                 Open help center
-                <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
-          </section>
+          </CollapsibleSection>
         </aside>
-      </section>
-
-      <section className="space-y-5">
-        <div className="max-w-2xl">
-          <h2 className="text-2xl font-semibold tracking-tight text-foreground" style={{ fontFamily: '"Space Grotesk", sans-serif' }}>
-            Secondary tools
-          </h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Use these when the main path is not enough.
-          </p>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {EXPLORATION_ACTIONS.map((action) => (
-            <ActionLink key={action.to} {...action} />
-          ))}
-        </div>
       </section>
     </div>
   );

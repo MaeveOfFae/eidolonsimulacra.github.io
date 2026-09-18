@@ -4,18 +4,53 @@
  */
 
 import type {
-  LLMEngine,
   LLMConfig,
+  LLMEngine,
   LLMProvider,
 } from './types';
-import type { OpenAICompatConfig } from './openai-compat';
-import { detectProviderFromModel, ProviderEndpoints } from './types';
+import { detectProviderFromModel } from './types';
 import { listModels as listModelsFromProvider, OpenAICompatEngine } from './openai-compat';
+import { GoogleEngine } from './google';
+import { AnthropicEngine } from './anthropic';
+
+export interface ProviderHeaderOptions {
+  accept?: string;
+  contentType?: string;
+}
 
 export interface CreateEngineOptions extends Omit<LLMConfig, 'provider'> {
   provider?: LLMProvider;
   apiKeys?: Record<string, string>;
   defaultApiKey?: string;
+}
+
+function normalizeApiKeyValue(value: string): string {
+  return value
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .trim()
+    .replace(/^['"]+|['"]+$/g, '');
+}
+
+function isInvalidApiKeyValue(value: string): boolean {
+  if (!value) {
+    return true;
+  }
+
+  if (/[^\x20-\x7E]/.test(value)) {
+    return true;
+  }
+
+  if (/\r|\n/.test(value)) {
+    return true;
+  }
+
+  return [
+    /^window\.fetch:/i,
+    /cannot convert value in record<bytestring/i,
+    /^bearer\s+window\.fetch:/i,
+  ].some((pattern) => pattern.test(value));
 }
 
 /**
@@ -30,13 +65,6 @@ function normalizeOpenAICompatModel(model: string, baseUrl: string): string {
 }
 
 /**
- * Get base URL for a provider (if not explicitly provided).
- */
-function getProviderBaseUrl(provider: LLMProvider): string {
-  return ProviderEndpoints[provider];
-}
-
-/**
  * Get API key for a provider from the keys object.
  * Falls back to defaultApiKey if no provider-specific key is found.
  */
@@ -44,11 +72,92 @@ function getApiKey(
   provider: LLMProvider,
   options: Omit<CreateEngineOptions, 'provider' | 'model'>
 ): string | undefined {
+  if (provider === 'ollama') {
+    return undefined;
+  }
+
   if (options.apiKeys?.[provider]) {
     return options.apiKeys[provider];
   }
-  // Fallback to legacy default key
+
   return options.apiKey || options.defaultApiKey;
+}
+
+export function getProviderAuthType(provider: LLMProvider): 'bearer' | 'raw' {
+  switch (provider) {
+    case 'google':
+    case 'anthropic':
+      return 'raw';
+    default:
+      return 'bearer';
+  }
+}
+
+export function buildProviderHeaders(
+  provider: LLMProvider,
+  apiKey?: string,
+  options: ProviderHeaderOptions = {}
+): Record<string, string> {
+  const headers: Record<string, string> = {};
+
+  if (options.contentType) {
+    headers['Content-Type'] = options.contentType;
+  }
+
+  if (options.accept) {
+    headers.Accept = options.accept;
+  }
+
+  const normalizedApiKey = typeof apiKey === 'string' ? normalizeApiKeyValue(apiKey) : undefined;
+
+  if (normalizedApiKey) {
+    if (isInvalidApiKeyValue(normalizedApiKey)) {
+      throw new Error('Configured API key is invalid or corrupted. Re-enter it in Settings and try again.');
+    }
+
+    switch (provider) {
+      case 'anthropic':
+        headers['x-api-key'] = normalizedApiKey;
+        headers['anthropic-version'] = '2023-06-01';
+        break;
+      case 'google':
+        headers['x-goog-api-key'] = normalizedApiKey;
+        break;
+      default:
+        headers.Authorization = `Bearer ${normalizedApiKey}`;
+        break;
+    }
+  }
+
+  if (provider === 'openrouter') {
+    headers['HTTP-Referer'] = typeof window !== 'undefined' ? window.location.origin : 'https://eidolon-simulacra.app';
+    headers['X-OpenRouter-Title'] = 'Eidolon Simulacra';
+  }
+
+  return headers;
+}
+
+export function getDefaultBaseUrl(provider: LLMProvider): string {
+  switch (provider) {
+    case 'openai':
+      return 'https://api.openai.com/v1';
+    case 'google':
+      return 'https://generativelanguage.googleapis.com/v1beta';
+    case 'openrouter':
+      return 'https://openrouter.ai/api/v1';
+    case 'anthropic':
+      return 'https://api.anthropic.com';
+    case 'deepseek':
+      return 'https://api.deepseek.com';
+    case 'zai':
+      return 'https://open.bigmodel.cn/api/paas/v4';
+    case 'moonshot':
+      return 'https://api.moonshot.cn/v1';
+    case 'ollama':
+      return 'http://localhost:11434/v1';
+    default:
+      return 'https://api.openai.com/v1';
+  }
 }
 
 /**
@@ -62,7 +171,7 @@ export function createEngine(options: CreateEngineOptions): LLMEngine {
   const provider = explicitProvider || detectProviderFromModel(model);
 
   // Determine base URL
-  const baseUrl = explicitBaseUrl || getProviderBaseUrl(provider);
+  const baseUrl = explicitBaseUrl || getDefaultBaseUrl(provider);
 
   // Get API key
   const apiKey = getApiKey(provider, { apiKeys, defaultApiKey, ...rest });
@@ -71,7 +180,7 @@ export function createEngine(options: CreateEngineOptions): LLMEngine {
   const normalizedModel = normalizeOpenAICompatModel(model, baseUrl);
 
   // Create engine configuration
-  const config: OpenAICompatConfig = {
+  const config: LLMConfig = {
     provider,
     model: normalizedModel,
     apiKey: apiKey || '',
@@ -79,9 +188,22 @@ export function createEngine(options: CreateEngineOptions): LLMEngine {
     ...rest,
   };
 
-  // For now, all providers use the OpenAI-compatible API
-  // This covers: OpenAI, OpenRouter, Anthropic, DeepSeek, Zai, Moonshot
-  return new OpenAICompatEngine(config);
+  switch (provider) {
+    case 'google':
+      return new GoogleEngine(config);
+
+    case 'anthropic':
+      return new AnthropicEngine(config);
+
+    case 'openai':
+    case 'openrouter':
+    case 'deepseek':
+    case 'zai':
+    case 'moonshot':
+    case 'ollama':
+    default:
+      return new OpenAICompatEngine(config);
+  }
 }
 
 /**
@@ -101,9 +223,20 @@ export async function listModels(
   apiKey?: string,
   baseUrl?: string
 ): Promise<string[]> {
-  const resolvedBaseUrl = baseUrl || getProviderBaseUrl(provider);
+  const resolvedBaseUrl = baseUrl || getDefaultBaseUrl(provider);
   return listModelsFromProvider(resolvedBaseUrl, apiKey);
 }
+
+export const MODEL_SUGGESTIONS: Record<LLMProvider, string[]> = {
+  openai: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo', 'o1-preview'],
+  google: ['gemini-2.0-flash-exp', 'gemini-2.0-flash-thinking-exp', 'gemini-1.5-pro', 'gemini-1.5-flash'],
+  openrouter: ['anthropic/claude-3.5-sonnet', 'anthropic/claude-3.5-haiku', 'google/gemini-pro-1.5', 'openai/gpt-4o-mini'],
+  anthropic: ['claude-3.5-sonnet', 'claude-3.5-haiku', 'claude-3-opus'],
+  deepseek: ['deepseek-chat', 'deepseek-coder'],
+  zai: ['glm-4', 'glm-4-flash'],
+  moonshot: ['moonshot-v1-8k', 'moonshot-v1-32k', 'moonshot-v1-128k'],
+  ollama: ['llama3.2', 'llama3.1', 'mistral', 'codellama', 'qwen2.5', 'phi3', 'gemma2'],
+};
 
 /**
  * Test connection to a provider.

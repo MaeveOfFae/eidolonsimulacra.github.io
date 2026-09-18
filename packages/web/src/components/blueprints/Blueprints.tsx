@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { BookOpen, FileJson, Lightbulb, Package, Search, Edit3, RotateCcw, Copy, Trash2, MoreVertical, Plus } from 'lucide-react';
 import type { Blueprint } from '@char-gen/shared';
 import { api } from '@/lib/api';
+import CollapsibleSection from '../common/CollapsibleSection';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
 import BlueprintLintPanel from './BlueprintLintPanel';
 import BlueprintSandboxPanel from './BlueprintSandboxPanel';
@@ -15,8 +16,12 @@ type Section = {
   icon: React.ReactNode;
 };
 
+type BlueprintView = 'catalog' | 'tools';
+
 export default function Blueprints() {
   const [query, setQuery] = useState('');
+  const [activeView, setActiveView] = useState<BlueprintView>('catalog');
+  const [selectedBlueprintPath, setSelectedBlueprintPath] = useState<string | null>(null);
   const [actionMenuOpen, setActionMenuOpen] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<{ type: 'reset' | 'delete'; blueprint: Blueprint } | null>(null);
   const [duplicateDialog, setDuplicateDialog] = useState<Blueprint | null>(null);
@@ -132,15 +137,25 @@ export default function Blueprints() {
     }))
     .filter((section) => section.blueprints.length > 0);
 
-  const highlightedBlueprint = filteredSections[0]?.blueprints[0] ?? sections[0]?.blueprints[0];
+  const allBlueprints = useMemo(() => sections.flatMap((section) => section.blueprints), [sections]);
+  const selectedBlueprint = allBlueprints.find((blueprint) => blueprint.path === selectedBlueprintPath) ?? allBlueprints[0] ?? null;
   const totalBlueprints = sections.reduce((count, section) => count + section.blueprints.length, 0);
   const visibleBlueprints = filteredSections.reduce((count, section) => count + section.blueprints.length, 0);
+
+  useEffect(() => {
+    if (selectedBlueprintPath && allBlueprints.some((blueprint) => blueprint.path === selectedBlueprintPath)) {
+      return;
+    }
+
+    setSelectedBlueprintPath(allBlueprints[0]?.path ?? null);
+  }, [allBlueprints, selectedBlueprintPath]);
 
   useAssistantScreenContext({
     search_query: query,
     visible_sections: filteredSections.map((section) => section.title),
     total_visible_blueprints: visibleBlueprints,
     total_blueprints: totalBlueprints,
+    selected_blueprint_path: selectedBlueprint?.path ?? null,
   });
 
   if (isLoading) {
@@ -162,16 +177,25 @@ export default function Blueprints() {
           <div className="space-y-3">
             <p className="app-page-eyebrow">Blueprints</p>
             <h1 className="app-page-title">Manage blueprint files</h1>
-            <p className="app-page-summary">
-              Edit the live blueprint catalog here. Template manifests and asset graphs still belong in Templates.
-            </p>
-            <button
-              onClick={() => setCreateDialogOpen(true)}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 sm:justify-start"
-            >
-              <Plus className="h-4 w-4" />
-              New Blueprint
-            </button>
+              <p className="app-page-summary">Browse the catalog, then open tools only when you need them.</p>
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={() => setCreateDialogOpen(true)}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 sm:justify-start"
+              >
+                <Plus className="h-4 w-4" />
+                New Blueprint
+              </button>
+              {selectedBlueprint && (
+                <button
+                  type="button"
+                  onClick={() => setActiveView('tools')}
+                  className="app-button app-button-secondary"
+                >
+                  Open tools for {selectedBlueprint.name}
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="app-panel-muted p-4">
@@ -189,174 +213,277 @@ export default function Blueprints() {
                 <p className="app-page-metric-label">Overrides</p>
                 <div className="app-page-metric-value text-2xl">{overridePaths.size}</div>
               </div>
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">Selected</p>
+                <div className="app-page-metric-value text-base sm:text-xl">{selectedBlueprint?.name ?? 'None'}</div>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      <div data-tour-anchor="blueprints-search" className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="relative w-full max-w-xl">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="text"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search by name, description, or path"
-            className="w-full rounded-md border border-input bg-background py-2 pl-10 pr-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
-        </div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span className="app-pill app-pill-muted">{visibleBlueprints} visible</span>
-          {normalizedQuery && (
-            <button
-              onClick={() => setQuery('')}
-              className="rounded-md border border-border px-2.5 py-1 text-xs font-medium text-foreground hover:bg-accent"
-            >
-              Clear
-            </button>
-          )}
+      <div className="flex overflow-x-auto pb-1">
+        <div className="app-tab-group min-w-max">
+          <button
+            type="button"
+            onClick={() => setActiveView('catalog')}
+            data-active={activeView === 'catalog' ? 'true' : 'false'}
+            className="app-tab-button"
+          >
+            Catalog
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveView('tools')}
+            data-active={activeView === 'tools' ? 'true' : 'false'}
+            className="app-tab-button"
+          >
+            Tools
+          </button>
         </div>
       </div>
 
-      <section data-tour-anchor="blueprints-tools" className="app-panel border-dashed p-4 sm:p-5">
-        <div className="mb-4 flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-semibold">Blueprint tools</h2>
-            <p className="text-sm text-muted-foreground">
-              Lint and preview the selected blueprint before wiring it into a template.
-            </p>
+      {activeView === 'catalog' && (
+        <>
+          <div data-tour-anchor="blueprints-search" className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="relative w-full max-w-xl">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="text"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search by name, description, or path"
+                className="w-full rounded-md border border-input bg-background py-2 pl-10 pr-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </div>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="app-pill app-pill-muted">{visibleBlueprints} visible</span>
+              {normalizedQuery && (
+                <button
+                  onClick={() => setQuery('')}
+                  className="rounded-md border border-border px-2.5 py-1 text-xs font-medium text-foreground hover:bg-accent"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
           </div>
-          <span className="app-pill app-pill-emerald hidden sm:inline-flex">
-            Live
-          </span>
-        </div>
 
-        <div className="grid gap-4 lg:grid-cols-2">
-          <BlueprintLintPanel blueprintPath={highlightedBlueprint?.path} />
-          <BlueprintSandboxPanel
-            blueprintPath={highlightedBlueprint?.path}
-            seed={normalizedQuery || 'preview seed'}
-          />
-        </div>
-      </section>
+          {filteredSections.length === 0 ? (
+            <div className="app-panel p-8 text-center text-muted-foreground">
+              No blueprints match the current search.
+            </div>
+          ) : (
+            <div data-tour-anchor="blueprints-list" className="space-y-4 sm:space-y-5">
+              {filteredSections.map((section) => (
+                <CollapsibleSection
+                  key={section.title}
+                  title={section.title}
+                  subtitle={`${section.blueprints.length} blueprint${section.blueprints.length === 1 ? '' : 's'}`}
+                  preview={section.blueprints.slice(0, 2).map((blueprint) => blueprint.name).join(' • ')}
+                  meta={<span className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">{section.blueprints.length}</span>}
+                  defaultExpanded={Boolean(normalizedQuery || section.title === filteredSections[0]?.title)}
+                  className="app-panel"
+                >
+                  <div className="grid gap-2.5 md:grid-cols-2 xl:grid-cols-3">
+                    {section.blueprints.map((blueprint) => {
+                      const hasOverride = overridePaths.has(blueprint.path);
+                      const editorPath = `/blueprints/edit/${encodeURIComponent(blueprint.path)}`;
+                      const isSelected = selectedBlueprint?.path === blueprint.path;
 
-      {filteredSections.length === 0 ? (
-        <div className="app-panel p-8 text-center text-muted-foreground">
-          No blueprints match the current search.
-        </div>
-      ) : (
-        <div data-tour-anchor="blueprints-list" className="space-y-4 sm:space-y-5">
-          {filteredSections.map((section) => (
-            <section key={section.title} className="space-y-3">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  {section.icon}
-                  <h2 className="text-base font-semibold">{section.title}</h2>
-                </div>
-                <span className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">{section.blueprints.length}</span>
-              </div>
-
-              <div className="grid gap-2.5 md:grid-cols-2 xl:grid-cols-3">
-                {section.blueprints.map((blueprint) => {
-                  const hasOverride = overridePaths.has(blueprint.path);
-                  const editorPath = `/blueprints/edit/${encodeURIComponent(blueprint.path)}`;
-                  return (
-                  <div
-                    key={blueprint.path}
-                    className="group app-panel p-3 transition-colors hover:border-primary/60 hover:bg-accent/30 sm:p-3.5"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <Link
-                        to={editorPath}
-                        className="flex-1 min-w-0"
-                      >
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="break-words font-medium">{blueprint.name}</h3>
-                          {hasOverride && (
-                            <span className="app-pill app-pill-amber !px-2 !py-1 !text-[11px]">
-                              Edited
-                            </span>
-                          )}
-                        </div>
-                        <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">{blueprint.description || 'No description'}</p>
-                      </Link>
-                      <div className="flex items-center gap-1">
-                        <Link
-                          to={editorPath}
-                          className="p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground"
-                          title="Edit"
+                      return (
+                        <div
+                          key={blueprint.path}
+                          className={`group app-panel p-3 transition-colors hover:border-primary/60 hover:bg-accent/30 sm:p-3.5 ${
+                            isSelected ? 'border-primary/60 bg-accent/20' : ''
+                          }`}
                         >
-                          <Edit3 className="h-4 w-4" />
-                        </Link>
-                        <div className="relative">
-                          <button
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              setActionMenuOpen(actionMenuOpen === blueprint.path ? null : blueprint.path);
-                            }}
-                            className="p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground"
-                            title="More actions"
-                          >
-                            <MoreVertical className="h-4 w-4" />
-                          </button>
-                          {actionMenuOpen === blueprint.path && (
-                            <>
-                              <div className="fixed inset-0 z-10" onClick={() => setActionMenuOpen(null)} />
-                              <div className="absolute right-0 top-full z-20 mt-1 w-40 rounded-md border border-border bg-card py-1 shadow-lg">
+                          <div className="flex items-start justify-between gap-3">
+                            <Link
+                              to={editorPath}
+                              className="min-w-0 flex-1"
+                            >
+                              <div className="flex flex-wrap items-center gap-2">
+                                <h3 className="break-words font-medium">{blueprint.name}</h3>
+                                {hasOverride && (
+                                  <span className="app-pill app-pill-amber !px-2 !py-1 !text-[11px]">
+                                    Edited
+                                  </span>
+                                )}
+                              </div>
+                              <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">{blueprint.description || 'No description'}</p>
+                            </Link>
+                            <div className="flex items-center gap-1">
+                              <Link
+                                to={editorPath}
+                                className="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+                                title="Edit"
+                              >
+                                <Edit3 className="h-4 w-4" />
+                              </Link>
+                              <div className="relative">
                                 <button
                                   onClick={(event) => {
                                     event.stopPropagation();
-                                    setDuplicateDialog(blueprint);
-                                    setDuplicateName(`${blueprint.name} Copy`);
-                                    setActionMenuOpen(null);
+                                    setActionMenuOpen(actionMenuOpen === blueprint.path ? null : blueprint.path);
                                   }}
-                                  className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-left hover:bg-accent"
+                                  className="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+                                  title="More actions"
                                 >
-                                  <Copy className="h-4 w-4" />
-                                  Duplicate
+                                  <MoreVertical className="h-4 w-4" />
                                 </button>
-                                {hasOverride && (
-                                  <button
-                                    onClick={(event) => {
-                                      event.stopPropagation();
-                                      setConfirmAction({ type: 'reset', blueprint });
-                                      setActionMenuOpen(null);
-                                    }}
-                                    className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-left hover:bg-accent"
-                                  >
-                                    <RotateCcw className="h-4 w-4" />
-                                    Reset
-                                  </button>
-                                )}
-                                {hasOverride && (
-                                  <button
-                                    onClick={(event) => {
-                                      event.stopPropagation();
-                                      setConfirmAction({ type: 'delete', blueprint });
-                                      setActionMenuOpen(null);
-                                    }}
-                                    className="flex w-full items-center gap-2 px-3 py-1.5 text-sm text-left text-destructive hover:bg-destructive/10"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                    Delete
-                                  </button>
+                                {actionMenuOpen === blueprint.path && (
+                                  <>
+                                    <div className="fixed inset-0 z-10" onClick={() => setActionMenuOpen(null)} />
+                                    <div className="absolute right-0 top-full z-20 mt-1 w-40 rounded-md border border-border bg-card py-1 shadow-lg">
+                                      <button
+                                        onClick={(event) => {
+                                          event.stopPropagation();
+                                          setDuplicateDialog(blueprint);
+                                          setDuplicateName(`${blueprint.name} Copy`);
+                                          setActionMenuOpen(null);
+                                        }}
+                                        className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-accent"
+                                      >
+                                        <Copy className="h-4 w-4" />
+                                        Duplicate
+                                      </button>
+                                      {hasOverride && (
+                                        <button
+                                          onClick={(event) => {
+                                            event.stopPropagation();
+                                            setConfirmAction({ type: 'reset', blueprint });
+                                            setActionMenuOpen(null);
+                                          }}
+                                          className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-accent"
+                                        >
+                                          <RotateCcw className="h-4 w-4" />
+                                          Reset
+                                        </button>
+                                      )}
+                                      {hasOverride && (
+                                        <button
+                                          onClick={(event) => {
+                                            event.stopPropagation();
+                                            setConfirmAction({ type: 'delete', blueprint });
+                                            setActionMenuOpen(null);
+                                          }}
+                                          className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-destructive hover:bg-destructive/10"
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                          Delete
+                                        </button>
+                                      )}
+                                    </div>
+                                  </>
                                 )}
                               </div>
-                            </>
-                          )}
+                            </div>
+                          </div>
+                          <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
+                            <span className="min-w-0 flex-1 truncate pr-2">{blueprint.path}</span>
+                            <span>v{blueprint.version}</span>
+                          </div>
+                          <div className="mt-3 flex items-center justify-between gap-2">
+                            <span className="text-xs text-muted-foreground">
+                              {isSelected ? 'Selected for tools' : 'Use this in lint and sandbox tools'}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedBlueprintPath(blueprint.path);
+                                setActiveView('tools');
+                              }}
+                              className="rounded-md border border-border px-2.5 py-1 text-xs font-medium text-foreground hover:bg-accent"
+                            >
+                              {isSelected ? 'Open tools' : 'Use in tools'}
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                    <div className="mt-3 flex items-center justify-between gap-3 text-xs text-muted-foreground">
-                      <span className="truncate pr-2">{blueprint.path}</span>
-                      <span>v{blueprint.version}</span>
-                    </div>
+                      );
+                    })}
                   </div>
-                )})}
-              </div>
-            </section>
-          ))}
-        </div>
+                </CollapsibleSection>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {activeView === 'tools' && (
+        <section data-tour-anchor="blueprints-tools" className="app-panel border-dashed p-4 sm:p-5">
+          <div className="mb-4 flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-semibold">Blueprint tools</h2>
+              <p className="text-sm text-muted-foreground">
+                Lint and preview one explicitly selected blueprint before wiring it into a template.
+              </p>
+            </div>
+            <span className="app-pill app-pill-emerald hidden sm:inline-flex">
+              Live
+            </span>
+          </div>
+
+          <div className="grid gap-4 xl:grid-cols-[minmax(18rem,0.8fr)_minmax(0,1.2fr)]">
+            <div className="app-panel-muted p-4">
+              <label className="block text-sm font-medium text-foreground">Selected blueprint</label>
+              <select
+                value={selectedBlueprint?.path ?? ''}
+                onChange={(event) => setSelectedBlueprintPath(event.target.value)}
+                className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {sections.map((section) => (
+                  <optgroup key={section.title} label={section.title}>
+                    {section.blueprints.map((blueprint) => (
+                      <option key={blueprint.path} value={blueprint.path}>
+                        {blueprint.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+
+              {selectedBlueprint ? (
+                <div className="mt-4 space-y-3 rounded-lg border border-border/60 bg-background/50 p-4">
+                  <div>
+                    <div className="text-sm font-semibold text-foreground">{selectedBlueprint.name}</div>
+                    <div className="mt-1 text-xs text-muted-foreground">{selectedBlueprint.path}</div>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {selectedBlueprint.description || 'No description'}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Link
+                      to={`/blueprints/edit/${encodeURIComponent(selectedBlueprint.path)}`}
+                      className="app-button app-button-secondary !px-3 !py-2 !text-xs"
+                    >
+                      Edit blueprint
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => setActiveView('catalog')}
+                      className="rounded-md border border-border px-2.5 py-1 text-xs font-medium text-foreground hover:bg-accent"
+                    >
+                      Back to catalog
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-4 rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
+                  No blueprint selected.
+                </div>
+              )}
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-2">
+              <BlueprintLintPanel blueprintPath={selectedBlueprint?.path} />
+              <BlueprintSandboxPanel
+                blueprintPath={selectedBlueprint?.path}
+                seed={normalizedQuery || selectedBlueprint?.name || 'preview seed'}
+              />
+            </div>
+          </div>
+        </section>
       )}
 
       {/* Confirm Reset/Delete Dialog */}
@@ -443,7 +570,7 @@ export default function Blueprints() {
       <BlueprintCreateDialog
         open={createDialogOpen}
         onClose={() => setCreateDialogOpen(false)}
-        onSuccess={(path) => {
+        onSuccess={() => {
           void queryClient.invalidateQueries({ queryKey: ['blueprints'] });
         }}
       />

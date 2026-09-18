@@ -1,8 +1,11 @@
 import DocumentPage from './DocumentPage';
+import { isDesktopRuntime } from '../../lib/runtime.js';
 
-const privacyMarkdown = `## Overview
+export default function PrivacyPage() {
+  const desktopRuntime = isDesktopRuntime();
+  const privacyMarkdown = `## Overview
 
-Eidolon Simulacra is designed as a browser-first application. By default, drafts, templates, blueprint overrides, theme presets, and most configuration state are stored locally in your browser.
+Eidolon Simulacra is designed as a browser-first application, and the desktop build reuses that same client workflow. By default, drafts, templates, blueprint overrides, theme presets, and most configuration state are stored locally on your device${desktopRuntime ? ' in desktop app data' : ' in your browser'}.
 
 ## What Is Stored Locally
 
@@ -14,9 +17,9 @@ Eidolon Simulacra is designed as a browser-first application. By default, drafts
 
 ## API Keys
 
-API keys are sensitive. The app can keep them in memory for the current session or persist them locally in browser storage when you opt in.
+API keys are sensitive. The app can keep them in memory for the current session or persist them locally when you opt in.
 
-If you enable persistence, keys are stored in local browser storage on the current device.
+${desktopRuntime ? 'If you enable persistence, keys are stored in desktop app data on the current device.' : 'If you enable persistence, keys are stored in local browser storage on the current device.'}
 
 ## Third-Party Model Providers
 
@@ -34,18 +37,19 @@ Optional analytics or error tracking may be configured via environment variables
 
 ## Data Deletion
 
-You can remove browser-stored data through the in-app Data Manager or by clearing site storage in your browser.
+${desktopRuntime ? 'You can remove device-stored data through the in-app Data Manager or by clearing the desktop app data for this installation.' : 'You can remove browser-stored data through the in-app Data Manager or by clearing site storage in your browser.'}
 
 ## Security Reporting
 
 If you discover a vulnerability or sensitive data exposure issue, follow the reporting instructions on the Security page.`;
 
-export default function PrivacyPage() {
   return (
     <DocumentPage
       eyebrow="Privacy"
       title="Privacy"
-      summary="How browser storage, API keys, provider requests, and exports are handled in the current browser-first architecture."
+      summary={desktopRuntime
+        ? 'How desktop app data, API keys, provider requests, and exports are handled in the desktop runtime.'
+        : 'How browser storage, API keys, provider requests, and exports are handled in the current browser-first architecture.'}
       markdown={privacyMarkdown}
     />
   );

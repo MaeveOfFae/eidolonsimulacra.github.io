@@ -1,9 +1,11 @@
-import { useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
-import type { ContentMode } from '@char-gen/shared';
+import type { ContentMode, Template } from '@char-gen/shared';
 import { api } from '../config/api';
+import CollapsibleTray from '../components/CollapsibleTray';
+import { getStoredDeviceConfig } from '../storage/device-config';
 import type { HomeStackNavigationProp } from '../types/navigation';
 
 interface BatchJob {
@@ -12,6 +14,50 @@ interface BatchJob {
   draftId?: string;
   characterName?: string;
   error?: string;
+}
+
+function getDefaultSelectedTemplateAssets(templateDefinition?: Template): string[] {
+  if (!templateDefinition) {
+    return [];
+  }
+
+  return templateDefinition.assets
+    .filter((asset) => {
+      if (asset.required) {
+        return true;
+      }
+
+      if (asset.name === 'system_prompt' || asset.name === 'post_history') {
+        return false;
+      }
+
+      return true;
+    })
+    .map((asset) => asset.name);
+}
+
+function normalizeAssetSelection(selection: readonly string[], templateDefinition?: Template): string[] {
+  if (!templateDefinition) {
+    return [];
+  }
+
+  const templateAssetNames = new Set(templateDefinition.assets.map((asset) => asset.name));
+  const requiredNames = new Set(
+    templateDefinition.assets.filter((asset) => asset.required).map((asset) => asset.name)
+  );
+  const selected = new Set<string>();
+
+  selection.forEach((assetName) => {
+    if (templateAssetNames.has(assetName)) {
+      selected.add(assetName);
+    }
+  });
+
+  requiredNames.forEach((assetName) => selected.add(assetName));
+
+  return templateDefinition.assets
+    .map((asset) => asset.name)
+    .filter((assetName) => selected.has(assetName));
 }
 
 export default function BatchGenerateScreen() {
@@ -26,6 +72,7 @@ export default function BatchGenerateScreen() {
   const [isRunning, setIsRunning] = useState(false);
   const [currentSeed, setCurrentSeed] = useState('');
   const [inputText, setInputText] = useState('');
+  const [selectedTemplateAssets, setSelectedTemplateAssets] = useState<string[]>([]);
 
   const { data: templates } = useQuery({
     queryKey: ['templates'],
@@ -33,12 +80,39 @@ export default function BatchGenerateScreen() {
   });
 
   const { data: config } = useQuery({
-    queryKey: ['config'],
-    queryFn: () => api.getConfig(),
+    queryKey: ['device-config'],
+    queryFn: async () => getStoredDeviceConfig(),
   });
 
   const effectiveMaxConcurrent = maxConcurrent || config?.batch?.max_concurrent || 3;
   const modes: ContentMode[] = ['SFW', 'NSFW', 'Platform-Safe', 'Auto'];
+  const selectedTemplate = useMemo(
+    () => templates?.find((candidate: Template) => candidate.name === template)
+      ?? templates?.find((candidate: Template) => candidate.is_default)
+      ?? templates?.[0],
+    [template, templates]
+  );
+  const optionalTemplateAssets = useMemo(
+    () => selectedTemplate?.assets.filter((asset) => !asset.required) ?? [],
+    [selectedTemplate]
+  );
+
+  useEffect(() => {
+    if (!selectedTemplate) {
+      if (selectedTemplateAssets.length > 0) {
+        setSelectedTemplateAssets([]);
+      }
+      return;
+    }
+
+    setSelectedTemplateAssets((previous) => {
+      if (previous.length === 0) {
+        return getDefaultSelectedTemplateAssets(selectedTemplate);
+      }
+
+      return normalizeAssetSelection(previous, selectedTemplate);
+    });
+  }, [selectedTemplate, selectedTemplateAssets.length]);
 
   const handleAddSeeds = () => {
     const newSeeds = inputText
@@ -61,6 +135,28 @@ export default function BatchGenerateScreen() {
     setJobs([]);
   };
 
+  const handleToggleOptionalAsset = (assetName: string) => {
+    if (!selectedTemplate) {
+      return;
+    }
+
+    const isRequired = selectedTemplate.assets.find((asset) => asset.name === assetName)?.required;
+    if (isRequired) {
+      return;
+    }
+
+    setSelectedTemplateAssets((previous) => {
+      const next = new Set(previous);
+      if (next.has(assetName)) {
+        next.delete(assetName);
+      } else {
+        next.add(assetName);
+      }
+
+      return normalizeAssetSelection(Array.from(next), selectedTemplate);
+    });
+  };
+
   const handleRunBatch = async () => {
     if (seeds.length === 0 || isRunning) {
       return;
@@ -74,6 +170,7 @@ export default function BatchGenerateScreen() {
       const stream = api.generateBatch(seeds, {
         mode,
         template: template || undefined,
+        selected_assets: selectedTemplateAssets,
         parallel,
         max_concurrent: effectiveMaxConcurrent,
       });
@@ -149,10 +246,15 @@ export default function BatchGenerateScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Batch Generation</Text>
-      <Text style={styles.subtitle}>Generate multiple characters from a list of seeds.</Text>
+      <Text style={styles.title}>Batch Generate</Text>
+      <Text style={styles.subtitle}>Queue multiple seeds and run them in sequence or parallel.</Text>
 
-      <View style={styles.card}>
+      <CollapsibleTray
+        title="Seeds"
+        subtitle="Add one seed per line"
+        initiallyExpanded
+        preview={<Text style={styles.trayPreviewText}>{seeds.length} queued</Text>}
+      >
         <View style={styles.cardHeader}>
           <Text style={styles.sectionTitle}>Seeds</Text>
           <Text style={styles.sectionMeta}>{seeds.length} added</Text>
@@ -196,9 +298,13 @@ export default function BatchGenerateScreen() {
             ))}
           </View>
         ) : null}
-      </View>
+      </CollapsibleTray>
 
-      <View style={styles.card}>
+      <CollapsibleTray
+        title="Options"
+        subtitle="Mode, template, and concurrency"
+        preview={<Text style={styles.trayPreviewText}>{mode} • {template || 'Default'} • {parallel ? `parallel ${effectiveMaxConcurrent}` : 'serial'}</Text>}
+      >
         <Text style={styles.sectionTitle}>Options</Text>
         <Text style={styles.fieldLabel}>Content Mode</Text>
         <View style={styles.modeRow}>
@@ -267,14 +373,45 @@ export default function BatchGenerateScreen() {
         </View>
 
         {config?.batch ? (
-          <Text style={styles.helperText}>
-            Current saved batch config: {config.batch.max_concurrent} concurrent, {config.batch.rate_limit_delay}s delay.
-          </Text>
+          <Text style={styles.helperText}>Saved default: {config.batch.max_concurrent} concurrent • {config.batch.rate_limit_delay}s delay.</Text>
         ) : null}
-      </View>
+
+        {optionalTemplateAssets.length > 0 ? (
+          <View style={styles.optionalAssetsBlock}>
+            <Text style={styles.fieldLabel}>Optional blueprint assets</Text>
+            <Text style={styles.helperText}>Toggle non-required assets for every seed in this batch.</Text>
+            <View style={styles.optionalAssetList}>
+              {optionalTemplateAssets.map((asset) => {
+                const enabled = selectedTemplateAssets.includes(asset.name);
+                return (
+                  <TouchableOpacity
+                    key={asset.name}
+                    style={[styles.optionalAssetRow, enabled && styles.optionalAssetRowEnabled]}
+                    onPress={() => handleToggleOptionalAsset(asset.name)}
+                    disabled={isRunning}
+                  >
+                    <View style={[styles.checkbox, enabled && styles.checkboxEnabled]}>
+                      {enabled ? <Text style={styles.checkboxMark}>✓</Text> : null}
+                    </View>
+                    <View style={styles.optionalAssetTextWrap}>
+                      <Text style={styles.optionalAssetName}>{asset.name}</Text>
+                      {asset.description ? <Text style={styles.optionalAssetDescription}>{asset.description}</Text> : null}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        ) : null}
+      </CollapsibleTray>
 
       {jobs.length > 0 ? (
-        <View style={styles.card}>
+        <CollapsibleTray
+          title="Progress"
+          subtitle="Live job status"
+          initiallyExpanded
+          preview={<Text style={styles.trayPreviewText}>{completedCount}/{jobs.length} complete{errorCount > 0 ? ` • ${errorCount} failed` : ''}</Text>}
+        >
           <View style={styles.cardHeader}>
             <Text style={styles.sectionTitle}>Progress</Text>
             <Text style={styles.sectionMeta}>
@@ -319,7 +456,7 @@ export default function BatchGenerateScreen() {
               </View>
             ))}
           </View>
-        </View>
+        </CollapsibleTray>
       ) : null}
 
       {isRunning ? (
@@ -365,6 +502,11 @@ const styles = StyleSheet.create({
     borderColor: '#2f2f2f',
     borderRadius: 12,
     padding: 16,
+  },
+  trayPreviewText: {
+    color: '#9ca3af',
+    fontSize: 12,
+    lineHeight: 18,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -557,6 +699,62 @@ const styles = StyleSheet.create({
     color: '#9ca3af',
     fontSize: 12,
     marginTop: 12,
+  },
+  optionalAssetsBlock: {
+    marginTop: 12,
+  },
+  optionalAssetList: {
+    gap: 8,
+    marginTop: 8,
+  },
+  optionalAssetRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    borderWidth: 1,
+    borderColor: '#2f2f2f',
+    backgroundColor: '#111111',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+  },
+  optionalAssetRowEnabled: {
+    borderColor: '#7c3aed',
+    backgroundColor: '#2a1a45',
+  },
+  checkbox: {
+    width: 18,
+    height: 18,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#52525b',
+    marginTop: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxEnabled: {
+    borderColor: '#7c3aed',
+    backgroundColor: '#7c3aed',
+  },
+  checkboxMark: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
+    lineHeight: 12,
+  },
+  optionalAssetTextWrap: {
+    flex: 1,
+    gap: 2,
+  },
+  optionalAssetName: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  optionalAssetDescription: {
+    color: '#9ca3af',
+    fontSize: 12,
+    lineHeight: 16,
   },
   progressTrack: {
     height: 8,

@@ -23,6 +23,7 @@ const screenTitles: Record<string, string> = {
   '/generate': 'Generate Character',
   '/seed-generator': 'Seed Generator',
   '/validation': 'Validation',
+  '/optimize': 'Token Optimization',
   '/batch': 'Batch',
   '/drafts': 'Drafts',
   '/templates': 'Templates',

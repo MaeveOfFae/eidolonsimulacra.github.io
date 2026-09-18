@@ -17,12 +17,13 @@ import {
   Star,
   Trash2,
 } from 'lucide-react';
-import type { Draft, Template } from '@char-gen/shared';
+import { OFFICIAL_TEMPLATE, type Draft, type Template } from '@char-gen/shared';
 import { api } from '@/lib/api';
 import { unwrapSingleCodeFence } from '@/lib/content-format';
 import DraftSendConfigPanel from '@/components/drafts/DraftSendConfigPanel';
 import {
   buildDraftPriorAssets,
+  getEffectiveDraftComponentSendOrder,
   mergeDraftAdditionalInstructions,
 } from '@/lib/drafts/send-config';
 import { GenerationService } from '@/lib/services/generation';
@@ -53,6 +54,37 @@ interface AssetCandidate {
 
 function draftHasAsset(draft: Draft | undefined, assetName: string): boolean {
   return Boolean(draft && Object.prototype.hasOwnProperty.call(draft.assets, assetName));
+}
+
+function buildRecoveredTemplateContract(draft: Draft, templates: Template[]): Template {
+  const defaultTemplate = templates.find((entry) => entry.is_default) ?? OFFICIAL_TEMPLATE;
+  const defaultAssetsByName = new Map(defaultTemplate.assets.map((asset) => [asset.name, asset] as const));
+  const orderedAssetNames = getEffectiveDraftComponentSendOrder(draft, defaultTemplate);
+
+  return {
+    name: draft.metadata.template_name || defaultTemplate.name,
+    version: defaultTemplate.version,
+    description: 'Recovered from the saved draft asset order because the original template is not available locally.',
+    is_official: false,
+    assets: orderedAssetNames.map((assetName, index) => {
+      const baseAsset = defaultAssetsByName.get(assetName);
+      if (baseAsset) {
+        return {
+          ...baseAsset,
+          depends_on: [...baseAsset.depends_on],
+          ...(baseAsset.import_aliases ? { import_aliases: [...baseAsset.import_aliases] } : {}),
+        };
+      }
+
+      const previousAssetName = orderedAssetNames[index - 1];
+      return {
+        name: assetName,
+        required: draftHasAsset(draft, assetName),
+        depends_on: previousAssetName ? [previousAssetName] : [],
+        description: 'Recovered from the saved draft asset order.',
+      };
+    }),
+  };
 }
 
 const exportIntrosAsMarkdown = (
@@ -182,13 +214,21 @@ export default function AssetRegenerator({
 
   const templates = providedTemplates ?? queriedTemplates;
 
-  const template = useMemo(() => {
+  const resolvedTemplate = useMemo(() => {
     if (!draft) {
       return undefined;
     }
 
     return templates.find((entry) => entry.name === draft.metadata.template_name);
   }, [draft, templates]);
+  const templateContractResolved = Boolean(resolvedTemplate);
+  const template = useMemo(() => {
+    if (!draft) {
+      return undefined;
+    }
+
+    return resolvedTemplate ?? buildRecoveredTemplateContract(draft, templates);
+  }, [draft, resolvedTemplate, templates]);
 
   const templateAssetIndex = useMemo(() => {
     if (!template) {
@@ -200,7 +240,6 @@ export default function AssetRegenerator({
 
   const assetExists = draftHasAsset(draft, selectedAssetName);
   const currentAssetContent = draft?.assets[selectedAssetName] ?? '';
-  const canGenerateAsset = Boolean(draft && template && templateAssetIndex >= 0 && selectedAssetName);
   const primaryActionLabel = assetExists ? 'Replace Asset' : 'Create Asset';
   const secondaryActionLabel = assetExists ? 'Replace and Return' : 'Create and Return';
   const isIntroAsset = selectedAssetName === 'intro_scene';
@@ -217,6 +256,12 @@ export default function AssetRegenerator({
   }, [selectedAssetName, draft?.metadata.template_name]);
   const effectiveBlueprintContent = blueprintOverrideContent || externalBlueprintContent || resolvedBlueprintContent;
   const hasBlueprintOverride = blueprintOverrideContent.trim().length > 0 || Boolean(externalBlueprintContent?.trim());
+  const canUseBuiltinBlueprint = useMemo(
+    () => OFFICIAL_TEMPLATE.assets.some((asset) => asset.name === selectedAssetName),
+    [selectedAssetName]
+  );
+  const hasBlueprintSource = Boolean(hasBlueprintOverride || resolvedBlueprintContent.trim().length > 0 || canUseBuiltinBlueprint);
+  const canGenerateAsset = Boolean(draft && template && templateAssetIndex >= 0 && selectedAssetName && hasBlueprintSource);
   const savedIntros = useMemo((): AssetCandidate[] => {
     if (!isIntroAsset || !draft?.metadata.notes) {
       return [];
@@ -836,7 +881,15 @@ export default function AssetRegenerator({
 
       {draft && !canGenerateAsset && (
         <div className="app-note border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
-          This asset cannot be regenerated because its template contract could not be resolved for the current draft.
+          {template && templateAssetIndex >= 0 && selectedAssetName && !hasBlueprintSource
+            ? 'This asset needs a blueprint before it can be regenerated. Paste or edit a blueprint override for this recovered asset contract, then generate again.'
+            : 'This asset cannot be regenerated because its template contract could not be resolved for the current draft.'}
+        </div>
+      )}
+
+      {draft && template && !templateContractResolved && (
+        <div className="app-note border-primary/30 bg-primary/10 p-4 text-sm text-foreground">
+          The original template definition for this draft is not available locally. Using a recovered asset contract from the saved draft order instead.
         </div>
       )}
 
@@ -852,12 +905,14 @@ export default function AssetRegenerator({
         </div>
       )}
 
-      {draft && !hideInternalBlueprintPanel && Boolean(resolvedBlueprintContent) && (
+      {draft && !hideInternalBlueprintPanel && (
         <BlueprintPanel
           blueprintName={assetBlueprintFile}
           blueprintContent={effectiveBlueprintContent}
           title="Asset Blueprint"
-          description="Inspect or override the blueprint used only for this regeneration session."
+          description={resolvedBlueprintContent
+            ? 'Inspect or override the blueprint used only for this regeneration session.'
+            : 'No stored blueprint was resolved for this asset. Paste an override here to regenerate against a recovered contract.'}
           editable
           defaultExpanded={false}
           onContentChange={setBlueprintOverrideContent}

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { MessageCircle, Send, Loader2, X, Check, RefreshCw } from 'lucide-react';
 import type { ChatMessage } from '@char-gen/shared';
 import { api } from '@/lib/api';
@@ -7,6 +8,16 @@ interface ChatPanelProps {
   draftId: string;
   assetName?: string;
   onAssetRefined?: (assetName: string, newContent: string) => void;
+}
+
+function buildOptimizeLink(draftId: string, selectedAsset: string | undefined, text: string): string {
+  const params = new URLSearchParams();
+  params.set('draft', draftId);
+  if (selectedAsset) {
+    params.set('asset', selectedAsset);
+  }
+  params.set('text', text);
+  return `/optimize?${params.toString()}`;
 }
 
 export default function ChatPanel({ draftId, assetName, onAssetRefined }: ChatPanelProps) {
@@ -222,6 +233,13 @@ export default function ChatPanel({ draftId, assetName, onAssetRefined }: ChatPa
               <X className="h-3 w-3" />
               Discard
             </button>
+            <Link
+              to={buildOptimizeLink(draftId, selectedAsset, refinedContent)}
+              className="flex-1 inline-flex items-center justify-center gap-1 rounded bg-primary px-3 py-1.5 text-xs text-primary-foreground hover:bg-primary/90"
+            >
+              <RefreshCw className="h-3 w-3" />
+              Optimize
+            </Link>
           </div>
         </div>
       )}

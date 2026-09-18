@@ -115,6 +115,8 @@ export function formatExport(
       lines.push('');
     }
     return { filename: outputName, content: lines.join('\n') };
+  } else if (preset.format === 'png') {
+    throw new Error('PNG preset formatting requires draft image export support via buildDraftExportArtifact().');
   }
 
   throw new Error(`Unknown preset format: ${preset.format}`);
@@ -130,7 +132,7 @@ export function validatePreset(preset: TypesExportPreset): { isValid: boolean; e
     errors.push('Preset name is required');
   }
 
-  if (!['text', 'json', 'combined'].includes(preset.format)) {
+  if (!['text', 'json', 'combined', 'png'].includes(preset.format)) {
     errors.push(`Invalid format: ${preset.format}`);
   }
 

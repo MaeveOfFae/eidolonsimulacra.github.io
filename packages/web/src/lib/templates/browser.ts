@@ -1,10 +1,21 @@
 import {
   OFFICIAL_TEMPLATE,
+  buildTemplateBlueprintContentsResponse,
+  findStoredTemplateRecord,
+  hydrateStoredTemplateRecord,
+  inferBlueprintCategoryFromPath,
+  normalizeStoredTemplateRecord,
+  parseTemplateManifest,
+  resolveTemplateDefinitionFromRecords,
+  resolveTemplateRecordBlueprintContent,
   getOrderedAssets,
   inferCharacterDisplayNameFromAssets,
+  type BlueprintCategory,
   type FeatureCategory,
   type Template,
+  type TemplateBlueprintContentsResponse,
 } from '@char-gen/shared';
+import { readPersistedJson, writePersistedJson } from '../persistence/storage.js';
 import { parseBlueprintFrontmatter, type TemplateAsset, templateToAssets } from '../prompting/blueprint.js';
 
 const CUSTOM_TEMPLATES_STORAGE_KEY = 'eidolon.web.templates.custom';
@@ -29,8 +40,6 @@ export interface StoredTemplateRecord {
   blueprint_contents: Record<string, string>;
   template_root?: string;
 }
-
-type BlueprintCategory = 'core' | 'system' | 'template' | 'example';
 
 interface BrowserBlueprint {
   name: string;
@@ -97,168 +106,10 @@ function coerceStoredTemplateRecords(value: unknown): StoredTemplateRecord[] {
 
   return candidates
     .map(coerceStoredTemplateRecord)
+
     .filter((record): record is StoredTemplateRecord => Boolean(record));
 }
 
-function normalizePathSegments(path: string): string {
-  const normalized = path.replace(/\\/g, '/');
-  const segments = normalized.split('/');
-  const resolved: string[] = [];
-
-  for (const segment of segments) {
-    if (!segment || segment === '.') {
-      continue;
-    }
-
-    if (segment === '..') {
-      if (resolved.length > 0) {
-        resolved.pop();
-      }
-      continue;
-    }
-
-    resolved.push(segment);
-  }
-
-  return resolved.join('/');
-}
-
-function normalizeBlueprintPath(path: string): string {
-  return normalizePathSegments(path.replace(/^\/+/, ''));
-}
-
-function resolveBlueprintPath(templateRoot: string | undefined, blueprintPath: string): string {
-  const normalizedPath = normalizeBlueprintPath(blueprintPath);
-  if (normalizedPath.startsWith('blueprints/')) {
-    return normalizedPath;
-  }
-
-  if (!templateRoot) {
-    return normalizedPath;
-  }
-
-  return normalizeBlueprintPath(`${templateRoot}/${normalizedPath}`);
-}
-
-function parseTomlString(rawValue: string): string {
-  return rawValue.trim().replace(/^"|"$/g, '');
-}
-
-function parseTomlStringArray(rawValue: string): string[] {
-  const values: string[] = [];
-  const matcher = /"([^"]*)"/g;
-  let match = matcher.exec(rawValue);
-
-  while (match) {
-    values.push(match[1]);
-    match = matcher.exec(rawValue);
-  }
-
-  return values;
-}
-
-function parseTemplateManifest(content: string): Template | null {
-  const normalizedContent = content.replace(/\r\n?/g, '\n');
-  const lines = normalizedContent.split('\n');
-
-  let section: 'template' | 'assets' | null = null;
-  let pendingArrayKey: 'depends_on' | null = null;
-
-  let templateName = '';
-  let templateVersion = '1.0.0';
-  let templateDescription = '';
-
-  const assets: Template['assets'] = [];
-  let currentAsset: Template['assets'][number] | null = null;
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) {
-      continue;
-    }
-
-    if (trimmed === '[template]') {
-      section = 'template';
-      pendingArrayKey = null;
-      continue;
-    }
-
-    if (trimmed === '[[assets]]') {
-      currentAsset = {
-        name: '',
-        required: false,
-        depends_on: [],
-        description: '',
-      };
-      assets.push(currentAsset);
-      section = 'assets';
-      pendingArrayKey = null;
-      continue;
-    }
-
-    if (pendingArrayKey && currentAsset) {
-      if (trimmed === ']') {
-        pendingArrayKey = null;
-        continue;
-      }
-
-      currentAsset.depends_on.push(...parseTomlStringArray(trimmed));
-      continue;
-    }
-
-    const keyValueMatch = trimmed.match(/^([A-Za-z0-9_]+)\s*=\s*(.+)$/);
-    if (!keyValueMatch) {
-      continue;
-    }
-
-    const [, key, rawValue] = keyValueMatch;
-
-    if (section === 'template') {
-      if (key === 'name') {
-        templateName = parseTomlString(rawValue);
-      } else if (key === 'version') {
-        templateVersion = parseTomlString(rawValue);
-      } else if (key === 'description') {
-        templateDescription = parseTomlString(rawValue);
-      }
-      continue;
-    }
-
-    if (section !== 'assets' || !currentAsset) {
-      continue;
-    }
-
-    if (key === 'name') {
-      currentAsset.name = parseTomlString(rawValue);
-    } else if (key === 'required') {
-      currentAsset.required = rawValue.trim() === 'true';
-    } else if (key === 'depends_on') {
-      const compactValue = rawValue.trim();
-      if (compactValue === '[') {
-        pendingArrayKey = 'depends_on';
-      } else {
-        currentAsset.depends_on = parseTomlStringArray(compactValue);
-      }
-    } else if (key === 'description') {
-      currentAsset.description = parseTomlString(rawValue);
-    } else if (key === 'blueprint_file') {
-      currentAsset.blueprint_file = parseTomlString(rawValue);
-    }
-  }
-
-  const parsedAssets = assets.filter((asset) => asset.name.trim().length > 0);
-  if (!templateName.trim() || parsedAssets.length === 0) {
-    return null;
-  }
-
-  return {
-    name: templateName,
-    version: templateVersion,
-    description: templateDescription,
-    is_official: true,
-    assets: parsedAssets,
-  };
-}
 
 function buildBuiltinTemplateRecords(): StoredTemplateRecord[] {
   const manifestRecords = Object.entries(templateManifestModules)
@@ -312,47 +163,12 @@ function sanitizeBlueprintSlug(name: string): string {
     .replace(/^_+|_+$/g, '');
 }
 
-function getAssetBlueprintKey(asset: { name: string; blueprint_file?: string }): string {
-  return asset.blueprint_file ?? `${asset.name}.md`;
-}
-
 function readStorage<T>(keys: string | readonly string[], fallback: T): T {
-  if (typeof window === 'undefined') {
-    return fallback;
-  }
-
-  const keyList = Array.isArray(keys) ? [...keys] : [keys];
-  const [currentKey, ...legacyKeys] = keyList;
-
-  try {
-    for (const key of keyList) {
-      const raw = window.localStorage.getItem(key);
-      if (!raw) {
-        continue;
-      }
-
-      const parsed = JSON.parse(raw) as T;
-      if (key !== currentKey) {
-        window.localStorage.setItem(currentKey, JSON.stringify(parsed));
-        legacyKeys.forEach((legacyKey) => window.localStorage.removeItem(legacyKey));
-      }
-
-      return parsed;
-    }
-  } catch {
-    return fallback;
-  }
-
-  return fallback;
+  return readPersistedJson(keys, fallback);
 }
 
 function writeStorage<T>(key: string, legacyKeys: readonly string[], value: T): void {
-  if (typeof window === 'undefined') {
-    return;
-  }
-
-  window.localStorage.setItem(key, JSON.stringify(value));
-  legacyKeys.forEach((legacyKey) => window.localStorage.removeItem(legacyKey));
+  writePersistedJson(key, legacyKeys, value);
 }
 
 function buildDefaultBlueprintCatalog(): Map<string, BrowserBlueprint> {
@@ -367,15 +183,6 @@ function buildDefaultBlueprintCatalog(): Map<string, BrowserBlueprint> {
 
     const metadata = parseBlueprintFrontmatter(content);
 
-    let category: BlueprintCategory = 'core';
-    if (normalizedPath.includes('/system/')) {
-      category = 'system';
-    } else if (normalizedPath.includes('/templates/')) {
-      category = 'template';
-    } else if (normalizedPath.includes('/examples/')) {
-      category = 'example';
-    }
-
     catalog.set(normalizedPath, {
       name: metadata.name,
       description: metadata.description,
@@ -383,7 +190,7 @@ function buildDefaultBlueprintCatalog(): Map<string, BrowserBlueprint> {
       version: metadata.version,
       content,
       path: normalizedPath,
-      category,
+      category: inferBlueprintCategoryFromPath(normalizedPath),
       feature_category: metadata.feature_category,
     });
   });
@@ -467,84 +274,15 @@ export function findBlueprintContent(fileName?: string): string {
   return match?.content ?? '';
 }
 
-function getLegacyBlueprintContent(
-  blueprintContents: Record<string, string>,
-  asset: { name: string; blueprint_file?: string }
-): string | undefined {
-  const blueprintKey = getAssetBlueprintKey(asset);
-  const shortFileName = blueprintKey.split('/').pop() ?? blueprintKey;
-
-  return blueprintContents[blueprintKey]
-    ?? blueprintContents[shortFileName]
-    ?? blueprintContents[asset.name];
-}
-
-function normalizeTemplateRecord(record: StoredTemplateRecord): StoredTemplateRecord {
-  const normalizedContents: Record<string, string> = {};
-
-  record.template.assets.forEach((asset) => {
-    const blueprintKey = getAssetBlueprintKey(asset);
-    const content = getLegacyBlueprintContent(record.blueprint_contents, asset);
-    if (!content?.trim()) {
-      return;
-    }
-
-    const builtinContent = findBlueprintContent(blueprintKey);
-    if (builtinContent && builtinContent === content) {
-      return;
-    }
-
-    normalizedContents[blueprintKey] = content;
-  });
-
-  Object.entries(record.blueprint_contents).forEach(([key, content]) => {
-    if (!content?.trim() || normalizedContents[key]) {
-      return;
-    }
-
-    const builtinContent = findBlueprintContent(key);
-    if (builtinContent && builtinContent === content) {
-      return;
-    }
-
-    normalizedContents[key] = content;
-  });
-
-  return {
-    template: record.template,
-    blueprint_contents: normalizedContents,
-    template_root: record.template_root,
-  };
-}
-
-function hydrateTemplateRecord(record: StoredTemplateRecord): StoredTemplateRecord {
-  const normalized = normalizeTemplateRecord(record);
-  const blueprintContents = { ...normalized.blueprint_contents };
-
-  normalized.template.assets.forEach((asset) => {
-    const blueprintKey = getAssetBlueprintKey(asset);
-    if (!blueprintContents[blueprintKey]) {
-      const builtinContent = findBlueprintContent(blueprintKey);
-      if (builtinContent) {
-        blueprintContents[blueprintKey] = builtinContent;
-      }
-    }
-  });
-
-  return {
-    template: normalized.template,
-    blueprint_contents: blueprintContents,
-    template_root: normalized.template_root,
-  };
-}
-
 export function getStoredTemplates(): StoredTemplateRecord[] {
   const stored = readStorage<unknown>(
     [CUSTOM_TEMPLATES_STORAGE_KEY, ...LEGACY_CUSTOM_TEMPLATES_STORAGE_KEYS],
     []
   );
   const coerced = coerceStoredTemplateRecords(stored);
-  const normalized = coerced.map(normalizeTemplateRecord);
+  const normalized = coerced.map((record) => normalizeStoredTemplateRecord(record, {
+    resolveBuiltinContent: findBlueprintContent,
+  }));
 
   if (JSON.stringify(stored) !== JSON.stringify(normalized)) {
     writeStorage(CUSTOM_TEMPLATES_STORAGE_KEY, LEGACY_CUSTOM_TEMPLATES_STORAGE_KEYS, normalized);
@@ -557,35 +295,33 @@ export function saveStoredTemplates(records: StoredTemplateRecord[]): void {
   writeStorage(
     CUSTOM_TEMPLATES_STORAGE_KEY,
     LEGACY_CUSTOM_TEMPLATES_STORAGE_KEYS,
-    records.map(normalizeTemplateRecord)
+    records.map((record) => normalizeStoredTemplateRecord(record, {
+      resolveBuiltinContent: findBlueprintContent,
+    }))
   );
 }
 
 export function getAllTemplateRecords(): StoredTemplateRecord[] {
   return [
-    ...buildBuiltinTemplateRecords().map(hydrateTemplateRecord),
-    ...getStoredTemplates().map(hydrateTemplateRecord),
+    ...buildBuiltinTemplateRecords().map((record) => hydrateStoredTemplateRecord(record, {
+      resolveBuiltinContent: findBlueprintContent,
+    })),
+    ...getStoredTemplates().map((record) => hydrateStoredTemplateRecord(record, {
+      resolveBuiltinContent: findBlueprintContent,
+    })),
   ];
 }
 
 export function getStoredTemplateRecord(name?: string): StoredTemplateRecord | undefined {
-  if (!name) {
-    return undefined;
-  }
-
-  return getStoredTemplates().find((record) => record.template.name === name);
+  return findStoredTemplateRecord(getStoredTemplates(), name);
 }
 
 export function getTemplateRecord(name?: string): StoredTemplateRecord | undefined {
-  if (!name) {
-    return undefined;
-  }
-
-  return getAllTemplateRecords().find((record) => record.template.name === name);
+  return findStoredTemplateRecord(getAllTemplateRecords(), name);
 }
 
 export function resolveTemplateDefinition(name?: string): Template | undefined {
-  return getTemplateRecord(name)?.template;
+  return resolveTemplateDefinitionFromRecords(getAllTemplateRecords(), { name });
 }
 
 export function resolveTemplateAssets(name?: string): TemplateAsset[] | undefined {
@@ -599,19 +335,13 @@ export function resolveTemplateBlueprintContent(templateName: string | undefined
     return undefined;
   }
 
-  const asset = record.template.assets.find((candidate) => candidate.name === assetName);
-  if (!asset) {
-    return undefined;
-  }
+  return resolveTemplateRecordBlueprintContent(record, assetName, {
+    resolveBuiltinContent: findBlueprintContent,
+  });
+}
 
-  const blueprintFile = getAssetBlueprintKey(asset);
-  const resolvedBlueprintFile = resolveBlueprintPath(record.template_root, blueprintFile);
-
-  return record.blueprint_contents[blueprintFile]
-    || record.blueprint_contents[resolvedBlueprintFile]
-    || findBlueprintContent(resolvedBlueprintFile)
-    || findBlueprintContent(blueprintFile)
-    || undefined;
+export function getTemplateBlueprintContents(name: string): TemplateBlueprintContentsResponse {
+  return buildTemplateBlueprintContentsResponse(getTemplateRecord(name));
 }
 
 export function inferCharacterDisplayNameForTemplate(

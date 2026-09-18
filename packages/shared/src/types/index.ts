@@ -26,6 +26,7 @@ export type FeatureCategory =
   | 'orchestration'
   | 'seed_generation'
   | 'offspring_generation'
+  | 'worldbook_generation'
   | 'intro_scene_generation'
   | 'validation'
   | 'similarity';
@@ -34,6 +35,7 @@ export interface FeatureBlueprintDefaults {
   orchestration?: string;
   seed_generation?: string;
   offspring_generation?: string;
+  worldbook_generation?: string;
   intro_scene_generation?: string;
   validation?: string;
   similarity?: string;
@@ -197,6 +199,39 @@ export interface Config {
 // Draft Types
 // ============================================================================
 
+export interface CharacterCardRelatedLorebook {
+  id?: number;
+  book?: string | null;
+  path?: string;
+  version?: string;
+  commit_ref?: string;
+}
+
+export interface CharacterCardDepthPrompt {
+  depth: number;
+  prompt: string;
+}
+
+export interface CharacterCardChubMetadata {
+  id?: number;
+  preset?: string | null;
+  full_path?: string;
+  custom_css?: string | null;
+  extensions?: unknown[];
+  expressions?: unknown;
+  alt_expressions?: Record<string, unknown>;
+  background_image?: string;
+  related_lorebooks?: CharacterCardRelatedLorebook[];
+}
+
+export interface CharacterCardMetadata {
+  avatar?: string;
+  creator?: string;
+  character_version?: string;
+  depth_prompt?: CharacterCardDepthPrompt;
+  chub?: CharacterCardChubMetadata;
+}
+
 export interface DraftMetadata {
   review_id: string;
   seed: string;
@@ -212,9 +247,11 @@ export interface DraftMetadata {
   character_name?: string;
   template_name?: string;
   parent_drafts?: string[];
+  connected_drafts?: string[];
   offspring_type?: string;
   custom_instructions?: string;
   component_send_order?: string[];
+  card_metadata?: CharacterCardMetadata;
 }
 
 export interface Draft {
@@ -250,6 +287,105 @@ export interface DraftFilters {
 }
 
 // ============================================================================
+// Worlds / Lorebook Persistence Types
+// ============================================================================
+
+export interface WorldCounts {
+  characters: number;
+  timelines: number;
+  factions: number;
+  locations: number;
+}
+
+export interface WorldFactionRecord {
+  id: string;
+  worldId: string;
+  name: string;
+  description?: string;
+  role?: string;
+  notes?: string;
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WorldLocationRecord {
+  id: string;
+  worldId: string;
+  name: string;
+  description?: string;
+  category?: string;
+  notes?: string;
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WorldCharacterRecord {
+  id: string;
+  worldId: string;
+  draftId?: string;
+  characterName: string;
+  role?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TimelineEventRecord {
+  id: string;
+  timelineId: string;
+  title: string;
+  description?: string;
+  eventDate?: string;
+  sortOrder: number;
+  tags: string[];
+  metadata: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TimelineRecord {
+  id: string;
+  worldId: string;
+  userId: string;
+  name: string;
+  description?: string;
+  startDate?: string;
+  endDate?: string;
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
+  world?: {
+    id: string;
+    name: string;
+  };
+  _count?: {
+    events: number;
+  };
+  events?: TimelineEventRecord[];
+}
+
+export interface WorldRecord {
+  id: string;
+  userId: string;
+  name: string;
+  description?: string;
+  genre?: string;
+  setting?: string;
+  notes?: string;
+  tags: string[];
+  isPublic: boolean;
+  createdAt: string;
+  updatedAt: string;
+  _count?: WorldCounts;
+  characters?: WorldCharacterRecord[];
+  factions?: WorldFactionRecord[];
+  locations?: WorldLocationRecord[];
+  timelines?: TimelineRecord[];
+}
+
+// ============================================================================
 // Character Profile Types
 // ============================================================================
 
@@ -279,6 +415,7 @@ export interface AssetDefinition {
   depends_on: string[];
   description: string;
   blueprint_file?: string;
+  import_aliases?: string[];
 }
 
 export interface Template {
@@ -326,6 +463,17 @@ export interface SeedGenerationResponse {
   seeds: string[];
 }
 
+export interface LorebookGenerationRequest {
+  draft_ids: string[];
+  focus?: string;
+  blueprint_content?: string;
+  blueprint_path?: string;
+}
+
+export interface LorebookGenerationResponse {
+  content: string;
+}
+
 export interface ValidatePathRequest {
   path: string;
 }
@@ -342,11 +490,15 @@ export interface ValidationResponse {
 // Generation Types
 // ============================================================================
 
+export const MAX_CONNECTED_DRAFT_REFERENCES = 10;
+
 export interface GenerateRequest {
   seed: string;
   template?: string;
   mode: ContentMode;
   stream?: boolean;
+  selected_assets?: string[];
+  connected_draft_ids?: string[];
 }
 
 export interface GenerateBatchRequest {
@@ -355,6 +507,8 @@ export interface GenerateBatchRequest {
   mode: ContentMode;
   parallel?: boolean;
   max_concurrent?: number;
+  selected_assets?: string[];
+  connected_draft_ids?: string[];
 }
 
 export interface GenerateAssetRequest {
@@ -484,7 +638,7 @@ export interface OffspringRequest {
 // Export Types
 // ============================================================================
 
-export type ExportFormat = 'text' | 'json' | 'combined';
+export type ExportFormat = 'text' | 'json' | 'combined' | 'png';
 
 export interface FieldMapping {
   asset: string;
@@ -573,6 +727,11 @@ export interface ImportedCharacter {
   sourceFormat: ImportedCharacterFormat;
   sourcePreset?: string;
   unmappedFields?: Record<string, string>;
+  metadata?: Partial<DraftMetadata>;
+}
+
+export interface CharacterImportOptions {
+  template?: Pick<Template, 'name' | 'assets'>;
 }
 
 // ============================================================================
@@ -595,6 +754,12 @@ export interface RefineRequest {
   draft_id: string;
   asset: string;
   message: string;
+}
+
+export interface OptimizeTextRequest {
+  text: string;
+  target_reduction?: number;
+  preserve_format?: boolean;
 }
 
 // ============================================================================

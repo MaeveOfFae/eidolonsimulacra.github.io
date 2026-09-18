@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
-import { Sparkles, Loader2, ArrowRight, Copy, Check, RefreshCcw, Wand2, Star, History, Archive } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Sparkles, Loader2, ArrowRight, Copy, Check, RefreshCcw, Wand2, Star, Archive } from 'lucide-react';
 import type { FeatureCategory, SeedGenerationRequest } from '@char-gen/shared';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
 import { api } from '@/lib/api';
@@ -9,6 +9,7 @@ import type { Blueprint } from '@char-gen/shared';
 import {
   archiveSeedRun,
   DEFAULT_SEED_COUNT,
+  DEFAULT_SEED_COVERAGE_MODE,
   buildSeedGenerationLines,
   getFavoriteSeeds,
   getSeedRunHistory,
@@ -22,13 +23,13 @@ import {
   saveSeedRun,
   toggleFavoriteSeed,
   type FavoriteSeedRecord,
-  type SeedCoverageMode,
   type SeedGeneratorControls,
   type SeedRunRecord,
   type SeedSuggestionPreset,
 } from '../../lib/seed-generator.js';
 import { queueAutoSync } from '../../lib/server/auto-sync.js';
 import { BlueprintPanel } from '../common/BlueprintPanel';
+import CollapsibleSection from '../common/CollapsibleSection';
 import { getBlueprintsForFeature, resolveBlueprintForFeature, toBlueprintOptions } from '@/lib/blueprints/featureSelection';
 import { configManager } from '@/lib/config/manager';
 import {
@@ -56,7 +57,7 @@ export default function SeedGenerator() {
   const [copiedSeed, setCopiedSeed] = useState<string | null>(null);
   const [controls, setControls] = useState<SeedGeneratorControls>({
     count: DEFAULT_SEED_COUNT,
-    coverageMode: 'per-genre',
+    coverageMode: DEFAULT_SEED_COVERAGE_MODE,
   });
   const [resumeNotice, setResumeNotice] = useState<string | null>(null);
   const [history, setHistory] = useState<SeedRunRecord[]>(() => getSeedRunHistory());
@@ -110,7 +111,7 @@ export default function SeedGenerator() {
         request: {
           genreLines: variables.genre_lines,
           count: controls.count,
-          coverageMode: controls.coverageMode,
+          coverageMode: DEFAULT_SEED_COVERAGE_MODE,
           surpriseMode: Boolean(variables.surprise_mode),
           presetId: activePreset || undefined,
         },
@@ -131,7 +132,10 @@ export default function SeedGenerator() {
 
     setGenreLines(session.genreLines);
     setActivePreset(session.activePreset);
-    setControls(session.controls);
+    setControls({
+      count: session.controls.count,
+      coverageMode: DEFAULT_SEED_COVERAGE_MODE,
+    });
 
     if (session.status === 'generating') {
       setResumeNotice('Seed generation was interrupted. Review the restored inputs and generate again to continue.');
@@ -190,7 +194,7 @@ export default function SeedGenerator() {
     is_generating: seedMutation.isPending,
     surprise_mode: Boolean(seedMutation.variables?.surprise_mode),
     seed_count: controls.count,
-    coverage_mode: controls.coverageMode,
+    coverage_mode: DEFAULT_SEED_COVERAGE_MODE,
     history_count: history.length,
     favorite_seed_count: favorites.length,
   });
@@ -250,7 +254,7 @@ export default function SeedGenerator() {
   const handleReset = () => {
     setGenreLines(defaultPreset.genreLines);
     setActivePreset(defaultPreset.id);
-    setControls({ count: DEFAULT_SEED_COUNT, coverageMode: 'per-genre' });
+    setControls({ count: DEFAULT_SEED_COUNT, coverageMode: DEFAULT_SEED_COVERAGE_MODE });
     setRestoredSeeds([]);
     setResumeNotice(null);
     clearActiveSeedGeneratorSession();
@@ -303,7 +307,7 @@ export default function SeedGenerator() {
     setGenreLines(lines);
     setControls({
       count: entry.request.count,
-      coverageMode: entry.request.coverageMode,
+      coverageMode: DEFAULT_SEED_COVERAGE_MODE,
     });
     setActivePreset(entry.request.presetId || null);
     setResumeNotice(null);
@@ -321,17 +325,12 @@ export default function SeedGenerator() {
     }));
   };
 
-  const handleCoverageMode = (coverageMode: SeedCoverageMode) => {
-    setControls((previous) => ({ ...previous, coverageMode }));
-  };
-
   useEffect(() => {
     const hasState = Boolean(
       genreLines.trim()
       || seeds.length > 0
       || activePreset
       || controls.count !== DEFAULT_SEED_COUNT
-      || controls.coverageMode !== 'per-genre'
     );
 
     if (!hasState) {
@@ -345,7 +344,7 @@ export default function SeedGenerator() {
       activePreset,
       controls: {
         count: controls.count,
-        coverageMode: controls.coverageMode,
+        coverageMode: DEFAULT_SEED_COVERAGE_MODE,
       },
       seeds,
       status: seedMutation.isPending ? 'generating' : seeds.length > 0 ? 'ready' : 'idle',
@@ -368,201 +367,199 @@ export default function SeedGenerator() {
   }, [genreLines, seedMutation.isPending, seeds.length]);
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold">Seed Generator</h1>
-        <p className="text-muted-foreground">
-          Generate seed ideas from genre constraints. Pick a preset, edit lines, generate, then push to generation.
-        </p>
-      </div>
+    <div className="app-page space-y-8 pb-10 sm:space-y-10 sm:pb-12">
+      <section className="app-page-hero">
+        <div className="app-page-hero-grid">
+          <div className="space-y-4 sm:space-y-5">
+            <p className="app-page-eyebrow">Seed Generator</p>
+            <div className="space-y-3">
+              <h1 className="app-page-title">Build seed batches</h1>
+              <p className="app-page-summary">Turn genre clusters into reusable concept seeds, then send the strongest ones into draft generation.</p>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-3">
+              <Link to="/generate" className="app-button app-button-secondary">
+                Open Generate
+              </Link>
+              <Link to="/drafts?tab=seeds" className="app-button app-button-secondary">
+                Open seed library
+              </Link>
+            </div>
+          </div>
 
-      {blueprint && !blueprintLoading && (
-        <BlueprintPanel
-          blueprintName={selectedBlueprintPath}
-          blueprintContent={effectiveSeedBlueprint || blueprint.content}
-          title="Seed Generator Blueprint"
-          description={blueprint.description}
-          editable
-          availableBlueprints={availableBlueprints}
-          onBlueprintSelect={handleBlueprintSelect}
-          onContentChange={setSeedBlueprintOverride}
-        />
-      )}
+          <div className="app-panel-muted p-4 sm:p-5">
+            <p className="app-page-eyebrow">Current batch</p>
+            <div className="mt-4 app-page-metrics">
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">Input lines</p>
+                <div className="app-page-metric-value text-2xl">{inputLineCount}</div>
+              </div>
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">Requested</p>
+                <div className="app-page-metric-value text-2xl">{controls.count}</div>
+              </div>
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">Favorites</p>
+                <div className="app-page-metric-value text-2xl">{favorites.length}</div>
+              </div>
+              <div className="app-page-metric">
+                <p className="app-page-metric-label">History</p>
+                <div className="app-page-metric-value text-2xl">{history.length}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
-      {blueprintError && !blueprintLoading && (
-        <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
-          {blueprintError}
+      {resumeNotice && !seedMutation.error && (
+        <div className="app-note px-4 py-3 text-sm text-foreground">
+          {resumeNotice}
         </div>
       )}
 
       <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
-        <section className="rounded-lg border border-border bg-card p-6 space-y-3">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <label className="text-sm font-medium">Select preset</label>
+        <CollapsibleSection
+          title="Inputs"
+          subtitle="Preset, batch controls, and genre lines"
+          preview={`${inputLineCount} line${inputLineCount === 1 ? '' : 's'} • ${controls.count} requested`}
+          actions={
+            <button
+              onClick={handleReset}
+              type="button"
+              className="app-button app-button-secondary !px-3 !py-2 !text-xs"
+            >
+              <RefreshCcw className="h-3.5 w-3.5" />
+              Reset
+            </button>
+          }
+          defaultExpanded
+          className="app-panel"
+          bodyClassName="space-y-5"
+        >
+          <div className="space-y-5">
+            <div>
+              <div className="mb-3">
+                <label className="text-sm font-medium text-foreground">Select preset</label>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Edit the lines, then generate seeds.
+                  Start from a preset when you want a fast genre scaffold.
                 </p>
               </div>
-              <button
-                onClick={handleReset}
-                type="button"
-                className="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-xs font-medium hover:bg-accent"
-              >
-                <RefreshCcw className="h-3.5 w-3.5" />
-                Reset
-              </button>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              {presets.map((preset) => (
-                <button
-                  key={preset.id}
-                  type="button"
-                  onClick={() => handlePreset(preset)}
-                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                    activePreset === preset.id
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground'
-                  }`}
-                >
-                  {preset.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="text-sm font-medium">Genre or Theme Lines</label>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Use one line per genre/tone cluster. Tags like realism, slow-burn, low-magic, moreau, or count=12 can stay inline.
-            </p>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="space-y-2 text-sm font-medium">
-              <span>Seed Count</span>
-              <input
-                type="number"
-                min="5"
-                max="30"
-                step="1"
-                value={controls.count}
-                onChange={(event) => handleCountChange(event.target.value)}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              />
-            </label>
-
-            <div className="space-y-2">
-              <span className="text-sm font-medium">Coverage Mode</span>
-              <div className="flex rounded-md border border-input bg-background p-1">
-                {(['per-genre', 'blended'] as const).map((mode) => (
+              <div className="flex flex-wrap gap-2">
+                {presets.map((preset) => (
                   <button
-                    key={mode}
+                    key={preset.id}
                     type="button"
-                    onClick={() => handleCoverageMode(mode)}
-                    className={`flex-1 rounded px-3 py-2 text-xs font-medium transition-colors ${
-                      controls.coverageMode === mode
+                    onClick={() => handlePreset(preset)}
+                    className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                      activePreset === preset.id
                         ? 'bg-primary text-primary-foreground'
-                        : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                        : 'bg-muted text-muted-foreground hover:bg-accent hover:text-foreground'
                     }`}
                   >
-                    {mode === 'per-genre' ? 'Per Genre' : 'Blended'}
+                    {preset.label}
                   </button>
                 ))}
               </div>
             </div>
-          </div>
 
-          <textarea
-            value={genreLines}
-            onChange={(event) => {
-              setGenreLines(event.target.value);
-              setActivePreset(null);
-            }}
-            placeholder="fantasy\ncyberpunk noir\nVictorian horror"
-            className="min-h-48 w-full rounded-md border border-input bg-background px-3 py-2 text-sm font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          />
-
-          <div className="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
-            {inputLineCount} input lines. Request controls: {controls.count} seeds, {controls.coverageMode}. Output stays one seed per line with no numbering or headings.
-          </div>
-
-          {resumeNotice && !seedMutation.error && (
-            <div className="rounded-lg border border-primary/30 bg-primary/10 p-3 text-sm text-foreground">
-              {resumeNotice}
+            <div className="max-w-xs space-y-2">
+              <label className="space-y-2 text-sm font-medium">
+                <span>Seed Count</span>
+                <input
+                  type="number"
+                  min="5"
+                  max="30"
+                  step="1"
+                  value={controls.count}
+                  onChange={(event) => handleCountChange(event.target.value)}
+                  className="w-full rounded-xl border border-input bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+              </label>
             </div>
-          )}
 
-          <div className="flex flex-wrap gap-3">
-            <button
-              onClick={handleGenerate}
-              disabled={seedMutation.isPending || !genreLines.trim()}
-              className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {seedMutation.isPending && !seedMutation.variables?.surprise_mode ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Sparkles className="h-4 w-4" />
-              )}
-              Generate Seeds
-            </button>
-
-            <button
-              onClick={handleSurprise}
-              disabled={seedMutation.isPending}
-              className="inline-flex items-center gap-2 rounded-md border border-input px-4 py-2 text-sm font-medium hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {seedMutation.isPending && seedMutation.variables?.surprise_mode ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Wand2 className="h-4 w-4" />
-              )}
-              Surprise Me
-            </button>
-          </div>
-
-          {seedMutation.error && (
-            <div className="rounded-lg border border-destructive bg-destructive/10 p-3 text-sm text-destructive">
-              {seedMutation.error instanceof Error ? seedMutation.error.message : 'Seed generation failed'}
-            </div>
-          )}
-        </section>
-
-        <section className="rounded-lg border border-border bg-card p-6">
-          <div className="mb-4 flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold">Generated Seeds</h2>
-              <p className="text-sm text-muted-foreground">
-                Click any result to send it directly into the character generator.
+              <label className="text-sm font-medium text-foreground">Genre or Theme Lines</label>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Use one line per genre or tone cluster. Inline tags like realism, slow-burn, low-magic, moreau, or count=12 can stay in place.
               </p>
+              <textarea
+                value={genreLines}
+                onChange={(event) => {
+                  setGenreLines(event.target.value);
+                  setActivePreset(null);
+                }}
+                placeholder="fantasy\ncyberpunk noir\nVictorian horror"
+                className="mt-3 min-h-56 w-full rounded-xl border border-input bg-background/50 px-4 py-3 text-sm font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
             </div>
-            <div className="flex items-center gap-2">
-              <span className="app-pill app-pill-muted">
-                {seeds.length} seeds
-              </span>
+
+            <div className="rounded-xl border border-border/60 bg-background/35 p-3 text-xs text-muted-foreground">
+              {inputLineCount} input lines. Request count: {controls.count} seeds. All lines are blended into one batch, and output stays one seed per line with no numbering or headings.
+            </div>
+
+            <div className="flex flex-wrap gap-3">
               <button
-                type="button"
-                onClick={handleCopyAll}
-                disabled={seeds.length === 0}
-                className="app-button app-button-secondary !px-3 !py-2 !text-xs"
+                onClick={handleGenerate}
+                disabled={seedMutation.isPending || !genreLines.trim()}
+                className="app-button app-button-primary"
               >
-                {copiedSeed === '__all__' ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                {copiedSeed === '__all__' ? 'Copied All' : 'Copy All'}
+                {seedMutation.isPending && !seedMutation.variables?.surprise_mode ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Sparkles className="h-4 w-4" />
+                )}
+                Generate Seeds
+              </button>
+
+              <button
+                onClick={handleSurprise}
+                disabled={seedMutation.isPending}
+                className="app-button app-button-secondary"
+              >
+                {seedMutation.isPending && seedMutation.variables?.surprise_mode ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Wand2 className="h-4 w-4" />
+                )}
+                Surprise Me
               </button>
             </div>
-          </div>
 
+            {seedMutation.error && (
+              <div className="rounded-lg border border-destructive bg-destructive/10 p-3 text-sm text-destructive">
+                {seedMutation.error instanceof Error ? seedMutation.error.message : 'Seed generation failed'}
+              </div>
+            )}
+          </div>
+        </CollapsibleSection>
+
+        <CollapsibleSection
+          title="Generated seeds"
+          subtitle="Use any result directly in the draft generator or save it as a favorite"
+          preview={`${seeds.length} seed${seeds.length === 1 ? '' : 's'}`}
+          actions={
+            <button
+              type="button"
+              onClick={handleCopyAll}
+              disabled={seeds.length === 0}
+              className="app-button app-button-secondary !px-3 !py-2 !text-xs"
+            >
+              {copiedSeed === '__all__' ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+              {copiedSeed === '__all__' ? 'Copied All' : 'Copy All'}
+            </button>
+          }
+          defaultExpanded={seeds.length > 0}
+          className="app-panel"
+          bodyClassName="space-y-3"
+        >
           {seeds.length === 0 ? (
-            <div className="flex min-h-64 items-center justify-center rounded-lg border border-dashed border-border text-sm text-muted-foreground">
+            <div className="flex min-h-72 items-center justify-center rounded-xl border border-dashed border-border text-sm text-muted-foreground">
               Generate a set of seeds to start exploring concepts.
             </div>
           ) : (
             <div className="space-y-3">
               {seeds.map((seed) => (
-                <div key={seed} className="rounded-lg border border-border p-4">
-                  <p className="text-sm leading-6">{seed}</p>
+                <div key={seed} className="rounded-xl border border-border/60 bg-background/35 p-4">
+                  <p className="text-sm leading-6 text-foreground">{seed}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button
                       onClick={() => handleUseSeed(seed)}
@@ -594,95 +591,134 @@ export default function SeedGenerator() {
               ))}
             </div>
           )}
-
-          {(favorites.length > 0 || history.length > 0) && (
-            <div className="mt-6 grid gap-6 lg:grid-cols-2">
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <Star className="h-4 w-4 text-amber-500" />
-                  <h3 className="text-sm font-semibold">Favorite Seeds</h3>
-                </div>
-                {favorites.length === 0 ? (
-                  <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
-                    Favorite a seed to keep it around.
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {favorites.slice(0, 6).map((entry) => (
-                      <div key={entry.seed} className="rounded-lg border border-border p-3">
-                        <p className="text-sm leading-6">{entry.seed}</p>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          <button
-                            onClick={() => handleUseSeed(entry.seed)}
-                            className="app-button app-button-primary !px-3 !py-2 !text-xs"
-                          >
-                            Use
-                          </button>
-                          <button
-                            onClick={() => handleToggleFavorite(entry.seed)}
-                            className="app-button app-button-secondary !px-3 !py-2 !text-xs"
-                          >
-                            Archive
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <History className="h-4 w-4 text-primary" />
-                  <h3 className="text-sm font-semibold">Recent Batches</h3>
-                </div>
-                {history.length === 0 ? (
-                  <div className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">
-                    Generated batches will appear here.
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {history.slice(0, 6).map((entry) => (
-                      <div key={entry.id} className="rounded-lg border border-border p-3">
-                        <div className="flex items-center justify-between gap-3">
-                          <button
-                            type="button"
-                            onClick={() => handleUseHistoryEntry(entry)}
-                            className="min-w-0 text-left"
-                          >
-                            <span className="text-xs text-muted-foreground">
-                              {new Date(entry.createdAt).toLocaleString()}
-                            </span>
-                            <p className="mt-2 line-clamp-2 text-sm text-foreground">
-                              {entry.request.genreLines}
-                            </p>
-                            <p className="mt-1 text-xs text-muted-foreground">
-                              {entry.seeds.length} generated seeds
-                            </p>
-                          </button>
-                          <div className="flex shrink-0 items-center gap-2">
-                            <span className="app-pill app-pill-muted !px-2 !py-1 !text-[11px]">
-                              {entry.request.count} seeds • {entry.request.coverageMode}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => handleArchiveHistoryEntry(entry.id)}
-                              className="app-button app-button-secondary !px-3 !py-2 !text-xs"
-                            >
-                              <Archive className="h-3.5 w-3.5" />
-                              Archive
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </section>
+        </CollapsibleSection>
       </div>
+
+      {(favorites.length > 0 || history.length > 0) && (
+        <section className="grid gap-6 xl:grid-cols-2">
+          <CollapsibleSection
+            title="Favorite seeds"
+            subtitle="Keep reusable concepts close to generation"
+            preview={`${favorites.length} favorite${favorites.length === 1 ? '' : 's'}`}
+            className="app-panel"
+            bodyClassName="space-y-2"
+          >
+            {favorites.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">
+                Favorite a seed to keep it around.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {favorites.slice(0, 6).map((entry) => (
+                  <div key={entry.seed} className="rounded-xl border border-border/60 bg-background/35 p-3">
+                    <p className="text-sm leading-6 text-foreground">{entry.seed}</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <button
+                        onClick={() => handleUseSeed(entry.seed)}
+                        className="app-button app-button-primary !px-3 !py-2 !text-xs"
+                      >
+                        Use
+                      </button>
+                      <button
+                        onClick={() => handleToggleFavorite(entry.seed)}
+                        className="app-button app-button-secondary !px-3 !py-2 !text-xs"
+                      >
+                        Archive
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CollapsibleSection>
+
+          <CollapsibleSection
+            title="Recent batches"
+            subtitle="Reuse or archive recent seed runs"
+            preview={`${history.length} batch${history.length === 1 ? '' : 'es'}`}
+            className="app-panel"
+            bodyClassName="space-y-2"
+          >
+            {history.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">
+                Generated batches will appear here.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {history.slice(0, 6).map((entry) => (
+                  <div key={entry.id} className="rounded-xl border border-border/60 bg-background/35 p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <button
+                        type="button"
+                        onClick={() => handleUseHistoryEntry(entry)}
+                        className="min-w-0 text-left"
+                      >
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(entry.createdAt).toLocaleString()}
+                        </span>
+                        <p className="mt-2 line-clamp-2 text-sm text-foreground">
+                          {entry.request.genreLines}
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {entry.seeds.length} generated seeds
+                        </p>
+                      </button>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <span className="app-pill app-pill-muted !px-2 !py-1 !text-[11px]">
+                          {entry.request.count} seeds
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleArchiveHistoryEntry(entry.id)}
+                          className="app-button app-button-secondary !px-3 !py-2 !text-xs"
+                        >
+                          <Archive className="h-3.5 w-3.5" />
+                          Archive
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CollapsibleSection>
+        </section>
+      )}
+
+      <CollapsibleSection
+        title="Blueprint override"
+        subtitle="Inspect or replace the seed-generation blueprint only when you need to change composition behavior"
+        preview={selectedBlueprintPath || blueprint?.path || 'No blueprint selected'}
+        className="app-panel-muted"
+      >
+        {blueprintLoading && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading blueprint controls...
+          </div>
+        )}
+
+        {blueprintError && !blueprintLoading && (
+          <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+            {blueprintError}
+          </div>
+        )}
+
+        {blueprint && !blueprintLoading && !blueprintError && (
+          <div>
+            <BlueprintPanel
+              blueprintName={selectedBlueprintPath}
+              blueprintContent={effectiveSeedBlueprint || blueprint.content}
+              title="Seed Generator Blueprint"
+              description={blueprint.description}
+              editable
+              availableBlueprints={availableBlueprints}
+              onBlueprintSelect={handleBlueprintSelect}
+              onContentChange={setSeedBlueprintOverride}
+            />
+          </div>
+        )}
+      </CollapsibleSection>
     </div>
   );
 }

@@ -30,6 +30,7 @@ vi.mock('./server/client.js', () => ({
 
 import { api } from './api';
 import { configManager } from './config/manager';
+import { queueAutoSync } from './server/auto-sync.js';
 import { serverClient } from './server/client.js';
 import { DraftStorage } from './storage/draft-db.js';
 
@@ -212,5 +213,42 @@ describe('sync-backed browser persistence', () => {
         component_send_order: ['post_history', 'system_prompt'],
       }),
     }));
+  });
+
+  it('creates a manual draft with local metadata and queues sync', async () => {
+    const randomUuidSpy = vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue('11111111-1111-1111-1111-111111111111');
+
+    await api.updateConfig({
+      model: 'openrouter/test-model',
+    });
+
+    const draft = await api.createDraft({
+      seed: '  hand-built draft seed  ',
+      templateName: 'V2/V3 Card',
+      mode: 'NSFW',
+      characterName: '  Manual Character  ',
+      genre: '  grimdark  ',
+      notes: '  Keep the ritual language dense.  ',
+    });
+
+    expect(DraftStorage.saveDraft).toHaveBeenCalledWith(expect.objectContaining({
+      path: '11111111-1111-1111-1111-111111111111',
+      metadata: expect.objectContaining({
+        review_id: '11111111-1111-1111-1111-111111111111',
+        seed: 'hand-built draft seed',
+        template_name: 'V2/V3 Card',
+        mode: 'NSFW',
+        character_name: 'Manual Character',
+        genre: 'grimdark',
+        notes: 'Keep the ritual language dense.',
+        favorite: false,
+        model: 'openrouter/test-model',
+      }),
+      assets: {},
+    }));
+    expect(queueAutoSync).toHaveBeenCalledWith('drafts');
+    expect(draft.metadata.review_id).toBe('11111111-1111-1111-1111-111111111111');
+
+    randomUuidSpy.mockRestore();
   });
 });

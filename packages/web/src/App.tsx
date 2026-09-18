@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Link, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
+import { isSelfContainedDesktopRuntime } from './lib/runtime';
 import {
   appRouteHelpCoverage,
   guidedTourTargetCatalog,
@@ -13,6 +14,7 @@ const Home = lazy(() => import('./components/Home'));
 const Generation = lazy(() => import('./components/generation/Generation'));
 const SeedGenerator = lazy(() => import('./components/generation/SeedGenerator'));
 const Validation = lazy(() => import('./components/validation/Validation'));
+const TokenOptimization = lazy(() => import('./components/optimization/TokenOptimization'));
 const Drafts = lazy(() => import('./components/drafts/Drafts'));
 const Review = lazy(() => import('./components/drafts/Review'));
 const AssetRegenerator = lazy(() => import('./components/drafts/AssetRegenerator'));
@@ -71,7 +73,7 @@ function RouteNotFound() {
       <div>
         <h1 className="text-2xl font-semibold text-foreground">Page not found</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          The requested route does not exist in the current browser app build.
+          The requested route does not exist in the current app build.
         </p>
       </div>
       <Link
@@ -85,6 +87,8 @@ function RouteNotFound() {
 }
 
 export default function App() {
+  const selfContainedDesktop = isSelfContainedDesktopRuntime();
+
   return (
     <Layout>
       <Suspense fallback={<RouteFallback />}>
@@ -93,6 +97,7 @@ export default function App() {
           <Route path="/generate" element={<Generation />} />
           <Route path="/seed-generator" element={<SeedGenerator />} />
           <Route path="/validation" element={<Validation />} />
+          <Route path="/optimize" element={<TokenOptimization />} />
           <Route path="/batch" element={<BatchGenerate />} />
           <Route path="/drafts" element={<Drafts />} />
           <Route path="/drafts/" element={<Drafts />} />
@@ -110,7 +115,7 @@ export default function App() {
           <Route path="/themes" element={<ThemeStudio />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/data" element={<DataManager />} />
-          <Route path="/auth" element={<AuthPage />} />
+          {!selfContainedDesktop && <Route path="/auth" element={<AuthPage />} />}
           <Route path="/about" element={<About />} />
           <Route path="/help" element={<HelpCenterPage />} />
           <Route path="/whats-new" element={<WhatsNewPage />} />

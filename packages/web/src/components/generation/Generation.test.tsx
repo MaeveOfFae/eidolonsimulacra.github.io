@@ -8,6 +8,7 @@ vi.mock('@/lib/api', () => ({
   api: {
     getTemplates: vi.fn(),
     getBlueprints: vi.fn(),
+    getDrafts: vi.fn(),
   },
 }));
 
@@ -40,6 +41,15 @@ vi.mock('../common/BlueprintPanel', () => ({
   BlueprintPanel: () => <div>Blueprint Panel Mock</div>,
 }));
 
+vi.mock('./GenerationProgress', () => ({
+  default: (props: { connectedDraftIds?: string[] }) => (
+    <div>
+      <div>Generation Progress Mock</div>
+      <div>Connected references: {props.connectedDraftIds?.join(',') || 'none'}</div>
+    </div>
+  ),
+}));
+
 describe('Generation', () => {
   beforeEach(() => {
     window.localStorage.clear();
@@ -57,6 +67,22 @@ describe('Generation', () => {
       core: [],
       examples: [],
       templates: {},
+    } as never);
+    vi.mocked(api.getDrafts).mockResolvedValue({
+      drafts: [
+        {
+          review_id: 'draft-1',
+          seed: 'existing draft',
+          favorite: false,
+          character_name: 'Maeve',
+        },
+      ],
+      total: 1,
+      stats: {
+        total_drafts: 1,
+        archived_drafts: 0,
+        favorite_drafts: 0,
+      },
     } as never);
   });
 
@@ -84,5 +110,38 @@ describe('Generation', () => {
     expect(screen.getByText('Draft selection enabled')).toBeInTheDocument();
     expect(screen.getByText('Asset selection enabled')).toBeInTheDocument();
     expect(screen.getByText('Template count: 1')).toBeInTheDocument();
+  });
+
+  it('passes selected connected draft ids into the generation workflow', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={['/generate']}>
+          <Generation />
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+
+    fireEvent.change(
+      await screen.findByPlaceholderText('e.g., a lonely space pirate searching for redemption'),
+      { target: { value: 'New interconnected character' } }
+    );
+
+    fireEvent.change(screen.getByLabelText('Connected draft reference'), {
+      target: { value: 'draft-1' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Add reference' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Generate Character' }));
+
+    expect(await screen.findByText('Generation Progress Mock')).toBeInTheDocument();
+    expect(screen.getByText('Connected references: draft-1')).toBeInTheDocument();
   });
 });

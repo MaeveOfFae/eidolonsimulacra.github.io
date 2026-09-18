@@ -5,14 +5,14 @@ description = "Official V2/V3 card template with the shared six-asset flow"
 
 [[assets]]
 name = "system_prompt"
-required = true
+required = false
 depends_on = []
 description = "System-level behavioral instructions"
 blueprint_file = "blueprints/system/system_prompt.md"
 
 [[assets]]
 name = "post_history"
-required = true
+required = false
 depends_on = [
     "system_prompt",
 ]
@@ -22,10 +22,7 @@ blueprint_file = "blueprints/system/post_history.md"
 [[assets]]
 name = "character_sheet"
 required = true
-depends_on = [
-    "system_prompt",
-    "post_history",
-]
+depends_on = []
 description = "Structured character data"
 blueprint_file = "blueprints/system/character_sheet.md"
 
@@ -33,8 +30,6 @@ blueprint_file = "blueprints/system/character_sheet.md"
 name = "intro_scene"
 required = true
 depends_on = [
-    "system_prompt",
-    "post_history",
     "character_sheet",
 ]
 description = "First interaction scenario"

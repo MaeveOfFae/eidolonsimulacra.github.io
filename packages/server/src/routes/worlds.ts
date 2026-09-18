@@ -29,8 +29,30 @@ const createCharacterSchema = z.object({
 
 const updateCharacterSchema = createCharacterSchema.partial();
 
+const createFactionSchema = z.object({
+  name: z.string().min(1).max(255),
+  description: z.string().optional(),
+  role: z.string().optional(),
+  notes: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+});
+
+const updateFactionSchema = createFactionSchema.partial();
+
+const createLocationSchema = z.object({
+  name: z.string().min(1).max(255),
+  description: z.string().optional(),
+  category: z.string().optional(),
+  notes: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+});
+
+const updateLocationSchema = createLocationSchema.partial();
+
 const worldParamsSchema = z.object({ id: z.string().uuid() });
 const characterParamsSchema = z.object({ worldId: z.string().uuid(), characterId: z.string().uuid() });
+const factionParamsSchema = z.object({ worldId: z.string().uuid(), factionId: z.string().uuid() });
+const locationParamsSchema = z.object({ worldId: z.string().uuid(), locationId: z.string().uuid() });
 
 const worldQuerySchema = z.object({
   search: z.string().optional(),
@@ -101,7 +123,7 @@ router.get(
       where,
       orderBy: { updatedAt: "desc" },
       include: {
-        _count: { select: { characters: true, timelines: true } },
+        _count: { select: { characters: true, timelines: true, factions: true, locations: true } },
       },
     });
 
@@ -122,6 +144,8 @@ router.get(
       where: { id: params.id },
       include: {
         characters: true,
+        factions: true,
+        locations: true,
         timelines: {
           include: { _count: { select: { events: true } } },
         },
@@ -422,6 +446,294 @@ router.delete(
 );
 
 // =============================================================================
+// World Factions
+// =============================================================================
+
+router.get(
+  "/:id/factions",
+  optionalAuth,
+  validateParams(worldParamsSchema),
+  async (req: Request, res: Response): Promise<void> => {
+    const userId = req.user?.userId;
+    const params = req.params as z.infer<typeof worldParamsSchema>;
+
+    const world = await prisma.world.findUnique({ where: { id: params.id } });
+    if (!world) {
+      res.status(404).json({ error: "World not found" });
+      return;
+    }
+
+    if (!world.isPublic && world.userId !== userId) {
+      res.status(403).json({ error: "Access denied" });
+      return;
+    }
+
+    const factions = await prisma.worldFaction.findMany({
+      where: { worldId: params.id },
+      orderBy: { name: "asc" },
+    });
+
+    res.json({ factions });
+  }
+);
+
+router.post(
+  "/:id/factions",
+  authenticateToken,
+  validateParams(worldParamsSchema),
+  validateBody(createFactionSchema),
+  async (req: Request, res: Response): Promise<void> => {
+    const userId = req.user!.userId;
+    const params = req.params as z.infer<typeof worldParamsSchema>;
+    const data = req.body;
+
+    const world = await prisma.world.findUnique({ where: { id: params.id } });
+    if (!world) {
+      res.status(404).json({ error: "World not found" });
+      return;
+    }
+
+    if (world.userId !== userId) {
+      res.status(403).json({ error: "Cannot modify this world" });
+      return;
+    }
+
+    const existing = await prisma.worldFaction.findFirst({
+      where: { worldId: params.id, name: data.name },
+    });
+    if (existing) {
+      res.status(409).json({ error: "Faction with this name already exists in world" });
+      return;
+    }
+
+    const faction = await prisma.worldFaction.create({
+      data: {
+        worldId: params.id,
+        name: data.name,
+        description: data.description,
+        role: data.role,
+        notes: data.notes,
+        tags: data.tags || [],
+      },
+    });
+    res.status(201).json({ faction });
+  }
+);
+
+router.patch(
+  "/:id/factions/:factionId",
+  authenticateToken,
+  validateParams(factionParamsSchema),
+  validateBody(updateFactionSchema),
+  async (req: Request, res: Response): Promise<void> => {
+    const userId = req.user!.userId;
+    const params = req.params as z.infer<typeof factionParamsSchema>;
+    const data = req.body;
+
+    const world = await prisma.world.findUnique({ where: { id: params.worldId } });
+    if (!world) {
+      res.status(404).json({ error: "World not found" });
+      return;
+    }
+
+    if (world.userId !== userId) {
+      res.status(403).json({ error: "Cannot modify this world" });
+      return;
+    }
+
+    const existingFaction = await prisma.worldFaction.findFirst({
+      where: { id: params.factionId, worldId: params.worldId },
+    });
+    if (!existingFaction) {
+      res.status(404).json({ error: "Faction not found" });
+      return;
+    }
+
+    const faction = await prisma.worldFaction.update({
+      where: { id: params.factionId },
+      data,
+    });
+    res.json({ faction });
+  }
+);
+
+router.delete(
+  "/:id/factions/:factionId",
+  authenticateToken,
+  validateParams(factionParamsSchema),
+  async (req: Request, res: Response): Promise<void> => {
+    const userId = req.user!.userId;
+    const params = req.params as z.infer<typeof factionParamsSchema>;
+
+    const world = await prisma.world.findUnique({ where: { id: params.worldId } });
+    if (!world) {
+      res.status(404).json({ error: "World not found" });
+      return;
+    }
+
+    if (world.userId !== userId) {
+      res.status(403).json({ error: "Cannot modify this world" });
+      return;
+    }
+
+    const deleted = await prisma.worldFaction.deleteMany({
+      where: { id: params.factionId, worldId: params.worldId },
+    });
+
+    if (deleted.count === 0) {
+      res.status(404).json({ error: "Faction not found" });
+      return;
+    }
+
+    res.json({ message: "Faction removed from world" });
+  }
+);
+
+// =============================================================================
+// World Locations
+// =============================================================================
+
+router.get(
+  "/:id/locations",
+  optionalAuth,
+  validateParams(worldParamsSchema),
+  async (req: Request, res: Response): Promise<void> => {
+    const userId = req.user?.userId;
+    const params = req.params as z.infer<typeof worldParamsSchema>;
+
+    const world = await prisma.world.findUnique({ where: { id: params.id } });
+    if (!world) {
+      res.status(404).json({ error: "World not found" });
+      return;
+    }
+
+    if (!world.isPublic && world.userId !== userId) {
+      res.status(403).json({ error: "Access denied" });
+      return;
+    }
+
+    const locations = await prisma.worldLocation.findMany({
+      where: { worldId: params.id },
+      orderBy: { name: "asc" },
+    });
+
+    res.json({ locations });
+  }
+);
+
+router.post(
+  "/:id/locations",
+  authenticateToken,
+  validateParams(worldParamsSchema),
+  validateBody(createLocationSchema),
+  async (req: Request, res: Response): Promise<void> => {
+    const userId = req.user!.userId;
+    const params = req.params as z.infer<typeof worldParamsSchema>;
+    const data = req.body;
+
+    const world = await prisma.world.findUnique({ where: { id: params.id } });
+    if (!world) {
+      res.status(404).json({ error: "World not found" });
+      return;
+    }
+
+    if (world.userId !== userId) {
+      res.status(403).json({ error: "Cannot modify this world" });
+      return;
+    }
+
+    const existing = await prisma.worldLocation.findFirst({
+      where: { worldId: params.id, name: data.name },
+    });
+    if (existing) {
+      res.status(409).json({ error: "Location with this name already exists in world" });
+      return;
+    }
+
+    const location = await prisma.worldLocation.create({
+      data: {
+        worldId: params.id,
+        name: data.name,
+        description: data.description,
+        category: data.category,
+        notes: data.notes,
+        tags: data.tags || [],
+      },
+    });
+    res.status(201).json({ location });
+  }
+);
+
+router.patch(
+  "/:id/locations/:locationId",
+  authenticateToken,
+  validateParams(locationParamsSchema),
+  validateBody(updateLocationSchema),
+  async (req: Request, res: Response): Promise<void> => {
+    const userId = req.user!.userId;
+    const params = req.params as z.infer<typeof locationParamsSchema>;
+    const data = req.body;
+
+    const world = await prisma.world.findUnique({ where: { id: params.worldId } });
+    if (!world) {
+      res.status(404).json({ error: "World not found" });
+      return;
+    }
+
+    if (world.userId !== userId) {
+      res.status(403).json({ error: "Cannot modify this world" });
+      return;
+    }
+
+    const existingLocation = await prisma.worldLocation.findFirst({
+      where: { id: params.locationId, worldId: params.worldId },
+    });
+    if (!existingLocation) {
+      res.status(404).json({ error: "Location not found" });
+      return;
+    }
+
+    const location = await prisma.worldLocation.update({
+      where: { id: params.locationId },
+      data,
+    });
+    res.json({ location });
+  }
+);
+
+router.delete(
+  "/:id/locations/:locationId",
+  authenticateToken,
+  validateParams(locationParamsSchema),
+  async (req: Request, res: Response): Promise<void> => {
+    const userId = req.user!.userId;
+    const params = req.params as z.infer<typeof locationParamsSchema>;
+
+    const world = await prisma.world.findUnique({ where: { id: params.worldId } });
+    if (!world) {
+      res.status(404).json({ error: "World not found" });
+      return;
+    }
+
+    if (world.userId !== userId) {
+      res.status(403).json({ error: "Cannot modify this world" });
+      return;
+    }
+
+    const deleted = await prisma.worldLocation.deleteMany({
+      where: { id: params.locationId, worldId: params.worldId },
+    });
+
+    if (deleted.count === 0) {
+      res.status(404).json({ error: "Location not found" });
+      return;
+    }
+
+    res.json({ message: "Location removed from world" });
+  }
+);
+
+// =============================================================================
 // Sync Endpoints
 // =============================================================================
 
@@ -437,6 +749,8 @@ router.get(
       orderBy: { updatedAt: "desc" },
       include: {
         characters: true,
+        factions: true,
+        locations: true,
         timelines: { include: { events: true } },
       },
     });

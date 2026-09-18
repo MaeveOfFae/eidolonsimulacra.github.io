@@ -583,11 +583,11 @@ export const pageHelpEntries: PageHelpEntry[] = [
     match: '/',
     matchMode: 'exact',
     title: 'Home help',
-    summary: 'Use Home as the launch surface for first-run guidance, recent updates, quick actions, and your next step into the workflow.',
+    summary: 'Use Home as a focused dashboard for the next step, recent work, guided setup, and a compact set of supporting tools.',
     keyActions: [
-      'Start with the Getting Started guide if this is your first run.',
-      'Use Quick Actions to jump straight into Generate, Drafts, or Seeds.',
-      'Check What’s New when behavior changes after an update.',
+      'Follow the starter checklist if this is your first run.',
+      'Use the next-steps panel to move from setup into generation and review.',
+      'Jump back into recent drafts instead of scanning the full library when possible.',
     ],
     pitfalls: [
       'Do not assume your work syncs automatically. This browser profile is the storage location by default.',
@@ -619,6 +619,27 @@ export const pageHelpEntries: PageHelpEntry[] = [
       { label: 'Open templates', to: '/templates' },
     ],
     relatedTopicIds: ['api-key-setup', 'what-is-a-template'],
+  },
+  {
+    id: 'token-optimization',
+    match: '/optimize',
+    matchMode: 'exact',
+    title: 'Token optimization help',
+    summary: 'Token Optimization shortens wording and removes bloat while preserving relevant content and structure as much as possible.',
+    keyActions: [
+      'Paste the full text you want to compress before deciding whether formatting should be preserved.',
+      'Use the output comparison to confirm that names, constraints, and required details survived the rewrite.',
+      'Treat this as compression, not summarization; rerun with a lower target if important nuance becomes too compressed.',
+    ],
+    pitfalls: [
+      'A high reduction target can pressure the model to compress more aggressively than you actually want.',
+      'Estimated token counts are approximate and useful for comparison, not billing precision.',
+    ],
+    actions: [
+      { label: 'Open Generate', to: '/generate' },
+      { label: 'Open Blueprints', to: '/blueprints' },
+    ],
+    relatedTopicIds: ['what-is-a-template', 'common-blockers'],
   },
   {
     id: 'seed-generator',
@@ -851,10 +872,11 @@ export const pageHelpEntries: PageHelpEntry[] = [
     match: '/settings',
     matchMode: 'exact',
     title: 'Settings help',
-    summary: 'Settings controls provider access, model defaults, browser persistence choices, theme behavior, and tutorial/help preferences.',
+    summary: 'Settings is split into focused sections for setup, providers, generation defaults, help preferences, and optional sync.',
     keyActions: [
-      'Start here if generation fails, models are missing, or you are unsure where data is stored.',
-      'Use the Help and Tutorials section to restart the starter guide or re-enable tips.',
+      'Start with Setup when you need to configure the active provider and runtime defaults.',
+      'Use Providers to edit stored credentials one provider at a time instead of scanning every key field.',
+      'Open Generation only when you need batch tuning or blueprint defaults.',
     ],
     pitfalls: [
       'Saving API keys in browser storage is convenient, but it should be limited to devices you trust.',
@@ -1037,6 +1059,7 @@ export const routeCoverageManifest: RouteCoverageManifestEntry[] = [
   { route: '/generate', pageHelpId: 'generate', coverage: 'complete' },
   { route: '/seed-generator', pageHelpId: 'seed-generator', coverage: 'complete' },
   { route: '/validation', pageHelpId: 'validation', coverage: 'complete' },
+  { route: '/optimize', pageHelpId: 'token-optimization', coverage: 'complete' },
   { route: '/batch', pageHelpId: 'batch', coverage: 'complete' },
   { route: '/drafts', pageHelpId: 'drafts', coverage: 'complete' },
   { route: '/drafts/:id', pageHelpId: 'draft-review', coverage: 'complete' },

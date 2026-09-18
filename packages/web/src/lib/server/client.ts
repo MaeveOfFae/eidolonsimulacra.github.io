@@ -3,7 +3,18 @@
  * Handles authentication and data synchronization with the backend server
  */
 
-import type { Draft, DraftMetadata } from '@char-gen/shared';
+import type {
+  Draft,
+  DraftMetadata,
+  TimelineEventRecord,
+  TimelineRecord,
+  WorldCharacterRecord,
+  WorldFactionRecord,
+  WorldLocationRecord,
+  WorldRecord,
+} from '@char-gen/shared';
+import { readPersistedString, removePersistedValues, writePersistedString } from '../persistence/storage.js';
+import { isSelfContainedDesktopRuntime } from '../runtime.js';
 
 // Types
 export interface ServerConfig {
@@ -59,6 +70,7 @@ export interface SyncedSeedRunRecord {
 // Storage keys
 const SERVER_CONFIG_KEY = 'server-config';
 const ACCESS_TOKEN_KEY = 'server-access-token';
+const SELF_CONTAINED_DESKTOP_MESSAGE = 'Desktop runtime is self-contained. Server sync is unavailable.';
 
 // Custom event for auth state changes
 export const AUTH_STATE_CHANGED_EVENT = 'auth-state-changed';
@@ -123,6 +135,10 @@ function normalizeDraftForSync(draft: Draft) {
     parentDraftIds: Array.isArray(draft.metadata.parent_drafts)
       ? draft.metadata.parent_drafts.filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
       : undefined,
+    connectedDraftIds: Array.isArray(draft.metadata.connected_drafts)
+      ? draft.metadata.connected_drafts.filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
+      : undefined,
+    cardMetadata: draft.metadata.card_metadata ? JSON.parse(JSON.stringify(draft.metadata.card_metadata)) : undefined,
     assets: normalizedAssets,
   };
 }
@@ -160,8 +176,25 @@ class ServerClient {
   private statusCacheExpiresAt = 0;
 
   constructor() {
+    if (this.isSelfContained()) {
+      this.config = { url: '', enabled: false };
+      this.accessToken = null;
+      removePersistedValues([SERVER_CONFIG_KEY, ACCESS_TOKEN_KEY]);
+      return;
+    }
+
     this.config = this.loadConfig();
-    this.accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+    this.accessToken = readPersistedString(ACCESS_TOKEN_KEY)?.value ?? null;
+  }
+
+  private isSelfContained(): boolean {
+    return isSelfContainedDesktopRuntime();
+  }
+
+  private ensureRemoteSyncAvailable(): void {
+    if (this.isSelfContained()) {
+      throw new Error(SELF_CONTAINED_DESKTOP_MESSAGE);
+    }
   }
 
   // ===========================================================================
@@ -169,8 +202,12 @@ class ServerClient {
   // ===========================================================================
 
   private loadConfig(): ServerConfig {
+    if (this.isSelfContained()) {
+      return { url: '', enabled: false };
+    }
+
     try {
-      const stored = localStorage.getItem(SERVER_CONFIG_KEY);
+      const stored = readPersistedString(SERVER_CONFIG_KEY)?.value;
       if (stored) {
         return JSON.parse(stored);
       }
@@ -181,15 +218,30 @@ class ServerClient {
   }
 
   private saveConfig(): void {
-    localStorage.setItem(SERVER_CONFIG_KEY, JSON.stringify(this.config));
+    if (this.isSelfContained()) {
+      return;
+    }
+
+    writePersistedString(SERVER_CONFIG_KEY, [], JSON.stringify(this.config));
     this.invalidateStatusCache();
   }
 
   getConfig(): ServerConfig {
+    if (this.isSelfContained()) {
+      return { url: '', enabled: false };
+    }
+
     return { ...this.config };
   }
 
   setConfig(config: Partial<ServerConfig>): void {
+    if (this.isSelfContained()) {
+      this.config = { url: '', enabled: false };
+      removePersistedValues([SERVER_CONFIG_KEY, ACCESS_TOKEN_KEY]);
+      this.invalidateStatusCache();
+      return;
+    }
+
     this.config = { ...this.config, ...config };
     this.saveConfig();
   }
@@ -200,10 +252,18 @@ class ServerClient {
   }
 
   isEnabled(): boolean {
+    if (this.isSelfContained()) {
+      return false;
+    }
+
     return this.config.enabled && !!this.config.url;
   }
 
   hasAccessToken(): boolean {
+    if (this.isSelfContained()) {
+      return false;
+    }
+
     return Boolean(this.accessToken);
   }
 
@@ -212,14 +272,25 @@ class ServerClient {
   // ===========================================================================
 
   private setAccessToken(token: string): void {
+    if (this.isSelfContained()) {
+      return;
+    }
+
     this.accessToken = token;
-    localStorage.setItem(ACCESS_TOKEN_KEY, token);
+    writePersistedString(ACCESS_TOKEN_KEY, [], token);
     this.invalidateStatusCache();
   }
 
   private clearAccessToken(): void {
+    if (this.isSelfContained()) {
+      this.accessToken = null;
+      removePersistedValues([ACCESS_TOKEN_KEY]);
+      this.invalidateStatusCache();
+      return;
+    }
+
     this.accessToken = null;
-    localStorage.removeItem(ACCESS_TOKEN_KEY);
+    removePersistedValues([ACCESS_TOKEN_KEY]);
     this.invalidateStatusCache();
   }
 
@@ -277,6 +348,8 @@ class ServerClient {
     options: RequestInit = {},
     retry = true
   ): Promise<Response> {
+    this.ensureRemoteSyncAvailable();
+
     const url = `${this.config.url}${endpoint}`;
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
@@ -414,6 +487,14 @@ class ServerClient {
   // ===========================================================================
 
   async checkStatus(): Promise<SyncStatus> {
+    if (this.isSelfContained()) {
+      return {
+        connected: false,
+        authenticated: false,
+        error: SELF_CONTAINED_DESKTOP_MESSAGE,
+      };
+    }
+
     if (!this.isEnabled()) {
       return { connected: false, authenticated: false };
     }
@@ -913,7 +994,7 @@ class ServerClient {
     return response.json();
   }
 
-  async getWorlds(params?: { search?: string; genre?: string; includePublic?: boolean }): Promise<{ worlds: unknown[] }> {
+  async getWorlds(params?: { search?: string; genre?: string; includePublic?: boolean }): Promise<{ worlds: WorldRecord[] }> {
     const searchParams = new URLSearchParams();
     if (params?.search) searchParams.set('search', params.search);
     if (params?.genre) searchParams.set('genre', params.genre);
@@ -929,7 +1010,7 @@ class ServerClient {
     return response.json();
   }
 
-  async getWorld(id: string): Promise<{ world: unknown }> {
+  async getWorld(id: string): Promise<{ world: WorldRecord }> {
     const response = await this.request(`/api/sync/worlds/${id}`);
 
     if (!response.ok) {
@@ -940,7 +1021,7 @@ class ServerClient {
     return response.json();
   }
 
-  async createWorld(data: { name: string; description?: string; genre?: string; setting?: string; notes?: string }): Promise<{ world: unknown }> {
+  async createWorld(data: { name: string; description?: string; genre?: string; setting?: string; notes?: string; tags?: string[]; isPublic?: boolean }): Promise<{ world: WorldRecord }> {
     const response = await this.request('/api/sync/worlds', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -954,7 +1035,7 @@ class ServerClient {
     return response.json();
   }
 
-  async updateWorld(id: string, data: Record<string, unknown>): Promise<{ world: unknown }> {
+  async updateWorld(id: string, data: Record<string, unknown>): Promise<{ world: WorldRecord }> {
     const response = await this.request(`/api/sync/worlds/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
@@ -981,6 +1062,162 @@ class ServerClient {
     return response.json();
   }
 
+  async getWorldCharacters(worldId: string): Promise<{ characters: WorldCharacterRecord[] }> {
+    const response = await this.request(`/api/sync/worlds/${worldId}/characters`);
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to get world characters');
+    }
+
+    return response.json();
+  }
+
+  async addWorldCharacter(worldId: string, data: { draftId?: string; characterName: string; role?: string; notes?: string }): Promise<{ character: WorldCharacterRecord }> {
+    const response = await this.request(`/api/sync/worlds/${worldId}/characters`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to add world character');
+    }
+
+    return response.json();
+  }
+
+  async updateWorldCharacter(worldId: string, characterId: string, data: Record<string, unknown>): Promise<{ character: WorldCharacterRecord }> {
+    const response = await this.request(`/api/sync/worlds/${worldId}/characters/${characterId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to update world character');
+    }
+
+    return response.json();
+  }
+
+  async deleteWorldCharacter(worldId: string, characterId: string): Promise<{ message: string }> {
+    const response = await this.request(`/api/sync/worlds/${worldId}/characters/${characterId}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to delete world character');
+    }
+
+    return response.json();
+  }
+
+  async getWorldFactions(worldId: string): Promise<{ factions: WorldFactionRecord[] }> {
+    const response = await this.request(`/api/sync/worlds/${worldId}/factions`);
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to get world factions');
+    }
+
+    return response.json();
+  }
+
+  async addWorldFaction(worldId: string, data: { name: string; description?: string; role?: string; notes?: string; tags?: string[] }): Promise<{ faction: WorldFactionRecord }> {
+    const response = await this.request(`/api/sync/worlds/${worldId}/factions`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to add world faction');
+    }
+
+    return response.json();
+  }
+
+  async updateWorldFaction(worldId: string, factionId: string, data: Record<string, unknown>): Promise<{ faction: WorldFactionRecord }> {
+    const response = await this.request(`/api/sync/worlds/${worldId}/factions/${factionId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to update world faction');
+    }
+
+    return response.json();
+  }
+
+  async deleteWorldFaction(worldId: string, factionId: string): Promise<{ message: string }> {
+    const response = await this.request(`/api/sync/worlds/${worldId}/factions/${factionId}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to delete world faction');
+    }
+
+    return response.json();
+  }
+
+  async getWorldLocations(worldId: string): Promise<{ locations: WorldLocationRecord[] }> {
+    const response = await this.request(`/api/sync/worlds/${worldId}/locations`);
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to get world locations');
+    }
+
+    return response.json();
+  }
+
+  async addWorldLocation(worldId: string, data: { name: string; description?: string; category?: string; notes?: string; tags?: string[] }): Promise<{ location: WorldLocationRecord }> {
+    const response = await this.request(`/api/sync/worlds/${worldId}/locations`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to add world location');
+    }
+
+    return response.json();
+  }
+
+  async updateWorldLocation(worldId: string, locationId: string, data: Record<string, unknown>): Promise<{ location: WorldLocationRecord }> {
+    const response = await this.request(`/api/sync/worlds/${worldId}/locations/${locationId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to update world location');
+    }
+
+    return response.json();
+  }
+
+  async deleteWorldLocation(worldId: string, locationId: string): Promise<{ message: string }> {
+    const response = await this.request(`/api/sync/worlds/${worldId}/locations/${locationId}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to delete world location');
+    }
+
+    return response.json();
+  }
+
   // ===========================================================================
   // Timelines Sync
   // ===========================================================================
@@ -999,7 +1236,7 @@ class ServerClient {
     return response.json();
   }
 
-  async getTimelines(params?: { worldId?: string; search?: string }): Promise<{ timelines: unknown[] }> {
+  async getTimelines(params?: { worldId?: string; search?: string }): Promise<{ timelines: TimelineRecord[] }> {
     const searchParams = new URLSearchParams();
     if (params?.worldId) searchParams.set('worldId', params.worldId);
     if (params?.search) searchParams.set('search', params.search);
@@ -1014,7 +1251,7 @@ class ServerClient {
     return response.json();
   }
 
-  async getTimeline(id: string): Promise<{ timeline: unknown }> {
+  async getTimeline(id: string): Promise<{ timeline: TimelineRecord }> {
     const response = await this.request(`/api/sync/timelines/${id}`);
 
     if (!response.ok) {
@@ -1025,7 +1262,7 @@ class ServerClient {
     return response.json();
   }
 
-  async createTimeline(data: { worldId: string; name: string; description?: string }): Promise<{ timeline: unknown }> {
+  async createTimeline(data: { worldId: string; name: string; description?: string; startDate?: string; endDate?: string; tags?: string[] }): Promise<{ timeline: TimelineRecord }> {
     const response = await this.request('/api/sync/timelines', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -1039,7 +1276,7 @@ class ServerClient {
     return response.json();
   }
 
-  async updateTimeline(id: string, data: Record<string, unknown>): Promise<{ timeline: unknown }> {
+  async updateTimeline(id: string, data: Record<string, unknown>): Promise<{ timeline: TimelineRecord }> {
     const response = await this.request(`/api/sync/timelines/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
@@ -1066,7 +1303,7 @@ class ServerClient {
     return response.json();
   }
 
-  async addTimelineEvent(timelineId: string, data: { title: string; description?: string; eventDate?: string }): Promise<{ event: unknown }> {
+  async addTimelineEvent(timelineId: string, data: { title: string; description?: string; eventDate?: string; sortOrder?: number; tags?: string[]; metadata?: Record<string, unknown> }): Promise<{ event: TimelineEventRecord }> {
     const response = await this.request(`/api/sync/timelines/${timelineId}/events`, {
       method: 'POST',
       body: JSON.stringify(data),
@@ -1080,7 +1317,7 @@ class ServerClient {
     return response.json();
   }
 
-  async updateTimelineEvent(timelineId: string, eventId: string, data: Record<string, unknown>): Promise<{ event: unknown }> {
+  async updateTimelineEvent(timelineId: string, eventId: string, data: Record<string, unknown>): Promise<{ event: TimelineEventRecord }> {
     const response = await this.request(`/api/sync/timelines/${timelineId}/events/${eventId}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
@@ -1112,6 +1349,10 @@ class ServerClient {
   // ===========================================================================
 
   async testConnection(url: string): Promise<{ success: boolean; message: string }> {
+    if (this.isSelfContained()) {
+      return { success: false, message: SELF_CONTAINED_DESKTOP_MESSAGE };
+    }
+
     try {
       const response = await fetch(`${url}/api/health`, {
         method: 'GET',

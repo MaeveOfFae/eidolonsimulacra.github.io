@@ -1,12 +1,13 @@
 # Eidolon Simulacra
 
-Eidolon Simulacra is a pnpm monorepo for template-aware character generation. The current product surface is a browser-first React app backed by shared TypeScript generation, parsing, export, and template utilities.
+Eidolon Simulacra is a pnpm monorepo for template-aware character generation. The current product surfaces are a React web app and an Expo-based mobile app backed by shared TypeScript generation, parsing, export, and template utilities.
 
 The repo is centered on a strict blueprint contract: start from one seed, generate assets in dependency order, keep asset formats module-specific, and do not leak downstream facts upstream.
 
 ## Current State
 
-- Browser-only workflow for day-to-day use. Drafts, templates, blueprint edits, and theme choices stay in browser storage.
+- The web app remains the most complete day-to-day workflow. Drafts, templates, blueprint edits, and theme choices stay in browser storage unless you opt into the sync API.
+- The mobile app now ships as an Expo workspace package with native navigation for generation, drafts, templates, settings, lineage, validation, blueprint browsing, comparison, and offspring flows.
 - Direct LLM provider integration from the client via the shared engine layer.
 - One built-in runtime template is currently loaded from `blueprints/templates/`:
   - `V2/V3 Card` with `system_prompt`, `post_history`, `character_sheet`, `intro_scene`, `intro_page`, and `a1111`
@@ -24,7 +25,7 @@ eidolon-simulacra/
 ├── packages/
 │   ├── shared/          # Shared TS types, generation, parsing, export, template utilities
 │   ├── web/             # React 19 + Vite browser app
-│   └── mobile/          # Early mobile scaffold, not part of the current build/lint flow
+│   └── mobile/          # Expo + React Native app shell using the shared package
 ├── presets/             # Export preset definitions
 ├── resources/           # Theme/resource files tracked in the repo
 ├── rules/               # Generation contract, content rules, and workflow docs
@@ -42,7 +43,32 @@ The web app currently exposes the main workflows directly in the browser:
 - Run offspring and similarity workflows
 - Manage themes, browser-stored data, and app settings
 
-The home screen also calls out the current operating mode explicitly: browser-only, no local API server required for normal usage.
+The home screen also calls out the current browser-first operating mode explicitly: no local API server is required for normal web usage.
+
+## Mobile App
+
+The mobile app lives in `packages/mobile` and runs through Expo. It reuses the shared API client and expects a reachable sync API for network-backed flows.
+
+Start it with:
+
+```bash
+pnpm dev:mobile
+```
+
+Platform shortcuts:
+
+```bash
+pnpm dev:mobile:android
+pnpm dev:mobile:ios
+pnpm typecheck:mobile
+pnpm lint:mobile
+```
+
+Notes:
+
+- In development, the mobile client defaults to `http://<dev-host>:3001/api`.
+- Set `EXPO_PUBLIC_API_BASE_URL` if the API is hosted elsewhere.
+- Most mobile flows assume the checked-in Node sync API is running and reachable from the device or emulator.
 
 ## Optional Docker API Stack
 
@@ -89,6 +115,12 @@ pnpm dev:web:lan
 
 That launches Vite on port `3000` with host `0.0.0.0`.
 
+To run the mobile app through Expo:
+
+```bash
+pnpm dev:mobile
+```
+
 ## Docker Web Stack
 
 If you want the web app instances to appear in Docker Desktop, use the dedicated web compose file:
@@ -123,6 +155,9 @@ pnpm build:web
 # Typecheck the web app
 pnpm typecheck:web
 
+# Typecheck the mobile app
+pnpm typecheck:mobile
+
 # Run the web test suite
 pnpm test:web
 
@@ -132,6 +167,9 @@ pnpm build
 # Lint packages that participate in CI
 pnpm lint
 
+# Lint the mobile package directly
+pnpm lint:mobile
+
 # Format tracked source/docs globs
 pnpm format
 ```
@@ -139,7 +177,7 @@ pnpm format
 Notes:
 
 - The current CI path runs release-notes parity, lint, web typechecking, web tests, the shared/web build, and a web preview smoke test.
-- `packages/mobile` exists in the workspace, but it is not wired into the root build or lint tasks yet.
+- The mobile package now has dedicated Expo, lint, and typecheck entry points, but native store/distribution builds are still outside the default CI path.
 - The web package now includes a Vitest harness that covers the in-app help and guide system; run it with `pnpm test:web`.
 
 ## Generation Model

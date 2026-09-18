@@ -97,6 +97,13 @@ export class AnthropicEngine extends BaseLLMEngine {
     return systemMsg?.content;
   }
 
+  private extractResponseText(content: Array<{ type: string; text: string }>): string {
+    return content
+      .filter((part) => part.type === 'text' && typeof part.text === 'string')
+      .map((part) => part.text)
+      .join('');
+  }
+
   async generate(
     messages: ChatMessage[],
     options?: GenerateOptions
@@ -135,13 +142,13 @@ export class AnthropicEngine extends BaseLLMEngine {
 
     const data: AnthropicResponse = await response.json();
 
-    const textContent = data.content.find(c => c.type === 'text');
-    if (!textContent) {
+    const content = this.extractResponseText(data.content);
+    if (!content) {
       throw new Error('No text content in response');
     }
 
     return {
-      content: textContent.text,
+      content,
       finishReason: data.stop_reason || undefined,
       usage: {
         promptTokens: data.usage.input_tokens,
@@ -216,7 +223,7 @@ export class AnthropicEngine extends BaseLLMEngine {
             const jsonStr = trimmed.slice(6);
             const event: AnthropicEvent = JSON.parse(jsonStr);
 
-            if (event.type === 'content_block_delta' && event.delta?.text) {
+            if (event.type === 'content_block_delta' && event.delta?.type === 'text_delta' && event.delta?.text) {
               yield {
                 content: event.delta.text,
                 done: false,

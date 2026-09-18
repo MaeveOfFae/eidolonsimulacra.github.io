@@ -1,4 +1,6 @@
-import { CircleHelp, PlayCircle, X } from 'lucide-react';
+import { X } from 'lucide-react';
+import { cn } from '../../utils/cn';
+import HoverHelpPopover from './HoverHelpPopover';
 import { useGuidedTour } from './GuidedTourContext';
 
 interface InlineHelpTipProps {
@@ -25,39 +27,23 @@ export default function InlineHelpTip({
   }
 
   return (
-    <aside className={`app-note p-4 ${className ?? ''}`.trim()}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-3">
-          <div className="rounded-xl border border-primary/20 bg-primary/10 p-2 text-primary">
-            <CircleHelp className="h-4 w-4" />
-          </div>
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-            <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={() => dismissTip(tipId)}
-          className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-background/60 hover:text-foreground"
-          aria-label="Dismiss help tip"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-
-      {actionLabel && onAction && (
-        <div className="mt-4">
-          <button
-            type="button"
-            onClick={onAction}
-            className="inline-flex items-center gap-2 rounded-xl border border-border/60 bg-background/60 px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:text-primary"
-          >
-            <PlayCircle className="h-4 w-4" />
-            {actionLabel}
-          </button>
-        </div>
-      )}
-    </aside>
+    <div className={cn('inline-flex items-center gap-2 rounded-xl border border-border/60 bg-background/50 px-3 py-2', className)}>
+      <HoverHelpPopover
+        title={title}
+        summary={description}
+        label={title}
+        actionLabel={actionLabel}
+        onAction={onAction}
+        triggerClassName="border-none bg-transparent px-0 py-0 text-sm font-semibold shadow-none hover:bg-transparent"
+      />
+      <button
+        type="button"
+        onClick={() => dismissTip(tipId)}
+        className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-background/60 hover:text-foreground"
+        aria-label="Dismiss help tip"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
   );
 }

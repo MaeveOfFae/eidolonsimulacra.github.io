@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef, type ChangeEvent } from 'react';
+import { useCallback, useState, useEffect, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { FolderOpen, Upload, CheckCircle2, AlertTriangle, BookOpen, Globe, Lock, MapPin, ShieldCheck, Star, Users, Archive, RotateCcw, Trash2 } from 'lucide-react';
-import { api } from '@/lib/api';
+import { api, type CreateDraftRequest } from '@/lib/api';
+import { isSelfContainedDesktopRuntime } from '@/lib/runtime';
 import SyncControls from '../common/SyncControls';
 import { DraftStorage } from '@/lib/storage/draft-db';
 import { useGuidedTour } from '../common/GuidedTourContext';
@@ -29,8 +30,11 @@ import {
   type SeedRunRecord,
 } from '@/lib/seed-generator';
 import { queueAutoSync } from '@/lib/server/auto-sync';
+import { pickFile } from '@/utils/download';
+import CollapsibleSection from '../common/CollapsibleSection';
 import { DraftListSidebar } from './DraftListSidebar';
 import { DraftComparisonPanel } from './DraftComparisonPanel';
+import ManualDraftCreateModal from './ManualDraftCreateModal';
 import { ReviewChecklistPanel } from './ReviewChecklistPanel';
 import { VersionHistoryPanel } from './VersionHistoryPanel';
 import { GenerationHistoryPanel } from '../timelines/GenerationHistoryPanel';
@@ -41,9 +45,6 @@ const LIBRARY_TABS: Array<{ id: LibraryTab; label: string }> = [
   { id: 'drafts', label: 'Drafts' },
   { id: 'seeds', label: 'Seeds' },
   { id: 'archive', label: 'Archive' },
-  { id: 'worlds', label: 'Worlds' },
-  { id: 'timelines', label: 'Timelines' },
-  { id: 'workbench', label: 'Workbench' },
 ];
 
 const WORLD_MODULES = [
@@ -70,7 +71,12 @@ const TIMELINE_MODULES = [
 ];
 
 function isLibraryTab(value: string | null): value is LibraryTab {
-  return LIBRARY_TABS.some((tab) => tab.id === value);
+  return value === 'drafts'
+    || value === 'seeds'
+    || value === 'archive'
+    || value === 'worlds'
+    || value === 'timelines'
+    || value === 'workbench';
 }
 
 function formatTimestamp(value?: string): string {
@@ -90,6 +96,8 @@ function formatTimestamp(value?: string): string {
 }
 
 export default function Drafts() {
+  const selfContainedDesktop = isSelfContainedDesktopRuntime();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [leftDraftId, setLeftDraftId] = useState<string>('');
   const [rightDraftId, setRightDraftId] = useState<string>('');
@@ -98,6 +106,8 @@ export default function Drafts() {
   const [archivedFavoriteSeeds, setArchivedFavoriteSeeds] = useState<FavoriteSeedRecord[]>(() => getArchivedFavoriteSeeds());
   const [seedHistory, setSeedHistory] = useState<SeedRunRecord[]>(() => getSeedRunHistory());
   const [archivedSeedRuns, setArchivedSeedRuns] = useState<SeedRunRecord[]>(() => getArchivedSeedRuns());
+  const [importTemplateName, setImportTemplateName] = useState('');
+  const [showCreateDraftModal, setShowCreateDraftModal] = useState(false);
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const { isTourCompleted, restartTour, startTour } = useGuidedTour();
   const queryClient = useQueryClient();
@@ -107,6 +117,11 @@ export default function Drafts() {
   const { data, isLoading, error } = useQuery({
     queryKey: ['drafts'],
     queryFn: () => api.getDrafts(),
+  });
+
+  const { data: templates = [] } = useQuery({
+    queryKey: ['templates'],
+    queryFn: () => api.getTemplates(),
   });
 
   const { data: archivedDraftData, isLoading: archivedDraftsLoading, error: archivedDraftError } = useQuery({
@@ -128,13 +143,6 @@ export default function Drafts() {
     ]);
   };
 
-  const archiveDraftMutation = useMutation({
-    mutationFn: (reviewId: string) => api.archiveDraft(reviewId),
-    onSuccess: async () => {
-      await refreshDraftQueries();
-    },
-  });
-
   const restoreDraftMutation = useMutation({
     mutationFn: (reviewId: string) => api.restoreDraft(reviewId),
     onSuccess: async () => {
@@ -149,7 +157,11 @@ export default function Drafts() {
     },
   });
 
-  const setActiveTab = (tab: LibraryTab) => {
+  const createDraftMutation = useMutation({
+    mutationFn: (request: CreateDraftRequest) => api.createDraft(request),
+  });
+
+  const setActiveTab = useCallback((tab: LibraryTab) => {
     const nextParams = new URLSearchParams(searchParams);
     if (tab === 'drafts') {
       nextParams.delete('tab');
@@ -157,7 +169,7 @@ export default function Drafts() {
       nextParams.set('tab', tab);
     }
     setSearchParams(nextParams, { replace: true });
-  };
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     if (!data?.drafts.length) {
@@ -174,6 +186,14 @@ export default function Drafts() {
       return data.drafts[1]?.review_id || data.drafts[0]?.review_id || '';
     });
   }, [data?.drafts]);
+
+  useEffect(() => {
+    if (!importTemplateName && templates.length > 0) {
+      setImportTemplateName(templates[0].name);
+    }
+  }, [importTemplateName, templates]);
+
+  const selectedImportTemplate = templates.find((candidate) => candidate.name === importTemplateName);
 
   useEffect(() => {
     let cancelled = false;
@@ -207,10 +227,21 @@ export default function Drafts() {
   }, []);
 
   useEffect(() => {
+    if (activeTab === 'worlds') {
+      navigate('/worlds', { replace: true });
+      return;
+    }
+
+    if (activeTab === 'timelines') {
+      navigate('/timelines', { replace: true });
+    }
+  }, [activeTab, navigate]);
+
+  useEffect(() => {
     if (!data?.drafts.length && activeTab === 'workbench') {
       setActiveTab('drafts');
     }
-  }, [activeTab, data?.drafts.length, searchParams]);
+  }, [activeTab, data?.drafts.length, setActiveTab]);
 
   if (isLoading) {
     return (
@@ -241,15 +272,10 @@ export default function Drafts() {
 
   const activeWorkbenchDraftId = leftDraftId || data?.drafts[0]?.review_id;
 
-  async function handleImportDrafts(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) {
-      return;
-    }
-
+  async function handleImportDraftsFile(file: File) {
     try {
       const text = await file.text();
-      const result = await DraftStorage.import(text, { sourceName: file.name });
+      const result = await DraftStorage.import(text, { sourceName: file.name, template: selectedImportTemplate });
       await refreshDraftQueries();
       const remapMessage = result.remapped > 0
         ? ` (${result.remapped} review IDs remapped to avoid overwriting existing drafts)`
@@ -261,12 +287,15 @@ export default function Drafts() {
         message: error instanceof Error ? error.message : 'Draft import failed',
       });
     }
-
-    event.target.value = '';
   }
 
-  async function handleArchiveDraft(reviewId: string) {
-    await archiveDraftMutation.mutateAsync(reviewId);
+  async function handleImportDrafts() {
+    const file = await pickFile({ accept: 'application/json,.json,text/markdown,.md,text/plain,.txt' }, importInputRef.current);
+    if (!file) {
+      return;
+    }
+
+    await handleImportDraftsFile(file);
   }
 
   async function handleRestoreDraft(reviewId: string) {
@@ -275,6 +304,31 @@ export default function Drafts() {
 
   async function handleDeleteDraft(reviewId: string) {
     await deleteDraftMutation.mutateAsync(reviewId);
+  }
+
+  function openCreateDraftModal() {
+    createDraftMutation.reset();
+    setShowCreateDraftModal(true);
+  }
+
+  function closeCreateDraftModal() {
+    if (createDraftMutation.isPending) {
+      return;
+    }
+
+    createDraftMutation.reset();
+    setShowCreateDraftModal(false);
+  }
+
+  async function handleCreateDraft(request: CreateDraftRequest) {
+    try {
+      const draft = await createDraftMutation.mutateAsync(request);
+      setShowCreateDraftModal(false);
+      await refreshDraftQueries();
+      navigate(`/drafts/${encodeURIComponent(draft.metadata.review_id)}`);
+    } catch (error) {
+      console.error('Draft creation failed:', error);
+    }
   }
 
   function handleArchiveFavoriteSeed(seed: string) {
@@ -321,32 +375,51 @@ export default function Drafts() {
             <p className="app-page-eyebrow">Library</p>
             <h1 className="app-page-title">Browse saved work</h1>
             <p className="app-page-summary">
-              Keep drafts, favorite seeds, world scaffolding, and timeline history in one place.
+              Reopen drafts, reuse seeds, and archive source material without losing track of what is active.
             </p>
             <div className="flex flex-wrap gap-3">
               <Link to="/generate" className="app-button app-button-primary">
                 Generate another draft
               </Link>
+              {templates.length > 0 && (
+                <button
+                  type="button"
+                  onClick={openCreateDraftModal}
+                  className="app-button app-button-secondary"
+                >
+                  Create draft manually
+                </button>
+              )}
               <Link to="/seed-generator" className="app-button app-button-secondary">
                 Seed generator
               </Link>
-              <Link to="/validation" className="app-button app-button-secondary">
-                Validation
-              </Link>
               <button
                 type="button"
-                onClick={() => importInputRef.current?.click()}
+                onClick={() => void handleImportDrafts()}
                 className="app-button app-button-secondary"
               >
                 <Upload className="h-4 w-4" />
                 Upload drafts
               </button>
+              {templates.length > 0 && (
+                <select
+                  value={importTemplateName}
+                  onChange={(event) => setImportTemplateName(event.target.value)}
+                  className="rounded-2xl border border-border/60 bg-background/55 px-4 py-2.5 text-sm text-foreground"
+                  aria-label="Import target template"
+                >
+                  {templates.map((availableTemplate) => (
+                    <option key={availableTemplate.name} value={availableTemplate.name}>
+                      Import as {availableTemplate.name}
+                    </option>
+                  ))}
+                </select>
+              )}
               <input
                 ref={importInputRef}
                 type="file"
                 accept="application/json,.json,text/markdown,.md,text/plain,.txt"
                 title="Upload draft files"
-                onChange={handleImportDrafts}
                 className="hidden"
               />
               <button
@@ -410,12 +483,41 @@ export default function Drafts() {
               onClick={() => setActiveTab(tab.id)}
               data-active={activeTab === tab.id ? 'true' : 'false'}
               className="app-tab-button"
-              disabled={tab.id === 'workbench' && !hasDrafts}
             >
               {tab.label}
             </button>
           ))}
         </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border/60 bg-background/35 px-3 py-3 text-sm">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+          Other surfaces
+        </span>
+        <button
+          type="button"
+          onClick={() => setActiveTab('workbench')}
+          disabled={!hasDrafts}
+          className={`inline-flex items-center rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
+            activeTab === 'workbench'
+              ? 'border-primary/30 bg-primary/12 text-foreground'
+              : 'border-border/60 bg-background/60 text-muted-foreground hover:border-primary/35 hover:text-primary'
+          } disabled:cursor-not-allowed disabled:opacity-50`}
+        >
+          Workbench
+        </button>
+        <Link
+          to="/worlds"
+          className="inline-flex items-center rounded-lg border border-border/60 bg-background/60 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/35 hover:text-primary"
+        >
+          Worlds route
+        </Link>
+        <Link
+          to="/timelines"
+          className="inline-flex items-center rounded-lg border border-border/60 bg-background/60 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/35 hover:text-primary"
+        >
+          Timeline route
+        </Link>
       </div>
 
       {!hasDrafts && activeTab === 'drafts' && (
@@ -425,13 +527,24 @@ export default function Drafts() {
           <p className="text-muted-foreground">
             Generate your first character to get started
           </p>
-          <Link
-            to="/generate"
-            data-tour-anchor="drafts-open-review"
-            className="app-button app-button-primary mt-4"
-          >
-            Generate Character
-          </Link>
+          <div className="mt-4 flex flex-wrap justify-center gap-3">
+            <Link
+              to="/generate"
+              data-tour-anchor="drafts-open-review"
+              className="app-button app-button-primary"
+            >
+              Generate Character
+            </Link>
+            {templates.length > 0 && (
+              <button
+                type="button"
+                onClick={openCreateDraftModal}
+                className="app-button app-button-secondary"
+              >
+                Create draft manually
+              </button>
+            )}
+          </div>
         </div>
       )}
 
@@ -442,20 +555,6 @@ export default function Drafts() {
           </section>
 
           <div className="min-w-0 space-y-4">
-            <div className="app-panel p-4">
-              <SyncControls
-                dataType="drafts"
-                label="Drafts"
-                onGetLocalData={async () => JSON.parse(await DraftStorage.exportAll())}
-                onApplyData={async (payload) => {
-                  if (payload && typeof payload === 'object' && 'drafts' in payload) {
-                    await DraftStorage.import(JSON.stringify(payload), { conflictStrategy: 'merge' });
-                    queryClient.invalidateQueries({ queryKey: ['drafts'] });
-                  }
-                }}
-              />
-            </div>
-
             <section className="app-panel p-5">
               <div className="flex items-start justify-between gap-4">
                 <div>
@@ -482,6 +581,27 @@ export default function Drafts() {
                 </div>
               </div>
             </section>
+
+            {!selfContainedDesktop && (
+              <CollapsibleSection
+                title="Sync"
+                subtitle="Cross-device draft sync and merge controls"
+                preview="Secondary"
+                className="app-panel"
+              >
+                <SyncControls
+                  dataType="drafts"
+                  label="Drafts"
+                  onGetLocalData={async () => JSON.parse(await DraftStorage.exportAll())}
+                  onApplyData={async (payload) => {
+                    if (payload && typeof payload === 'object' && 'drafts' in payload) {
+                      await DraftStorage.import(JSON.stringify(payload), { conflictStrategy: 'merge' });
+                      queryClient.invalidateQueries({ queryKey: ['drafts'] });
+                    }
+                  }}
+                />
+              </CollapsibleSection>
+            )}
           </div>
         </div>
       )}
@@ -516,20 +636,22 @@ export default function Drafts() {
               </div>
             </div>
 
-            <div className="mt-4 rounded-lg border border-border bg-background/40 p-4">
-              <SyncControls
-                dataType="seeds"
-                label="Favorite seeds"
-                onGetLocalData={() => ({ seeds: getAllFavoriteSeeds() })}
-                onApplyData={(payload) => {
-                  const parsed = parseFavoriteSeedsPayload(payload);
-                  if (parsed) {
-                    replaceFavoriteSeedsFromServer(parsed);
-                    refreshSeedData();
-                  }
-                }}
-              />
-            </div>
+            {!selfContainedDesktop && (
+              <div className="mt-4 rounded-lg border border-border bg-background/40 p-4">
+                <SyncControls
+                  dataType="seeds"
+                  label="Favorite seeds"
+                  onGetLocalData={() => ({ seeds: getAllFavoriteSeeds() })}
+                  onApplyData={(payload) => {
+                    const parsed = parseFavoriteSeedsPayload(payload);
+                    if (parsed) {
+                      replaceFavoriteSeedsFromServer(parsed);
+                      refreshSeedData();
+                    }
+                  }}
+                />
+              </div>
+            )}
 
             {recentFavoriteSeeds.length === 0 ? (
               <div className="mt-4 rounded-lg border border-dashed border-border bg-background/40 p-6 text-center">
@@ -602,7 +724,7 @@ export default function Drafts() {
                       <div>
                         <h3 className="text-sm font-semibold text-foreground">{entry.seeds.length} generated seeds</h3>
                         <p className="mt-1 text-xs text-muted-foreground">
-                          {entry.request.count} requested · {entry.request.coverageMode} · {formatTimestamp(entry.createdAt)}
+                          {entry.request.count} requested · {formatTimestamp(entry.createdAt)}
                         </p>
                       </div>
                       <span className="app-pill app-pill-muted">Run</span>
@@ -983,6 +1105,16 @@ export default function Drafts() {
             </div>
           </div>
         </section>
+      )}
+
+      {showCreateDraftModal && templates.length > 0 && (
+        <ManualDraftCreateModal
+          templates={templates}
+          onClose={closeCreateDraftModal}
+          onCreate={handleCreateDraft}
+          isSubmitting={createDraftMutation.isPending}
+          error={createDraftMutation.error instanceof Error ? createDraftMutation.error.message : null}
+        />
       )}
     </div>
   );

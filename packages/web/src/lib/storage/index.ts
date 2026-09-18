@@ -1,6 +1,6 @@
 /**
  * Storage Module
- * Client-side IndexedDB storage services
+ * Client-side draft storage services
  */
 
 export * from './draft-db.js';

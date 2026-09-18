@@ -9,6 +9,8 @@ const packageJson = JSON.parse(fs.readFileSync(new URL('./package.json', import.
   version: string;
 };
 
+const tauriHost = process.env.TAURI_DEV_HOST;
+
 export default defineConfig({
   plugins: [react()],
   define: {
@@ -20,7 +22,19 @@ export default defineConfig({
     },
   },
   server: {
+    host: tauriHost || undefined,
     port: 3000,
+    strictPort: true,
+    hmr: tauriHost
+      ? {
+          protocol: 'ws',
+          host: tauriHost,
+          port: 3001,
+        }
+      : undefined,
+    watch: {
+      ignored: ['**/src-tauri/**'],
+    },
   },
   test: {
     environment: 'happy-dom',

@@ -19,6 +19,7 @@ import type {
 
 interface GeminiPart {
   text?: string;
+  thought?: boolean;
 }
 
 interface GeminiContent {
@@ -29,6 +30,12 @@ interface GeminiContent {
 interface GeminiCandidate {
   content?: GeminiContent;
   finishReason?: string;
+  finishMessage?: string;
+}
+
+interface GeminiPromptFeedback {
+  blockReason?: string;
+  blockReasonMessage?: string;
 }
 
 interface GeminiUsageMetadata {
@@ -38,13 +45,15 @@ interface GeminiUsageMetadata {
 }
 
 interface GeminiResponse {
-  candidates: GeminiCandidate[];
+  candidates?: GeminiCandidate[];
+  promptFeedback?: GeminiPromptFeedback;
   usageMetadata?: GeminiUsageMetadata;
   modelVersion?: string;
 }
 
 interface GeminiStreamResponse {
-  candidates: GeminiCandidate[];
+  candidates?: GeminiCandidate[];
+  promptFeedback?: GeminiPromptFeedback;
   usageMetadata?: GeminiUsageMetadata;
 }
 
@@ -96,6 +105,50 @@ export class GoogleEngine extends BaseLLMEngine {
     return contents;
   }
 
+  private extractCandidateText(candidate?: GeminiCandidate): string {
+    if (!candidate?.content?.parts) {
+      return '';
+    }
+
+    return candidate.content.parts
+      .filter((part) => part.thought !== true)
+      .map((part) => part.text || '')
+      .join('');
+  }
+
+  private buildNoContentError(response: GeminiResponse, candidate?: GeminiCandidate): string {
+    const blockReason = response.promptFeedback?.blockReason?.trim();
+    const blockReasonMessage = response.promptFeedback?.blockReasonMessage?.trim();
+    if (blockReason) {
+      return blockReasonMessage
+        ? `Gemini blocked the prompt (${blockReason}): ${blockReasonMessage}`
+        : `Gemini blocked the prompt (${blockReason}).`;
+    }
+
+    switch (candidate?.finishReason) {
+      case 'MAX_TOKENS':
+        return 'Gemini exhausted its output budget before producing visible text. Increase max tokens or choose a different model.';
+      case 'SAFETY':
+        return 'Gemini blocked the response with safety filters.';
+      case 'RECITATION':
+        return 'Gemini blocked the response because it appears too close to copyrighted material.';
+      case 'LANGUAGE':
+        return 'Gemini rejected the response because of an unsupported language.';
+      case 'UNEXPECTED_TOOL_CALL':
+      case 'TOO_MANY_TOOL_CALLS':
+      case 'MALFORMED_FUNCTION_CALL':
+        return 'Gemini returned tool or function-call output instead of plain text.';
+      case 'MALFORMED_RESPONSE':
+        return 'Gemini returned a malformed response.';
+      default:
+        if (candidate?.finishMessage?.trim()) {
+          return `Gemini returned no displayable text: ${candidate.finishMessage.trim()}`;
+        }
+
+        return 'Gemini returned no displayable text. Try a different model or increase max tokens.';
+    }
+  }
+
   private async callEndpoint(endpoint: string, body: unknown, signal?: AbortSignal): Promise<Response> {
     const url = `${this.baseUrl}${endpoint}`;
 
@@ -132,14 +185,15 @@ export class GoogleEngine extends BaseLLMEngine {
 
     const data: GeminiResponse = await response.json();
 
-    const candidate = data.candidates[0];
-    if (!candidate?.content?.parts?.[0]?.text) {
-      throw new Error('No content in response');
+    const candidate = data.candidates?.[0];
+    const content = this.extractCandidateText(candidate).trim();
+    if (!content) {
+      throw new Error(this.buildNoContentError(data, candidate));
     }
 
     return {
-      content: candidate.content.parts[0].text,
-      finishReason: candidate.finishReason,
+      content,
+      finishReason: candidate?.finishReason,
       usage: data.usageMetadata ? {
         promptTokens: data.usageMetadata.promptTokenCount || 0,
         completionTokens: data.usageMetadata.candidatesTokenCount || 0,
@@ -196,10 +250,10 @@ export class GoogleEngine extends BaseLLMEngine {
             const jsonStr = trimmed.slice(6);
             const data: GeminiStreamResponse = JSON.parse(jsonStr);
 
-            const candidate = data.candidates[0];
+            const candidate = data.candidates?.[0];
             if (!candidate) continue;
 
-            const text = candidate.content?.parts?.[0]?.text;
+            const text = this.extractCandidateText(candidate);
             if (text) {
               yield {
                 content: text,

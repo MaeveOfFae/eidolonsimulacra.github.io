@@ -1,4 +1,4 @@
-import Svg, { Path, Circle, G } from 'react-native-svg';
+import Svg, { Path, Circle } from 'react-native-svg';
 import { View } from 'react-native';
 
 interface IconProps {
@@ -107,6 +107,38 @@ export function ArrowLeftIcon({ color, size = 24 }: IconProps) {
       <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
         <Path
           d="M10.5 19.5L3 12M3 12L10.5 4.5M3 12H21"
+          stroke={color}
+          strokeWidth={1.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </Svg>
+    </View>
+  );
+}
+
+export function ChevronDownIcon({ color, size = 24 }: IconProps) {
+  return (
+    <View style={{ width: size, height: size }}>
+      <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <Path
+          d="M6 9L12 15L18 9"
+          stroke={color}
+          strokeWidth={1.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </Svg>
+    </View>
+  );
+}
+
+export function ChevronUpIcon({ color, size = 24 }: IconProps) {
+  return (
+    <View style={{ width: size, height: size }}>
+      <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <Path
+          d="M6 15L12 9L18 15"
           stroke={color}
           strokeWidth={1.5}
           strokeLinecap="round"

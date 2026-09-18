@@ -1,12 +1,13 @@
-import { useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Alert, StyleSheet } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../config/api';
+import CollapsibleTray from '../components/CollapsibleTray';
 import { StarIcon, DocumentTextIcon } from '../components/Icons';
+import { getErrorMessage } from '../utils/errors';
+import { pickTextFile, saveDownload } from '../utils/file-transfer';
 
 export default function TemplatesScreen() {
   const queryClient = useQueryClient();
-  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const { data: templates, isLoading, error } = useQuery({
     queryKey: ['templates'],
@@ -35,6 +36,35 @@ export default function TemplatesScreen() {
     );
   };
 
+  const handleImport = async () => {
+    try {
+      const file = await pickTextFile(['application/json', 'text/plain']);
+      if (!file) {
+        return;
+      }
+
+      const template = await api.importTemplateFromText(file.contents, file.name);
+      await queryClient.invalidateQueries({ queryKey: ['templates'] });
+      Alert.alert('Template imported', `Imported template ${template.name} from ${file.name}.`);
+    } catch (error) {
+      Alert.alert('Error', getErrorMessage(error, 'Failed to import template'));
+    }
+  };
+
+  const handleExport = async (name: string) => {
+    try {
+      const download = await api.exportTemplate(name);
+      const result = await saveDownload(download, `${name}.json`);
+      if (!result.saved) {
+        return;
+      }
+
+      Alert.alert('Template exported', `Prepared ${name} as a JSON file. Save it from the system share sheet.`);
+    } catch (error) {
+      Alert.alert('Error', getErrorMessage(error, 'Failed to export template'));
+    }
+  };
+
   if (isLoading) {
     return (
       <View style={styles.centered}>
@@ -58,49 +88,48 @@ export default function TemplatesScreen() {
   }
 
   const renderTemplate = ({ item }: { item: typeof templates[0] }) => {
-    const isExpanded = expandedId === item.name;
-    const assetCount = Object.keys(item.assets || {}).length;
+    const assetCount = item.assets.length;
+    const assetPreview = item.assets.slice(0, 3).map((asset) => asset.name.replace(/_/g, ' ')).join(' • ');
 
     return (
-      <View style={styles.templateCard}>
-        <TouchableOpacity
-          onPress={() => setExpandedId(isExpanded ? null : item.name)}
-          style={styles.templateHeader}
-        >
-          <View style={styles.templateInfo}>
-            <View style={styles.templateNameRow}>
-              <DocumentTextIcon color="#7c3aed" size={20} />
-              <Text style={styles.templateName}>{item.name}</Text>
-              {item.is_default && (
-                <View style={styles.defaultBadge}>
-                  <StarIcon color="#eab308" size={14} />
-                  <Text style={styles.defaultBadgeText}>Default</Text>
-                </View>
-              )}
-            </View>
-            <Text style={styles.templateMeta}>
-              {assetCount} asset{assetCount !== 1 ? 's' : ''}
-              {item.description ? ` • ${item.description}` : ''}
-            </Text>
-          </View>
-          <Text style={styles.expandIcon}>
-            {isExpanded ? '−' : '+'}
+      <CollapsibleTray
+        title={item.name}
+        subtitle={item.description || 'No description'}
+        initiallyExpanded={item.is_default}
+        preview={
+          <Text style={styles.templatePreview} numberOfLines={1}>
+            {assetCount} asset{assetCount !== 1 ? 's' : ''}
+            {assetPreview ? ` • ${assetPreview}` : ''}
+            {assetCount > 3 ? ` • +${assetCount - 3} more` : ''}
           </Text>
-        </TouchableOpacity>
-
-        {isExpanded && (
-          <View style={styles.templateContent}>
-            <Text style={styles.assetsTitle}>Assets</Text>
-            <View style={styles.assetList}>
-              {Object.keys(item.assets || {}).map((assetName) => (
-                <View key={assetName} style={styles.assetItem}>
-                  <View style={styles.assetDot} />
-                  <Text style={styles.assetName}>
-                    {assetName.replace(/_/g, ' ')}
-                  </Text>
-                </View>
-              ))}
+        }
+        meta={item.is_default ? (
+          <View style={styles.defaultBadge}>
+            <StarIcon color="#eab308" size={14} />
+            <Text style={styles.defaultBadgeText}>Default</Text>
+          </View>
+        ) : undefined}
+        style={styles.templateCard}
+        contentStyle={styles.templateContent}
+      >
+        <Text style={styles.assetsTitle}>Assets</Text>
+        <View style={styles.assetList}>
+          {item.assets.map((asset) => (
+            <View key={asset.name} style={styles.assetItem}>
+              <View style={styles.assetDot} />
+              <Text style={styles.assetName}>
+                {asset.name.replace(/_/g, ' ')}
+              </Text>
             </View>
+          ))}
+        </View>
+        <View style={styles.templateActions}>
+            <TouchableOpacity
+              onPress={() => void handleExport(item.name)}
+              style={styles.exportButton}
+            >
+              <Text style={styles.exportButtonText}>Export Template</Text>
+            </TouchableOpacity>
             {!item.is_default && (
               <TouchableOpacity
                 onPress={() => handleDelete(item.name)}
@@ -109,9 +138,8 @@ export default function TemplatesScreen() {
                 <Text style={styles.deleteButtonText}>Delete Template</Text>
               </TouchableOpacity>
             )}
-          </View>
-        )}
-      </View>
+        </View>
+      </CollapsibleTray>
     );
   };
 
@@ -120,9 +148,12 @@ export default function TemplatesScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Templates</Text>
-        <Text style={styles.subtitle}>
-          Character templates define the assets and structure for generation
-        </Text>
+        <Text style={styles.subtitle}>Asset sets and generation structure.</Text>
+        <View style={styles.headerActions}>
+          <TouchableOpacity style={styles.headerActionSecondary} onPress={() => void handleImport()}>
+            <Text style={styles.headerActionSecondaryText}>Import template</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <FlatList
@@ -134,9 +165,7 @@ export default function TemplatesScreen() {
           <View style={styles.emptyState}>
             <DocumentTextIcon color="#6b7280" size={48} />
             <Text style={styles.emptyTitle}>No templates found</Text>
-            <Text style={styles.emptyText}>
-              Templates will appear here once created through the web interface
-            </Text>
+            <Text style={styles.emptyText}>Templates added on this device will appear here.</Text>
           </View>
         }
       />
@@ -170,16 +199,35 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#9ca3af',
   },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+  },
+  headerActionSecondary: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#1f1f1f',
+    borderWidth: 1,
+    borderColor: '#2f2f2f',
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  headerActionSecondaryText: {
+    color: '#d1d5db',
+    fontSize: 14,
+    fontWeight: '600',
+  },
   listContent: {
     padding: 16,
   },
   templateCard: {
-    backgroundColor: '#1f1f1f',
-    borderRadius: 12,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-    overflow: 'hidden',
+  },
+  templatePreview: {
+    color: '#9ca3af',
+    fontSize: 12,
+    lineHeight: 18,
   },
   templateHeader: {
     padding: 16,
@@ -225,10 +273,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   templateContent: {
-    padding: 16,
-    paddingTop: 0,
-    borderTopWidth: 1,
-    borderTopColor: '#2f2f2f',
+    gap: 12,
   },
   assetsTitle: {
     color: '#9ca3af',
@@ -258,8 +303,24 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textTransform: 'capitalize',
   },
+  templateActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  exportButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    backgroundColor: '#312e81',
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  exportButtonText: {
+    color: '#c4b5fd',
+    fontSize: 14,
+    fontWeight: '500',
+  },
   deleteButton: {
-    marginTop: 16,
     paddingVertical: 10,
     paddingHorizontal: 16,
     backgroundColor: '#7f1d1d',

@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import {
   Home,
   Sparkles,
+  ScissorsLineDashed,
   FolderOpen,
   FileText,
   FileJson,
@@ -19,13 +20,10 @@ import {
   ChevronRight,
   Globe,
   Calendar,
-  ChevronRight as TrayChevronRight,
-  Layers as DynamicIcon,
   Palette,
 } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { helpTopics, resolvePageHelp } from '../lib/help';
-import { roadmapGroups } from '../lib/roadmap';
 import { api, DRAFTS_SYNCED_EVENT } from '../lib/api';
 import { getFavoriteSeeds, SEED_FAVORITES_CHANGED_EVENT } from '../lib/seed-generator';
 import { cn } from '../utils/cn';
@@ -36,25 +34,11 @@ import { GuidedTourProvider } from './common/GuidedTourContext';
 import { CONFIG_MANAGER_CHANGED_EVENT } from '../lib/config/manager';
 import { queueAutoSync } from '../lib/server/auto-sync.js';
 import { serverClient, type SyncStatus, AUTH_STATE_CHANGED_EVENT, triggerAutoSyncFlush } from '../lib/server/index.js';
-import { DraftListSidebar } from './drafts/DraftListSidebar';
+import { isDesktopRuntime } from '../lib/runtime';
+import HoverHelpPopover from './common/HoverHelpPopover';
 
 interface LayoutProps {
   children: ReactNode;
-}
-
-interface TrayItem {
-  id: string;
-  label: string;
-  description?: string;
-  to?: string;
-  badge?: string;
-}
-
-interface TraySection {
-  id: string;
-  title: string;
-  emptyLabel: string;
-  items: TrayItem[];
 }
 
 type KofiWidgetOverlay = {
@@ -71,6 +55,7 @@ const navItems = [
   { path: '/generate', label: 'Generate', icon: Sparkles },
   { path: '/drafts', label: 'Library', icon: FolderOpen },
   { path: '/templates', label: 'Templates', icon: FileText },
+  { path: '/optimize', label: 'Optimize', icon: ScissorsLineDashed },
   { path: '/blueprints', label: 'Blueprints', icon: FileJson },
   { path: '/themes', label: 'Themes', icon: Palette },
   { path: '/settings', label: 'Settings', icon: Settings },
@@ -79,6 +64,17 @@ const navItems = [
 const KOFI_SCRIPT_ID = 'kofi-overlay-widget-script';
 const KOFI_SCRIPT_SRC = 'https://storage.ko-fi.com/cdn/scripts/overlay-widget.js';
 const KOFI_STYLE_ID = 'kofi-overlay-position-style';
+
+function shouldShowSupportOverlay(pathname: string): boolean {
+  return pathname.startsWith('/about')
+    || pathname.startsWith('/help')
+    || pathname.startsWith('/whats-new')
+    || pathname.startsWith('/license')
+    || pathname.startsWith('/terms')
+    || pathname.startsWith('/privacy')
+    || pathname.startsWith('/security')
+    || pathname.startsWith('/code-of-conduct');
+}
 
 function ensureKofiTopRightStyles() {
   const existingStyle = document.getElementById(KOFI_STYLE_ID) as HTMLStyleElement | null;
@@ -112,6 +108,13 @@ function ensureKofiTopRightStyles() {
       max-width: calc(100vw - 32px) !important;
     }
 
+    body[data-support-overlay='hidden'] .floatingchat-container-wrap,
+    body[data-support-overlay='hidden'] .floatingchat-container-wrap-mobi,
+    body[data-support-overlay='hidden'] .floating-chat-kofi-popup-iframe,
+    body[data-support-overlay='hidden'] .floating-chat-kofi-popup-iframe-mobi {
+      display: none !important;
+    }
+
     @media (max-width: 1023px) {
       :root {
         --kofi-overlay-top: 80px;
@@ -142,12 +145,76 @@ function initializeKofiOverlay() {
   kofiWindow.__eidolonKofiOverlayInitialized = true;
 }
 
+function removeKofiOverlay() {
+  const selectors = [
+    '.floatingchat-container-wrap',
+    '.floatingchat-container-wrap-mobi',
+    '.floating-chat-kofi-iframe',
+    '.floating-chat-kofi-iframe-mobi',
+    '.floating-chat-kofi-popup-iframe',
+    '.floating-chat-kofi-popup-iframe-mobi',
+  ];
+
+  for (const selector of selectors) {
+    document.querySelectorAll(selector).forEach((element) => element.remove());
+  }
+
+  document.getElementById(KOFI_SCRIPT_ID)?.remove();
+
+  const kofiWindow = window as KofiWindow;
+  kofiWindow.__eidolonKofiOverlayInitialized = false;
+}
+
 function isNavItemActive(currentPath: string, itemPath: string): boolean {
   if (itemPath === '/') {
     return currentPath === '/';
   }
 
   return currentPath === itemPath || currentPath.startsWith(`${itemPath}/`);
+}
+
+function resolveWorkspaceTitle(pathname: string, helpTitle?: string): string {
+  if (!helpTitle) {
+    if (pathname === '/') {
+      return 'Home';
+    }
+
+    const routeTitleByPrefix: Array<[string, string]> = [
+      ['/drafts/', 'Draft Review'],
+      ['/drafts', 'Library'],
+      ['/seed-generator', 'Seed Generator'],
+      ['/generate', 'Generate'],
+      ['/validation', 'Validation'],
+      ['/optimize', 'Token Optimization'],
+      ['/batch', 'Batch'],
+      ['/templates', 'Templates'],
+      ['/blueprints/edit', 'Blueprint Editor'],
+      ['/blueprints', 'Blueprints'],
+      ['/themes', 'Themes'],
+      ['/settings', 'Settings'],
+      ['/worlds', 'Worlds'],
+      ['/timelines', 'Timeline'],
+      ['/events', 'Events'],
+      ['/lineage', 'Lineage'],
+      ['/similarity', 'Similarity'],
+      ['/offspring', 'Offspring'],
+      ['/data', 'Data Manager'],
+      ['/auth', 'Sign In'],
+      ['/about', 'About'],
+      ['/help', 'Help Center'],
+      ['/whats-new', 'What\'s New'],
+      ['/license', 'License'],
+      ['/terms', 'Terms'],
+      ['/privacy', 'Privacy'],
+      ['/security', 'Security'],
+      ['/code-of-conduct', 'Code of Conduct'],
+    ];
+
+    const matchedRoute = routeTitleByPrefix.find(([prefix]) => pathname.startsWith(prefix));
+    return matchedRoute?.[1] ?? 'Workspace';
+  }
+
+  return helpTitle.replace(/\s+help$/i, '');
 }
 
 const charactersSubmenuItems = [
@@ -175,17 +242,14 @@ function NavItem({ path, label, icon: Icon, isActive, onClick }: NavItemProps) {
       to={path}
       onClick={onClick}
       className={cn(
-        'group relative flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
+        'group flex items-center gap-2.5 rounded-lg border border-transparent px-3 py-2.5 text-sm font-medium transition-all duration-200',
         isActive
-          ? 'bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-lg shadow-primary/20'
-          : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+          ? 'border-primary/25 bg-primary/12 text-foreground shadow-[0_16px_30px_-24px_rgba(56,189,248,0.45)]'
+          : 'text-muted-foreground hover:border-border/70 hover:bg-background/50 hover:text-foreground'
       )}
     >
-      <Icon className={cn('h-5 w-5 transition-transform duration-200', isActive ? 'scale-110' : 'group-hover:scale-110')} />
+      <Icon className={cn('h-5 w-5 transition-transform duration-200', isActive ? 'scale-105 text-primary' : 'group-hover:scale-105')} />
       <span>{label}</span>
-      {isActive && (
-        <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-primary/20 to-accent/20 -z-10" />
-      )}
     </Link>
   );
 }
@@ -222,10 +286,10 @@ function CollapsibleSubmenu({
         type="button"
         onClick={onToggle}
         className={cn(
-          'group flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
+          'group flex w-full items-center justify-between rounded-lg border border-transparent px-3 py-2.5 text-sm font-medium transition-all duration-200',
           isActive
-            ? 'bg-accent/50 text-foreground'
-            : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+            ? 'border-primary/20 bg-primary/10 text-foreground'
+            : 'text-muted-foreground hover:border-border/70 hover:bg-background/50 hover:text-foreground'
         )}
       >
         <div className="flex items-center gap-2.5">
@@ -258,13 +322,13 @@ function CollapsibleSubmenu({
                 to={item.path}
                 onClick={onNavigate}
                 className={cn(
-                  'group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200',
+                  'group flex items-center gap-3 rounded-lg border border-transparent px-3 py-2 text-sm font-medium transition-all duration-200',
                   itemIsActive
-                    ? 'bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-md shadow-primary/20'
-                    : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+                    ? 'border-primary/25 bg-primary/12 text-foreground'
+                    : 'text-muted-foreground hover:border-border/70 hover:bg-background/50 hover:text-foreground'
                 )}
               >
-                <item.icon className="h-4 w-4" />
+                <item.icon className={cn('h-4 w-4', itemIsActive && 'text-primary')} />
                 <span>{item.label}</span>
               </Link>
             );
@@ -278,15 +342,12 @@ function CollapsibleSubmenu({
 export default function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const queryClient = useQueryClient();
-  const reviewMatch = location.pathname.match(/^\/drafts\/([^/]+)$/);
-  const reviewDraftId = reviewMatch ? decodeURIComponent(reviewMatch[1]) : null;
+  const desktopRuntime = isDesktopRuntime();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [trayOpen, setTrayOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [authStatus, setAuthStatus] = useState<SyncStatus | null>(null);
   const [charactersExpanded, setCharactersExpanded] = useState(false);
   const [worldsExpanded, setWorldsExpanded] = useState(false);
-  const [trayTab, setTrayTab] = useState<'dynamic' | 'whats-new'>('dynamic');
   const pageHelp = useMemo(() => resolvePageHelp(location.pathname), [location.pathname]);
   const relatedTopics = useMemo(
     () => helpTopics.filter((topic) => pageHelp?.relatedTopicIds.includes(topic.id)),
@@ -300,33 +361,39 @@ export default function Layout({ children }: LayoutProps) {
   });
   const { data: draftsData } = draftsQuery;
 
-  const { data: reviewDraft } = useQuery({
-    queryKey: ['draft', reviewDraftId],
-    queryFn: () => api.getDraft(reviewDraftId || ''),
-    enabled: Boolean(reviewDraftId),
-  });
-
-  const { data: templatesData } = useQuery({
-    queryKey: ['templates'],
-    queryFn: () => api.getTemplates(),
-    enabled: location.pathname.startsWith('/templates'),
-  });
-
-  const { data: themesData } = useQuery({
-    queryKey: ['themes'],
-    queryFn: () => api.getThemes(),
-    enabled: location.pathname.startsWith('/themes'),
-  });
-
-  const { data: blueprintsData } = useQuery({
-    queryKey: ['blueprints'],
-    queryFn: () => api.getBlueprints(),
-    enabled: location.pathname.startsWith('/blueprints'),
-  });
-
   // Get favorite seeds count (synchronously from localStorage)
   const [seedsCount, setSeedsCount] = useState(() => getFavoriteSeeds().length);
   const draftsCount = draftsData?.drafts?.length ?? 0;
+  const workspaceTitle = resolveWorkspaceTitle(location.pathname, pageHelp?.title);
+  const workspaceSummary = pageHelp?.summary
+    ?? 'Move between generation, review, editing, and export surfaces without breaking focus.';
+  const workspaceSyncStatus = useMemo(() => {
+    if (!serverClient.isEnabled()) {
+      return {
+        label: 'Local workspace',
+        className: 'border-border/70 bg-background/70 text-muted-foreground',
+      };
+    }
+
+    if (!authStatus?.connected) {
+      return {
+        label: 'Sync offline',
+        className: 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300',
+      };
+    }
+
+    if (!authStatus.authenticated) {
+      return {
+        label: 'Sync available',
+        className: 'border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300',
+      };
+    }
+
+    return {
+      label: 'Sync ready',
+      className: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
+    };
+  }, [authStatus]);
 
   useEffect(() => {
     const handleDraftsSynced = () => {
@@ -340,6 +407,11 @@ export default function Layout({ children }: LayoutProps) {
   }, [queryClient]);
 
   useEffect(() => {
+    if (!shouldShowSupportOverlay(location.pathname)) {
+      removeKofiOverlay();
+      return;
+    }
+
     const existingScript = document.getElementById(KOFI_SCRIPT_ID) as HTMLScriptElement | null;
 
     if ((window as KofiWindow).kofiWidgetOverlay) {
@@ -365,141 +437,15 @@ export default function Layout({ children }: LayoutProps) {
     return () => {
       script.removeEventListener('load', handleLoad);
     };
-  }, []);
+  }, [location.pathname]);
 
-  const traySections = useMemo<TraySection[]>(() => {
-    if (location.pathname.startsWith('/drafts')) {
-      const draftItems = (draftsData?.drafts || []).slice(0, 16).map((draft) => ({
-        id: draft.review_id,
-        label: draft.character_name || draft.seed,
-        description: `${draft.template_name || 'Default'} • ${draft.mode}`,
-        to: `/drafts/${encodeURIComponent(draft.review_id)}`,
-        badge: reviewDraftId && reviewDraftId === draft.review_id
-          ? 'Open'
-          : (draft.favorite ? 'Fav' : undefined),
-      }));
+  useEffect(() => {
+    document.body.dataset.supportOverlay = shouldShowSupportOverlay(location.pathname) ? 'visible' : 'hidden';
 
-      const sections: TraySection[] = [{
-        id: 'drafts',
-        title: 'Library Tray',
-        emptyLabel: 'No drafts available yet.',
-        items: draftItems,
-      }];
-
-      if (reviewDraftId) {
-        const assetItems = Object.keys(reviewDraft?.assets || {}).map((assetName) => ({
-          id: assetName,
-          label: assetName.replace(/_/g, ' '),
-          description: 'Asset in current draft',
-        }));
-
-        sections.push({
-          id: 'review-assets',
-          title: 'Current Draft Assets',
-          emptyLabel: 'No assets loaded for this draft.',
-          items: assetItems,
-        });
-      }
-
-      return sections;
-    }
-
-    if (location.pathname.startsWith('/templates')) {
-      const items = (templatesData || []).slice(0, 16).map((template) => ({
-        id: template.name,
-        label: template.name,
-        description: template.description || 'Template definition',
-        badge: template.is_default ? 'Default' : undefined,
-      }));
-
-      return [{
-        id: 'templates',
-        title: 'Template Tray',
-        emptyLabel: 'No templates available.',
-        items,
-      }];
-    }
-
-    if (location.pathname.startsWith('/themes')) {
-      const items = (themesData || []).slice(0, 16).map((theme) => ({
-        id: theme.name,
-        label: theme.display_name,
-        description: theme.description || theme.name,
-        badge: theme.is_builtin ? 'Built-in' : 'Custom',
-      }));
-
-      return [{
-        id: 'themes',
-        title: 'Theme Tray',
-        emptyLabel: 'No theme presets available.',
-        items,
-      }];
-    }
-
-    if (location.pathname.startsWith('/blueprints')) {
-      const blueprintItems = [
-        ...(blueprintsData?.core || []),
-        ...(blueprintsData?.system || []),
-        ...(blueprintsData?.templates?.local || []),
-        ...(blueprintsData?.examples || []),
-      ];
-
-      const items = blueprintItems.slice(0, 18).map((blueprint) => ({
-        id: blueprint.path,
-        label: blueprint.name,
-        description: blueprint.path,
-      }));
-
-      return [{
-        id: 'blueprints',
-        title: 'Blueprint Tray',
-        emptyLabel: 'No blueprints found.',
-        items,
-      }];
-    }
-
-    if (location.pathname.startsWith('/generate')) {
-      return [{
-        id: 'generate',
-        title: 'Generate Tray',
-        emptyLabel: 'No generation actions available.',
-        items: [
-          { id: 'gen-drafts', label: 'Library', description: `${draftsCount} drafts available`, to: '/drafts' },
-          { id: 'gen-seeds', label: 'Favorite seeds', description: `${seedsCount} saved`, to: '/seed-generator' },
-          { id: 'gen-templates', label: 'Template manager', description: 'Switch template packs', to: '/templates' },
-        ],
-      }];
-    }
-
-    return [{
-      id: 'general',
-      title: 'Shortcuts',
-      emptyLabel: 'No shortcuts available.',
-      items: [
-        { id: 'nav-seeds', label: 'Seed Generator', to: '/seed-generator' },
-        { id: 'nav-validation', label: 'Validation', to: '/validation' },
-        { id: 'nav-batch', label: 'Batch', to: '/batch' },
-        { id: 'nav-compare', label: 'Compare', to: '/similarity' },
-        { id: 'nav-blueprints', label: 'Blueprints', to: '/blueprints' },
-        { id: 'nav-themes', label: 'Theme Studio', to: '/themes' },
-      ],
-    }];
-  }, [location.pathname, draftsData?.drafts, draftsCount, reviewDraftId, reviewDraft?.assets, templatesData, themesData, blueprintsData, seedsCount]);
-
-  // Get upcoming features for What's New tab
-  const upcomingFeatures = useMemo(() => {
-    return roadmapGroups
-      .filter((group) => group.status !== 'implemented')
-      .flatMap((group) =>
-        group.items.slice(0, 3).map((item, index) => ({
-          id: `${group.id}-${index}`,
-          title: item.length > 60 ? item.slice(0, 60) + '...' : item,
-          category: group.title,
-          status: group.status,
-        }))
-      )
-      .slice(0, 12);
-  }, []);
+    return () => {
+      delete document.body.dataset.supportOverlay;
+    };
+  }, [location.pathname]);
 
   // Check if any characters submenu item is active
   const charactersPaths = charactersSubmenuItems.map((item) => item.path);
@@ -588,7 +534,6 @@ export default function Layout({ children }: LayoutProps) {
   }, []);
 
   useEffect(() => {
-    setTrayOpen(false);
     setHelpOpen(false);
   }, [location.pathname]);
 
@@ -710,36 +655,32 @@ export default function Layout({ children }: LayoutProps) {
               </div>
             )}
 
-            <div className="border-t border-border/50 p-3">
-              <div className="grid grid-cols-3 gap-2">
-                <Link
-                  to="/settings"
-                  onClick={() => setSidebarOpen(false)}
-                  className="rounded-lg border border-border/60 bg-background/60 px-2.5 py-1.5 text-center text-[11px] font-medium text-muted-foreground transition-colors hover:border-primary/35 hover:text-primary"
-                >
-                  Settings
-                </Link>
+            <div className="border-t border-border/50 px-4 py-3">
+              <div className="flex items-center justify-between text-xs font-medium text-muted-foreground">
                 <Link
                   to="/help"
                   onClick={() => setSidebarOpen(false)}
-                  className="rounded-lg border border-border/60 bg-background/60 px-2.5 py-1.5 text-center text-[11px] font-medium text-muted-foreground transition-colors hover:border-primary/35 hover:text-primary"
+                  className="transition-colors hover:text-primary"
                 >
                   Help
                 </Link>
                 <Link
                   to="/about"
                   onClick={() => setSidebarOpen(false)}
-                  className="rounded-lg border border-border/60 bg-background/60 px-2.5 py-1.5 text-center text-[11px] font-medium text-muted-foreground transition-colors hover:border-primary/35 hover:text-primary"
+                  className="transition-colors hover:text-primary"
                 >
                   About
                 </Link>
+                <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground/80">
+                  v{__APP_VERSION__}
+                </span>
               </div>
             </div>
           </div>
         </aside>
 
         {/* Main content */}
-        <main className="min-w-0 flex-1 overflow-hidden lg:order-2">
+        <main className="min-w-0 flex-1 overflow-hidden">
           <div className="flex h-full min-h-0 flex-col">
             {/* Mobile header */}
             <header className="app-frame-panel sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border/50 px-3 lg:hidden">
@@ -764,6 +705,49 @@ export default function Layout({ children }: LayoutProps) {
               )}
             </header>
 
+            <header className="app-frame-panel hidden border-b border-border/50 px-5 py-4 lg:block">
+              <div className="flex items-start justify-between gap-6">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <p
+                      className="text-[11px] font-semibold uppercase tracking-[0.24em] text-primary"
+                      style={{ fontFamily: '"IBM Plex Mono", monospace' }}
+                    >
+                      {desktopRuntime ? 'Desktop workspace' : 'Browser workspace'}
+                    </p>
+                    <span className="inline-flex items-center rounded-full border border-border/70 bg-background/70 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                      {desktopRuntime ? 'Native shell' : 'Web runtime'}
+                    </span>
+                  </div>
+                  <h1
+                    className="mt-3 text-3xl font-semibold tracking-tight text-foreground"
+                    style={{ fontFamily: '"Space Grotesk", sans-serif' }}
+                  >
+                    {workspaceTitle}
+                  </h1>
+                  <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">{workspaceSummary}</p>
+                  <p className="mt-3 text-xs font-medium text-muted-foreground">
+                    {draftsCount} drafts · {seedsCount} favorite seeds · {workspaceSyncStatus.label}
+                  </p>
+                </div>
+                {pageHelp && (
+                  <div className="flex shrink-0 items-center gap-2 pt-1">
+                    <HoverHelpPopover
+                      title={pageHelp.title}
+                      summary={pageHelp.summary}
+                      keyActions={pageHelp.keyActions}
+                      pitfalls={pageHelp.pitfalls}
+                      actions={pageHelp.actions}
+                      label="Help"
+                      align="end"
+                      onTriggerClick={() => setHelpOpen(true)}
+                      triggerClassName="rounded-lg px-3.5 py-2 text-xs font-semibold"
+                    />
+                  </div>
+                )}
+              </div>
+            </header>
+
             {/* Page content */}
             <div className="min-h-0 flex-1 overflow-auto px-4 py-4 lg:px-5 lg:py-5">
               <div className="app-page mx-auto flex min-h-full w-full max-w-[1680px] flex-col gap-4">
@@ -780,200 +764,6 @@ export default function Layout({ children }: LayoutProps) {
             onClose={() => setHelpOpen(false)}
           />
         )}
-        <aside
-          aria-label="Utility panel"
-          className={cn(
-            'fixed inset-y-0 right-0 top-0 z-40 flex h-dvh overflow-visible transition-[width,transform,opacity,background-color,box-shadow,border-color] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] lg:order-1 lg:relative lg:inset-auto lg:h-dvh lg:shrink-0 lg:translate-x-0',
-            trayOpen
-              ? 'w-[min(18rem,calc(100vw-1rem))] bg-card/95 shadow-2xl lg:w-[17rem] lg:border-l lg:border-border/60 lg:bg-card/90'
-              : 'w-0 bg-transparent shadow-none lg:w-0 lg:border-l-0 lg:bg-transparent'
-          )}
-        >
-          <button
-            type="button"
-            aria-label={trayOpen ? 'Collapse utility panel' : 'Expand utility panel'}
-            onClick={() => setTrayOpen((value) => !value)}
-            className={cn(
-              'absolute right-0 top-1/2 z-10 flex translate-x-full -translate-y-1/2 items-center gap-1.5 rounded-r-sm rounded-l-none border border-l-0 border-border/70 bg-card/95 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground shadow-lg shadow-black/10 backdrop-blur-sm transition-[color,border-color,background-color,box-shadow,transform] duration-300 hover:border-primary/40 hover:text-primary',
-              trayOpen && 'text-foreground'
-            )}
-          >
-            <TrayChevronRight className={cn('h-3.5 w-3.5 transition-transform duration-300', !trayOpen && 'rotate-180')} />
-            <span>Tray</span>
-          </button>
-          <div
-            className={cn(
-              'flex h-full min-h-0 w-full flex-col overflow-hidden border-l border-border/60 bg-card/95 transition-[opacity,transform,background-color,box-shadow,border-color] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]',
-              trayOpen ? 'opacity-100 pointer-events-auto' : 'pointer-events-none opacity-0'
-            )}
-          >
-            <div className="sticky top-0 z-10 border-b border-border/60 bg-card/90">
-              <div className="flex items-center justify-between border-b border-border/40 px-3 py-2.5 lg:px-3.5">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">Utility Panel</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Shortcuts, context, and current work.</p>
-                </div>
-                <button
-                  type="button"
-                  aria-label="Close panel"
-                  onClick={() => setTrayOpen(false)}
-                  className="rounded-md p-2 text-muted-foreground transition-colors duration-300 hover:bg-accent hover:text-foreground"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-              {pageHelp && (
-                <div className="border-b border-border/40 px-3 py-2.5 lg:px-3.5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setTrayOpen(false);
-                      setHelpOpen(true);
-                    }}
-                    className="flex w-full items-center justify-between gap-3 rounded-md border border-border/60 bg-background/60 px-3 py-2 text-left transition-all duration-300 hover:border-primary/40 hover:bg-accent/35 hover:text-primary"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">Page Help</p>
-                      <p className="mt-1 truncate text-xs font-medium text-foreground">{pageHelp.title}</p>
-                    </div>
-                    <CircleHelp className="h-3.5 w-3.5 shrink-0" />
-                  </button>
-                </div>
-              )}
-
-              <div className="flex border-b border-border/40">
-                <button
-                  type="button"
-                  onClick={() => setTrayTab('dynamic')}
-                  className={cn(
-                    'flex flex-1 items-center justify-center gap-2 px-3 py-2.5 text-xs font-medium transition-all duration-300',
-                    trayTab === 'dynamic'
-                      ? 'border-b-2 border-primary text-primary'
-                      : 'text-muted-foreground hover:bg-accent/25 hover:text-foreground'
-                  )}
-                >
-                  <DynamicIcon className="h-3.5 w-3.5" />
-                  Dynamic
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTrayTab('whats-new')}
-                  className={cn(
-                    'flex flex-1 items-center justify-center gap-2 px-3 py-2.5 text-xs font-medium transition-all duration-300',
-                    trayTab === 'whats-new'
-                      ? 'border-b-2 border-primary text-primary'
-                      : 'text-muted-foreground hover:bg-accent/25 hover:text-foreground'
-                  )}
-                >
-                  <Sparkles className="h-3.5 w-3.5" />
-                  New
-                </button>
-              </div>
-            </div>
-            <div className="flex-1 overflow-y-auto p-3 lg:p-3.5">
-              {trayTab === 'dynamic' ? (
-                location.pathname.startsWith('/drafts') ? (
-                  <DraftListSidebar
-                    drafts={draftsData?.drafts || []}
-                    isLoading={draftsQuery.isLoading}
-                  />
-                ) : (
-                  <div className="space-y-3">
-                    <div className="px-1">
-                      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Upcoming Features</h3>
-                      <p className="mt-1 text-xs text-muted-foreground">Planned improvements and new capabilities.</p>
-                    </div>
-                    {upcomingFeatures.map((feature) => (
-                      <div
-                        key={feature.id}
-                        className="rounded-lg border border-border/70 bg-background/50 p-2.5 transition-colors duration-300 hover:border-border/90 hover:bg-background/70"
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <span
-                            className={cn(
-                              'rounded-md px-2 py-0.5 text-[10px] font-semibold',
-                              feature.status === 'planned'
-                                ? 'bg-blue-500/15 text-blue-600 dark:text-blue-400'
-                                : 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
-                            )}
-                          >
-                            {feature.status === 'planned' ? 'Planned' : 'In Progress'}
-                          </span>
-                        </div>
-                        <p className="mt-2 text-sm leading-snug text-foreground">{feature.title}</p>
-                        <p className="mt-1.5 text-xs text-muted-foreground">{feature.category}</p>
-                      </div>
-                    ))}
-                    <Link
-                      to="/whats-new"
-                      onClick={() => setTrayOpen(false)}
-                      className="flex items-center justify-center gap-2 rounded-md border border-border/60 bg-background/50 px-3 py-2.5 text-sm font-medium text-foreground transition-all duration-300 hover:border-primary/40 hover:bg-accent/25 hover:text-primary"
-                    >
-                      View Full Roadmap
-                      <TrayChevronRight className="h-4 w-4" />
-                    </Link>
-                  </div>
-                )
-              ) : (
-                <div className="space-y-4">
-                  {traySections.map((section) => (
-                    <section key={section.id} className="space-y-2">
-                      <h3 className="px-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{section.title}</h3>
-                      {section.items.length === 0 ? (
-                        <div className="rounded-md border border-dashed border-border p-3 text-xs text-muted-foreground">
-                          {section.emptyLabel}
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          {section.items.map((item) => {
-                            const content = (
-                              <>
-                                <div className="min-w-0 flex-1">
-                                  <div className="truncate text-sm font-medium">{item.label}</div>
-                                  {item.description && (
-                                    <div className="truncate text-xs text-muted-foreground">{item.description}</div>
-                                  )}
-                                </div>
-                                {item.badge && (
-                                  <span className="rounded-md border border-border bg-background px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
-                                    {item.badge}
-                                  </span>
-                                )}
-                                {item.to && <TrayChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
-                              </>
-                            );
-
-                            if (item.to) {
-                              return (
-                                <Link
-                                  key={item.id}
-                                  to={item.to}
-                                  onClick={() => setTrayOpen(false)}
-                                  className="flex items-center gap-2 rounded-md border border-border/70 bg-background/70 px-3 py-2 transition-all duration-300 hover:border-primary/40 hover:bg-accent/35"
-                                >
-                                  {content}
-                                </Link>
-                              );
-                            }
-
-                            return (
-                              <div
-                                key={item.id}
-                                className="flex items-center gap-2 rounded-md border border-border/70 bg-background/50 px-3 py-2"
-                              >
-                                {content}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </section>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </aside>
         <GuidedTourOverlay />
       </div>
       </GuidedTourProvider>

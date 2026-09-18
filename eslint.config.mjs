@@ -15,7 +15,6 @@ export default [
       'drafts/**',
       'seed-output/**',
       'packages/desktop/**',
-      'packages/mobile/**',
     ],
   },
   js.configs.recommended,
@@ -46,6 +45,23 @@ export default [
     rules: {
       ...reactHooks.configs.recommended.rules,
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
+    },
+  },
+  {
+    files: ['packages/mobile/App.tsx', 'packages/mobile/src/**/*.{ts,tsx}'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: {
+        ...globals.browser,
+        __DEV__: 'readonly',
+      },
+    },
+    plugins: {
+      'react-hooks': reactHooks,
+    },
+    rules: {
+      ...reactHooks.configs.recommended.rules,
     },
   },
   {

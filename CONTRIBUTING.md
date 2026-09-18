@@ -1,6 +1,6 @@
 # Contributing to Eidolon Simulacra
 
-Eidolon Simulacra currently ships as a TypeScript monorepo with a browser-first web app and shared generation utilities. Keep changes narrow, verifiable, and aligned with the current repo shape rather than older Python or desktop workflows.
+Eidolon Simulacra currently ships as a TypeScript monorepo with a browser-first web app, an Expo mobile app, and shared generation utilities. Keep changes narrow, verifiable, and aligned with the current repo shape rather than older Python or desktop workflows.
 
 ## Setup
 
@@ -21,6 +21,9 @@ Common local commands:
 # web app
 pnpm dev:web
 
+# mobile app
+pnpm dev:mobile
+
 # shared package build
 pnpm build:shared
 
@@ -30,11 +33,17 @@ pnpm build:web
 # web typecheck
 pnpm typecheck:web
 
+# mobile typecheck
+pnpm typecheck:mobile
+
 # web tests
 pnpm test:web
 
 # repo lint
 pnpm lint
+
+# mobile lint
+pnpm lint:mobile
 
 # formatting
 pnpm format
@@ -51,6 +60,8 @@ Useful commands:
 ```bash
 pnpm --filter @char-gen/shared build
 pnpm --filter @char-gen/web build
+pnpm --filter @char-gen/mobile typecheck
+pnpm --filter @char-gen/mobile lint
 pnpm typecheck:web
 pnpm test:web
 pnpm lint
@@ -61,7 +72,7 @@ Notes:
 - CI currently covers release-notes parity, lint, web typechecking, web tests, and the shared/web build path plus a preview smoke test.
 - `@char-gen/shared` publishes from `dist/`, so rebuild it before validating web changes that depend on updated shared exports.
 - The root Turbo pipeline includes a `test` task, and `@char-gen/web` now contributes the Vitest help-system suite through `pnpm test:web`.
-- `packages/mobile` is present as a scaffold and should not be assumed to participate in CI unless you wire it up explicitly.
+- `packages/mobile` now has dedicated Expo and validation commands, but should not be assumed to participate in native release CI unless you wire that up explicitly.
 
 ## Change Guidelines
 
@@ -75,7 +86,7 @@ Notes:
 
 - Update docs whenever commands, defaults, workflows, storage behavior, or blueprint contracts change.
 - Prefer describing the current shipping path over historical or aspirational architecture.
-- If a feature is scaffolded but not wired into the build, say that directly.
+- If a feature is only partially wired into CI or release automation, say that directly.
 
 ### Blueprints and Templates
 
@@ -109,7 +120,7 @@ Preferred commit prefixes: `feat`, `fix`, `docs`, `test`, `refactor`, `perf`, `c
 - web/shared contract drift
 - template, blueprint, parser, or export regressions
 - validation and placeholder edge cases
-- mobile scaffold cleanup or integration work that is clearly scoped
+- mobile integration work that is clearly scoped
 
 ## Questions
 

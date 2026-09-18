@@ -1,8 +1,6 @@
-import { lazy, Suspense, useState, type ChangeEvent } from 'react';
+import { lazy, Suspense, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  ChevronDown,
-  ChevronUp,
   Copy,
   Download,
   FileText,
@@ -16,7 +14,8 @@ import {
 } from 'lucide-react';
 import type { AssetDefinition, CreateTemplateRequest, Template } from '@char-gen/shared';
 import { api } from '@/lib/api';
-import { saveDownload } from '../../utils/download';
+import { pickFile, saveDownload } from '../../utils/download';
+import CollapsibleSection from '../common/CollapsibleSection';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
 import TemplateComparisonPanel from './TemplateComparisonPanel';
 
@@ -34,7 +33,7 @@ function TemplateWizardFallback() {
 }
 
 export default function Templates() {
-  const [expandedTemplate, setExpandedTemplate] = useState<string | null>(null);
+  const importInputRef = useRef<HTMLInputElement | null>(null);
   const [showWizard, setShowWizard] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
   const [editingTemplateData, setEditingTemplateData] = useState<CreateTemplateRequest | null>(null);
@@ -80,10 +79,6 @@ export default function Templates() {
       setFeedback({ type: 'error', message: mutationError.message });
     },
   });
-
-  const toggleExpand = (name: string) => {
-    setExpandedTemplate((current) => (current === name ? null : name));
-  };
 
   const handleValidate = async (name: string) => {
     try {
@@ -159,14 +154,13 @@ export default function Templates() {
     }
   };
 
-  const handleImportChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const handleImport = async () => {
+    const file = await pickFile({ accept: '.json,.zip' }, importInputRef.current);
     if (!file) {
       return;
     }
 
     importMutation.mutate(file);
-    event.target.value = '';
   };
 
   const wizardInitialData: CreateTemplateRequest | undefined = editingTemplateData ?? undefined;
@@ -177,7 +171,6 @@ export default function Templates() {
 
   useAssistantScreenContext({
     template_count: templateCount,
-    expanded_template: expandedTemplate,
     editing_template: editingTemplate?.name ?? null,
     wizard_open: showWizard,
     validation_templates: Object.keys(validationResults),
@@ -244,15 +237,13 @@ export default function Templates() {
             <div className="space-y-4">
               <p className="app-page-eyebrow">Templates</p>
               <h1 className="app-page-title">Manage templates</h1>
-              <p className="app-page-summary">
-                Each template defines the asset set, order, and export contract.
-              </p>
+              <p className="app-page-summary">Asset graphs, order, and export contracts.</p>
               <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
-                <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-input px-4 py-2.5 text-sm font-medium hover:bg-accent sm:justify-start">
+                <button type="button" onClick={() => void handleImport()} className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-input px-4 py-2.5 text-sm font-medium hover:bg-accent sm:justify-start">
                   <Upload className="h-4 w-4" />
                   Import Template
-                  <input type="file" accept=".json,.zip" className="hidden" onChange={handleImportChange} />
-                </label>
+                </button>
+                <input ref={importInputRef} type="file" accept=".json,.zip" className="hidden" />
                 <button
                   onClick={() => {
                     setEditingTemplate(null);
@@ -289,35 +280,16 @@ export default function Templates() {
 
         <div className="space-y-3">
           {templatesList.map((template: Template) => (
-            <div key={template.name} className="app-panel overflow-hidden">
-              <button
-                onClick={() => toggleExpand(template.name)}
-                className="flex w-full items-start justify-between gap-3 p-3 text-left transition-colors hover:bg-accent/30 sm:items-center sm:p-4"
-              >
-                <div className="flex min-w-0 items-start gap-3 sm:items-center">
-                  <div className="rounded-xl border border-border/60 bg-background/55 p-2 text-primary">
-                    <FileText className="h-5 w-5" />
-                  </div>
-                  <div className="min-w-0 text-left">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="truncate font-medium text-foreground">{template.name}</span>
-                      {template.is_official && <Star className="h-4 w-4 fill-yellow-500 text-yellow-500" />}
-                    </div>
-                    <p className="line-clamp-2 text-sm text-muted-foreground">{template.description || `${template.assets.length} assets in flow`}</p>
-                  </div>
-                </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  <span className="hidden text-xs text-muted-foreground sm:inline">v{template.version}</span>
-                  {expandedTemplate === template.name ? (
-                    <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                  )}
-                </div>
-              </button>
-
-              {expandedTemplate === template.name && (
-                <div className="space-y-4 border-t border-border/60 p-3 sm:p-4">
+            <CollapsibleSection
+              key={template.name}
+              title={template.name}
+              subtitle={template.description || `${template.assets.length} assets in flow`}
+              preview={`${template.assets.length} assets • v${template.version}`}
+              meta={template.is_official ? <Star className="h-4 w-4 fill-yellow-500 text-yellow-500" /> : null}
+              defaultExpanded={Boolean(template.is_default)}
+              className="app-panel"
+              bodyClassName="space-y-4"
+            >
                   <div>
                     <h3 className="mb-2 text-sm font-medium text-foreground">Assets ({template.assets.length})</h3>
                     <div className="space-y-2">
@@ -420,9 +392,7 @@ export default function Templates() {
                       </button>
                     )}
                   </div>
-                </div>
-              )}
-            </div>
+            </CollapsibleSection>
           ))}
         </div>
 
@@ -434,18 +404,13 @@ export default function Templates() {
           </div>
         )}
 
-        <section className="app-panel p-4 sm:p-5">
-          <div className="mb-4 flex items-start justify-between gap-4">
-            <div>
-              <h2 className="text-lg font-semibold">Compare templates</h2>
-              <p className="text-sm text-muted-foreground">
-                Check ordering and contract differences before switching flows.
-              </p>
-            </div>
-          </div>
-
+        <CollapsibleSection
+          title="Compare templates"
+          subtitle="Check ordering and contract differences before switching flows"
+          preview={templatesList.length > 1 ? `${templatesList[0]?.name ?? 'Template'} vs ${templatesList[1]?.name ?? 'Template'}` : 'Select two templates'}
+        >
           <TemplateComparisonPanel templates={templatesList} leftTemplate={templatesList[0]?.name} rightTemplate={templatesList[1]?.name} />
-        </section>
+        </CollapsibleSection>
       </div>
     </>
   );

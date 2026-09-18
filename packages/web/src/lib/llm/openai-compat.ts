@@ -18,12 +18,24 @@ import type {
 } from '@char-gen/shared';
 
 interface OpenAIChoice {
+  text?: unknown;
+  error?: {
+    message?: string;
+  } | string;
   message?: {
     role: string;
-    content: string;
+    content?: unknown;
+    output_text?: unknown;
+    refusal?: unknown;
+    parts?: unknown;
+    tool_calls?: unknown[];
   };
   delta?: {
-    content?: string;
+    content?: unknown;
+    output_text?: unknown;
+    refusal?: unknown;
+    parts?: unknown;
+    tool_calls?: unknown[];
   };
   finish_reason?: string;
 }
@@ -31,6 +43,10 @@ interface OpenAIChoice {
 interface OpenAIResponse {
   id?: string;
   choices: OpenAIChoice[];
+  output_text?: unknown;
+  error?: {
+    message?: string;
+  } | string;
   usage?: {
     prompt_tokens: number;
     completion_tokens: number;
@@ -90,6 +106,150 @@ export class OpenAICompatEngine extends BaseLLMEngine {
     return buildProviderHeaders(this.config.provider, this.config.apiKey, {
       contentType: 'application/json',
     });
+  }
+
+  private getStreamingHeaders(): Record<string, string> {
+    return {
+      ...this.getHeaders(),
+      Accept: 'text/event-stream',
+    };
+  }
+
+  private isDisplayContentRecord(record: Record<string, unknown>): boolean {
+    const partType = typeof record.type === 'string' ? record.type : undefined;
+
+    if (!partType) {
+      return true;
+    }
+
+    return partType === 'text'
+      || partType === 'text_delta'
+      || partType === 'output_text'
+      || partType === 'output_text_delta';
+  }
+
+  private extractTextValue(value: unknown): string {
+    if (typeof value === 'string') {
+      return value;
+    }
+
+    if (Array.isArray(value)) {
+      return value.map((entry) => this.extractTextValue(entry)).join('');
+    }
+
+    if (value && typeof value === 'object') {
+      const record = value as Record<string, unknown>;
+
+       if (!this.isDisplayContentRecord(record)) {
+        return '';
+      }
+
+      if (typeof record.text === 'string') {
+        return record.text;
+      }
+
+      if (record.text && typeof record.text === 'object') {
+        const nestedText = record.text as Record<string, unknown>;
+        if (typeof nestedText.value === 'string') {
+          return nestedText.value;
+        }
+      }
+
+      if (typeof record.value === 'string') {
+        return record.value;
+      }
+
+      if (Array.isArray(record.parts)) {
+        return this.extractTextValue(record.parts);
+      }
+
+      if (typeof record.output_text === 'string') {
+        return record.output_text;
+      }
+
+      if (Array.isArray(record.output_text)) {
+        return this.extractTextValue(record.output_text);
+      }
+
+      if (typeof record.content === 'string') {
+        return record.content;
+      }
+
+      if (Array.isArray(record.content)) {
+        return this.extractTextValue(record.content);
+      }
+
+      if (typeof record.output === 'string') {
+        return record.output;
+      }
+
+      if (Array.isArray(record.output)) {
+        return this.extractTextValue(record.output);
+      }
+    }
+
+    return '';
+  }
+
+  private extractChoiceMessageContent(choice?: OpenAIChoice, response?: OpenAIResponse): string {
+    return this.extractTextValue(
+      choice?.message?.content
+      ?? choice?.message?.output_text
+      ?? choice?.message?.parts
+      ?? choice?.text
+      ?? response?.output_text
+    );
+  }
+
+  private extractChoiceDeltaContent(choice?: OpenAIChoice): string {
+    return this.extractTextValue(
+      choice?.delta?.content
+      ?? choice?.delta?.output_text
+      ?? choice?.delta?.parts
+      ?? choice?.text
+    );
+  }
+
+  private buildNoContentError(choice?: OpenAIChoice, response?: OpenAIResponse): string {
+    const responseError = response?.error;
+    if (typeof responseError === 'string' && responseError.trim()) {
+      return responseError;
+    }
+    if (responseError && typeof responseError === 'object' && typeof responseError.message === 'string' && responseError.message.trim()) {
+      return responseError.message;
+    }
+
+    const choiceError = choice?.error;
+    if (typeof choiceError === 'string' && choiceError.trim()) {
+      return choiceError;
+    }
+    if (choiceError && typeof choiceError === 'object' && typeof choiceError.message === 'string' && choiceError.message.trim()) {
+      return choiceError.message;
+    }
+
+    const refusal = this.extractTextValue(choice?.message?.refusal ?? choice?.delta?.refusal);
+    if (refusal.trim()) {
+      return refusal.trim();
+    }
+
+    const toolCalls = [
+      ...(Array.isArray(choice?.message?.tool_calls) ? choice.message.tool_calls : []),
+      ...(Array.isArray(choice?.delta?.tool_calls) ? choice.delta.tool_calls : []),
+    ];
+    if (toolCalls.length > 0) {
+      return 'Model returned tool calls instead of displayable text. Choose a different model or provider for plain-text responses.';
+    }
+
+    switch (choice?.finish_reason) {
+      case 'length':
+        return 'Model exhausted its output budget before producing visible text. Increase max tokens or choose a different model.';
+      case 'content_filter':
+        return 'Provider blocked the response with content filtering.';
+      case 'error':
+        return 'Provider returned an error before producing visible text.';
+      default:
+        return 'Provider returned no displayable text. Try a different model or increase max tokens.';
+    }
   }
 
   private isDirectBrowserOpenAIRequest(): boolean {
@@ -152,12 +312,13 @@ export class OpenAICompatEngine extends BaseLLMEngine {
     const data: OpenAIResponse = await response.json();
 
     const choice = data.choices[0];
-    if (!choice?.message) {
-      throw new Error('No content in response');
+    const content = this.extractChoiceMessageContent(choice, data).trim();
+    if (!content) {
+      throw new Error(this.buildNoContentError(choice, data));
     }
 
     return {
-      content: choice.message.content,
+      content,
       finishReason: choice.finish_reason,
       usage: data.usage ? {
         promptTokens: data.usage.prompt_tokens,
@@ -177,10 +338,7 @@ export class OpenAICompatEngine extends BaseLLMEngine {
     const response = await this.performFetch(`${this.baseUrl}/chat/completions`, {
       ...this.getFetchOptions(options?.signal),
       method: 'POST',
-      headers: buildProviderHeaders(this.config.provider, this.config.apiKey, {
-        contentType: 'application/json',
-        accept: 'text/event-stream',
-      }),
+      headers: this.getStreamingHeaders(),
       body: JSON.stringify({
         model: this.config.model,
         messages: this.formatMessages(messages),
@@ -227,7 +385,7 @@ export class OpenAICompatEngine extends BaseLLMEngine {
             const choice = data.choices[0];
             if (!choice) continue;
 
-            const content = choice.delta?.content;
+            const content = this.extractChoiceDeltaContent(choice);
             if (content) {
               yield {
                 content,

@@ -15,9 +15,11 @@ import {
   Link as LinkIcon,
   ExternalLink,
 } from 'lucide-react';
+import { isSelfContainedDesktopRuntime } from '../../lib/runtime.js';
 import { serverClient, type SyncStatus } from '../../lib/server/index.js';
 
 export default function ServerSettings() {
+  const selfContainedDesktop = isSelfContainedDesktopRuntime();
   const [status, setStatus] = useState<SyncStatus | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -90,6 +92,14 @@ export default function ServerSettings() {
       setIsLoading(false);
     }
   };
+
+  if (selfContainedDesktop) {
+    return (
+      <div className="app-note border-border/60 bg-background/40 p-4 text-sm text-muted-foreground">
+        This desktop build is self-contained. Server sync, remote auth, and cross-device server storage are disabled.
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

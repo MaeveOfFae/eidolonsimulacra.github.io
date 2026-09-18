@@ -43,7 +43,7 @@ export default function ChatScreen() {
       };
       setMessages([contextMessage]);
     }
-  }, [draft, asset]);
+  }, [draft, asset, draftId]);
 
   const handleSend = async () => {
     if (!inputText.trim() || isGenerating) return;
@@ -94,7 +94,10 @@ export default function ChatScreen() {
 
       stream.onError_((error) => {
         console.error('Chat error:', error);
-        Alert.alert('Error', 'Failed to get response');
+        const message = assistantContent
+          ? `Response interrupted: ${error}`
+          : error;
+        Alert.alert('Error', message);
         setIsGenerating(false);
       });
 
@@ -112,7 +115,7 @@ export default function ChatScreen() {
     }
   };
 
-  const renderMessage = ({ item, index }: { item: ChatMessage; index: number }) => {
+  const renderMessage = ({ item }: { item: ChatMessage }) => {
     if (item.role === 'system') return null;
 
     const isUser = item.role === 'user';
@@ -168,7 +171,7 @@ export default function ChatScreen() {
       <FlatList
         ref={flatListRef}
         data={visibleMessages}
-        keyExtractor={(_, index) => index.toString()}
+        keyExtractor={(item, index) => `${item.role}-${index}`}
         renderItem={renderMessage}
         contentContainerStyle={styles.messagesList}
         onContentSizeChange={() => flatListRef.current?.scrollToEnd()}

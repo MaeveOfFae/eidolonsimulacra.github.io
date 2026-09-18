@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, Alert, StyleSheet } from 'react-native';
 import { useRoute } from '@react-navigation/native';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { type ContentMode } from '@char-gen/shared';
+import { type ContentMode, type SimilarityResult } from '@char-gen/shared';
 import { api } from '../config/api';
+import CollapsibleTray from '../components/CollapsibleTray';
 import { UsersIcon } from '../components/Icons';
 import type { CompareRouteProp } from '../types/navigation';
+import { getErrorMessage } from '../utils/errors';
 
 export default function SimilarityScreen() {
   const route = useRoute<CompareRouteProp>();
@@ -13,7 +15,7 @@ export default function SimilarityScreen() {
   const [char2, setChar2] = useState<string>('');
   const [mode, setMode] = useState<ContentMode>('SFW');
   const [useLlm, setUseLlm] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<SimilarityResult | null>(null);
 
   const { data: draftsData, isLoading } = useQuery({
     queryKey: ['drafts'],
@@ -30,8 +32,8 @@ export default function SimilarityScreen() {
     onSuccess: (data) => {
       setResult(data);
     },
-    onError: (error: any) => {
-      Alert.alert('Error', error?.detail || 'Failed to compare characters');
+    onError: (error: unknown) => {
+      Alert.alert('Error', getErrorMessage(error, 'Failed to compare characters'));
     },
   });
 
@@ -77,68 +79,69 @@ export default function SimilarityScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.title}>Character Comparison</Text>
-      <Text style={styles.subtitle}>
-        Analyze similarities and differences between two characters
-      </Text>
+      <Text style={styles.title}>Compare</Text>
+      <Text style={styles.subtitle}>Analyze overlap between two drafts.</Text>
 
-      {/* Character Selection */}
-      <View style={styles.selectionContainer}>
-        {/* Character 1 */}
-        <View style={styles.characterCard}>
-          <View style={styles.characterHeader}>
-            <UsersIcon color="#7c3aed" size={20} />
-            <Text style={styles.characterLabel}>Character 1</Text>
-          </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={styles.chipContainer}>
-                {drafts.filter(d => d.review_id !== char2).map((draft) => (
-                <TouchableOpacity
+      <CollapsibleTray
+        title="Characters"
+        subtitle="Pick the two drafts to compare"
+        initiallyExpanded
+        preview={<Text style={styles.trayPreviewText}>{char1 ? getCharName(char1) : 'Character 1'} • {char2 ? getCharName(char2) : 'Character 2'}</Text>}
+      >
+        <View style={styles.selectionContainer}>
+          <View style={styles.characterCard}>
+            <View style={styles.characterHeader}>
+              <UsersIcon color="#7c3aed" size={20} />
+              <Text style={styles.characterLabel}>Character 1</Text>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={styles.chipContainer}>
+                {drafts.filter((draft) => draft.review_id !== char2).map((draft) => (
+                  <TouchableOpacity
                     key={draft.review_id}
                     onPress={() => setChar1(draft.review_id)}
                     style={[styles.chip, char1 === draft.review_id && styles.chipActive]}
-                >
+                  >
                     <Text style={[styles.chipText, char1 === draft.review_id && styles.chipTextActive]} numberOfLines={1}>
                       {draft.character_name || draft.seed}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </ScrollView>
-          {char1 && (
-            <Text style={styles.selectedText}>Selected: {getCharName(char1)}</Text>
-          )}
-        </View>
-
-        {/* Character 2 */}
-        <View style={styles.characterCard}>
-          <View style={styles.characterHeader}>
-            <UsersIcon color="#a78bfa" size={20} />
-            <Text style={styles.characterLabel}>Character 2</Text>
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+            {char1 ? <Text style={styles.selectedText}>Selected: {getCharName(char1)}</Text> : null}
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={styles.chipContainer}>
-                {drafts.filter(d => d.review_id !== char1).map((draft) => (
-                <TouchableOpacity
+
+          <View style={styles.characterCard}>
+            <View style={styles.characterHeader}>
+              <UsersIcon color="#a78bfa" size={20} />
+              <Text style={styles.characterLabel}>Character 2</Text>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={styles.chipContainer}>
+                {drafts.filter((draft) => draft.review_id !== char1).map((draft) => (
+                  <TouchableOpacity
                     key={draft.review_id}
                     onPress={() => setChar2(draft.review_id)}
                     style={[styles.chip, char2 === draft.review_id && styles.chipActive]}
-                >
+                  >
                     <Text style={[styles.chipText, char2 === draft.review_id && styles.chipTextActive]} numberOfLines={1}>
                       {draft.character_name || draft.seed}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </ScrollView>
-          {char2 && (
-            <Text style={styles.selectedText}>Selected: {getCharName(char2)}</Text>
-          )}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+            {char2 ? <Text style={styles.selectedText}>Selected: {getCharName(char2)}</Text> : null}
+          </View>
         </View>
-      </View>
+      </CollapsibleTray>
 
-      {/* Mode Selection */}
-      <View style={styles.section}>
+      <CollapsibleTray
+        title="Options"
+        subtitle="Mode and depth of analysis"
+        preview={<Text style={styles.trayPreviewText}>{mode} • {useLlm ? 'deep analysis' : 'fast analysis'}</Text>}
+      >
         <Text style={styles.sectionLabel}>Content Mode</Text>
         <View style={styles.modeContainer}>
           {modes.map((m) => (
@@ -151,18 +154,17 @@ export default function SimilarityScreen() {
             </TouchableOpacity>
           ))}
         </View>
-      </View>
 
-      {/* LLM Toggle */}
-      <TouchableOpacity
-        onPress={() => setUseLlm(!useLlm)}
-        style={styles.toggleContainer}
-      >
-        <View style={[styles.toggleTrack, useLlm && styles.toggleTrackActive]}>
-          <View style={[styles.toggleThumb, useLlm && styles.toggleThumbActive]} />
-        </View>
-        <Text style={styles.toggleLabel}>Use LLM for deep analysis</Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => setUseLlm(!useLlm)}
+          style={styles.toggleContainer}
+        >
+          <View style={[styles.toggleTrack, useLlm && styles.toggleTrackActive]}>
+            <View style={[styles.toggleThumb, useLlm && styles.toggleThumbActive]} />
+          </View>
+          <Text style={styles.toggleLabel}>Use LLM for deep analysis</Text>
+        </TouchableOpacity>
+      </CollapsibleTray>
 
       {/* Compare Button */}
       <TouchableOpacity
@@ -180,11 +182,13 @@ export default function SimilarityScreen() {
         )}
       </TouchableOpacity>
 
-      {/* Results */}
       {result && (
-        <View style={styles.resultCard}>
-          <Text style={styles.resultTitle}>Comparison Results</Text>
-
+        <CollapsibleTray
+          title="Results"
+          subtitle={`${getCharName(char1)} vs ${getCharName(char2)}`}
+          initiallyExpanded
+          preview={<Text style={styles.trayPreviewText}>{result.overall_score !== undefined ? `${(result.overall_score * 100).toFixed(0)}% match` : 'Analysis ready'}{result.llm_analysis ? ' • deep analysis' : ''}</Text>}
+        >
           {result.overall_score !== undefined && (
             <View style={styles.scoreSection}>
               <Text style={styles.scoreLabel}>Similarity Score</Text>
@@ -226,20 +230,53 @@ export default function SimilarityScreen() {
           {result.llm_analysis && (
             <View style={styles.llmSection}>
               <Text style={styles.resultSectionTitle}>LLM Analysis</Text>
-              <Text style={styles.llmText}>{result.llm_analysis}</Text>
+              <Text style={styles.llmText}>{result.llm_analysis.relationship_potential}</Text>
+
+              {result.llm_analysis.conflict_areas.length > 0 && (
+                <View style={styles.resultSection}>
+                  <Text style={styles.resultSectionTitle}>Conflict Areas</Text>
+                  {result.llm_analysis.conflict_areas.map((item, idx) => (
+                    <View key={`conflict-${idx}`} style={styles.resultItem}>
+                      <View style={styles.differenceDot} />
+                      <Text style={styles.resultItemText}>{item}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {result.llm_analysis.synergy_areas.length > 0 && (
+                <View style={styles.resultSection}>
+                  <Text style={styles.resultSectionTitle}>Synergy Areas</Text>
+                  {result.llm_analysis.synergy_areas.map((item, idx) => (
+                    <View key={`synergy-${idx}`} style={styles.resultItem}>
+                      <View style={styles.commonalityDot} />
+                      <Text style={styles.resultItemText}>{item}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {result.llm_analysis.story_hooks.length > 0 && (
+                <View style={styles.resultSection}>
+                  <Text style={styles.resultSectionTitle}>Story Hooks</Text>
+                  {result.llm_analysis.story_hooks.map((item, idx) => (
+                    <View key={`hook-${idx}`} style={styles.resultItem}>
+                      <View style={styles.commonalityDot} />
+                      <Text style={styles.resultItemText}>{item}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
             </View>
           )}
-        </View>
+        </CollapsibleTray>
       )}
 
-      {/* Empty State */}
       {!char1 && !char2 && !compareMutation.isPending && (
         <View style={styles.emptyState}>
           <UsersIcon color="#6b7280" size={48} />
           <Text style={styles.emptyTitle}>Select Two Characters</Text>
-          <Text style={styles.emptyText}>
-            Choose two characters from your drafts to compare their traits and find similarities
-          </Text>
+          <Text style={styles.emptyText}>Choose two drafts to compare traits and overlap.</Text>
         </View>
       )}
     </ScrollView>
@@ -259,21 +296,26 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 16,
+    gap: 16,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   subtitle: {
     fontSize: 14,
     color: '#9ca3af',
-    marginBottom: 24,
+    marginBottom: 4,
+  },
+  trayPreviewText: {
+    color: '#9ca3af',
+    fontSize: 12,
+    lineHeight: 18,
   },
   selectionContainer: {
     gap: 16,
-    marginBottom: 24,
   },
   characterCard: {
     backgroundColor: '#1f1f1f',
@@ -386,7 +428,6 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 8,
     alignItems: 'center',
-    marginBottom: 24,
   },
   compareButtonDisabled: {
     backgroundColor: '#3f3f46',

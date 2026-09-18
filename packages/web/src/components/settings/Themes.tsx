@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -17,8 +17,9 @@ import {
 } from 'lucide-react';
 import type { ThemeColors, ThemePreset } from '@char-gen/shared';
 import { api } from '@/lib/api';
+import { isSelfContainedDesktopRuntime } from '@/lib/runtime';
 import { EDITABLE_THEME_SECTIONS, resolveThemeColors, applyThemeToDocument } from '../../theme/theme';
-import { saveDownload } from '../../utils/download';
+import { pickFile, saveDownload } from '../../utils/download';
 import SyncControls from '../common/SyncControls';
 
 interface ThemeDuplicateDraft {
@@ -184,8 +185,9 @@ function renderColorValue(value: string) {
 }
 
 export default function Themes() {
+  const selfContainedDesktop = isSelfContainedDesktopRuntime();
   const queryClient = useQueryClient();
-  const importInputId = 'theme-import-input';
+  const importInputRef = useRef<HTMLInputElement | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -538,8 +540,8 @@ export default function Themes() {
 
   const isBusy = createMutation.isPending || activateMutation.isPending || updateCurrentCustomMutation.isPending || updateMetadataMutation.isPending || duplicateMutation.isPending || renameMutation.isPending || deleteMutation.isPending || exportMutation.isPending || importMutation.isPending;
 
-  const handleImportChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+  const handleImport = async () => {
+    const file = await pickFile({ accept: 'application/json,.json' }, importInputRef.current);
     if (!file) {
       return;
     }
@@ -565,8 +567,6 @@ export default function Themes() {
       setNotice(null);
       setImportDraft(null);
     }
-
-    event.target.value = '';
   };
 
   if (configLoading || themesLoading) {
@@ -597,18 +597,18 @@ export default function Themes() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <label
-            htmlFor={importInputId}
+          <button
+            type="button"
+            onClick={() => void handleImport()}
             className="inline-flex cursor-pointer items-center gap-2 rounded-md border border-input px-3 py-2 text-sm hover:bg-accent"
           >
             <Upload className="h-4 w-4" />
             Import preset
-          </label>
+          </button>
           <input
-            id={importInputId}
+            ref={importInputRef}
             type="file"
             accept="application/json"
-            onChange={handleImportChange}
             className="hidden"
           />
           {activeTheme && (
@@ -621,22 +621,23 @@ export default function Themes() {
       </div>
 
       {/* Server Sync */}
-      <div className="rounded-lg border border-border bg-card p-4">
-        <SyncControls
-          dataType="themes"
-          label="Themes"
-          onGetLocalData={async () => {
-            const themes = await api.getThemes();
-            return { version: '1.0', exportedAt: new Date().toISOString(), themes };
-          }}
-          onApplyData={async (data) => {
-            // Themes are managed via API, refresh after pull
-            if (data && typeof data === 'object') {
-              queryClient.invalidateQueries({ queryKey: ['themes'] });
-            }
-          }}
-        />
-      </div>
+      {!selfContainedDesktop && (
+        <div className="rounded-lg border border-border bg-card p-4">
+          <SyncControls
+            dataType="themes"
+            label="Themes"
+            onGetLocalData={async () => {
+              const themes = await api.getThemes();
+              return { version: '1.0', exportedAt: new Date().toISOString(), themes };
+            }}
+            onApplyData={async (data) => {
+              if (data && typeof data === 'object') {
+                queryClient.invalidateQueries({ queryKey: ['themes'] });
+              }
+            }}
+          />
+        </div>
+      )}
 
       <div className="grid gap-6 xl:grid-cols-[1.2fr_1fr]">
         <section className="rounded-lg border border-border bg-card p-5">

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { X, Download, FileText, FileJson, FileCode, CheckCircle2 } from 'lucide-react';
+import { X, Download, FileText, FileJson, FileCode, CheckCircle2, Image as ImageIcon } from 'lucide-react';
 import type { ExportPresetSummary } from '@char-gen/shared';
 import { api } from '@/lib/api';
 import { saveDownload } from '../../utils/download';
@@ -8,7 +8,7 @@ import ExportPreviewPlaceholder from './ExportPreviewPlaceholder';
 import PublishingPlaceholder from './PublishingPlaceholder';
 
 type ExportPresetOption = ExportPresetSummary & {
-  format?: 'text' | 'json' | 'combined';
+  format?: 'text' | 'json' | 'combined' | 'png';
   description?: string;
 };
 
@@ -29,6 +29,15 @@ export default function ExportModal({ draftId, characterName, onClose }: ExportM
     queryKey: ['export-presets'],
     queryFn: () => api.getExportPresets(),
   });
+  const { data: draft } = useQuery({
+    queryKey: ['draft', draftId, 'export-modal'],
+    queryFn: () => api.getDraft(draftId),
+    enabled: Boolean(draftId),
+  });
+
+  const hasPngCardImage = Boolean(
+    draft?.assets.card_image || draft?.metadata.card_metadata?.avatar?.startsWith('data:image/png;base64,')
+  );
 
   useEffect(() => {
     document.body.classList.add('modal-open');
@@ -53,11 +62,14 @@ export default function ExportModal({ draftId, characterName, onClose }: ExportM
 
       const result = await saveDownload(
         download,
-        `${characterName.replace(/[^a-z0-9]/gi, '_')}_export.zip`
+        `${characterName.replace(/[^a-z0-9]/gi, '_')}_export.${selectedPreset === 'png' ? 'png' : selectedPreset === 'json' ? 'json' : selectedPreset === 'combined' ? 'md' : 'txt'}`
       );
 
       if (result.saved) {
         switch (result.method) {
+          case 'file-system-access':
+            setSuccessMessage('Browser save dialog opened. Choose the filename and destination there.');
+            break;
           case 'share':
             setSuccessMessage('Share sheet opened. Choose Save to Files, Downloads, or another app to keep the export.');
             break;
@@ -91,6 +103,8 @@ export default function ExportModal({ draftId, characterName, onClose }: ExportM
         return <FileJson className="h-4 w-4" />;
       case 'combined':
         return <FileCode className="h-4 w-4" />;
+      case 'png':
+        return <ImageIcon className="h-4 w-4" />;
       default:
         return <FileText className="h-4 w-4" />;
     }
@@ -173,6 +187,12 @@ export default function ExportModal({ draftId, characterName, onClose }: ExportM
             </label>
           </div>
 
+          {selectedPreset === 'png' && !hasPngCardImage && (
+            <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
+              PNG export needs an attached draft card image. Attach one from draft review first.
+            </div>
+          )}
+
           <div className="rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
             Browser export is a handoff. Depending on device and browser, you may get a share sheet, new tab, or download tray instead of a filename dialog.
           </div>
@@ -224,7 +244,7 @@ export default function ExportModal({ draftId, characterName, onClose }: ExportM
           </button>
           <button
             onClick={handleExport}
-            disabled={!selectedPreset || isExporting}
+            disabled={!selectedPreset || isExporting || (selectedPreset === 'png' && !hasPngCardImage)}
             data-tour-anchor="export-confirm"
             className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >

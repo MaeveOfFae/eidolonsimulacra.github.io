@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "Eidolon Simulacra",
+    "slug": "eidolon-simulacra",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "scheme": "eidolon-simulacra",
+    "platforms": [
+      "ios",
+      "android"
+    ],
+    "android": {
+      "package": "io.github.maeveoffae.eidolonsimulacra",
+      "versionCode": 1
+    },
+    "jsEngine": "hermes",
+    "plugins": [
+      "expo-sqlite"
+    ]
+  }
+}

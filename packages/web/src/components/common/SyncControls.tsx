@@ -14,6 +14,8 @@ import {
   XCircle,
   Loader2,
 } from 'lucide-react';
+import { readPersistedString, writePersistedString } from '../../lib/persistence/storage.js';
+import { isSelfContainedDesktopRuntime } from '../../lib/runtime.js';
 import { serverClient, type SyncStatus } from '../../lib/server/index.js';
 
 interface SyncControlsProps {
@@ -36,6 +38,7 @@ export default function SyncControls({
   label,
   compact = false,
 }: SyncControlsProps) {
+  const selfContainedDesktop = isSelfContainedDesktopRuntime();
   const [status, setStatus] = useState<SyncStatus | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSync, setLastSync] = useState<string | null>(null);
@@ -49,8 +52,7 @@ export default function SyncControls({
 
   useEffect(() => {
     void loadStatus();
-    // Load last sync time from localStorage
-    const stored = localStorage.getItem(`sync-${dataType}-last`);
+    const stored = readPersistedString(`sync-${dataType}-last`)?.value;
     if (stored) {
       setLastSync(stored);
     }
@@ -60,6 +62,15 @@ export default function SyncControls({
     setError(null);
     setSuccess(null);
   };
+
+  if (selfContainedDesktop) {
+    return compact ? null : (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <CloudOff className="h-4 w-4" />
+        <span>Desktop build is self-contained. Remote sync is unavailable.</span>
+      </div>
+    );
+  }
 
   const handlePush = async () => {
     if (!status?.authenticated || !onGetLocalData) return;
@@ -84,7 +95,7 @@ export default function SyncControls({
 
       const now = new Date().toISOString();
       setLastSync(now);
-      localStorage.setItem(`sync-${dataType}-last`, now);
+      writePersistedString(`sync-${dataType}-last`, [], now);
       setSuccess(`${label || dataType} pushed to server`);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Push failed');
@@ -118,7 +129,7 @@ export default function SyncControls({
       await onApplyData(data);
       const now = new Date().toISOString();
       setLastSync(now);
-      localStorage.setItem(`sync-${dataType}-last`, now);
+      writePersistedString(`sync-${dataType}-last`, [], now);
       setSuccess(`${label || dataType} pulled from server`);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Pull failed');
@@ -172,7 +183,7 @@ export default function SyncControls({
 
       const now = new Date().toISOString();
       setLastSync(now);
-      localStorage.setItem(`sync-${dataType}-last`, now);
+      writePersistedString(`sync-${dataType}-last`, [], now);
       setSuccess(`${label || dataType} synced`);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Sync failed');

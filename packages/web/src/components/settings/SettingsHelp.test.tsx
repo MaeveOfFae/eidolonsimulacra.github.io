@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import Settings from './Settings';
 import { configManager } from '../../lib/config/manager';
@@ -48,6 +49,12 @@ vi.mock('../common/useThemePreview', () => ({
 vi.mock('../../lib/api.js', () => ({
   api: {
     getModels: vi.fn(async () => ({ models: [], error: null })),
+    getBlueprints: vi.fn(async () => ({
+      core: [],
+      system: [],
+      templates: { local: [] },
+      examples: [],
+    })),
   },
 }));
 
@@ -83,10 +90,14 @@ vi.mock('../common/InlineHelpTip', () => ({
 }));
 
 function renderSettings() {
+  const queryClient = new QueryClient();
+
   return render(
-    <MemoryRouter>
-      <Settings />
-    </MemoryRouter>
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>
+        <Settings />
+      </MemoryRouter>
+    </QueryClientProvider>
   );
 }
 
@@ -111,7 +122,7 @@ describe('Settings help controls', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Reset Help Preferences' }));
 
     await waitFor(() => {
-      expect(screen.getByText('Help preferences were reset. Inline tips and first-run guidance are enabled again.')).toBeInTheDocument();
+      expect(screen.getByText('Help preferences were reset. Hover help popups and first-run guidance are enabled again.')).toBeInTheDocument();
     });
 
     expect(configManager.getHelpState()).toEqual({

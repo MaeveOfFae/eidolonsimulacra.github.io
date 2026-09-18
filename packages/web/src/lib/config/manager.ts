@@ -1,6 +1,6 @@
 /**
  * Client-Side Configuration Manager
- * Handles configuration persistence in localStorage with API key management
+ * Handles configuration persistence in local device storage with API key management
  */
 
 import type {
@@ -9,6 +9,7 @@ import type {
   FeatureBlueprintDefaults,
   HelpState,
 } from '@char-gen/shared';
+import { readPersistedString, removePersistedValues, writePersistedString } from '../persistence/storage.js';
 
 const CONFIG_STORAGE_KEY = 'eidolon.web.config';
 const LEGACY_CONFIG_STORAGE_KEYS = ['bpui.web.config'];
@@ -20,7 +21,7 @@ const CONFIG_CHANGED_EVENT = 'eidolon:config-changed';
 
 /**
  * In-memory API keys storage (cleared on page refresh by default)
- * Can be persisted to localStorage with user consent
+ * Can be persisted to local device storage with user consent
  */
 let sessionApiKeys: ApiKeys = {};
 
@@ -29,6 +30,8 @@ const LEGACY_FEATURE_BLUEPRINT_PATHS: Record<string, string> = {
   rpbotgenerator: 'blueprints/system/generator.md',
   seed_generator: 'blueprints/system/seed_generator.md',
   offspring_generator: 'blueprints/system/offspring_generator.md',
+  lorebook_generator: 'blueprints/system/lorebook_generator.md',
+  worldbook_generator: 'blueprints/system/lorebook_generator.md',
   intro_scene: 'blueprints/system/intro_scene.md',
 };
 
@@ -64,33 +67,15 @@ export function isInvalidApiKeyValue(value: string): boolean {
 }
 
 function readStoredValue(keys: readonly string[]): { value: string; sourceKey: string } | null {
-  for (const key of keys) {
-    const value = localStorage.getItem(key);
-    if (value !== null) {
-      return { value, sourceKey: key };
-    }
-  }
-
-  return null;
-}
-
-function clearLegacyKeys(currentKey: string, legacyKeys: readonly string[]): void {
-  for (const key of legacyKeys) {
-    if (key !== currentKey) {
-      localStorage.removeItem(key);
-    }
-  }
+  return readPersistedString(keys);
 }
 
 function writeStoredValue(currentKey: string, legacyKeys: readonly string[], value: string): void {
-  localStorage.setItem(currentKey, value);
-  clearLegacyKeys(currentKey, legacyKeys);
+  writePersistedString(currentKey, legacyKeys, value);
 }
 
 function removeStoredValues(keys: readonly string[]): void {
-  for (const key of keys) {
-    localStorage.removeItem(key);
-  }
+  removePersistedValues(keys);
 }
 
 function dispatchConfigChangedEvent(): void {
@@ -162,7 +147,7 @@ export class ConfigManager {
 
     persistKeys = this.loadPersistPreference(this.options.persistApiKeys || false);
 
-    // Load config from localStorage or use defaults
+    // Load config from local device storage or use defaults
     this.config = this.loadConfig();
     this.loadPersistedApiKeys();
   }
@@ -237,7 +222,7 @@ export class ConfigManager {
       writeStoredValue(CONFIG_STORAGE_KEY, LEGACY_CONFIG_STORAGE_KEYS, JSON.stringify(this.config));
       dispatchConfigChangedEvent();
     } catch (error) {
-      console.warn('Failed to save config to localStorage:', error);
+      console.warn('Failed to save config to device storage:', error);
     }
   }
 
@@ -258,6 +243,7 @@ export class ConfigManager {
         orchestration: 'blueprints/system/generator.md',
         seed_generation: 'blueprints/system/seed_generator.md',
         offspring_generation: 'blueprints/system/offspring_generator.md',
+        worldbook_generation: 'blueprints/system/lorebook_generator.md',
         intro_scene_generation: 'blueprints/system/intro_scene.md',
       },
     };
@@ -280,7 +266,7 @@ export class ConfigManager {
   }
 
   /**
-   * Get API keys (from session or localStorage)
+  * Get API keys (from session or persisted local storage)
    */
   getApiKeys(): ApiKeys {
     return normalizeApiKeys(sessionApiKeys);
@@ -348,7 +334,7 @@ export class ConfigManager {
   }
 
   /**
-   * Load API keys from localStorage (for persistence mode)
+  * Load API keys from persisted local storage (for persistence mode)
    */
   private loadPersistedApiKeys(): void {
     if (!persistKeys) {
@@ -370,7 +356,7 @@ export class ConfigManager {
   }
 
   /**
-   * Persist API keys to localStorage if enabled
+  * Persist API keys to local storage if enabled
    */
   private persistApiKeysIfNeeded(): void {
     if (persistKeys) {

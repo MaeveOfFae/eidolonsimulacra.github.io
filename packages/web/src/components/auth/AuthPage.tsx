@@ -16,6 +16,7 @@ import {
   ArrowLeft,
 } from 'lucide-react';
 import { serverClient, type SyncStatus } from '../../lib/server/index.js';
+import { isDesktopRuntime, isSelfContainedDesktopRuntime } from '../../lib/runtime.js';
 
 type AuthMode = 'login' | 'register';
 
@@ -27,6 +28,8 @@ interface FormData {
 }
 
 export default function AuthPage() {
+  const desktopRuntime = isDesktopRuntime();
+  const selfContainedDesktop = isSelfContainedDesktopRuntime();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [mode, setMode] = useState<AuthMode>('login');
@@ -137,7 +140,9 @@ export default function AuthPage() {
               {mode === 'login' ? 'Reconnect to your sync server.' : 'Create an account for cross-device sync.'}
             </h1>
             <p className="app-page-summary">
-              Optional server auth for sync. Local browser storage still remains the default workflow for drafts, themes, and provider configuration.
+              {desktopRuntime
+                ? 'Optional server auth for sync. Desktop app data still remains the default workflow for drafts, themes, and provider configuration.'
+                : 'Optional server auth for sync. Local browser storage still remains the default workflow for drafts, themes, and provider configuration.'}
             </p>
           </div>
 
@@ -175,12 +180,21 @@ export default function AuthPage() {
           Back
         </button>
 
-        {isCheckingServer ? (
+        {selfContainedDesktop && (
+          <div className="app-panel space-y-3 p-5">
+            <h2 className="text-lg font-semibold">Server auth is disabled</h2>
+            <p className="text-sm text-muted-foreground">
+              This desktop build is fully self-contained. It stores drafts and settings locally and does not connect to a sync server.
+            </p>
+          </div>
+        )}
+
+        {!selfContainedDesktop && isCheckingServer ? (
           <div className="app-panel flex items-center justify-center gap-2 p-3.5">
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
             <span className="text-sm text-muted-foreground">Checking server connection...</span>
           </div>
-        ) : serverStatus?.connected ? (
+        ) : !selfContainedDesktop && serverStatus?.connected ? (
           <div className="app-note flex items-center justify-between gap-3 border-green-500/50 bg-green-500/10 p-3 text-green-700 dark:text-green-400">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-green-500" />
@@ -190,7 +204,7 @@ export default function AuthPage() {
               {isAuthenticated ? 'Authenticated' : 'Ready'}
             </span>
           </div>
-        ) : (
+        ) : !selfContainedDesktop ? (
           <div className="app-panel space-y-3 p-4">
             <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
               <XCircle className="h-4 w-4 text-red-500" />
@@ -236,7 +250,7 @@ export default function AuthPage() {
               </div>
             )}
           </div>
-        )}
+        ) : null}
 
         {error && (
           <div className="app-note border-red-500/50 bg-red-500/10 p-3 text-sm text-red-600 dark:text-red-400">
@@ -244,7 +258,7 @@ export default function AuthPage() {
           </div>
         )}
 
-        {serverStatus?.connected && !serverStatus?.authenticated && (
+        {!selfContainedDesktop && serverStatus?.connected && !serverStatus?.authenticated && (
           <form onSubmit={handleSubmit} className="app-panel space-y-4 p-5">
             <div className="flex items-start justify-between gap-3 border-b border-border/60 pb-3">
               <div>

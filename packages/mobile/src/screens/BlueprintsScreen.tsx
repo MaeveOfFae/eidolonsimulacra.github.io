@@ -4,6 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
 import type { Blueprint } from '@char-gen/shared';
 import { api } from '../config/api';
+import CollapsibleTray from '../components/CollapsibleTray';
 import type { HomeStackNavigationProp } from '../types/navigation';
 
 type Section = {
@@ -11,10 +12,18 @@ type Section = {
   blueprints: Blueprint[];
 };
 
+function summarizeText(content: string, maxLength = 420): string {
+  const trimmed = content.replace(/\s+/g, ' ').trim();
+  if (trimmed.length <= maxLength) {
+    return trimmed;
+  }
+
+  return `${trimmed.slice(0, maxLength - 3).trimEnd()}...`;
+}
+
 export default function BlueprintsScreen() {
   const navigation = useNavigation<HomeStackNavigationProp<'Blueprints'>>();
   const [query, setQuery] = useState('');
-  const [expandedPath, setExpandedPath] = useState<string | null>(null);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['blueprints'],
@@ -71,13 +80,13 @@ export default function BlueprintsScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Blueprints</Text>
-      <Text style={styles.subtitle}>Browse blueprint files used by templates and generation flows.</Text>
+      <Text style={styles.subtitle}>Browse generation building blocks.</Text>
 
       <TextInput
         style={styles.searchInput}
         value={query}
         onChangeText={setQuery}
-        placeholder="Search blueprints by name, description, or path"
+        placeholder="Search by name, description, or path"
         placeholderTextColor="#6b7280"
         autoCapitalize="none"
       />
@@ -88,55 +97,56 @@ export default function BlueprintsScreen() {
         </View>
       ) : (
         filteredSections.map((section) => (
-          <View key={section.title} style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>{section.title}</Text>
+          <CollapsibleTray
+            key={section.title}
+            title={section.title}
+            subtitle={`${section.blueprints.length} blueprint${section.blueprints.length === 1 ? '' : 's'}`}
+            initiallyExpanded={Boolean(normalizedQuery || section.title === filteredSections[0]?.title)}
+            preview={
+              <Text style={styles.trayPreviewText} numberOfLines={1}>
+                {section.blueprints.slice(0, 2).map((blueprint) => blueprint.name).join(' • ')}
+                {section.blueprints.length > 2 ? ` • +${section.blueprints.length - 2} more` : ''}
+              </Text>
+            }
+            meta={
               <View style={styles.countBadge}>
                 <Text style={styles.countText}>{section.blueprints.length}</Text>
               </View>
-            </View>
-
+            }
+            style={styles.sectionTray}
+          >
             <View style={styles.blueprintList}>
               {section.blueprints.map((blueprint) => {
-                const expanded = expandedPath === blueprint.path;
-                const preview = blueprint.content.length > 1400 ? `${blueprint.content.slice(0, 1400)}...` : blueprint.content;
+                const preview = summarizeText(blueprint.content);
 
                 return (
-                  <TouchableOpacity
+                  <CollapsibleTray
                     key={blueprint.path}
-                    style={[styles.blueprintCard, expanded && styles.blueprintCardExpanded]}
-                    onPress={() => setExpandedPath(expanded ? null : blueprint.path)}
-                    activeOpacity={0.9}
+                    title={blueprint.name}
+                    subtitle={blueprint.description || 'No description'}
+                    initiallyExpanded={Boolean(normalizedQuery)}
+                    preview={
+                      <View style={styles.blueprintPreviewMeta}>
+                        <Text style={styles.metaText} numberOfLines={1}>{blueprint.path}</Text>
+                        <Text style={styles.metaText}>v{blueprint.version}</Text>
+                      </View>
+                    }
+                    style={styles.blueprintCard}
                   >
-                    <View style={styles.blueprintHeader}>
-                      <View style={styles.blueprintHeaderText}>
-                        <Text style={styles.blueprintName}>{blueprint.name}</Text>
-                        <Text style={styles.blueprintDescription}>{blueprint.description || 'No description'}</Text>
-                      </View>
-                      <Text style={styles.expandText}>{expanded ? 'Hide' : 'Show'}</Text>
+                    <View style={styles.previewCard}>
+                      <Text style={styles.previewText}>{preview}</Text>
                     </View>
-
-                    <View style={styles.metaRow}>
-                      <Text style={styles.metaText}>{blueprint.path}</Text>
-                      <Text style={styles.metaText}>v{blueprint.version}</Text>
-                    </View>
-
-                    {expanded ? (
-                      <View style={styles.previewCard}>
-                        <Text style={styles.previewText}>{preview}</Text>
-                        <TouchableOpacity
-                          style={styles.editButton}
-                          onPress={() => navigation.navigate('BlueprintEditor', { path: blueprint.path })}
-                        >
-                          <Text style={styles.editButtonText}>Open Editor</Text>
-                        </TouchableOpacity>
-                      </View>
-                    ) : null}
-                  </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.editButton}
+                      onPress={() => navigation.navigate('BlueprintEditor', { path: blueprint.path })}
+                    >
+                      <Text style={styles.editButtonText}>Open Editor</Text>
+                    </TouchableOpacity>
+                  </CollapsibleTray>
                 );
               })}
             </View>
-          </View>
+          </CollapsibleTray>
         ))
       )}
     </ScrollView>
@@ -192,8 +202,16 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: 'center',
   },
+  trayPreviewText: {
+    color: '#9ca3af',
+    fontSize: 12,
+    lineHeight: 18,
+  },
   section: {
     gap: 10,
+  },
+  sectionTray: {
+    marginBottom: 0,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -220,14 +238,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   blueprintCard: {
-    backgroundColor: '#1f1f1f',
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-    borderRadius: 12,
-    padding: 14,
-  },
-  blueprintCardExpanded: {
-    borderColor: '#7c3aed',
+    marginBottom: 0,
   },
   blueprintHeader: {
     flexDirection: 'row',
@@ -259,13 +270,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 10,
   },
+  blueprintPreviewMeta: {
+    gap: 2,
+  },
   metaText: {
     color: '#6b7280',
     fontSize: 11,
     flexShrink: 1,
   },
   previewCard: {
-    marginTop: 12,
     backgroundColor: '#111111',
     borderWidth: 1,
     borderColor: '#2f2f2f',
@@ -279,7 +292,6 @@ const styles = StyleSheet.create({
     fontFamily: 'monospace',
   },
   editButton: {
-    marginTop: 12,
     alignSelf: 'flex-start',
     backgroundColor: '#7c3aed',
     borderRadius: 8,

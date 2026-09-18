@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { BookOpen, FileLock2, ShieldCheck, Scale, Info, Sparkles, Mail, Bug, Shield } from 'lucide-react';
+import { isDesktopRuntime } from '../../lib/runtime.js';
 import DocumentPage from './DocumentPage';
 
 const infoCards = [
@@ -36,11 +37,15 @@ const infoCards = [
 ];
 
 export default function About() {
+  const desktopRuntime = isDesktopRuntime();
+
   return (
     <DocumentPage
       eyebrow="About"
       title="About Eidolon Simulacra"
-      summary="Eidolon Simulacra is a browser-first blueprint compiler for character packages. It builds structured assets from a seed, preserves template-specific formats, and keeps draft state local by default."
+      summary={desktopRuntime
+        ? 'Eidolon Simulacra is a desktop-first workspace over the same blueprint compiler stack. It builds structured assets from a seed, preserves template-specific formats, and keeps draft state local by default.'
+        : 'Eidolon Simulacra is a browser-first blueprint compiler for character packages. It builds structured assets from a seed, preserves template-specific formats, and keeps draft state local by default.'}
     >
       <section className="grid gap-4 md:grid-cols-[1.15fr_0.85fr]">
         <div className="rounded-3xl border border-border/60 bg-card/70 p-6 backdrop-blur-sm">
@@ -74,7 +79,7 @@ export default function About() {
           <div className="mt-5 space-y-4 text-sm text-muted-foreground">
             <div>
               <p className="font-medium text-foreground">Current surface</p>
-              <p>Browser-first React app with shared generation and export utilities.</p>
+              <p>{desktopRuntime ? 'Desktop shell around the React generation workspace and export utilities.' : 'Browser-first React app with shared generation and export utilities.'}</p>
             </div>
             <div>
               <p className="font-medium text-foreground">Primary workflow</p>
@@ -82,11 +87,11 @@ export default function About() {
             </div>
             <div>
               <p className="font-medium text-foreground">Storage model</p>
-              <p>Local browser storage and IndexedDB, with migration support from pre-rebrand keys.</p>
+              <p>{desktopRuntime ? 'Desktop app data plus local browser-style runtime caches, with migration support from older IndexedDB drafts.' : 'Local browser storage and IndexedDB, with migration support from pre-rebrand keys.'}</p>
             </div>
             <div>
               <p className="font-medium text-foreground">Version line</p>
-              <p>v{__APP_VERSION__} browser generation stack.</p>
+              <p>v{__APP_VERSION__} {desktopRuntime ? 'desktop generation stack.' : 'browser generation stack.'}</p>
             </div>
           </div>
         </div>

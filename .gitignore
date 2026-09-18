@@ -73,9 +73,14 @@ docs/installation/_build/
 node_modules/
 .pnpm-store/
 .turbo/
+package-lock.json
 *.tsbuildinfo
 packages/*/dist/
+packages/mobile/.expo/
+packages/mobile/web-build/
 packages/web/.vite/
+packages/web/src-tauri/target/
+packages/web/src-tauri/gen/
 packages/desktop/src-tauri/target/
 packages/desktop/src-tauri/gen/
 # Logs

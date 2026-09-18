@@ -4,12 +4,14 @@ import { useNavigation } from '@react-navigation/native';
 import { useMutation } from '@tanstack/react-query';
 import * as Clipboard from 'expo-clipboard';
 import { api } from '../config/api';
+import CollapsibleTray from '../components/CollapsibleTray';
 import { SparklesIcon, ClipboardIcon } from '../components/Icons';
+import type { HomeStackNavigationProp } from '../types/navigation';
 
 const defaultGenreLines = ['Noir detective', 'Cyberpunk mercenary', 'Fantasy sorceress'].join('\n');
 
 export default function SeedGeneratorScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<HomeStackNavigationProp<'SeedGenerator'>>();
   const [genreLines, setGenreLines] = useState(defaultGenreLines);
   const [copiedSeed, setCopiedSeed] = useState<string | null>(null);
 
@@ -34,13 +36,7 @@ export default function SeedGeneratorScreen() {
   };
 
   const handleUseSeed = (seed: string) => {
-    const parentNavigation = navigation.getParent() as any;
-    if (parentNavigation?.navigate) {
-      parentNavigation.navigate('Generate', { seed });
-      return;
-    }
-
-    Alert.alert('Seed Ready', seed);
+    navigation.navigate('Generate', { seed });
   };
 
   const handleCopySeed = async (seed: string) => {
@@ -52,13 +48,11 @@ export default function SeedGeneratorScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Seed Generator</Text>
-      <Text style={styles.subtitle}>
-        Turn genre lines into character seeds or let the model surprise you.
-      </Text>
+      <Text style={styles.subtitle}>Turn themes into usable seeds.</Text>
 
       <View style={styles.card}>
         <Text style={styles.label}>Genre or Theme Lines</Text>
-        <Text style={styles.helperText}>Use one line per genre, tone, or hook.</Text>
+        <Text style={styles.helperText}>One line per theme.</Text>
         <TextInput
           style={[styles.input, styles.textArea]}
           value={genreLines}
@@ -98,12 +92,15 @@ export default function SeedGeneratorScreen() {
         </View>
       </View>
 
-      <View style={styles.card}>
+      <CollapsibleTray
+        title="Generated seeds"
+        subtitle="Use or copy any result"
+        initiallyExpanded={seeds.length > 0}
+        preview={<Text style={styles.trayPreviewText}>{seeds.length} seed{seeds.length === 1 ? '' : 's'}</Text>}
+        style={styles.card}
+      >
         <View style={styles.resultsHeader}>
-          <View>
-            <Text style={styles.sectionTitle}>Generated Seeds</Text>
-            <Text style={styles.helperText}>Send any result directly into Generate.</Text>
-          </View>
+          <Text style={styles.sectionTitle}>Results</Text>
           <View style={styles.countBadge}>
             <Text style={styles.countText}>{seeds.length} seeds</Text>
           </View>
@@ -132,7 +129,7 @@ export default function SeedGeneratorScreen() {
             ))}
           </View>
         )}
-      </View>
+      </CollapsibleTray>
     </ScrollView>
   );
 }
@@ -160,9 +157,12 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: '#1f1f1f',
     borderRadius: 12,
-    padding: 16,
     borderWidth: 1,
     borderColor: '#2f2f2f',
+  },
+  trayPreviewText: {
+    fontSize: 12,
+    color: '#9ca3af',
   },
   label: {
     fontSize: 14,

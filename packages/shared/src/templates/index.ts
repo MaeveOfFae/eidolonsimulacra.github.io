@@ -19,14 +19,14 @@ export const OFFICIAL_TEMPLATE: Template = {
   assets: [
     {
       name: 'system_prompt',
-      required: true,
+      required: false,
       depends_on: [],
       description: 'System-level behavioral instructions',
       blueprint_file: 'blueprints/system/system_prompt.md',
     },
     {
       name: 'post_history',
-      required: true,
+      required: false,
       depends_on: ['system_prompt'],
       description: 'Conversation context and relationship state',
       blueprint_file: 'blueprints/system/post_history.md',
@@ -34,14 +34,14 @@ export const OFFICIAL_TEMPLATE: Template = {
     {
       name: 'character_sheet',
       required: true,
-      depends_on: ['system_prompt', 'post_history'],
+      depends_on: [],
       description: 'Structured character data',
       blueprint_file: 'blueprints/system/character_sheet.md',
     },
     {
       name: 'intro_scene',
       required: true,
-      depends_on: ['system_prompt', 'post_history', 'character_sheet'],
+      depends_on: ['character_sheet'],
       description: 'First interaction scenario',
       blueprint_file: 'blueprints/system/intro_scene.md',
     },

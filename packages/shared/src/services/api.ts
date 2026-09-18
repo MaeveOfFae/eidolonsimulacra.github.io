@@ -28,6 +28,7 @@ import type {
   SimilarityRequest,
   SimilarityResult,
   OffspringRequest,
+  OptimizeTextRequest,
   ExportRequest,
   ConnectionTestRequest,
   ConnectionTestResult,
@@ -588,6 +589,13 @@ class EidolonAPI {
   refine(request: RefineRequest): GenerationStream {
     return new GenerationStream(
       `${this.getApiBaseUrl()}/chat/refine`,
+      request
+    );
+  }
+
+  optimizeText(request: OptimizeTextRequest): GenerationStream {
+    return new GenerationStream(
+      `${this.getApiBaseUrl()}/chat/optimize`,
       request
     );
   }
