@@ -8,6 +8,7 @@ import { detectProviderFromModel } from './types';
 import { listModels as listModelsFromProvider, OpenAICompatEngine } from './openai-compat';
 import { GoogleEngine } from './google';
 import { AnthropicEngine } from './anthropic';
+import { isInvalidApiKeyValue, normalizeApiKeyValue } from './api-key';
 
 export interface ProviderHeaderOptions {
   accept?: string;
@@ -16,35 +17,8 @@ export interface ProviderHeaderOptions {
 
 export interface CreateEngineOptions extends Omit<LLMConfig, 'provider'> {
   provider?: LLMProvider;
-  apiKeys?: Record<string, string>;
+  apiKeys?: Record<string, string | undefined>;
   defaultApiKey?: string;
-}
-
-function normalizeApiKeyValue(value: string): string {
-  return value
-    .replace(/[\u2018\u2019]/g, "'")
-    .replace(/[\u201C\u201D]/g, '"')
-    .replace(/[\u200B-\u200D\uFEFF]/g, '')
-    .trim()
-    .replace(/^['"]+|['"]+$/g, '');
-}
-
-function isInvalidApiKeyValue(value: string): boolean {
-  if (!value) {
-    return true;
-  }
-
-  if (/[^\x20-\x7E]/.test(value)) {
-    return true;
-  }
-
-  if (/\r|\n/.test(value)) {
-    return true;
-  }
-
-  return [/^window\.fetch:/i, /cannot convert value in record<bytestring/i, /^bearer\s+window\.fetch:/i].some(
-    (pattern) => pattern.test(value),
-  );
 }
 
 /**
@@ -159,7 +133,15 @@ export function getDefaultBaseUrl(provider: LLMProvider): string {
  * This is the main entry point for creating engines.
  */
 export function createEngine(options: CreateEngineOptions): LLMEngine {
-  const { model, baseUrl: explicitBaseUrl, apiKeys, defaultApiKey, provider: explicitProvider, ...rest } = options;
+  const {
+    model,
+    baseUrl: explicitBaseUrl,
+    apiKeys,
+    defaultApiKey,
+    proxyKey,
+    provider: explicitProvider,
+    ...rest
+  } = options;
 
   // Detect provider from model if not explicitly set
   const provider = explicitProvider || detectProviderFromModel(model);
@@ -173,12 +155,15 @@ export function createEngine(options: CreateEngineOptions): LLMEngine {
   // Normalize model name
   const normalizedModel = normalizeOpenAICompatModel(model, baseUrl);
 
-  // Create engine configuration
+  // Create engine configuration.
+  // A proxy key only applies to a custom base URL, so it is dropped when the
+  // caller did not configure one (the resolved default is always present).
   const config: LLMConfig = {
     provider,
     model: normalizedModel,
     apiKey: apiKey || '',
     baseUrl,
+    ...(explicitBaseUrl && proxyKey ? { proxyKey } : {}),
     ...rest,
   };
 

@@ -226,7 +226,6 @@ export default function Settings() {
         model,
         apiKey,
         provider: provider as Provider,
-        engineMode: 'explicit',
         baseUrl: localConfig.base_url || undefined,
         proxyKey: localConfig.api_proxy_key || undefined,
       });

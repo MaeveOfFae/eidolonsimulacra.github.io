@@ -14,6 +14,7 @@ import type {
   LLMProvider,
 } from './types';
 import { ProviderEndpoints } from './types';
+import { isInvalidApiKeyValue, normalizeApiKeyValue } from './api-key';
 
 interface OpenAICompatErrorResponse {
   error?: { message?: string } | string;
@@ -220,6 +221,7 @@ export interface OpenAICompatConfig {
   provider: LLMProvider;
   model: string;
   apiKey?: string;
+  proxyKey?: string;
   baseUrl?: string;
   temperature?: number;
   maxTokens?: number;
@@ -457,8 +459,18 @@ export class OpenAICompatEngine implements LLMEngine {
     };
     const baseUrl = this.config.baseUrl || ProviderEndpoints[this.config.provider];
 
-    if (this.config.apiKey) {
-      headers['Authorization'] = 'Bearer ' + this.config.apiKey;
+    // A custom base URL is usually a self-hosted proxy that authenticates with its
+    // own key instead of the provider key.
+    const proxyToken = this.config.baseUrl ? this.config.proxyKey : undefined;
+    const rawToken = proxyToken || this.config.apiKey;
+    const authToken = rawToken ? normalizeApiKeyValue(rawToken) : undefined;
+
+    if (authToken) {
+      if (isInvalidApiKeyValue(authToken)) {
+        throw new Error('Configured API key is invalid or corrupted. Re-enter it in Settings and try again.');
+      }
+
+      headers['Authorization'] = 'Bearer ' + authToken;
     }
 
     // OpenRouter-specific headers

@@ -94,11 +94,12 @@ Outstanding: tone/style alternates; metadata suggestions; auto summaries; conver
 
 Tracked in [`TODO.md`](../TODO.md). Currently open:
 
-- Reconcile the web/shared LLM fork. The two layers have diverged behaviorally (web adds `proxyKey` auth; shared adds provider-endpoint mapping, null-safety, conditional `top_p`, `tool_calls`), so this needs a canonical-behavior decision plus provider characterization tests rather than a mechanical merge.
 - Reconcile the generation services (`web/lib/services/generation.ts` orchestrator vs `shared/services/generation.ts` direct generator).
 - Split `packages/web/src/lib/api.ts` (~2.4k lines) along draft/template/config/theme/export/world seams, after expanding characterization tests.
 - Decide the fate of `packages/server` (linted, typechecked and tested in CI, but no client calls it).
 - Publish or drop `docs/index.html`.
+
+Resolved: the forked web LLM layer was collapsed onto `@char-gen/shared` (web keeps thin re-export shims; `proxyKey` and the corrupted-key guard were ported into the shared engine, with characterization tests in `shared/src/llm/`).
 
 ## Keeping this accurate
 

@@ -67,6 +67,7 @@ import {
   type WorldRecord,
 } from '@char-gen/shared';
 import { MODEL_SUGGESTIONS, createEngine, getDefaultBaseUrl } from './llm/factory.js';
+import { toAppConnectionTestResult } from './llm/connection-result.js';
 import { configManager } from './config/manager.js';
 import { readPersistedJson, writePersistedJson } from './persistence/storage.js';
 import { isDesktopRuntime, isSelfContainedDesktopRuntime } from './runtime.js';
@@ -1459,10 +1460,11 @@ export class EidolonBrowserAPI {
       apiKey,
       provider: request.provider as never,
       baseUrl: request.base_url,
-      engineMode: 'explicit',
     });
 
-    return engine.testConnection();
+    const result = await engine.testConnection();
+
+    return toAppConnectionTestResult(result);
   }
 
   async getThemes(): Promise<ThemePreset[]> {

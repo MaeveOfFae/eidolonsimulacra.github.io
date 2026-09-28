@@ -25,12 +25,14 @@ Stretch goals:
 Known gaps found while reviewing the codebase (not yet scheduled):
 
 - [ ] Decide the fate of `packages/server`: it builds, lints, typechecks and now has tests in CI, but nothing in the web/desktop/mobile apps calls it
-- [ ] Reconcile the web/shared LLM layer. These are **not** duplicates: `packages/web/src/lib/llm/*` and `packages/shared/src/llm/*` have diverged behaviorally. Web adds `proxyKey` auth; shared adds provider-endpoint mapping, null-safe responses, conditional `top_p`, and `tool_calls` yielding. Decide canonical behavior per provider (and port `proxyKey` into shared) before merging, behind provider-level characterization tests
 - [ ] Reconcile the generation services: `packages/web/src/lib/services/generation.ts` (713 lines, `GenerationService` class) vs `packages/shared/src/services/generation.ts` (166 lines, three lean functions). Web's layer is a client-side orchestrator, shared's is a direct generator, so confirm the intended seam before collapsing them
 - [ ] Split `packages/web/src/lib/api.ts` (2.4k lines) along draft/template/config/theme/export/world seams. Expand characterization tests first: most `api` methods have no coverage and roughly 40 components depend on the `api` object shape
 - [ ] Publish or drop `docs/index.html` (it is not built or published by CI)
 
 Recently completed hygiene work (kept here for context):
+
+- [X] Collapsed the forked web LLM layer onto `@char-gen/shared`. Web's `lib/llm/*` are now re-export shims; `proxyKey` support and the corrupted-key guard were ported into the shared `OpenAICompatEngine`; `shared/src/llm/*.test.ts` pins request shaping, streaming, headers and error handling
+- [X] Fixed a latent bug found by those tests: because the shared factory always resolves a default `baseUrl`, a proxy key would have overridden the provider key for every request. The factory now forwards `proxyKey` only when a custom base URL was supplied
 
 - [X] Removed 31 unwired `*Placeholder` components and 3 dead modules; rewrote `roadmap.ts` with honest statuses
 - [X] Renamed `OnboardingPlaceholder` to `GettingStartedGuide` and added a `Home` smoke test

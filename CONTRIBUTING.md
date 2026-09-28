@@ -90,6 +90,7 @@ Notes:
 
 - Preserve package boundaries between `packages/shared`, `packages/web`, and `packages/mobile`.
 - Keep shared types, parsing helpers, export logic, and cross-surface contracts in `packages/shared` when possible.
+- The LLM engine layer belongs to `packages/shared`. `packages/web/src/lib/llm/*` are thin re-export shims kept only so existing import paths keep working — put engine changes in `packages/shared/src/llm/` and cover them with the tests there.
 - Avoid documenting API-server behavior as current product behavior unless the implementation exists in this repo.
 
 ### Documentation
