@@ -3,12 +3,7 @@
  * Handles configuration persistence in local device storage with API key management
  */
 
-import type {
-  ApiKeys,
-  Config,
-  FeatureBlueprintDefaults,
-  HelpState,
-} from '@char-gen/shared';
+import type { ApiKeys, Config, FeatureBlueprintDefaults, HelpState } from '@char-gen/shared';
 import { readPersistedString, removePersistedValues, writePersistedString } from '../persistence/storage.js';
 
 const CONFIG_STORAGE_KEY = 'eidolon.web.config';
@@ -91,13 +86,11 @@ function normalizeApiKeys(keys: ApiKeys): ApiKeys {
     Object.entries(keys)
       .map(([provider, key]) => [provider, typeof key === 'string' ? normalizeApiKeyValue(key) : key])
       .filter(([, key]) => typeof key === 'string' && !isInvalidApiKeyValue(key))
-      .filter(([, key]) => typeof key === 'string' && key.length > 0)
+      .filter(([, key]) => typeof key === 'string' && key.length > 0),
   );
 }
 
-function normalizeFeatureBlueprintDefaults(
-  defaults?: FeatureBlueprintDefaults
-): FeatureBlueprintDefaults | undefined {
+function normalizeFeatureBlueprintDefaults(defaults?: FeatureBlueprintDefaults): FeatureBlueprintDefaults | undefined {
   if (!defaults) {
     return defaults;
   }
@@ -109,7 +102,7 @@ function normalizeFeatureBlueprintDefaults(
       }
 
       return [feature, LEGACY_FEATURE_BLUEPRINT_PATHS[value] ?? value];
-    })
+    }),
   ) as FeatureBlueprintDefaults;
 }
 let persistKeys = false;
@@ -162,9 +155,7 @@ export class ConfigManager {
         ...defaults.batch,
         ...(config.batch ?? {}),
       },
-      help: config.help
-        ? { ...defaults.help, ...config.help }
-        : defaults.help,
+      help: config.help ? { ...defaults.help, ...config.help } : defaults.help,
       feature_blueprints: {
         ...defaults.feature_blueprints,
         ...(normalizeFeatureBlueprintDefaults(config.feature_blueprints) ?? {}),
@@ -266,7 +257,7 @@ export class ConfigManager {
   }
 
   /**
-  * Get API keys (from session or persisted local storage)
+   * Get API keys (from session or persisted local storage)
    */
   getApiKeys(): ApiKeys {
     return normalizeApiKeys(sessionApiKeys);
@@ -334,7 +325,7 @@ export class ConfigManager {
   }
 
   /**
-  * Load API keys from persisted local storage (for persistence mode)
+   * Load API keys from persisted local storage (for persistence mode)
    */
   private loadPersistedApiKeys(): void {
     if (!persistKeys) {
@@ -356,7 +347,7 @@ export class ConfigManager {
   }
 
   /**
-  * Persist API keys to local storage if enabled
+   * Persist API keys to local storage if enabled
    */
   private persistApiKeysIfNeeded(): void {
     if (persistKeys) {
@@ -364,7 +355,7 @@ export class ConfigManager {
         writeStoredValue(
           API_KEYS_STORAGE_KEY,
           LEGACY_API_KEYS_STORAGE_KEYS,
-          JSON.stringify(normalizeApiKeys(sessionApiKeys))
+          JSON.stringify(normalizeApiKeys(sessionApiKeys)),
         );
       } catch (error) {
         console.warn('Failed to persist API keys:', error);

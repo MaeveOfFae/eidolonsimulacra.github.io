@@ -57,7 +57,11 @@ export function lintBlueprintContent(content: string, context?: BlueprintLintCon
   const requiredFrontmatterFields = ['name', 'description', 'version', 'invokable', 'always'];
 
   if (!frontmatterMatch) {
-    issues.push({ severity: 'warning', message: 'Missing YAML frontmatter block. Browser tools will fall back to heading-derived metadata.', line: 1 });
+    issues.push({
+      severity: 'warning',
+      message: 'Missing YAML frontmatter block. Browser tools will fall back to heading-derived metadata.',
+      line: 1,
+    });
   } else {
     const frontmatter = frontmatterMatch[1];
     for (const field of requiredFrontmatterFields) {
@@ -67,7 +71,11 @@ export function lintBlueprintContent(content: string, context?: BlueprintLintCon
     }
 
     if (context?.category === 'system' && !/^feature_category:/m.test(frontmatter)) {
-      issues.push({ severity: 'warning', message: 'System blueprints should declare feature_category in frontmatter.', line: 2 });
+      issues.push({
+        severity: 'warning',
+        message: 'System blueprints should declare feature_category in frontmatter.',
+        line: 2,
+      });
     }
 
     const invokableLine = getFieldLineNumber(frontmatter, 'invokable');
@@ -87,19 +95,35 @@ export function lintBlueprintContent(content: string, context?: BlueprintLintCon
   const bodyOffset = body.length === 0 ? bodyStartIndex : normalizedContent.indexOf(body, bodyStartIndex);
 
   if (body.length === 0) {
-    issues.push({ severity: 'warning', message: 'Blueprint body is empty.', line: getLineNumber(normalizedContent, bodyStartIndex) });
+    issues.push({
+      severity: 'warning',
+      message: 'Blueprint body is empty.',
+      line: getLineNumber(normalizedContent, bodyStartIndex),
+    });
   } else if (!body.startsWith('# ')) {
-    issues.push({ severity: 'warning', message: 'Blueprint body should start with a top-level heading.', line: getLineNumber(normalizedContent, bodyOffset) });
+    issues.push({
+      severity: 'warning',
+      message: 'Blueprint body should start with a top-level heading.',
+      line: getLineNumber(normalizedContent, bodyOffset),
+    });
   }
 
   const hasCodeBlock = /```[\s\S]*?```/g.test(normalizedContent);
   if (!hasCodeBlock && shouldWarnForMissingCodeBlock(context)) {
-    issues.push({ severity: 'warning', message: 'No fenced example or output block detected.', line: getLineNumber(normalizedContent, bodyStartIndex) });
+    issues.push({
+      severity: 'warning',
+      message: 'No fenced example or output block detected.',
+      line: getLineNumber(normalizedContent, bodyStartIndex),
+    });
   }
 
   const fenceMarkers = normalizedContent.match(/^```.*$/gm) ?? [];
   if (fenceMarkers.length % 2 !== 0) {
-    issues.push({ severity: 'warning', message: 'Unbalanced fenced code block detected.', line: getLineNumber(normalizedContent, normalizedContent.lastIndexOf('```')) });
+    issues.push({
+      severity: 'warning',
+      message: 'Unbalanced fenced code block detected.',
+      line: getLineNumber(normalizedContent, normalizedContent.lastIndexOf('```')),
+    });
   }
 
   if (normalizedContent.length < getShortContentThreshold(context)) {

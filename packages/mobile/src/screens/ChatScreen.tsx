@@ -72,7 +72,7 @@ export default function ChatScreen() {
           assistantContent += data.content;
 
           // Update the assistant message in place
-          setMessages(prev => {
+          setMessages((prev) => {
             const updated = [...prev];
             // Check if last message is assistant, update it
             if (updated[updated.length - 1]?.role === 'assistant') {
@@ -94,9 +94,7 @@ export default function ChatScreen() {
 
       stream.onError_((error) => {
         console.error('Chat error:', error);
-        const message = assistantContent
-          ? `Response interrupted: ${error}`
-          : error;
+        const message = assistantContent ? `Response interrupted: ${error}` : error;
         Alert.alert('Error', message);
         setIsGenerating(false);
       });
@@ -120,15 +118,8 @@ export default function ChatScreen() {
 
     const isUser = item.role === 'user';
     return (
-      <View
-        style={[
-          styles.messageBubble,
-          isUser ? styles.userBubble : styles.assistantBubble,
-        ]}
-      >
-        <Text style={[styles.messageText, isUser && styles.userMessageText]}>
-          {item.content}
-        </Text>
+      <View style={[styles.messageBubble, isUser ? styles.userBubble : styles.assistantBubble]}>
+        <Text style={[styles.messageText, isUser && styles.userMessageText]}>{item.content}</Text>
       </View>
     );
   };
@@ -141,7 +132,7 @@ export default function ChatScreen() {
     );
   }
 
-  const visibleMessages = messages.filter(m => m.role !== 'system');
+  const visibleMessages = messages.filter((m) => m.role !== 'system');
 
   return (
     <KeyboardAvoidingView
@@ -160,9 +151,7 @@ export default function ChatScreen() {
             <Text style={styles.title} numberOfLines={1}>
               {draft?.metadata.character_name || 'Chat'}
             </Text>
-            {asset && (
-              <Text style={styles.subtitle}>Refining: {asset.replace(/_/g, ' ')}</Text>
-            )}
+            {asset && <Text style={styles.subtitle}>Refining: {asset.replace(/_/g, ' ')}</Text>}
           </View>
         </View>
       </View>
@@ -179,9 +168,7 @@ export default function ChatScreen() {
           <View style={styles.emptyState}>
             <ChatBubbleIcon color="#6b7280" size={48} />
             <Text style={styles.emptyTitle}>Start a conversation</Text>
-            <Text style={styles.emptyText}>
-              Ask for changes, additions, or refinements to your character
-            </Text>
+            <Text style={styles.emptyText}>Ask for changes, additions, or refinements to your character</Text>
           </View>
         }
       />

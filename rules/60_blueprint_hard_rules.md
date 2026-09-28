@@ -49,7 +49,7 @@ Apply only the sections relevant to the active template. Do not force modules fr
 - If the opener is conversation-style rather than scene-paragraph style, preserve that blueprint-specific format instead of forcing `intro_scene` rules onto it.
 - Output ONLY inside a single plaintext code block. No commentary.
 
-## intro_page (Markdown)
+## creator_notes (Markdown)
 
 - Single Markdown snippet (no HTML/CSS).
 - Replace every {PLACEHOLDER} token with concrete values; leave none.

@@ -93,22 +93,28 @@ type ThemeApi = typeof api & {
     based_on?: string;
     colors: ThemeColors;
   }) => Promise<ThemePreset>;
-  updateTheme: (name: string, request: {
-    display_name?: string;
-    description?: string;
-    author?: string;
-    tags?: string[];
-    based_on?: string;
-    colors?: ThemeColors;
-  }) => Promise<ThemePreset>;
-  duplicateTheme: (name: string, request: {
-    new_name: string;
-    display_name?: string;
-    description?: string;
-    author?: string;
-    tags?: string[];
-    based_on?: string;
-  }) => Promise<ThemePreset>;
+  updateTheme: (
+    name: string,
+    request: {
+      display_name?: string;
+      description?: string;
+      author?: string;
+      tags?: string[];
+      based_on?: string;
+      colors?: ThemeColors;
+    },
+  ) => Promise<ThemePreset>;
+  duplicateTheme: (
+    name: string,
+    request: {
+      new_name: string;
+      display_name?: string;
+      description?: string;
+      author?: string;
+      tags?: string[];
+      based_on?: string;
+    },
+  ) => Promise<ThemePreset>;
   renameTheme: (name: string, request: { new_name: string; display_name?: string }) => Promise<ThemePreset>;
   deleteTheme: (name: string) => Promise<{ status: string; name: string }>;
 };
@@ -143,7 +149,11 @@ function parseTagInput(value: string): string[] {
 }
 
 function sanitizeThemeName(name: string): string {
-  return name.trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '_').replace(/^_+|_+$/g, '');
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, '_')
+    .replace(/^_+|_+$/g, '');
 }
 
 function buildUniqueThemeName(baseName: string, themes: ThemePreset[]): string {
@@ -222,12 +232,12 @@ export default function Themes({ showHeader = true, showSyncControls = true }: T
 
   const activeTheme = useMemo(
     () => themes.find((theme) => theme.name === config?.theme_name) ?? themes[0],
-    [themes, config?.theme_name]
+    [themes, config?.theme_name],
   );
 
   const resolvedCurrentTheme = useMemo(
     () => resolveThemeColors(activeTheme, config?.theme),
-    [activeTheme, config?.theme]
+    [activeTheme, config?.theme],
   );
 
   const importDiffSections = useMemo(() => {
@@ -262,14 +272,12 @@ export default function Themes({ showHeader = true, showSyncControls = true }: T
 
   const importDiffCount = useMemo(
     () => importDiffSections.reduce((count, section) => count + section.changes.length, 0),
-    [importDiffSections]
+    [importDiffSections],
   );
 
   const updateThemesCache = (updatedTheme: ThemePresetRecord) => {
     const currentThemes = queryClient.getQueryData<ThemePresetRecord[]>(['themes']) ?? [];
-    const updatedThemes = currentThemes.map((t) =>
-      t.name === updatedTheme.name ? updatedTheme : t
-    );
+    const updatedThemes = currentThemes.map((t) => (t.name === updatedTheme.name ? updatedTheme : t));
     queryClient.setQueryData(['themes'], updatedThemes);
     // If this is the active theme, apply it directly to the document
     if (config?.theme_name === updatedTheme.name) {
@@ -346,13 +354,14 @@ export default function Themes({ showHeader = true, showSyncControls = true }: T
   });
 
   const updateMetadataMutation = useMutation({
-    mutationFn: (draft: ThemeMetadataDraft) => themeApi.updateTheme(draft.sourceName, {
-      display_name: draft.displayName,
-      description: draft.description,
-      author: draft.author,
-      tags: parseTagInput(draft.tags),
-      based_on: draft.basedOn,
-    }),
+    mutationFn: (draft: ThemeMetadataDraft) =>
+      themeApi.updateTheme(draft.sourceName, {
+        display_name: draft.displayName,
+        description: draft.description,
+        author: draft.author,
+        tags: parseTagInput(draft.tags),
+        based_on: draft.basedOn,
+      }),
     onSuccess: (theme) => {
       updateThemesCache(theme as ThemePresetRecord);
       setNotice(`Updated metadata for ${theme.display_name}.`);
@@ -366,14 +375,15 @@ export default function Themes({ showHeader = true, showSyncControls = true }: T
   });
 
   const duplicateMutation = useMutation({
-    mutationFn: (draft: ThemeDuplicateDraft) => themeApi.duplicateTheme(draft.sourceName, {
-      new_name: draft.newName,
-      display_name: draft.displayName,
-      description: draft.description,
-      author: draft.author,
-      tags: parseTagInput(draft.tags),
-      based_on: draft.basedOn,
-    }),
+    mutationFn: (draft: ThemeDuplicateDraft) =>
+      themeApi.duplicateTheme(draft.sourceName, {
+        new_name: draft.newName,
+        display_name: draft.displayName,
+        description: draft.description,
+        author: draft.author,
+        tags: parseTagInput(draft.tags),
+        based_on: draft.basedOn,
+      }),
     onSuccess: async () => {
       await queryClient.refetchQueries({ queryKey: ['themes'] });
       setNotice(`Created duplicate preset.`);
@@ -387,10 +397,11 @@ export default function Themes({ showHeader = true, showSyncControls = true }: T
   });
 
   const renameMutation = useMutation({
-    mutationFn: (draft: ThemeRenameDraft) => themeApi.renameTheme(draft.sourceName, {
-      new_name: draft.newName,
-      display_name: draft.displayName,
-    }),
+    mutationFn: (draft: ThemeRenameDraft) =>
+      themeApi.renameTheme(draft.sourceName, {
+        new_name: draft.newName,
+        display_name: draft.displayName,
+      }),
     onSuccess: async (theme) => {
       await queryClient.refetchQueries({ queryKey: ['themes'] });
       if (config?.theme_name === theme.name) {
@@ -437,7 +448,8 @@ export default function Themes({ showHeader = true, showSyncControls = true }: T
   });
 
   const importMutation = useMutation({
-    mutationFn: ({ file, options }: { file: File; options?: ThemeImportOptions }) => themeApi.importTheme(file, options),
+    mutationFn: ({ file, options }: { file: File; options?: ThemeImportOptions }) =>
+      themeApi.importTheme(file, options),
     onSuccess: async (theme) => {
       await queryClient.refetchQueries({ queryKey: ['themes'] });
       setNotice(`Imported theme preset ${theme.display_name}.`);
@@ -475,9 +487,10 @@ export default function Themes({ showHeader = true, showSyncControls = true }: T
     const normalizedQuery = searchQuery.trim().toLowerCase();
 
     return themes.filter((theme) => {
-      const matchesSource = sourceFilter === 'all'
-        || (sourceFilter === 'builtin' && theme.is_builtin)
-        || (sourceFilter === 'custom' && !theme.is_builtin);
+      const matchesSource =
+        sourceFilter === 'all' ||
+        (sourceFilter === 'builtin' && theme.is_builtin) ||
+        (sourceFilter === 'custom' && !theme.is_builtin);
       if (!matchesSource) {
         return false;
       }
@@ -496,14 +509,7 @@ export default function Themes({ showHeader = true, showSyncControls = true }: T
         return true;
       }
 
-      const haystack = [
-        theme.name,
-        theme.display_name,
-        theme.description,
-        theme.author,
-        theme.based_on,
-        ...theme.tags,
-      ]
+      const haystack = [theme.name, theme.display_name, theme.description, theme.author, theme.based_on, ...theme.tags]
         .join(' ')
         .toLowerCase();
 
@@ -541,7 +547,16 @@ export default function Themes({ showHeader = true, showSyncControls = true }: T
     return themesToSort;
   }, [filteredThemes, sortMode]);
 
-  const isBusy = createMutation.isPending || activateMutation.isPending || updateCurrentCustomMutation.isPending || updateMetadataMutation.isPending || duplicateMutation.isPending || renameMutation.isPending || deleteMutation.isPending || exportMutation.isPending || importMutation.isPending;
+  const isBusy =
+    createMutation.isPending ||
+    activateMutation.isPending ||
+    updateCurrentCustomMutation.isPending ||
+    updateMetadataMutation.isPending ||
+    duplicateMutation.isPending ||
+    renameMutation.isPending ||
+    deleteMutation.isPending ||
+    exportMutation.isPending ||
+    importMutation.isPending;
 
   const handleImport = async () => {
     const file = await pickFile({ accept: 'application/json,.json' }, importInputRef.current);
@@ -563,7 +578,9 @@ export default function Themes({ showHeader = true, showSyncControls = true }: T
           targetName: buildUniqueThemeName(imported.name, themes),
         });
         setError(null);
-        setNotice(`Theme ${imported.displayName} conflicts with existing preset ${existingTheme.display_name}. Choose how to import it.`);
+        setNotice(
+          `Theme ${imported.displayName} conflicts with existing preset ${existingTheme.display_name}. Choose how to import it.`,
+        );
       }
     } catch (importError) {
       setError(importError instanceof Error ? importError.message : 'Failed to read theme file');
@@ -591,14 +608,16 @@ export default function Themes({ showHeader = true, showSyncControls = true }: T
               Create, edit, and manage custom theme presets. Save the current palette as a reusable preset.
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Changes apply automatically. If other pages don't update, press <kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">F5</kbd> to refresh.
+              Changes apply automatically. If other pages don't update, press{' '}
+              <kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">F5</kbd> to refresh.
             </p>
           </div>
         ) : (
           <div>
             <div className="text-sm font-semibold text-foreground">Preset actions</div>
             <p className="text-sm text-muted-foreground">
-              Import presets, update the active custom preset, or review the current active preset before saving reusable changes.
+              Import presets, update the active custom preset, or review the current active preset before saving
+              reusable changes.
             </p>
           </div>
         )}
@@ -611,12 +630,7 @@ export default function Themes({ showHeader = true, showSyncControls = true }: T
             <Upload className="h-4 w-4" />
             Import preset
           </button>
-          <input
-            ref={importInputRef}
-            type="file"
-            accept="application/json"
-            className="hidden"
-          />
+          <input ref={importInputRef} type="file" accept="application/json" className="hidden" />
           {activeTheme && (
             <div className="rounded-lg border border-border bg-card px-4 py-3 text-sm">
               <div className="font-medium">Active preset</div>
@@ -661,7 +675,11 @@ export default function Themes({ showHeader = true, showSyncControls = true }: T
                 disabled={isBusy || !resolvedCurrentTheme}
                 className="inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-sm hover:bg-accent disabled:opacity-50"
               >
-                {updateCurrentCustomMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                {updateCurrentCustomMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
                 Update active custom theme
               </button>
             )}
@@ -783,7 +801,9 @@ export default function Themes({ showHeader = true, showSyncControls = true }: T
       </div>
 
       {(notice || error) && (
-        <div className={`rounded-md border px-3 py-2 text-sm ${error ? 'border-destructive/40 bg-destructive/10 text-destructive' : 'border-primary/30 bg-primary/10 text-foreground'}`}>
+        <div
+          className={`rounded-md border px-3 py-2 text-sm ${error ? 'border-destructive/40 bg-destructive/10 text-destructive' : 'border-primary/30 bg-primary/10 text-foreground'}`}
+        >
           {error || notice}
         </div>
       )}
@@ -797,10 +817,14 @@ export default function Themes({ showHeader = true, showSyncControls = true }: T
                 Import conflict detected
               </h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                {importDraft.imported.displayName} wants to use the preset name {sanitizeThemeName(importDraft.imported.name)}, which already exists as {importDraft.conflictTheme.display_name}.
+                {importDraft.imported.displayName} wants to use the preset name{' '}
+                {sanitizeThemeName(importDraft.imported.name)}, which already exists as{' '}
+                {importDraft.conflictTheme.display_name}.
               </p>
               <p className="mt-2 text-sm text-muted-foreground">
-                {importDiffCount === 0 ? 'The palettes are identical.' : `${importDiffCount} palette values differ across the imported and existing presets.`}
+                {importDiffCount === 0
+                  ? 'The palettes are identical.'
+                  : `${importDiffCount} palette values differ across the imported and existing presets.`}
               </p>
             </div>
             <button
@@ -823,17 +847,25 @@ export default function Themes({ showHeader = true, showSyncControls = true }: T
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
                 {palettePreviewKeys.map((key) => (
-                  <span key={`existing-${key}`} className="h-8 w-8 rounded-full border border-black/10" style={{ backgroundColor: importDraft.conflictTheme.colors[key] }} />
+                  <span
+                    key={`existing-${key}`}
+                    className="h-8 w-8 rounded-full border border-black/10"
+                    style={{ backgroundColor: importDraft.conflictTheme.colors[key] }}
+                  />
                 ))}
               </div>
               <div className="mt-3 text-xs text-muted-foreground">
                 {importDraft.conflictTheme.description || 'No description'}
               </div>
-              {(importDraft.conflictTheme.author || importDraft.conflictTheme.based_on || importDraft.conflictTheme.tags.length > 0) && (
+              {(importDraft.conflictTheme.author ||
+                importDraft.conflictTheme.based_on ||
+                importDraft.conflictTheme.tags.length > 0) && (
                 <div className="mt-3 space-y-1 text-xs text-muted-foreground">
                   {importDraft.conflictTheme.author && <div>Author: {importDraft.conflictTheme.author}</div>}
                   {importDraft.conflictTheme.based_on && <div>Based on: {importDraft.conflictTheme.based_on}</div>}
-                  {importDraft.conflictTheme.tags.length > 0 && <div>Tags: {importDraft.conflictTheme.tags.join(', ')}</div>}
+                  {importDraft.conflictTheme.tags.length > 0 && (
+                    <div>Tags: {importDraft.conflictTheme.tags.join(', ')}</div>
+                  )}
                 </div>
               )}
             </div>
@@ -844,17 +876,25 @@ export default function Themes({ showHeader = true, showSyncControls = true }: T
                   <div className="text-sm font-medium">Imported preset</div>
                   <div className="text-xs text-muted-foreground">{importDraft.imported.displayName}</div>
                 </div>
-                <div className="text-right text-xs text-muted-foreground">{sanitizeThemeName(importDraft.imported.name)}</div>
+                <div className="text-right text-xs text-muted-foreground">
+                  {sanitizeThemeName(importDraft.imported.name)}
+                </div>
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
                 {palettePreviewKeys.map((key) => (
-                  <span key={`imported-${key}`} className="h-8 w-8 rounded-full border border-black/10" style={{ backgroundColor: importDraft.imported.colors[key] }} />
+                  <span
+                    key={`imported-${key}`}
+                    className="h-8 w-8 rounded-full border border-black/10"
+                    style={{ backgroundColor: importDraft.imported.colors[key] }}
+                  />
                 ))}
               </div>
               <div className="mt-3 text-xs text-muted-foreground">
                 {importDraft.imported.description || 'No description'}
               </div>
-              {(importDraft.imported.author || importDraft.imported.basedOn || importDraft.imported.tags.length > 0) && (
+              {(importDraft.imported.author ||
+                importDraft.imported.basedOn ||
+                importDraft.imported.tags.length > 0) && (
                 <div className="mt-3 space-y-1 text-xs text-muted-foreground">
                   {importDraft.imported.author && <div>Author: {importDraft.imported.author}</div>}
                   {importDraft.imported.basedOn && <div>Based on: {importDraft.imported.basedOn}</div>}
@@ -870,16 +910,16 @@ export default function Themes({ showHeader = true, showSyncControls = true }: T
               <div className="mt-3 space-y-4">
                 {importDiffSections.map((section) => (
                   <div key={section.title}>
-                    <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{section.title}</div>
+                    <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      {section.title}
+                    </div>
                     <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
                       <div className="text-xs font-medium text-muted-foreground">Field</div>
                       <div className="text-xs font-medium text-muted-foreground">Existing</div>
                       <div className="text-xs font-medium text-muted-foreground">Imported</div>
                       {section.changes.map((change) => (
                         <div key={`${section.title}-${change.label}`} className="contents">
-                          <div className="rounded-md border border-border px-3 py-2 text-sm">
-                            {change.label}
-                          </div>
+                          <div className="rounded-md border border-border px-3 py-2 text-sm">{change.label}</div>
                           <div className="rounded-md border border-border px-3 py-2">
                             {renderColorValue(change.existingValue)}
                           </div>
@@ -899,13 +939,15 @@ export default function Themes({ showHeader = true, showSyncControls = true }: T
             {!importDraft.conflictTheme.is_builtin && (
               <button
                 type="button"
-                onClick={() => importMutation.mutate({
-                  file: importDraft.file,
-                  options: {
-                    conflict_strategy: 'overwrite',
-                    target_name: importDraft.conflictTheme.name,
-                  },
-                })}
+                onClick={() =>
+                  importMutation.mutate({
+                    file: importDraft.file,
+                    options: {
+                      conflict_strategy: 'overwrite',
+                      target_name: importDraft.conflictTheme.name,
+                    },
+                  })
+                }
                 disabled={importMutation.isPending}
                 className="inline-flex items-center justify-center gap-2 rounded-md border border-input px-4 py-2 text-sm hover:bg-accent disabled:opacity-50"
               >
@@ -929,17 +971,23 @@ export default function Themes({ showHeader = true, showSyncControls = true }: T
                 />
                 <button
                   type="button"
-                  onClick={() => importMutation.mutate({
-                    file: importDraft.file,
-                    options: {
-                      conflict_strategy: 'rename',
-                      target_name: importDraft.targetName,
-                    },
-                  })}
+                  onClick={() =>
+                    importMutation.mutate({
+                      file: importDraft.file,
+                      options: {
+                        conflict_strategy: 'rename',
+                        target_name: importDraft.targetName,
+                      },
+                    })
+                  }
                   disabled={importMutation.isPending || !importDraft.targetName.trim()}
                   className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                 >
-                  {importMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                  {importMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Upload className="h-4 w-4" />
+                  )}
                   Import renamed preset
                 </button>
               </div>
@@ -989,7 +1037,9 @@ export default function Themes({ showHeader = true, showSyncControls = true }: T
               >
                 <option value="all">All</option>
                 {availableAuthors.map((author) => (
-                  <option key={author} value={author}>{author}</option>
+                  <option key={author} value={author}>
+                    {author}
+                  </option>
                 ))}
               </select>
             </label>
@@ -1002,7 +1052,9 @@ export default function Themes({ showHeader = true, showSyncControls = true }: T
               >
                 <option value="all">All</option>
                 {availableTags.map((tag) => (
-                  <option key={tag} value={tag}>{tag}</option>
+                  <option key={tag} value={tag}>
+                    {tag}
+                  </option>
                 ))}
               </select>
             </label>
@@ -1063,7 +1115,10 @@ export default function Themes({ showHeader = true, showSyncControls = true }: T
               : 'inline-flex items-center gap-2 rounded-md border border-input px-3 py-2 text-sm hover:bg-accent disabled:opacity-50';
 
             return (
-              <div key={theme.name} className={`rounded-lg border bg-card ${isCompact ? 'p-3' : 'p-4'} ${isActive ? 'border-primary' : 'border-border'}`}>
+              <div
+                key={theme.name}
+                className={`rounded-lg border bg-card ${isCompact ? 'p-3' : 'p-4'} ${isActive ? 'border-primary' : 'border-border'}`}
+              >
                 <div className={`flex ${isCompact ? 'flex-col gap-3' : 'items-start justify-between gap-4'}`}>
                   <div>
                     <div className="flex items-center gap-2">
@@ -1074,13 +1129,18 @@ export default function Themes({ showHeader = true, showSyncControls = true }: T
                     {isCompact ? (
                       <>
                         <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-muted-foreground">
-                          <span className="rounded-full border border-border px-2 py-0.5">{theme.is_builtin ? 'Built-in' : 'Custom'}</span>
+                          <span className="rounded-full border border-border px-2 py-0.5">
+                            {theme.is_builtin ? 'Built-in' : 'Custom'}
+                          </span>
                           {theme.author && <span>By {theme.author}</span>}
                         </div>
                         {theme.tags.length > 0 && (
                           <div className="mt-2 flex flex-wrap gap-1.5">
                             {theme.tags.slice(0, 3).map((tag) => (
-                              <span key={`${theme.name}-${tag}`} className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground">
+                              <span
+                                key={`${theme.name}-${tag}`}
+                                className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground"
+                              >
                                 {tag}
                               </span>
                             ))}
@@ -1104,13 +1164,15 @@ export default function Themes({ showHeader = true, showSyncControls = true }: T
                     )}
                   </div>
                   <div className="flex gap-2">
-                    {[theme.colors.background, theme.colors.surface, theme.colors.accent, theme.colors.button].map((color, index) => (
-                      <span
-                        key={`${theme.name}-card-${index}-${color}`}
-                        className={`${isCompact ? 'h-5 w-5' : 'h-6 w-6'} rounded-full border border-black/10`}
-                        style={{ backgroundColor: color }}
-                      />
-                    ))}
+                    {[theme.colors.background, theme.colors.surface, theme.colors.accent, theme.colors.button].map(
+                      (color, index) => (
+                        <span
+                          key={`${theme.name}-card-${index}-${color}`}
+                          className={`${isCompact ? 'h-5 w-5' : 'h-6 w-6'} rounded-full border border-black/10`}
+                          style={{ backgroundColor: color }}
+                        />
+                      ),
+                    )}
                   </div>
                 </div>
 
@@ -1135,15 +1197,17 @@ export default function Themes({ showHeader = true, showSyncControls = true }: T
                   </button>
                   <button
                     type="button"
-                    onClick={() => setDuplicateDraft({
-                      sourceName: theme.name,
-                      newName: `${theme.name}_copy`,
-                      displayName: `${theme.display_name} Copy`,
-                      description: theme.description,
-                      author: theme.author,
-                      tags: theme.tags.join(', '),
-                      basedOn: theme.based_on,
-                    })}
+                    onClick={() =>
+                      setDuplicateDraft({
+                        sourceName: theme.name,
+                        newName: `${theme.name}_copy`,
+                        displayName: `${theme.display_name} Copy`,
+                        description: theme.description,
+                        author: theme.author,
+                        tags: theme.tags.join(', '),
+                        basedOn: theme.based_on,
+                      })
+                    }
                     disabled={isBusy}
                     className={actionButtonClass}
                   >
@@ -1154,14 +1218,16 @@ export default function Themes({ showHeader = true, showSyncControls = true }: T
                     <>
                       <button
                         type="button"
-                        onClick={() => setMetadataDraft({
-                          sourceName: theme.name,
-                          displayName: theme.display_name,
-                          description: theme.description,
-                          author: theme.author,
-                          tags: theme.tags.join(', '),
-                          basedOn: theme.based_on,
-                        })}
+                        onClick={() =>
+                          setMetadataDraft({
+                            sourceName: theme.name,
+                            displayName: theme.display_name,
+                            description: theme.description,
+                            author: theme.author,
+                            tags: theme.tags.join(', '),
+                            basedOn: theme.based_on,
+                          })
+                        }
                         disabled={isBusy}
                         className={actionButtonClass}
                       >
@@ -1170,11 +1236,13 @@ export default function Themes({ showHeader = true, showSyncControls = true }: T
                       </button>
                       <button
                         type="button"
-                        onClick={() => setRenameDraft({
-                          sourceName: theme.name,
-                          newName: theme.name,
-                          displayName: theme.display_name,
-                        })}
+                        onClick={() =>
+                          setRenameDraft({
+                            sourceName: theme.name,
+                            newName: theme.name,
+                            displayName: theme.display_name,
+                          })
+                        }
                         disabled={isBusy}
                         className={actionButtonClass}
                       >
@@ -1310,13 +1378,21 @@ export default function Themes({ showHeader = true, showSyncControls = true }: T
                       className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                     />
                     <div className="flex justify-end gap-2">
-                      <button type="button" onClick={() => setDuplicateDraft(null)} className="rounded-md border border-input px-3 py-2 text-sm hover:bg-accent">
+                      <button
+                        type="button"
+                        onClick={() => setDuplicateDraft(null)}
+                        className="rounded-md border border-input px-3 py-2 text-sm hover:bg-accent"
+                      >
                         Cancel
                       </button>
                       <button
                         type="button"
                         onClick={() => duplicateMutation.mutate(duplicateDraft)}
-                        disabled={duplicateMutation.isPending || !duplicateDraft.newName.trim() || !duplicateDraft.displayName.trim()}
+                        disabled={
+                          duplicateMutation.isPending ||
+                          !duplicateDraft.newName.trim() ||
+                          !duplicateDraft.displayName.trim()
+                        }
                         className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                       >
                         {duplicateMutation.isPending ? 'Duplicating...' : 'Create copy'}
@@ -1345,13 +1421,19 @@ export default function Themes({ showHeader = true, showSyncControls = true }: T
                       />
                     </div>
                     <div className="flex justify-end gap-2">
-                      <button type="button" onClick={() => setRenameDraft(null)} className="rounded-md border border-input px-3 py-2 text-sm hover:bg-accent">
+                      <button
+                        type="button"
+                        onClick={() => setRenameDraft(null)}
+                        className="rounded-md border border-input px-3 py-2 text-sm hover:bg-accent"
+                      >
                         Cancel
                       </button>
                       <button
                         type="button"
                         onClick={() => renameMutation.mutate(renameDraft)}
-                        disabled={renameMutation.isPending || !renameDraft.newName.trim() || !renameDraft.displayName.trim()}
+                        disabled={
+                          renameMutation.isPending || !renameDraft.newName.trim() || !renameDraft.displayName.trim()
+                        }
                         className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                       >
                         {renameMutation.isPending ? 'Renaming...' : 'Rename'}

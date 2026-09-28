@@ -6,6 +6,7 @@ import { type ContentMode, type SimilarityResult } from '@char-gen/shared';
 import { api } from '../config/api';
 import CollapsibleTray from '../components/CollapsibleTray';
 import { UsersIcon } from '../components/Icons';
+import { clearMobileCompareSelection, setMobileCompareSelection } from '../lib/compare-selection';
 import type { CompareRouteProp } from '../types/navigation';
 import { getErrorMessage } from '../utils/errors';
 
@@ -23,12 +24,13 @@ export default function SimilarityScreen() {
   });
 
   const compareMutation = useMutation({
-    mutationFn: () => api.compareCharacters({
-      draft1_id: char1,
-      draft2_id: char2,
-      mode,
-      use_llm: useLlm,
-    }),
+    mutationFn: () =>
+      api.compareCharacters({
+        draft1_id: char1,
+        draft2_id: char2,
+        mode,
+        use_llm: useLlm,
+      }),
     onSuccess: (data) => {
       setResult(data);
     },
@@ -48,14 +50,43 @@ export default function SimilarityScreen() {
       return;
     }
 
-    if (params.character1 && draftsData.drafts.some((draft) => draft.review_id === params.character1) && params.character1 !== char1) {
+    if (
+      params.character1 &&
+      draftsData.drafts.some((draft) => draft.review_id === params.character1) &&
+      params.character1 !== char1
+    ) {
       setChar1(params.character1);
     }
 
-    if (params.character2 && draftsData.drafts.some((draft) => draft.review_id === params.character2) && params.character2 !== char2) {
+    if (
+      params.character2 &&
+      draftsData.drafts.some((draft) => draft.review_id === params.character2) &&
+      params.character2 !== char2
+    ) {
       setChar2(params.character2);
     }
   }, [char1, char2, draftsData?.drafts, route.params]);
+
+  useEffect(() => {
+    if (!draftsData?.drafts) {
+      return;
+    }
+
+    if (!char1) {
+      clearMobileCompareSelection();
+      return;
+    }
+
+    const primaryDraft = draftsData.drafts.find((draft) => draft.review_id === char1);
+    if (!primaryDraft) {
+      return;
+    }
+
+    setMobileCompareSelection({
+      character1Id: char1,
+      character1Name: primaryDraft.character_name || primaryDraft.seed,
+    });
+  }, [char1, draftsData?.drafts]);
 
   const handleCompare = () => {
     if (!char1 || !char2) {
@@ -86,7 +117,11 @@ export default function SimilarityScreen() {
         title="Characters"
         subtitle="Pick the two drafts to compare"
         initiallyExpanded
-        preview={<Text style={styles.trayPreviewText}>{char1 ? getCharName(char1) : 'Character 1'} • {char2 ? getCharName(char2) : 'Character 2'}</Text>}
+        preview={
+          <Text style={styles.trayPreviewText}>
+            {char1 ? getCharName(char1) : 'Character 1'} • {char2 ? getCharName(char2) : 'Character 2'}
+          </Text>
+        }
       >
         <View style={styles.selectionContainer}>
           <View style={styles.characterCard}>
@@ -96,17 +131,22 @@ export default function SimilarityScreen() {
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={styles.chipContainer}>
-                {drafts.filter((draft) => draft.review_id !== char2).map((draft) => (
-                  <TouchableOpacity
-                    key={draft.review_id}
-                    onPress={() => setChar1(draft.review_id)}
-                    style={[styles.chip, char1 === draft.review_id && styles.chipActive]}
-                  >
-                    <Text style={[styles.chipText, char1 === draft.review_id && styles.chipTextActive]} numberOfLines={1}>
-                      {draft.character_name || draft.seed}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                {drafts
+                  .filter((draft) => draft.review_id !== char2)
+                  .map((draft) => (
+                    <TouchableOpacity
+                      key={draft.review_id}
+                      onPress={() => setChar1(draft.review_id)}
+                      style={[styles.chip, char1 === draft.review_id && styles.chipActive]}
+                    >
+                      <Text
+                        style={[styles.chipText, char1 === draft.review_id && styles.chipTextActive]}
+                        numberOfLines={1}
+                      >
+                        {draft.character_name || draft.seed}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
               </View>
             </ScrollView>
             {char1 ? <Text style={styles.selectedText}>Selected: {getCharName(char1)}</Text> : null}
@@ -119,17 +159,22 @@ export default function SimilarityScreen() {
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={styles.chipContainer}>
-                {drafts.filter((draft) => draft.review_id !== char1).map((draft) => (
-                  <TouchableOpacity
-                    key={draft.review_id}
-                    onPress={() => setChar2(draft.review_id)}
-                    style={[styles.chip, char2 === draft.review_id && styles.chipActive]}
-                  >
-                    <Text style={[styles.chipText, char2 === draft.review_id && styles.chipTextActive]} numberOfLines={1}>
-                      {draft.character_name || draft.seed}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                {drafts
+                  .filter((draft) => draft.review_id !== char1)
+                  .map((draft) => (
+                    <TouchableOpacity
+                      key={draft.review_id}
+                      onPress={() => setChar2(draft.review_id)}
+                      style={[styles.chip, char2 === draft.review_id && styles.chipActive]}
+                    >
+                      <Text
+                        style={[styles.chipText, char2 === draft.review_id && styles.chipTextActive]}
+                        numberOfLines={1}
+                      >
+                        {draft.character_name || draft.seed}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
               </View>
             </ScrollView>
             {char2 ? <Text style={styles.selectedText}>Selected: {getCharName(char2)}</Text> : null}
@@ -140,7 +185,11 @@ export default function SimilarityScreen() {
       <CollapsibleTray
         title="Options"
         subtitle="Mode and depth of analysis"
-        preview={<Text style={styles.trayPreviewText}>{mode} • {useLlm ? 'deep analysis' : 'fast analysis'}</Text>}
+        preview={
+          <Text style={styles.trayPreviewText}>
+            {mode} • {useLlm ? 'deep analysis' : 'fast analysis'}
+          </Text>
+        }
       >
         <Text style={styles.sectionLabel}>Content Mode</Text>
         <View style={styles.modeContainer}>
@@ -155,10 +204,7 @@ export default function SimilarityScreen() {
           ))}
         </View>
 
-        <TouchableOpacity
-          onPress={() => setUseLlm(!useLlm)}
-          style={styles.toggleContainer}
-        >
+        <TouchableOpacity onPress={() => setUseLlm(!useLlm)} style={styles.toggleContainer}>
           <View style={[styles.toggleTrack, useLlm && styles.toggleTrackActive]}>
             <View style={[styles.toggleThumb, useLlm && styles.toggleThumbActive]} />
           </View>
@@ -187,18 +233,21 @@ export default function SimilarityScreen() {
           title="Results"
           subtitle={`${getCharName(char1)} vs ${getCharName(char2)}`}
           initiallyExpanded
-          preview={<Text style={styles.trayPreviewText}>{result.overall_score !== undefined ? `${(result.overall_score * 100).toFixed(0)}% match` : 'Analysis ready'}{result.llm_analysis ? ' • deep analysis' : ''}</Text>}
+          preview={
+            <Text style={styles.trayPreviewText}>
+              {result.overall_score !== undefined
+                ? `${(result.overall_score * 100).toFixed(0)}% match`
+                : 'Analysis ready'}
+              {result.llm_analysis ? ' • deep analysis' : ''}
+            </Text>
+          }
         >
           {result.overall_score !== undefined && (
             <View style={styles.scoreSection}>
               <Text style={styles.scoreLabel}>Similarity Score</Text>
-              <Text style={styles.scoreValue}>
-                {(result.overall_score * 100).toFixed(0)}%
-              </Text>
+              <Text style={styles.scoreValue}>{(result.overall_score * 100).toFixed(0)}%</Text>
               <View style={styles.scoreBar}>
-                <View
-                  style={[styles.scoreBarFill, { width: `${result.overall_score * 100}%` }]}
-                />
+                <View style={[styles.scoreBarFill, { width: `${result.overall_score * 100}%` }]} />
               </View>
             </View>
           )}

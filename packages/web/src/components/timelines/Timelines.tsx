@@ -1,5 +1,4 @@
 import { useQuery } from '@tanstack/react-query';
-import { Clock, GitBranch } from 'lucide-react';
 import { api } from '@/lib/api';
 import HoverHelpPopover from '../common/HoverHelpPopover';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
@@ -46,7 +45,8 @@ export default function Timelines() {
               <span className="app-pill app-pill-muted">Partial</span>
             </div>
             <p className="app-page-summary">
-              Generation history is live from saved drafts. Event editing and continuity tooling are still staged until the app has dedicated timeline data.
+              Generation history is live from saved drafts. Event editing and continuity tooling are still staged until
+              the app has dedicated timeline data.
             </p>
           </div>
           <div className="app-panel-muted p-5">
@@ -77,7 +77,8 @@ export default function Timelines() {
             <div>
               <h2 className="text-lg font-semibold">Staged timeline modules</h2>
               <p className="text-sm text-muted-foreground">
-                The live chronology view currently stops at draft history. These modules stay hidden from the main workflow until their data layer exists.
+                The live chronology view currently stops at draft history. These modules stay hidden from the main
+                workflow until their data layer exists.
               </p>
             </div>
             <span className="app-pill app-pill-muted">Not live</span>
@@ -100,9 +101,11 @@ export default function Timelines() {
           <div className="mt-4 flex justify-start">
             <HoverHelpPopover
               title="When this screen becomes useful"
-              summary={generationCount === 0
-                ? 'Generate and save drafts first. Timeline history only becomes useful once there is branch data to inspect.'
-                : 'Saved drafts already populate the history panel. Event and conflict tooling should stay out of the way until the underlying timeline model is real.'}
+              summary={
+                generationCount === 0
+                  ? 'Generate and save drafts first. Timeline history only becomes useful once there is branch data to inspect.'
+                  : 'Saved drafts already populate the history panel. Event and conflict tooling should stay out of the way until the underlying timeline model is real.'
+              }
               label="When timeline history matters"
             />
           </div>

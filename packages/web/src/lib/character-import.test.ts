@@ -7,9 +7,7 @@ describe('detectAndParseCharacter', () => {
       meta: {
         origin: 'custom-upload',
       },
-      sections: [
-        { label: 'bio', value: 'A wandering archivist' },
-      ],
+      sections: [{ label: 'bio', value: 'A wandering archivist' }],
     };
 
     const result = detectAndParseCharacter(JSON.stringify(payload), 'mystery.json');
@@ -74,7 +72,7 @@ describe('detectAndParseCharacter', () => {
         system_prompt: 'System prompt content',
         intro_scene: 'Opening line',
         post_history: 'Example exchange',
-        intro_page: 'Scene context',
+        creator_notes: 'Scene context',
       },
     });
     expect(result.assets.lorebook).toContain('Crimson Court');
@@ -101,9 +99,7 @@ describe('detectAndParseCharacter', () => {
           chub: {
             id: 6358382,
             full_path: 'MaeveOfFae/maeve',
-            related_lorebooks: [
-              { id: -1, book: null, path: 'embedded', version: 'main', commit_ref: 'main' },
-            ],
+            related_lorebooks: [{ id: -1, book: null, path: 'embedded', version: 'main', commit_ref: 'main' }],
           },
         },
       },
@@ -112,11 +108,11 @@ describe('detectAndParseCharacter', () => {
         post_history: 'Maeve already trusts {{user}} with the archive keys.',
         character_sheet: 'Name: Maeve\nRole: Archivist\nHooks: court intrigue, ritual debt',
         intro_scene: 'The archive door opens before you can knock.',
-        intro_page: 'A candlelit archive under the old palace.',
         a1111: 'upper body portrait, candlelight, black velvet, crimson foil, cinematic',
         creator_notes: '# Maeve\n\nPrivate notes for the archivist card.',
         alternate_greetings: JSON.stringify(['Second greeting', 'Third greeting']),
-        lorebook: '# Secret\n\n## Crimson Court\n\nKeys: court, crimson\n\nThe Crimson Court keeps a ledger under the altar.',
+        lorebook:
+          '# Secret\n\n## Crimson Court\n\nKeys: court, crimson\n\nThe Crimson Court keeps a ledger under the altar.',
       },
     };
 
@@ -148,12 +144,16 @@ describe('detectAndParseCharacter', () => {
     expect(data.character_version).toBe('main');
     expect((data.extensions as Record<string, unknown>).depth_prompt).toEqual({ depth: 0, prompt: '' });
     expect(((data.extensions as Record<string, unknown>).chub as Record<string, unknown>).id).toBe(6358382);
-    expect(((data.extensions as Record<string, unknown>).chub as Record<string, unknown>).full_path).toBe('MaeveOfFae/maeve');
+    expect(((data.extensions as Record<string, unknown>).chub as Record<string, unknown>).full_path).toBe(
+      'MaeveOfFae/maeve',
+    );
     expect(((data.extensions as Record<string, unknown>).chub as Record<string, unknown>).related_lorebooks).toEqual([
       { id: -1, book: null, path: 'embedded', version: 'main', commit_ref: 'main' },
     ]);
     expect((data.character_book as Record<string, unknown>).name).toBe('Secret');
-    expect(((data.character_book as Record<string, unknown>).entries as Array<Record<string, unknown>>)[0]?.content).toContain('The Crimson Court keeps a ledger under the altar.');
+    expect(
+      ((data.character_book as Record<string, unknown>).entries as Array<Record<string, unknown>>)[0]?.content,
+    ).toContain('The Crimson Court keeps a ledger under the altar.');
     expect(assets.a1111).toBe(draft.assets.a1111);
 
     const parsed = detectAndParseCharacter(artifact.content, 'maeve.json');
@@ -198,9 +198,7 @@ describe('detectAndParseCharacter', () => {
           chub: {
             id: 44,
             full_path: 'MaeveOfFae/iris',
-            related_lorebooks: [
-              { id: -1, book: null, path: 'embedded', version: 'main', commit_ref: 'main' },
-            ],
+            related_lorebooks: [{ id: -1, book: null, path: 'embedded', version: 'main', commit_ref: 'main' }],
           },
           depth_prompt: { depth: 2, prompt: 'Keep the ritual secret.' },
         },
@@ -213,7 +211,9 @@ describe('detectAndParseCharacter', () => {
     expect(result.sourceFormat).toBe('chubai');
     expect(result.assets.character_sheet).toContain('Character sheet content');
     expect(result.assets.system_prompt).toBe('Follow the ritual etiquette exactly.');
-    expect(result.assets.post_history).toBe('Example Dialogue\n\n{{user}}: Are you alone?\n{{char}}: Never in this place.\n\nPost-History Instructions\n\nThe exchange happens after weeks of cautious trust.');
+    expect(result.assets.post_history).toBe(
+      'Example Dialogue\n\n{{user}}: Are you alone?\n{{char}}: Never in this place.\n\nPost-History Instructions\n\nThe exchange happens after weeks of cautious trust.',
+    );
     expect(result.assets.creator_notes).toBe('Imported from a Chub archive.');
     expect(result.assets.avatar).toBe('https://example.test/iris.png');
     expect(result.assets.alternate_greetings).toBe('[\n  "Fallback greeting",\n  "Second hello"\n]');
@@ -269,9 +269,27 @@ describe('detectAndParseCharacter', () => {
         assets: [
           { name: 'character_sheet', required: true, depends_on: [], description: 'Character sheet' },
           { name: 'intro_scene', required: true, depends_on: [], description: 'Intro scene' },
-          { name: 'private_notes', required: false, depends_on: [], description: 'Private import', import_aliases: ['creator_notes'] },
-          { name: 'world_dossier', required: false, depends_on: [], description: 'Lorebook import', import_aliases: ['character_book'] },
-          { name: 'registry_path', required: false, depends_on: [], description: 'Nested import', import_aliases: ['extensions.chub.full_path'] },
+          {
+            name: 'private_notes',
+            required: false,
+            depends_on: [],
+            description: 'Private import',
+            import_aliases: ['creator_notes'],
+          },
+          {
+            name: 'world_dossier',
+            required: false,
+            depends_on: [],
+            description: 'Lorebook import',
+            import_aliases: ['character_book'],
+          },
+          {
+            name: 'registry_path',
+            required: false,
+            depends_on: [],
+            description: 'Nested import',
+            import_aliases: ['extensions.chub.full_path'],
+          },
         ],
       },
     });
@@ -287,7 +305,8 @@ describe('detectAndParseCharacter', () => {
   });
 
   it('exports a PNG character card that round-trips the embedded JSON and source image', () => {
-    const onePixelPngBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aGKsAAAAASUVORK5CYII=';
+    const onePixelPngBase64 =
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aGKsAAAAASUVORK5CYII=';
     const draft: Draft = {
       path: 'maeve-png-review',
       metadata: {
@@ -318,7 +337,10 @@ describe('detectAndParseCharacter', () => {
       throw new Error('Expected PNG export artifact content to be a Uint8Array');
     }
 
-    const parsed = detectAndParseCharacter(artifact.content.buffer.slice(artifact.content.byteOffset, artifact.content.byteOffset + artifact.content.byteLength), 'maeve.png');
+    // Copy into a fresh view so `.buffer` is an ArrayBuffer rather than
+    // ArrayBufferLike (which also covers SharedArrayBuffer).
+    const pngBytes = new Uint8Array(artifact.content);
+    const parsed = detectAndParseCharacter(pngBytes.buffer, 'maeve.png');
 
     expect(parsed.sourceFormat).toBe('png_card');
     expect(parsed.assets.system_prompt).toBe(draft.assets.system_prompt);
@@ -346,7 +368,13 @@ describe('detectAndParseCharacter', () => {
         assets: [
           { name: 'character_sheet', required: true, depends_on: [], description: 'Character sheet' },
           { name: 'intro_scene', required: true, depends_on: [], description: 'Intro scene' },
-          { name: 'private_notes', required: false, depends_on: [], description: 'Private notes', import_aliases: ['creator_notes'] },
+          {
+            name: 'private_notes',
+            required: false,
+            depends_on: [],
+            description: 'Private notes',
+            import_aliases: ['creator_notes'],
+          },
         ],
       },
     });

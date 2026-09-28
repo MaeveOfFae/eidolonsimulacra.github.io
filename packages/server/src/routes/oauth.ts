@@ -1,28 +1,25 @@
 // OAuth routes for Google and GitHub authentication
-import { Router, Request, Response, type CookieOptions } from "express";
-import { randomBytes } from "crypto";
-import { prisma } from "../db.js";
-import { env } from "../env.js";
-import {
-  generateAccessToken,
-  generateRefreshToken,
-  hashRefreshToken,
-} from "../middleware/auth.js";
+import { Router, Request, Response, type CookieOptions } from 'express';
+import { randomBytes } from 'crypto';
+import { prisma } from '../db.js';
+import { env } from '../env.js';
+import { generateAccessToken, generateRefreshToken, hashRefreshToken } from '../middleware/auth.js';
 import {
   getGoogleAuthUrl,
   getGitHubAuthUrl,
   exchangeGoogleCode,
   exchangeGitHubCode,
   OAuthUserInfo,
-} from "../services/oauth.js";
+} from '../services/oauth.js';
 
 const router: Router = Router();
 
 // OAuth redirect URI base (should be configured based on environment)
 const getRedirectUri = (provider: string): string => {
-  const baseUrl = env.NODE_ENV === "production"
-    ? process.env.OAUTH_REDIRECT_BASE || "https://your-domain.com"
-    : "http://localhost:3001";
+  const baseUrl =
+    env.NODE_ENV === 'production'
+      ? process.env.OAUTH_REDIRECT_BASE || 'https://your-domain.com'
+      : 'http://localhost:3001';
   return `${baseUrl}/api/auth/oauth/${provider}/callback`;
 };
 
@@ -155,18 +152,14 @@ interface HandleOAuthResult {
 function getRefreshTokenCookieOptions(): CookieOptions {
   return {
     httpOnly: true,
-    secure: env.NODE_ENV === "production",
-    sameSite: env.NODE_ENV === "production" ? "none" : "lax",
+    secure: env.NODE_ENV === 'production',
+    sameSite: env.NODE_ENV === 'production' ? 'none' : 'lax',
     maxAge: 30 * 24 * 60 * 60 * 1000,
-    path: "/api/auth",
+    path: '/api/auth',
   };
 }
 
-async function handleOAuthLogin(
-  userInfo: OAuthUserInfo,
-  req: Request,
-  res: Response
-): Promise<HandleOAuthResult> {
+async function handleOAuthLogin(userInfo: OAuthUserInfo, req: Request, res: Response): Promise<HandleOAuthResult> {
   // Check if OAuth connection exists
   const oauthConnection = await prisma.oAuthConnection.findUnique({
     where: {
@@ -214,7 +207,7 @@ async function handleOAuthLogin(
       user = await prisma.user.create({
         data: {
           email: userInfo.email,
-          displayName: userInfo.displayName || userInfo.email.split("@")[0],
+          displayName: userInfo.displayName || userInfo.email.split('@')[0],
           avatarUrl: userInfo.avatarUrl,
           isEmailVerified: true, // OAuth providers verify emails
         },
@@ -245,7 +238,7 @@ async function handleOAuthLogin(
     data: {
       userId: user.id,
       refreshTokenHash,
-      deviceInfo: req.headers["user-agent"] as unknown as object,
+      deviceInfo: req.headers['user-agent'] as unknown as object,
       ipAddress: req.ip,
       expiresAt,
     },
@@ -258,7 +251,7 @@ async function handleOAuthLogin(
   });
 
   // Set refresh token cookie
-  res.cookie("refreshToken", refreshToken, getRefreshTokenCookieOptions());
+  res.cookie('refreshToken', refreshToken, getRefreshTokenCookieOptions());
 
   return {
     user: {
@@ -275,11 +268,11 @@ async function handleOAuthLogin(
  * GET /api/auth/oauth/:provider
  * Initiate OAuth flow
  */
-router.get("/:provider", (req: Request, res: Response): void => {
+router.get('/:provider', (req: Request, res: Response): void => {
   const { provider } = req.params;
 
-  if (provider !== "google" && provider !== "github") {
-    res.status(400).json({ error: "Invalid OAuth provider" });
+  if (provider !== 'google' && provider !== 'github') {
+    res.status(400).json({ error: 'Invalid OAuth provider' });
     return;
   }
 
@@ -288,7 +281,7 @@ router.get("/:provider", (req: Request, res: Response): void => {
 
   let authUrl: string;
   try {
-    if (provider === "google") {
+    if (provider === 'google') {
       authUrl = getGoogleAuthUrl(redirectUri, state);
     } else {
       authUrl = getGitHubAuthUrl(redirectUri, state);
@@ -305,7 +298,7 @@ router.get("/:provider", (req: Request, res: Response): void => {
  * GET /api/auth/oauth/:provider/callback
  * OAuth callback endpoint
  */
-router.get("/:provider/callback", async (req: Request, res: Response): Promise<void> => {
+router.get('/:provider/callback', async (req: Request, res: Response): Promise<void> => {
   const provider = req.params.provider as string;
   const { code, state, error } = req.query;
 
@@ -316,12 +309,12 @@ router.get("/:provider/callback", async (req: Request, res: Response): Promise<v
 
   // Validate and sanitize inputs
   if (!code || typeof code !== 'string') {
-    res.status(400).json({ error: "Missing authorization code" });
+    res.status(400).json({ error: 'Missing authorization code' });
     return;
   }
 
   if (!state || !validateAndConsumeState(state as string, provider)) {
-    res.status(400).json({ error: "Invalid or expired OAuth state" });
+    res.status(400).json({ error: 'Invalid or expired OAuth state' });
     return;
   }
 
@@ -329,30 +322,26 @@ router.get("/:provider/callback", async (req: Request, res: Response): Promise<v
 
   try {
     let userInfo;
-    if (provider === "google") {
+    if (provider === 'google') {
       userInfo = await exchangeGoogleCode(code, redirectUri);
-    } else if (provider === "github") {
+    } else if (provider === 'github') {
       userInfo = await exchangeGitHubCode(code, redirectUri);
     } else {
-      res.status(400).json({ error: "Invalid OAuth provider" });
+      res.status(400).json({ error: 'Invalid OAuth provider' });
       return;
     }
 
     const result = await handleOAuthLogin(userInfo, req, res);
 
     // Redirect to frontend with token (frontend should handle storing it)
-    const frontendUrl = env.NODE_ENV === "production"
-      ? process.env.FRONTEND_URL || "/"
-      : "http://localhost:3000";
+    const frontendUrl = env.NODE_ENV === 'production' ? process.env.FRONTEND_URL || '/' : 'http://localhost:3000';
 
     // In production, you might want to use a more secure method
     // like passing the token via a secure, one-time-use code
-    res.redirect(
-      `${frontendUrl}/auth/callback?token=${encodeURIComponent(result.accessToken)}`
-    );
+    res.redirect(`${frontendUrl}/auth/callback?token=${encodeURIComponent(result.accessToken)}`);
   } catch (err) {
-    console.error("OAuth error:", err);
-    res.redirect(`/login?error=${encodeURIComponent("Authentication failed")}`);
+    console.error('OAuth error:', err);
+    res.redirect(`/login?error=${encodeURIComponent('Authentication failed')}`);
   }
 });
 

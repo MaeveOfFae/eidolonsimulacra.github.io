@@ -33,15 +33,9 @@ export abstract class BaseLLMEngine {
     }
   }
 
-  abstract generate(
-    messages: LLMChatMessage[],
-    options?: GenerateOptions
-  ): Promise<GenerateResult>;
+  abstract generate(messages: LLMChatMessage[], options?: GenerateOptions): Promise<GenerateResult>;
 
-  async *generateStream(
-    messages: LLMChatMessage[],
-    options?: StreamGenerateOptions
-  ): AsyncIterable<StreamChunk> {
+  async *generateStream(messages: LLMChatMessage[], options?: StreamGenerateOptions): AsyncIterable<StreamChunk> {
     const result = await this.generate(messages, options);
     yield {
       content: result.content,
@@ -80,9 +74,7 @@ export abstract class BaseLLMEngine {
       clearTimeout(timeoutId);
     });
 
-    const combinedSignal = signal
-      ? anySignal([signal, controller.signal])
-      : controller.signal;
+    const combinedSignal = signal ? anySignal([signal, controller.signal]) : controller.signal;
 
     return {
       signal: combinedSignal as AbortSignal,
@@ -91,11 +83,15 @@ export abstract class BaseLLMEngine {
 
   protected normalizeRequestError(error: unknown): Error {
     if (error instanceof Error && error.name === 'AbortError') {
-      return new Error('The request timed out or was cancelled. Try again, reduce the request size, or choose a faster model/provider.');
+      return new Error(
+        'The request timed out or was cancelled. Try again, reduce the request size, or choose a faster model/provider.',
+      );
     }
 
     if (error instanceof Error && /operation was aborted/i.test(error.message)) {
-      return new Error('The request timed out or was cancelled. Try again, reduce the request size, or choose a faster model/provider.');
+      return new Error(
+        'The request timed out or was cancelled. Try again, reduce the request size, or choose a faster model/provider.',
+      );
     }
 
     return error instanceof Error ? error : new Error('Request failed');

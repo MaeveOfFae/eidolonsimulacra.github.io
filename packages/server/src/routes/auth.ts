@@ -1,17 +1,17 @@
 // Authentication routes
-import { Router, Request, Response, type CookieOptions } from "express";
-import bcrypt from "bcrypt";
-import { z } from "zod";
-import { prisma } from "../db.js";
-import { env } from "../env.js";
+import { Router, Request, Response, type CookieOptions } from 'express';
+import bcrypt from 'bcrypt';
+import { z } from 'zod';
+import { prisma } from '../db.js';
+import { env } from '../env.js';
 import {
   authenticateToken,
   generateAccessToken,
   generateRefreshToken,
   hashRefreshToken,
   validateSession,
-} from "../middleware/auth.js";
-import { validateBody } from "../middleware/validation.js";
+} from '../middleware/auth.js';
+import { validateBody } from '../middleware/validation.js';
 
 const router: Router = Router();
 
@@ -45,15 +45,15 @@ const SALT_ROUNDS = 12;
 function getRefreshTokenCookieOptions(): CookieOptions {
   return {
     httpOnly: true,
-    secure: env.NODE_ENV === "production",
-    sameSite: env.NODE_ENV === "production" ? "none" : "lax",
+    secure: env.NODE_ENV === 'production',
+    sameSite: env.NODE_ENV === 'production' ? 'none' : 'lax',
     maxAge: 30 * 24 * 60 * 60 * 1000,
-    path: "/api/auth",
+    path: '/api/auth',
   };
 }
 
 async function createSession(userId: string, deviceInfo?: unknown, ipAddress?: string) {
-  const payload = { userId, email: "" }; // Email fetched separately
+  const payload = { userId, email: '' }; // Email fetched separately
   const refreshToken = generateRefreshToken(payload);
   const refreshTokenHash = hashRefreshToken(refreshToken);
 
@@ -74,11 +74,11 @@ async function createSession(userId: string, deviceInfo?: unknown, ipAddress?: s
 }
 
 function setRefreshTokenCookie(res: Response, token: string): void {
-  res.cookie("refreshToken", token, getRefreshTokenCookieOptions());
+  res.cookie('refreshToken', token, getRefreshTokenCookieOptions());
 }
 
 function clearRefreshTokenCookie(res: Response): void {
-  res.clearCookie("refreshToken", getRefreshTokenCookieOptions());
+  res.clearCookie('refreshToken', getRefreshTokenCookieOptions());
 }
 
 // =============================================================================
@@ -89,128 +89,112 @@ function clearRefreshTokenCookie(res: Response): void {
  * POST /api/auth/register
  * Register a new user with email and password
  */
-router.post(
-  "/register",
-  validateBody(registerSchema),
-  async (req: Request, res: Response): Promise<void> => {
-    const { email, password, displayName } = req.body;
+router.post('/register', validateBody(registerSchema), async (req: Request, res: Response): Promise<void> => {
+  const { email, password, displayName } = req.body;
 
-    // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
-    });
+  // Check if user already exists
+  const existingUser = await prisma.user.findUnique({
+    where: { email },
+  });
 
-    if (existingUser) {
-      res.status(409).json({ error: "Email already registered" });
-      return;
-    }
-
-    // Hash password
-    const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
-
-    // Create user
-    const user = await prisma.user.create({
-      data: {
-        email,
-        passwordHash,
-        displayName: displayName || email.split("@")[0],
-      },
-    });
-
-    // Create session
-    const refreshToken = await createSession(
-      user.id,
-      req.headers["user-agent"],
-      req.ip
-    );
-
-    // Generate access token
-    const accessToken = generateAccessToken({
-      userId: user.id,
-      email: user.email,
-    });
-
-    setRefreshTokenCookie(res, refreshToken);
-
-    res.status(201).json({
-      user: {
-        id: user.id,
-        email: user.email,
-        displayName: user.displayName,
-        avatarUrl: user.avatarUrl,
-        createdAt: user.createdAt,
-      },
-      accessToken,
-    });
+  if (existingUser) {
+    res.status(409).json({ error: 'Email already registered' });
+    return;
   }
-);
+
+  // Hash password
+  const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+
+  // Create user
+  const user = await prisma.user.create({
+    data: {
+      email,
+      passwordHash,
+      displayName: displayName || email.split('@')[0],
+    },
+  });
+
+  // Create session
+  const refreshToken = await createSession(user.id, req.headers['user-agent'], req.ip);
+
+  // Generate access token
+  const accessToken = generateAccessToken({
+    userId: user.id,
+    email: user.email,
+  });
+
+  setRefreshTokenCookie(res, refreshToken);
+
+  res.status(201).json({
+    user: {
+      id: user.id,
+      email: user.email,
+      displayName: user.displayName,
+      avatarUrl: user.avatarUrl,
+      createdAt: user.createdAt,
+    },
+    accessToken,
+  });
+});
 
 /**
  * POST /api/auth/login
  * Login with email and password
  */
-router.post(
-  "/login",
-  validateBody(loginSchema),
-  async (req: Request, res: Response): Promise<void> => {
-    const { email, password } = req.body;
+router.post('/login', validateBody(loginSchema), async (req: Request, res: Response): Promise<void> => {
+  const { email, password } = req.body;
 
-    // Find user
-    const user = await prisma.user.findUnique({
-      where: { email },
-    });
+  // Find user
+  const user = await prisma.user.findUnique({
+    where: { email },
+  });
 
-    if (!user || !user.passwordHash) {
-      res.status(401).json({ error: "Invalid credentials" });
-      return;
-    }
-
-    // Verify password
-    const validPassword = await bcrypt.compare(password, user.passwordHash);
-    if (!validPassword) {
-      res.status(401).json({ error: "Invalid credentials" });
-      return;
-    }
-
-    // Update last login
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { lastLoginAt: new Date() },
-    });
-
-    // Create session
-    const refreshToken = await createSession(
-      user.id,
-      req.headers["user-agent"],
-      req.ip
-    );
-
-    // Generate access token
-    const accessToken = generateAccessToken({
-      userId: user.id,
-      email: user.email,
-    });
-
-    setRefreshTokenCookie(res, refreshToken);
-
-    res.json({
-      user: {
-        id: user.id,
-        email: user.email,
-        displayName: user.displayName,
-        avatarUrl: user.avatarUrl,
-        createdAt: user.createdAt,
-      },
-      accessToken,
-    });
+  if (!user || !user.passwordHash) {
+    res.status(401).json({ error: 'Invalid credentials' });
+    return;
   }
-);
+
+  // Verify password
+  const validPassword = await bcrypt.compare(password, user.passwordHash);
+  if (!validPassword) {
+    res.status(401).json({ error: 'Invalid credentials' });
+    return;
+  }
+
+  // Update last login
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { lastLoginAt: new Date() },
+  });
+
+  // Create session
+  const refreshToken = await createSession(user.id, req.headers['user-agent'], req.ip);
+
+  // Generate access token
+  const accessToken = generateAccessToken({
+    userId: user.id,
+    email: user.email,
+  });
+
+  setRefreshTokenCookie(res, refreshToken);
+
+  res.json({
+    user: {
+      id: user.id,
+      email: user.email,
+      displayName: user.displayName,
+      avatarUrl: user.avatarUrl,
+      createdAt: user.createdAt,
+    },
+    accessToken,
+  });
+});
 
 /**
  * POST /api/auth/logout
  * Invalidate current session
  */
-router.post("/logout", async (req: Request, res: Response): Promise<void> => {
+router.post('/logout', async (req: Request, res: Response): Promise<void> => {
   const refreshToken = req.cookies?.refreshToken;
 
   if (refreshToken) {
@@ -221,24 +205,24 @@ router.post("/logout", async (req: Request, res: Response): Promise<void> => {
   }
 
   clearRefreshTokenCookie(res);
-  res.json({ message: "Logged out successfully" });
+  res.json({ message: 'Logged out successfully' });
 });
 
 /**
  * POST /api/auth/refresh
  * Refresh access token using refresh token
  */
-router.post("/refresh", async (req: Request, res: Response): Promise<void> => {
+router.post('/refresh', async (req: Request, res: Response): Promise<void> => {
   const refreshToken = req.cookies?.refreshToken;
 
   if (!refreshToken) {
-    res.status(401).json({ error: "Refresh token required" });
+    res.status(401).json({ error: 'Refresh token required' });
     return;
   }
 
   const payload = await validateSession(refreshToken);
   if (!payload) {
-    res.status(403).json({ error: "Invalid or expired session" });
+    res.status(403).json({ error: 'Invalid or expired session' });
     return;
   }
 
@@ -248,7 +232,7 @@ router.post("/refresh", async (req: Request, res: Response): Promise<void> => {
   });
 
   if (!user) {
-    res.status(403).json({ error: "User not found" });
+    res.status(403).json({ error: 'User not found' });
     return;
   }
 
@@ -265,7 +249,7 @@ router.post("/refresh", async (req: Request, res: Response): Promise<void> => {
  * GET /api/auth/me
  * Get current user info
  */
-router.get("/me", authenticateToken, async (req: Request, res: Response): Promise<void> => {
+router.get('/me', authenticateToken, async (req: Request, res: Response): Promise<void> => {
   const user = await prisma.user.findUnique({
     where: { id: req.user!.userId },
     select: {
@@ -281,7 +265,7 @@ router.get("/me", authenticateToken, async (req: Request, res: Response): Promis
   });
 
   if (!user) {
-    res.status(404).json({ error: "User not found" });
+    res.status(404).json({ error: 'User not found' });
     return;
   }
 
@@ -293,7 +277,7 @@ router.get("/me", authenticateToken, async (req: Request, res: Response): Promis
  * Update current user profile
  */
 router.patch(
-  "/me",
+  '/me',
   authenticateToken,
   validateBody(updateProfileSchema),
   async (req: Request, res: Response): Promise<void> => {
@@ -317,20 +301,20 @@ router.patch(
     });
 
     res.json({ user });
-  }
+  },
 );
 
 /**
  * DELETE /api/auth/me
  * Delete current user account
  */
-router.delete("/me", authenticateToken, async (req: Request, res: Response): Promise<void> => {
+router.delete('/me', authenticateToken, async (req: Request, res: Response): Promise<void> => {
   await prisma.user.delete({
     where: { id: req.user!.userId },
   });
 
   clearRefreshTokenCookie(res);
-  res.json({ message: "Account deleted successfully" });
+  res.json({ message: 'Account deleted successfully' });
 });
 
 export default router;

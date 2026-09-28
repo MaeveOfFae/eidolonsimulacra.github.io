@@ -24,10 +24,10 @@ asset = "post_history"
 target = "mes_example"
 wrapper = "<START>\n{{user}}: Hello!\n{{char}}: {{content}}"
 
-# Optional scenario/world info
+# Optional creator notes
 [[fields]]
-asset = "intro_page"
-target = "scenario"
+asset = "creator_notes"
+target = "creator_notes"
 optional = true
 
 [metadata]

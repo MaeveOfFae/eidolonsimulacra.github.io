@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import {
   ArrowDown,
   ArrowUp,
@@ -17,6 +18,7 @@ import {
 } from 'lucide-react';
 import type { TimelineRecord, WorldRecord } from '@char-gen/shared';
 import { api } from '@/lib/api';
+import RelationshipMapPlaceholder from './RelationshipMapPlaceholder';
 
 interface WorldDetailEditorPanelProps {
   world: WorldRecord | null;
@@ -43,12 +45,14 @@ interface FactionFormState {
   name: string;
   role: string;
   description: string;
+  draftIds: string[];
 }
 
 interface LocationFormState {
   name: string;
   category: string;
   description: string;
+  draftIds: string[];
 }
 
 interface TimelineFormState {
@@ -62,7 +66,14 @@ interface EventFormState {
   description: string;
 }
 
-type WorldDetailTab = 'details' | 'characters' | 'timelines' | 'factions' | 'locations';
+interface RelationshipFormState {
+  sourceCharacterId: string;
+  targetCharacterId: string;
+  label: string;
+  notes: string;
+}
+
+type WorldDetailTab = 'details' | 'characters' | 'relationships' | 'timelines' | 'factions' | 'locations';
 
 const EMPTY_WORLD_FORM: WorldMetadataForm = {
   name: '',
@@ -82,12 +93,14 @@ const EMPTY_FACTION_FORM: FactionFormState = {
   name: '',
   role: '',
   description: '',
+  draftIds: [],
 };
 
 const EMPTY_LOCATION_FORM: LocationFormState = {
   name: '',
   category: '',
   description: '',
+  draftIds: [],
 };
 
 const EMPTY_TIMELINE_FORM: TimelineFormState = {
@@ -101,12 +114,20 @@ const EMPTY_EVENT_FORM: EventFormState = {
   description: '',
 };
 
+const EMPTY_RELATIONSHIP_FORM: RelationshipFormState = {
+  sourceCharacterId: '',
+  targetCharacterId: '',
+  label: '',
+  notes: '',
+};
+
 export default function WorldDetailEditorPanel({ world, canEdit, onRefresh, onDeleted }: WorldDetailEditorPanelProps) {
   const [activeTab, setActiveTab] = useState<WorldDetailTab>('details');
   const [metadataForm, setMetadataForm] = useState<WorldMetadataForm>(EMPTY_WORLD_FORM);
   const [characterForm, setCharacterForm] = useState<CharacterFormState>(EMPTY_CHARACTER_FORM);
   const [factionForm, setFactionForm] = useState<FactionFormState>(EMPTY_FACTION_FORM);
   const [locationForm, setLocationForm] = useState<LocationFormState>(EMPTY_LOCATION_FORM);
+  const [relationshipForm, setRelationshipForm] = useState<RelationshipFormState>(EMPTY_RELATIONSHIP_FORM);
   const [timelineForm, setTimelineForm] = useState<TimelineFormState>(EMPTY_TIMELINE_FORM);
   const [eventForm, setEventForm] = useState<EventFormState>(EMPTY_EVENT_FORM);
 
@@ -114,8 +135,15 @@ export default function WorldDetailEditorPanel({ world, canEdit, onRefresh, onDe
   const [editingCharacterForm, setEditingCharacterForm] = useState<CharacterFormState>(EMPTY_CHARACTER_FORM);
   const [editingFactionId, setEditingFactionId] = useState<string | null>(null);
   const [editingFactionForm, setEditingFactionForm] = useState<FactionFormState>(EMPTY_FACTION_FORM);
+  const [pendingFactionDraftId, setPendingFactionDraftId] = useState('');
+  const [editingFactionPendingDraftId, setEditingFactionPendingDraftId] = useState('');
   const [editingLocationId, setEditingLocationId] = useState<string | null>(null);
   const [editingLocationForm, setEditingLocationForm] = useState<LocationFormState>(EMPTY_LOCATION_FORM);
+  const [pendingLocationDraftId, setPendingLocationDraftId] = useState('');
+  const [editingLocationPendingDraftId, setEditingLocationPendingDraftId] = useState('');
+  const [editingRelationshipId, setEditingRelationshipId] = useState<string | null>(null);
+  const [editingRelationshipForm, setEditingRelationshipForm] =
+    useState<RelationshipFormState>(EMPTY_RELATIONSHIP_FORM);
   const [editingTimelineId, setEditingTimelineId] = useState<string | null>(null);
   const [editingTimelineForm, setEditingTimelineForm] = useState<TimelineFormState>(EMPTY_TIMELINE_FORM);
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
@@ -132,6 +160,7 @@ export default function WorldDetailEditorPanel({ world, canEdit, onRefresh, onDe
       setEditingCharacterId(null);
       setEditingFactionId(null);
       setEditingLocationId(null);
+      setEditingRelationshipId(null);
       setEditingTimelineId(null);
       setEditingEventId(null);
       return;
@@ -159,12 +188,29 @@ export default function WorldDetailEditorPanel({ world, canEdit, onRefresh, onDe
       return false;
     }
 
-    return metadataForm.name !== world.name
-      || metadataForm.description !== (world.description || '')
-      || metadataForm.genre !== (world.genre || '')
-      || metadataForm.setting !== (world.setting || '')
-      || metadataForm.notes !== (world.notes || '');
+    return (
+      metadataForm.name !== world.name ||
+      metadataForm.description !== (world.description || '') ||
+      metadataForm.genre !== (world.genre || '') ||
+      metadataForm.setting !== (world.setting || '') ||
+      metadataForm.notes !== (world.notes || '')
+    );
   }, [metadataForm, world]);
+
+  const { data: draftListData } = useQuery({
+    queryKey: ['drafts'],
+    queryFn: () => api.getDrafts(),
+    enabled: Boolean(world),
+  });
+
+  const draftNameById = useMemo(
+    () =>
+      new Map(
+        (draftListData?.drafts ?? []).map((draft) => [draft.review_id, draft.character_name || draft.seed] as const),
+      ),
+    [draftListData?.drafts],
+  );
+  const draftOptions = draftListData?.drafts ?? [];
 
   const { data: selectedTimelineData, refetch: refetchTimeline } = useQuery({
     queryKey: ['timeline-detail', selectedTimelineId],
@@ -268,6 +314,27 @@ export default function WorldDetailEditorPanel({ world, canEdit, onRefresh, onDe
     },
   });
 
+  const unlinkCharacterDraft = useMutation({
+    mutationFn: async (characterId: string) => {
+      if (!world) {
+        throw new Error('No world selected');
+      }
+
+      return api.updateWorldCharacter(world.id, characterId, {
+        draftId: '',
+      });
+    },
+    onSuccess: async () => {
+      setNotice('Draft link removed from character.');
+      setError(null);
+      await onRefresh();
+    },
+    onError: (mutationError: Error) => {
+      setError(mutationError.message);
+      setNotice(null);
+    },
+  });
+
   const deleteCharacter = useMutation({
     mutationFn: async (characterId: string) => {
       if (!world) {
@@ -297,10 +364,12 @@ export default function WorldDetailEditorPanel({ world, canEdit, onRefresh, onDe
         name: factionForm.name.trim(),
         role: factionForm.role.trim() || undefined,
         description: factionForm.description.trim() || undefined,
+        draftIds: factionForm.draftIds,
       });
     },
     onSuccess: async () => {
       setFactionForm(EMPTY_FACTION_FORM);
+      setPendingFactionDraftId('');
       setNotice('Faction added.');
       setError(null);
       await onRefresh();
@@ -321,11 +390,13 @@ export default function WorldDetailEditorPanel({ world, canEdit, onRefresh, onDe
         name: editingFactionForm.name.trim(),
         role: editingFactionForm.role.trim() || undefined,
         description: editingFactionForm.description.trim() || undefined,
+        draftIds: editingFactionForm.draftIds,
       });
     },
     onSuccess: async () => {
       setEditingFactionId(null);
       setEditingFactionForm(EMPTY_FACTION_FORM);
+      setEditingFactionPendingDraftId('');
       setNotice('Faction updated.');
       setError(null);
       await onRefresh();
@@ -365,10 +436,12 @@ export default function WorldDetailEditorPanel({ world, canEdit, onRefresh, onDe
         name: locationForm.name.trim(),
         category: locationForm.category.trim() || undefined,
         description: locationForm.description.trim() || undefined,
+        draftIds: locationForm.draftIds,
       });
     },
     onSuccess: async () => {
       setLocationForm(EMPTY_LOCATION_FORM);
+      setPendingLocationDraftId('');
       setNotice('Location added.');
       setError(null);
       await onRefresh();
@@ -389,12 +462,84 @@ export default function WorldDetailEditorPanel({ world, canEdit, onRefresh, onDe
         name: editingLocationForm.name.trim(),
         category: editingLocationForm.category.trim() || undefined,
         description: editingLocationForm.description.trim() || undefined,
+        draftIds: editingLocationForm.draftIds,
       });
     },
     onSuccess: async () => {
       setEditingLocationId(null);
       setEditingLocationForm(EMPTY_LOCATION_FORM);
+      setEditingLocationPendingDraftId('');
       setNotice('Location updated.');
+      setError(null);
+      await onRefresh();
+    },
+    onError: (mutationError: Error) => {
+      setError(mutationError.message);
+      setNotice(null);
+    },
+  });
+
+  const addRelationship = useMutation({
+    mutationFn: async () => {
+      if (!world) {
+        throw new Error('No world selected');
+      }
+
+      return api.addWorldRelationship(world.id, {
+        sourceCharacterId: relationshipForm.sourceCharacterId,
+        targetCharacterId: relationshipForm.targetCharacterId,
+        label: relationshipForm.label.trim(),
+        notes: relationshipForm.notes.trim() || undefined,
+      });
+    },
+    onSuccess: async () => {
+      setRelationshipForm(EMPTY_RELATIONSHIP_FORM);
+      setNotice('Relationship added.');
+      setError(null);
+      await onRefresh();
+    },
+    onError: (mutationError: Error) => {
+      setError(mutationError.message);
+      setNotice(null);
+    },
+  });
+
+  const updateRelationship = useMutation({
+    mutationFn: async () => {
+      if (!world || !editingRelationshipId) {
+        throw new Error('No relationship selected');
+      }
+
+      return api.updateWorldRelationship(world.id, editingRelationshipId, {
+        sourceCharacterId: editingRelationshipForm.sourceCharacterId,
+        targetCharacterId: editingRelationshipForm.targetCharacterId,
+        label: editingRelationshipForm.label.trim(),
+        notes: editingRelationshipForm.notes.trim() || undefined,
+      });
+    },
+    onSuccess: async () => {
+      setEditingRelationshipId(null);
+      setEditingRelationshipForm(EMPTY_RELATIONSHIP_FORM);
+      setNotice('Relationship updated.');
+      setError(null);
+      await onRefresh();
+    },
+    onError: (mutationError: Error) => {
+      setError(mutationError.message);
+      setNotice(null);
+    },
+  });
+
+  const deleteRelationship = useMutation({
+    mutationFn: async (relationshipId: string) => {
+      if (!world) {
+        throw new Error('No world selected');
+      }
+
+      return api.deleteWorldRelationship(world.id, relationshipId);
+    },
+    onSuccess: async () => {
+      setNotice('Relationship removed.');
       setError(null);
       await onRefresh();
     },
@@ -579,7 +724,9 @@ export default function WorldDetailEditorPanel({ world, canEdit, onRefresh, onDe
       currentEvents.splice(targetIndex, 0, movedEvent);
 
       await Promise.all(
-        currentEvents.map((event, index) => api.updateTimelineEvent(selectedTimelineId, event.id, { sortOrder: index }))
+        currentEvents.map((event, index) =>
+          api.updateTimelineEvent(selectedTimelineId, event.id, { sortOrder: index }),
+        ),
       );
     },
     onSuccess: async () => {
@@ -614,12 +761,15 @@ export default function WorldDetailEditorPanel({ world, canEdit, onRefresh, onDe
       name: faction.name,
       role: faction.role || '',
       description: faction.description || '',
+      draftIds: faction.draftIds ?? [],
     });
+    setEditingFactionPendingDraftId('');
   };
 
   const cancelEditingFaction = () => {
     setEditingFactionId(null);
     setEditingFactionForm(EMPTY_FACTION_FORM);
+    setEditingFactionPendingDraftId('');
   };
 
   const startEditingLocation = (location: NonNullable<WorldRecord['locations']>[number]) => {
@@ -628,12 +778,98 @@ export default function WorldDetailEditorPanel({ world, canEdit, onRefresh, onDe
       name: location.name,
       category: location.category || '',
       description: location.description || '',
+      draftIds: location.draftIds ?? [],
     });
+    setEditingLocationPendingDraftId('');
   };
 
   const cancelEditingLocation = () => {
     setEditingLocationId(null);
     setEditingLocationForm(EMPTY_LOCATION_FORM);
+    setEditingLocationPendingDraftId('');
+  };
+
+  const startEditingRelationship = (relationship: NonNullable<WorldRecord['relationships']>[number]) => {
+    setEditingRelationshipId(relationship.id);
+    setEditingRelationshipForm({
+      sourceCharacterId: relationship.sourceCharacterId,
+      targetCharacterId: relationship.targetCharacterId,
+      label: relationship.label,
+      notes: relationship.notes || '',
+    });
+  };
+
+  const cancelEditingRelationship = () => {
+    setEditingRelationshipId(null);
+    setEditingRelationshipForm(EMPTY_RELATIONSHIP_FORM);
+  };
+
+  const addFactionDraftLink = (draftId: string, editing = false) => {
+    if (!draftId) {
+      return;
+    }
+
+    if (editing) {
+      setEditingFactionForm((previous) =>
+        previous.draftIds.includes(draftId) ? previous : { ...previous, draftIds: [...previous.draftIds, draftId] },
+      );
+      setEditingFactionPendingDraftId('');
+      return;
+    }
+
+    setFactionForm((previous) =>
+      previous.draftIds.includes(draftId) ? previous : { ...previous, draftIds: [...previous.draftIds, draftId] },
+    );
+    setPendingFactionDraftId('');
+  };
+
+  const removeFactionDraftLink = (draftId: string, editing = false) => {
+    if (editing) {
+      setEditingFactionForm((previous) => ({
+        ...previous,
+        draftIds: previous.draftIds.filter((candidate) => candidate !== draftId),
+      }));
+      return;
+    }
+
+    setFactionForm((previous) => ({
+      ...previous,
+      draftIds: previous.draftIds.filter((candidate) => candidate !== draftId),
+    }));
+  };
+
+  const addLocationDraftLink = (draftId: string, editing = false) => {
+    if (!draftId) {
+      return;
+    }
+
+    if (editing) {
+      setEditingLocationForm((previous) =>
+        previous.draftIds.includes(draftId) ? previous : { ...previous, draftIds: [...previous.draftIds, draftId] },
+      );
+      setEditingLocationPendingDraftId('');
+      return;
+    }
+
+    setLocationForm((previous) =>
+      previous.draftIds.includes(draftId) ? previous : { ...previous, draftIds: [...previous.draftIds, draftId] },
+    );
+    setPendingLocationDraftId('');
+  };
+
+  const removeLocationDraftLink = (draftId: string, editing = false) => {
+    if (editing) {
+      setEditingLocationForm((previous) => ({
+        ...previous,
+        draftIds: previous.draftIds.filter((candidate) => candidate !== draftId),
+      }));
+      return;
+    }
+
+    setLocationForm((previous) => ({
+      ...previous,
+      draftIds: previous.draftIds.filter((candidate) => candidate !== draftId),
+    }));
   };
 
   const startEditingTimeline = (timeline: NonNullable<WorldRecord['timelines']>[number]) => {
@@ -674,6 +910,7 @@ export default function WorldDetailEditorPanel({ world, canEdit, onRefresh, onDe
   const characters = world.characters ?? [];
   const factions = world.factions ?? [];
   const locations = world.locations ?? [];
+  const relationships = world.relationships ?? [];
   const timelines = world.timelines ?? [];
   const selectedTimelineEvents = selectedTimeline?.events ?? [];
   const firstTimelineEventId = selectedTimelineEvents[0]?.id ?? null;
@@ -681,10 +918,17 @@ export default function WorldDetailEditorPanel({ world, canEdit, onRefresh, onDe
   const tabs: Array<{ id: WorldDetailTab; label: string; count: number | null }> = [
     { id: 'details', label: 'World', count: null },
     { id: 'characters', label: 'Characters', count: characters.length },
+    { id: 'relationships', label: 'Relationships', count: relationships.length },
     { id: 'timelines', label: 'Timelines', count: timelines.length },
     { id: 'factions', label: 'Factions', count: factions.length },
     { id: 'locations', label: 'Locations', count: locations.length },
   ];
+  const createRelationshipTargets = characters.filter(
+    (character) => character.id !== relationshipForm.sourceCharacterId,
+  );
+  const editingRelationshipTargets = characters.filter(
+    (character) => character.id !== editingRelationshipForm.sourceCharacterId,
+  );
 
   return (
     <div className="space-y-5">
@@ -705,8 +949,16 @@ export default function WorldDetailEditorPanel({ world, canEdit, onRefresh, onDe
         )}
       </div>
 
-      {error && <div className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div>}
-      {notice && !error && <div className="rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-foreground">{notice}</div>}
+      {error && (
+        <div className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {error}
+        </div>
+      )}
+      {notice && !error && (
+        <div className="rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-foreground">
+          {notice}
+        </div>
+      )}
 
       <div className="flex overflow-x-auto pb-1">
         <div className="app-tab-group min-w-max">
@@ -793,7 +1045,9 @@ export default function WorldDetailEditorPanel({ world, canEdit, onRefresh, onDe
               <div className="space-y-2 rounded-lg border border-border/50 bg-background/60 p-3">
                 <input
                   value={characterForm.characterName}
-                  onChange={(event) => setCharacterForm((previous) => ({ ...previous, characterName: event.target.value }))}
+                  onChange={(event) =>
+                    setCharacterForm((previous) => ({ ...previous, characterName: event.target.value }))
+                  }
                   placeholder="Character name"
                   className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
@@ -815,81 +1069,117 @@ export default function WorldDetailEditorPanel({ world, canEdit, onRefresh, onDe
                   disabled={!characterForm.characterName.trim() || addCharacter.isPending}
                   className="inline-flex items-center gap-2 rounded-xl border border-input bg-background px-3 py-2 text-xs hover:bg-accent disabled:opacity-50"
                 >
-                  {addCharacter.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                  {addCharacter.isPending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Plus className="h-3.5 w-3.5" />
+                  )}
                   Add character
                 </button>
               </div>
             )}
 
             <div className="space-y-2">
-              {characters.length > 0 ? characters.map((character) => (
-                <div key={character.id} className="rounded-lg border border-border/60 bg-background p-3 text-sm">
-                  {editingCharacterId === character.id ? (
-                    <div className="space-y-2">
-                      <input
-                        value={editingCharacterForm.characterName}
-                        onChange={(event) => setEditingCharacterForm((previous) => ({ ...previous, characterName: event.target.value }))}
-                        className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      />
-                      <input
-                        value={editingCharacterForm.role}
-                        onChange={(event) => setEditingCharacterForm((previous) => ({ ...previous, role: event.target.value }))}
-                        className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      />
-                      <textarea
-                        value={editingCharacterForm.notes}
-                        onChange={(event) => setEditingCharacterForm((previous) => ({ ...previous, notes: event.target.value }))}
-                        className="min-h-20 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      />
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() => void updateCharacter.mutateAsync()}
-                          disabled={!editingCharacterForm.characterName.trim() || updateCharacter.isPending}
-                          className="inline-flex items-center gap-1 rounded-lg border border-input bg-background px-2.5 py-1.5 text-xs hover:bg-accent disabled:opacity-50"
-                        >
-                          {updateCharacter.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-                          Save
-                        </button>
-                        <button
-                          type="button"
-                          onClick={cancelEditingCharacter}
-                          className="inline-flex items-center gap-1 rounded-lg border border-input bg-background px-2.5 py-1.5 text-xs hover:bg-accent"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <div className="font-medium text-foreground">{character.characterName}</div>
-                        <div className="text-xs text-muted-foreground">{character.role || 'No role set'}</div>
-                        {character.notes && <p className="mt-2 whitespace-pre-wrap text-xs text-muted-foreground">{character.notes}</p>}
-                      </div>
-                      {canEdit && (
-                        <div className="flex gap-2">
+              {characters.length > 0 ? (
+                characters.map((character) => (
+                  <div key={character.id} className="rounded-lg border border-border/60 bg-background p-3 text-sm">
+                    {editingCharacterId === character.id ? (
+                      <div className="space-y-2">
+                        <input
+                          value={editingCharacterForm.characterName}
+                          onChange={(event) =>
+                            setEditingCharacterForm((previous) => ({ ...previous, characterName: event.target.value }))
+                          }
+                          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        />
+                        <input
+                          value={editingCharacterForm.role}
+                          onChange={(event) =>
+                            setEditingCharacterForm((previous) => ({ ...previous, role: event.target.value }))
+                          }
+                          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        />
+                        <textarea
+                          value={editingCharacterForm.notes}
+                          onChange={(event) =>
+                            setEditingCharacterForm((previous) => ({ ...previous, notes: event.target.value }))
+                          }
+                          className="min-h-20 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        />
+                        <div className="flex flex-wrap gap-2">
                           <button
                             type="button"
-                            onClick={() => startEditingCharacter(character)}
-                            className="text-xs text-muted-foreground hover:underline"
+                            onClick={() => void updateCharacter.mutateAsync()}
+                            disabled={!editingCharacterForm.characterName.trim() || updateCharacter.isPending}
+                            className="inline-flex items-center gap-1 rounded-lg border border-input bg-background px-2.5 py-1.5 text-xs hover:bg-accent disabled:opacity-50"
                           >
-                            Edit
+                            {updateCharacter.isPending ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Check className="h-3.5 w-3.5" />
+                            )}
+                            Save
                           </button>
                           <button
                             type="button"
-                            onClick={() => void deleteCharacter.mutateAsync(character.id)}
-                            className="text-xs text-destructive hover:underline"
+                            onClick={cancelEditingCharacter}
+                            className="inline-flex items-center gap-1 rounded-lg border border-input bg-background px-2.5 py-1.5 text-xs hover:bg-accent"
                           >
-                            Delete
+                            <X className="h-3.5 w-3.5" />
+                            Cancel
                           </button>
                         </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )) : (
+                      </div>
+                    ) : (
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="font-medium text-foreground">{character.characterName}</div>
+                          <div className="text-xs text-muted-foreground">{character.role || 'No role set'}</div>
+                          {character.draftId && (
+                            <Link
+                              to={`/drafts/${encodeURIComponent(character.draftId)}`}
+                              className="mt-1 inline-flex text-xs text-primary hover:underline"
+                            >
+                              Open linked draft
+                            </Link>
+                          )}
+                          {character.notes && (
+                            <p className="mt-2 whitespace-pre-wrap text-xs text-muted-foreground">{character.notes}</p>
+                          )}
+                        </div>
+                        {canEdit && (
+                          <div className="flex gap-2">
+                            {character.draftId && (
+                              <button
+                                type="button"
+                                onClick={() => void unlinkCharacterDraft.mutateAsync(character.id)}
+                                disabled={unlinkCharacterDraft.isPending}
+                                className="text-xs text-muted-foreground hover:underline disabled:opacity-50"
+                              >
+                                Unlink draft
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => startEditingCharacter(character)}
+                              className="text-xs text-muted-foreground hover:underline"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void deleteCharacter.mutateAsync(character.id)}
+                              className="text-xs text-destructive hover:underline"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))
+              ) : (
                 <p className="text-xs text-muted-foreground">No characters yet.</p>
               )}
             </div>
@@ -914,7 +1204,9 @@ export default function WorldDetailEditorPanel({ world, canEdit, onRefresh, onDe
                 />
                 <textarea
                   value={timelineForm.description}
-                  onChange={(event) => setTimelineForm((previous) => ({ ...previous, description: event.target.value }))}
+                  onChange={(event) =>
+                    setTimelineForm((previous) => ({ ...previous, description: event.target.value }))
+                  }
                   placeholder="Timeline description"
                   className="min-h-20 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
@@ -924,79 +1216,95 @@ export default function WorldDetailEditorPanel({ world, canEdit, onRefresh, onDe
                   disabled={!timelineForm.name.trim() || addTimeline.isPending}
                   className="inline-flex items-center gap-2 rounded-xl border border-input bg-background px-3 py-2 text-xs hover:bg-accent disabled:opacity-50"
                 >
-                  {addTimeline.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                  {addTimeline.isPending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Plus className="h-3.5 w-3.5" />
+                  )}
                   Add timeline
                 </button>
               </div>
             )}
 
             <div className="space-y-2">
-              {timelines.length > 0 ? timelines.map((timeline) => (
-                <div
-                  key={timeline.id}
-                  className={`rounded-lg border p-3 ${selectedTimelineId === timeline.id ? 'border-primary bg-primary/10' : 'border-border/60 bg-background/60'}`}
-                >
-                  {editingTimelineId === timeline.id ? (
-                    <div className="space-y-2">
-                      <input
-                        value={editingTimelineForm.name}
-                        onChange={(event) => setEditingTimelineForm((previous) => ({ ...previous, name: event.target.value }))}
-                        className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      />
-                      <textarea
-                        value={editingTimelineForm.description}
-                        onChange={(event) => setEditingTimelineForm((previous) => ({ ...previous, description: event.target.value }))}
-                        className="min-h-20 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      />
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() => void updateTimeline.mutateAsync()}
-                          disabled={!editingTimelineForm.name.trim() || updateTimeline.isPending}
-                          className="inline-flex items-center gap-1 rounded-lg border border-input bg-background px-2.5 py-1.5 text-xs hover:bg-accent disabled:opacity-50"
-                        >
-                          {updateTimeline.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-                          Save
-                        </button>
-                        <button
-                          type="button"
-                          onClick={cancelEditingTimeline}
-                          className="inline-flex items-center gap-1 rounded-lg border border-input bg-background px-2.5 py-1.5 text-xs hover:bg-accent"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-start justify-between gap-2">
-                      <button type="button" onClick={() => setSelectedTimelineId(timeline.id)} className="text-left">
-                        <div className="text-sm font-medium text-foreground">{timeline.name}</div>
-                        <div className="text-xs text-muted-foreground">{timeline.description || 'No timeline description.'}</div>
-                      </button>
-                      {canEdit && (
-                        <div className="flex gap-2">
+              {timelines.length > 0 ? (
+                timelines.map((timeline) => (
+                  <div
+                    key={timeline.id}
+                    className={`rounded-lg border p-3 ${selectedTimelineId === timeline.id ? 'border-primary bg-primary/10' : 'border-border/60 bg-background/60'}`}
+                  >
+                    {editingTimelineId === timeline.id ? (
+                      <div className="space-y-2">
+                        <input
+                          value={editingTimelineForm.name}
+                          onChange={(event) =>
+                            setEditingTimelineForm((previous) => ({ ...previous, name: event.target.value }))
+                          }
+                          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        />
+                        <textarea
+                          value={editingTimelineForm.description}
+                          onChange={(event) =>
+                            setEditingTimelineForm((previous) => ({ ...previous, description: event.target.value }))
+                          }
+                          className="min-h-20 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        />
+                        <div className="flex flex-wrap gap-2">
                           <button
                             type="button"
-                            onClick={() => startEditingTimeline(timeline)}
-                            className="text-xs text-muted-foreground hover:underline"
+                            onClick={() => void updateTimeline.mutateAsync()}
+                            disabled={!editingTimelineForm.name.trim() || updateTimeline.isPending}
+                            className="inline-flex items-center gap-1 rounded-lg border border-input bg-background px-2.5 py-1.5 text-xs hover:bg-accent disabled:opacity-50"
                           >
-                            Edit
+                            {updateTimeline.isPending ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Check className="h-3.5 w-3.5" />
+                            )}
+                            Save
                           </button>
                           <button
                             type="button"
-                            onClick={() => void deleteTimeline.mutateAsync(timeline.id)}
-                            className="text-xs text-destructive hover:underline"
+                            onClick={cancelEditingTimeline}
+                            className="inline-flex items-center gap-1 rounded-lg border border-input bg-background px-2.5 py-1.5 text-xs hover:bg-accent"
                           >
-                            Delete
+                            <X className="h-3.5 w-3.5" />
+                            Cancel
                           </button>
                         </div>
-                      )}
-                    </div>
-                  )}
-                  <div className="mt-2 text-xs text-muted-foreground">{timeline._count?.events ?? 0} events</div>
-                </div>
-              )) : (
+                      </div>
+                    ) : (
+                      <div className="flex items-start justify-between gap-2">
+                        <button type="button" onClick={() => setSelectedTimelineId(timeline.id)} className="text-left">
+                          <div className="text-sm font-medium text-foreground">{timeline.name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {timeline.description || 'No timeline description.'}
+                          </div>
+                        </button>
+                        {canEdit && (
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => startEditingTimeline(timeline)}
+                              className="text-xs text-muted-foreground hover:underline"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void deleteTimeline.mutateAsync(timeline.id)}
+                              className="text-xs text-destructive hover:underline"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    <div className="mt-2 text-xs text-muted-foreground">{timeline._count?.events ?? 0} events</div>
+                  </div>
+                ))
+              ) : (
                 <p className="text-xs text-muted-foreground">No timelines yet.</p>
               )}
             </div>
@@ -1005,7 +1313,9 @@ export default function WorldDetailEditorPanel({ world, canEdit, onRefresh, onDe
               <div className="space-y-3 rounded-lg border border-border/50 bg-background/60 p-3">
                 <div>
                   <div className="text-sm font-medium text-foreground">{selectedTimeline.name}</div>
-                  <div className="text-xs text-muted-foreground">{selectedTimeline.description || 'No description.'}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {selectedTimeline.description || 'No description.'}
+                  </div>
                 </div>
                 {canEdit && (
                   <div className="space-y-2">
@@ -1023,7 +1333,9 @@ export default function WorldDetailEditorPanel({ world, canEdit, onRefresh, onDe
                     />
                     <textarea
                       value={eventForm.description}
-                      onChange={(event) => setEventForm((previous) => ({ ...previous, description: event.target.value }))}
+                      onChange={(event) =>
+                        setEventForm((previous) => ({ ...previous, description: event.target.value }))
+                      }
                       placeholder="Event description"
                       className="min-h-20 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     />
@@ -1033,7 +1345,11 @@ export default function WorldDetailEditorPanel({ world, canEdit, onRefresh, onDe
                       disabled={!eventForm.title.trim() || addTimelineEvent.isPending}
                       className="inline-flex items-center gap-2 rounded-xl border border-input bg-background px-3 py-2 text-xs hover:bg-accent disabled:opacity-50"
                     >
-                      {addTimelineEvent.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                      {addTimelineEvent.isPending ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Plus className="h-3.5 w-3.5" />
+                      )}
                       Add event
                     </button>
                   </div>
@@ -1046,17 +1362,26 @@ export default function WorldDetailEditorPanel({ world, canEdit, onRefresh, onDe
                         <div className="space-y-2">
                           <input
                             value={editingEventForm.title}
-                            onChange={(eventChange) => setEditingEventForm((previous) => ({ ...previous, title: eventChange.target.value }))}
+                            onChange={(eventChange) =>
+                              setEditingEventForm((previous) => ({ ...previous, title: eventChange.target.value }))
+                            }
                             className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                           />
                           <input
                             value={editingEventForm.eventDate}
-                            onChange={(eventChange) => setEditingEventForm((previous) => ({ ...previous, eventDate: eventChange.target.value }))}
+                            onChange={(eventChange) =>
+                              setEditingEventForm((previous) => ({ ...previous, eventDate: eventChange.target.value }))
+                            }
                             className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                           />
                           <textarea
                             value={editingEventForm.description}
-                            onChange={(eventChange) => setEditingEventForm((previous) => ({ ...previous, description: eventChange.target.value }))}
+                            onChange={(eventChange) =>
+                              setEditingEventForm((previous) => ({
+                                ...previous,
+                                description: eventChange.target.value,
+                              }))
+                            }
                             className="min-h-20 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                           />
                           <div className="flex flex-wrap gap-2">
@@ -1066,7 +1391,11 @@ export default function WorldDetailEditorPanel({ world, canEdit, onRefresh, onDe
                               disabled={!editingEventForm.title.trim() || updateTimelineEvent.isPending}
                               className="inline-flex items-center gap-1 rounded-lg border border-input bg-background px-2.5 py-1.5 text-xs hover:bg-accent disabled:opacity-50"
                             >
-                              {updateTimelineEvent.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                              {updateTimelineEvent.isPending ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Check className="h-3.5 w-3.5" />
+                              )}
                               Save
                             </button>
                             <button
@@ -1090,7 +1419,9 @@ export default function WorldDetailEditorPanel({ world, canEdit, onRefresh, onDe
                               <div className="flex gap-2">
                                 <button
                                   type="button"
-                                  onClick={() => void reorderTimelineEvents.mutateAsync({ eventId: event.id, direction: 'up' })}
+                                  onClick={() =>
+                                    void reorderTimelineEvents.mutateAsync({ eventId: event.id, direction: 'up' })
+                                  }
                                   disabled={reorderTimelineEvents.isPending || firstTimelineEventId === event.id}
                                   className="text-xs text-muted-foreground hover:underline disabled:opacity-40"
                                 >
@@ -1098,7 +1429,9 @@ export default function WorldDetailEditorPanel({ world, canEdit, onRefresh, onDe
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={() => void reorderTimelineEvents.mutateAsync({ eventId: event.id, direction: 'down' })}
+                                  onClick={() =>
+                                    void reorderTimelineEvents.mutateAsync({ eventId: event.id, direction: 'down' })
+                                  }
                                   disabled={reorderTimelineEvents.isPending || lastTimelineEventId === event.id}
                                   className="text-xs text-muted-foreground hover:underline disabled:opacity-40"
                                 >
@@ -1121,15 +1454,243 @@ export default function WorldDetailEditorPanel({ world, canEdit, onRefresh, onDe
                               </div>
                             )}
                           </div>
-                          {event.description && <p className="mt-2 whitespace-pre-wrap text-xs text-muted-foreground">{event.description}</p>}
+                          {event.description && (
+                            <p className="mt-2 whitespace-pre-wrap text-xs text-muted-foreground">
+                              {event.description}
+                            </p>
+                          )}
                         </>
                       )}
                     </div>
                   ))}
-                  {selectedTimelineEvents.length === 0 && <p className="text-xs text-muted-foreground">No events in this timeline yet.</p>}
+                  {selectedTimelineEvents.length === 0 && (
+                    <p className="text-xs text-muted-foreground">No events in this timeline yet.</p>
+                  )}
                 </div>
               </div>
             )}
+          </div>
+        </section>
+      )}
+
+      {activeTab === 'relationships' && (
+        <section className="rounded-xl border border-border/60 bg-background p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <Users className="h-4 w-4 text-primary" />
+            <h4 className="text-sm font-semibold text-foreground">Relationships</h4>
+          </div>
+          <div className="space-y-3">
+            <RelationshipMapPlaceholder characterCount={characters.length} relationshipCount={relationships.length} />
+
+            {characters.length < 2 ? (
+              <div className="app-note p-4 text-sm text-muted-foreground">
+                Add at least two characters before creating relationships.
+              </div>
+            ) : canEdit ? (
+              <div className="space-y-2 rounded-lg border border-border/50 bg-background/60 p-3">
+                <select
+                  value={relationshipForm.sourceCharacterId}
+                  onChange={(event) =>
+                    setRelationshipForm((previous) => ({
+                      ...previous,
+                      sourceCharacterId: event.target.value,
+                      targetCharacterId:
+                        previous.targetCharacterId === event.target.value ? '' : previous.targetCharacterId,
+                    }))
+                  }
+                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value="">Source character...</option>
+                  {characters.map((character) => (
+                    <option key={`relationship-source-${character.id}`} value={character.id}>
+                      {character.characterName}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={relationshipForm.targetCharacterId}
+                  onChange={(event) =>
+                    setRelationshipForm((previous) => ({ ...previous, targetCharacterId: event.target.value }))
+                  }
+                  disabled={!relationshipForm.sourceCharacterId}
+                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                >
+                  <option value="">Target character...</option>
+                  {createRelationshipTargets.map((character) => (
+                    <option key={`relationship-target-${character.id}`} value={character.id}>
+                      {character.characterName}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  value={relationshipForm.label}
+                  onChange={(event) => setRelationshipForm((previous) => ({ ...previous, label: event.target.value }))}
+                  placeholder="Relationship label"
+                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+                <textarea
+                  value={relationshipForm.notes}
+                  onChange={(event) => setRelationshipForm((previous) => ({ ...previous, notes: event.target.value }))}
+                  placeholder="Relationship notes"
+                  className="min-h-20 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+                <button
+                  type="button"
+                  onClick={() => void addRelationship.mutateAsync()}
+                  disabled={
+                    !relationshipForm.sourceCharacterId ||
+                    !relationshipForm.targetCharacterId ||
+                    !relationshipForm.label.trim() ||
+                    addRelationship.isPending
+                  }
+                  className="inline-flex items-center gap-2 rounded-xl border border-input bg-background px-3 py-2 text-xs hover:bg-accent disabled:opacity-50"
+                >
+                  {addRelationship.isPending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Plus className="h-3.5 w-3.5" />
+                  )}
+                  Add relationship
+                </button>
+              </div>
+            ) : null}
+
+            <div className="space-y-2">
+              {relationships.length > 0 ? (
+                relationships.map((relationship) => {
+                  const sourceCharacterName =
+                    characters.find((character) => character.id === relationship.sourceCharacterId)?.characterName ??
+                    relationship.sourceCharacterId;
+                  const targetCharacterName =
+                    characters.find((character) => character.id === relationship.targetCharacterId)?.characterName ??
+                    relationship.targetCharacterId;
+
+                  return (
+                    <div key={relationship.id} className="rounded-lg border border-border/60 bg-background p-3 text-sm">
+                      {editingRelationshipId === relationship.id ? (
+                        <div className="space-y-2">
+                          <select
+                            value={editingRelationshipForm.sourceCharacterId}
+                            onChange={(event) =>
+                              setEditingRelationshipForm((previous) => ({
+                                ...previous,
+                                sourceCharacterId: event.target.value,
+                                targetCharacterId:
+                                  previous.targetCharacterId === event.target.value ? '' : previous.targetCharacterId,
+                              }))
+                            }
+                            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          >
+                            <option value="">Source character...</option>
+                            {characters.map((character) => (
+                              <option key={`relationship-edit-source-${character.id}`} value={character.id}>
+                                {character.characterName}
+                              </option>
+                            ))}
+                          </select>
+                          <select
+                            value={editingRelationshipForm.targetCharacterId}
+                            onChange={(event) =>
+                              setEditingRelationshipForm((previous) => ({
+                                ...previous,
+                                targetCharacterId: event.target.value,
+                              }))
+                            }
+                            disabled={!editingRelationshipForm.sourceCharacterId}
+                            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                          >
+                            <option value="">Target character...</option>
+                            {editingRelationshipTargets.map((character) => (
+                              <option key={`relationship-edit-target-${character.id}`} value={character.id}>
+                                {character.characterName}
+                              </option>
+                            ))}
+                          </select>
+                          <input
+                            value={editingRelationshipForm.label}
+                            onChange={(event) =>
+                              setEditingRelationshipForm((previous) => ({ ...previous, label: event.target.value }))
+                            }
+                            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          />
+                          <textarea
+                            value={editingRelationshipForm.notes}
+                            onChange={(event) =>
+                              setEditingRelationshipForm((previous) => ({ ...previous, notes: event.target.value }))
+                            }
+                            className="min-h-20 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          />
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => void updateRelationship.mutateAsync()}
+                              disabled={
+                                !editingRelationshipForm.sourceCharacterId ||
+                                !editingRelationshipForm.targetCharacterId ||
+                                !editingRelationshipForm.label.trim() ||
+                                updateRelationship.isPending
+                              }
+                              className="inline-flex items-center gap-1 rounded-lg border border-input bg-background px-2.5 py-1.5 text-xs hover:bg-accent disabled:opacity-50"
+                            >
+                              {updateRelationship.isPending ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Check className="h-3.5 w-3.5" />
+                              )}
+                              Save
+                            </button>
+                            <button
+                              type="button"
+                              onClick={cancelEditingRelationship}
+                              className="inline-flex items-center gap-1 rounded-lg border border-input bg-background px-2.5 py-1.5 text-xs hover:bg-accent"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <div className="font-medium text-foreground">
+                              {sourceCharacterName}
+                              {' -> '}
+                              {targetCharacterName}
+                            </div>
+                            <div className="text-xs text-muted-foreground">{relationship.label}</div>
+                            {relationship.notes && (
+                              <p className="mt-2 whitespace-pre-wrap text-xs text-muted-foreground">
+                                {relationship.notes}
+                              </p>
+                            )}
+                          </div>
+                          {canEdit && (
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => startEditingRelationship(relationship)}
+                                className="text-xs text-muted-foreground hover:underline"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void deleteRelationship.mutateAsync(relationship.id)}
+                                className="text-xs text-destructive hover:underline"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              ) : (
+                <p className="text-xs text-muted-foreground">No relationships yet.</p>
+              )}
+            </div>
           </div>
         </section>
       )}
@@ -1161,86 +1722,228 @@ export default function WorldDetailEditorPanel({ world, canEdit, onRefresh, onDe
                   placeholder="Faction description"
                   className="min-h-20 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
+                <div className="space-y-2 rounded-lg border border-border/50 bg-background/40 p-3">
+                  <div>
+                    <div className="text-xs font-medium text-foreground">Linked drafts</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      Attach supporting draft continuity to this faction.
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <select
+                      value={pendingFactionDraftId}
+                      onChange={(event) => setPendingFactionDraftId(event.target.value)}
+                      className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <option value="">Add a saved draft...</option>
+                      {draftOptions
+                        .filter((draft) => !factionForm.draftIds.includes(draft.review_id))
+                        .map((draft) => (
+                          <option key={`faction-create-${draft.review_id}`} value={draft.review_id}>
+                            {draft.character_name || draft.seed}
+                          </option>
+                        ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => addFactionDraftLink(pendingFactionDraftId)}
+                      disabled={!pendingFactionDraftId}
+                      className="inline-flex items-center justify-center gap-2 rounded-lg border border-input bg-background px-3 py-2 text-xs hover:bg-accent disabled:opacity-50"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      Add draft
+                    </button>
+                  </div>
+                  {factionForm.draftIds.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {factionForm.draftIds.map((draftId) => (
+                        <span
+                          key={`faction-create-chip-${draftId}`}
+                          className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background px-2.5 py-1 text-xs text-foreground"
+                        >
+                          {draftNameById.get(draftId) ?? draftId}
+                          <button
+                            type="button"
+                            onClick={() => removeFactionDraftLink(draftId)}
+                            className="text-muted-foreground hover:text-foreground"
+                            aria-label="Remove linked draft"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground">No linked drafts yet.</p>
+                  )}
+                </div>
                 <button
                   type="button"
                   onClick={() => void addFaction.mutateAsync()}
                   disabled={!factionForm.name.trim() || addFaction.isPending}
                   className="inline-flex items-center gap-2 rounded-xl border border-input bg-background px-3 py-2 text-xs hover:bg-accent disabled:opacity-50"
                 >
-                  {addFaction.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                  {addFaction.isPending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Plus className="h-3.5 w-3.5" />
+                  )}
                   Add faction
                 </button>
               </div>
             )}
 
             <div className="space-y-2">
-              {factions.length > 0 ? factions.map((faction) => (
-                <div key={faction.id} className="rounded-lg border border-border/60 bg-background p-3 text-sm">
-                  {editingFactionId === faction.id ? (
-                    <div className="space-y-2">
-                      <input
-                        value={editingFactionForm.name}
-                        onChange={(event) => setEditingFactionForm((previous) => ({ ...previous, name: event.target.value }))}
-                        className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      />
-                      <input
-                        value={editingFactionForm.role}
-                        onChange={(event) => setEditingFactionForm((previous) => ({ ...previous, role: event.target.value }))}
-                        className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      />
-                      <textarea
-                        value={editingFactionForm.description}
-                        onChange={(event) => setEditingFactionForm((previous) => ({ ...previous, description: event.target.value }))}
-                        className="min-h-20 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      />
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() => void updateFaction.mutateAsync()}
-                          disabled={!editingFactionForm.name.trim() || updateFaction.isPending}
-                          className="inline-flex items-center gap-1 rounded-lg border border-input bg-background px-2.5 py-1.5 text-xs hover:bg-accent disabled:opacity-50"
-                        >
-                          {updateFaction.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-                          Save
-                        </button>
-                        <button
-                          type="button"
-                          onClick={cancelEditingFaction}
-                          className="inline-flex items-center gap-1 rounded-lg border border-input bg-background px-2.5 py-1.5 text-xs hover:bg-accent"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <div className="font-medium text-foreground">{faction.name}</div>
-                        <div className="text-xs text-muted-foreground">{faction.role || faction.description || 'No faction summary set'}</div>
-                      </div>
-                      {canEdit && (
-                        <div className="flex gap-2">
+              {factions.length > 0 ? (
+                factions.map((faction) => (
+                  <div key={faction.id} className="rounded-lg border border-border/60 bg-background p-3 text-sm">
+                    {editingFactionId === faction.id ? (
+                      <div className="space-y-2">
+                        <input
+                          value={editingFactionForm.name}
+                          onChange={(event) =>
+                            setEditingFactionForm((previous) => ({ ...previous, name: event.target.value }))
+                          }
+                          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        />
+                        <input
+                          value={editingFactionForm.role}
+                          onChange={(event) =>
+                            setEditingFactionForm((previous) => ({ ...previous, role: event.target.value }))
+                          }
+                          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        />
+                        <textarea
+                          value={editingFactionForm.description}
+                          onChange={(event) =>
+                            setEditingFactionForm((previous) => ({ ...previous, description: event.target.value }))
+                          }
+                          className="min-h-20 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        />
+                        <div className="space-y-2 rounded-lg border border-border/50 bg-background/40 p-3">
+                          <div>
+                            <div className="text-xs font-medium text-foreground">Linked drafts</div>
+                            <div className="text-[11px] text-muted-foreground">
+                              Curate which drafts support this faction entry.
+                            </div>
+                          </div>
+                          <div className="flex flex-col gap-2 sm:flex-row">
+                            <select
+                              value={editingFactionPendingDraftId}
+                              onChange={(event) => setEditingFactionPendingDraftId(event.target.value)}
+                              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            >
+                              <option value="">Add a saved draft...</option>
+                              {draftOptions
+                                .filter((draft) => !editingFactionForm.draftIds.includes(draft.review_id))
+                                .map((draft) => (
+                                  <option key={`faction-edit-${draft.review_id}`} value={draft.review_id}>
+                                    {draft.character_name || draft.seed}
+                                  </option>
+                                ))}
+                            </select>
+                            <button
+                              type="button"
+                              onClick={() => addFactionDraftLink(editingFactionPendingDraftId, true)}
+                              disabled={!editingFactionPendingDraftId}
+                              className="inline-flex items-center justify-center gap-2 rounded-lg border border-input bg-background px-3 py-2 text-xs hover:bg-accent disabled:opacity-50"
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                              Add draft
+                            </button>
+                          </div>
+                          {editingFactionForm.draftIds.length > 0 ? (
+                            <div className="flex flex-wrap gap-2">
+                              {editingFactionForm.draftIds.map((draftId) => (
+                                <span
+                                  key={`faction-edit-chip-${draftId}`}
+                                  className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background px-2.5 py-1 text-xs text-foreground"
+                                >
+                                  {draftNameById.get(draftId) ?? draftId}
+                                  <button
+                                    type="button"
+                                    onClick={() => removeFactionDraftLink(draftId, true)}
+                                    className="text-muted-foreground hover:text-foreground"
+                                    aria-label="Remove linked draft"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-[11px] text-muted-foreground">No linked drafts yet.</p>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-2">
                           <button
                             type="button"
-                            onClick={() => startEditingFaction(faction)}
-                            className="text-xs text-muted-foreground hover:underline"
+                            onClick={() => void updateFaction.mutateAsync()}
+                            disabled={!editingFactionForm.name.trim() || updateFaction.isPending}
+                            className="inline-flex items-center gap-1 rounded-lg border border-input bg-background px-2.5 py-1.5 text-xs hover:bg-accent disabled:opacity-50"
                           >
-                            Edit
+                            {updateFaction.isPending ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Check className="h-3.5 w-3.5" />
+                            )}
+                            Save
                           </button>
                           <button
                             type="button"
-                            onClick={() => void deleteFaction.mutateAsync(faction.id)}
-                            className="text-xs text-destructive hover:underline"
+                            onClick={cancelEditingFaction}
+                            className="inline-flex items-center gap-1 rounded-lg border border-input bg-background px-2.5 py-1.5 text-xs hover:bg-accent"
                           >
-                            Delete
+                            <X className="h-3.5 w-3.5" />
+                            Cancel
                           </button>
                         </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )) : (
+                      </div>
+                    ) : (
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="font-medium text-foreground">{faction.name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {faction.role || faction.description || 'No faction summary set'}
+                          </div>
+                          {faction.draftIds?.length ? (
+                            <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
+                              <span className="font-medium uppercase tracking-[0.14em]">Linked drafts</span>
+                              {faction.draftIds.map((draftId) => (
+                                <Link
+                                  key={`${faction.id}-${draftId}`}
+                                  to={`/drafts/${encodeURIComponent(draftId)}`}
+                                  className="rounded-full border border-border/60 bg-background/70 px-2 py-0.5 text-[10px] text-foreground hover:border-primary/40 hover:text-primary"
+                                >
+                                  {draftNameById.get(draftId) ?? draftId}
+                                </Link>
+                              ))}
+                            </div>
+                          ) : null}
+                        </div>
+                        {canEdit && (
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => startEditingFaction(faction)}
+                              className="text-xs text-muted-foreground hover:underline"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void deleteFaction.mutateAsync(faction.id)}
+                              className="text-xs text-destructive hover:underline"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))
+              ) : (
                 <p className="text-xs text-muted-foreground">No factions yet.</p>
               )}
             </div>
@@ -1271,90 +1974,234 @@ export default function WorldDetailEditorPanel({ world, canEdit, onRefresh, onDe
                 />
                 <textarea
                   value={locationForm.description}
-                  onChange={(event) => setLocationForm((previous) => ({ ...previous, description: event.target.value }))}
+                  onChange={(event) =>
+                    setLocationForm((previous) => ({ ...previous, description: event.target.value }))
+                  }
                   placeholder="Location description"
                   className="min-h-20 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
+                <div className="space-y-2 rounded-lg border border-border/50 bg-background/40 p-3">
+                  <div>
+                    <div className="text-xs font-medium text-foreground">Linked drafts</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      Attach supporting draft continuity to this location.
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <select
+                      value={pendingLocationDraftId}
+                      onChange={(event) => setPendingLocationDraftId(event.target.value)}
+                      className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <option value="">Add a saved draft...</option>
+                      {draftOptions
+                        .filter((draft) => !locationForm.draftIds.includes(draft.review_id))
+                        .map((draft) => (
+                          <option key={`location-create-${draft.review_id}`} value={draft.review_id}>
+                            {draft.character_name || draft.seed}
+                          </option>
+                        ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => addLocationDraftLink(pendingLocationDraftId)}
+                      disabled={!pendingLocationDraftId}
+                      className="inline-flex items-center justify-center gap-2 rounded-lg border border-input bg-background px-3 py-2 text-xs hover:bg-accent disabled:opacity-50"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      Add draft
+                    </button>
+                  </div>
+                  {locationForm.draftIds.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {locationForm.draftIds.map((draftId) => (
+                        <span
+                          key={`location-create-chip-${draftId}`}
+                          className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background px-2.5 py-1 text-xs text-foreground"
+                        >
+                          {draftNameById.get(draftId) ?? draftId}
+                          <button
+                            type="button"
+                            onClick={() => removeLocationDraftLink(draftId)}
+                            className="text-muted-foreground hover:text-foreground"
+                            aria-label="Remove linked draft"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground">No linked drafts yet.</p>
+                  )}
+                </div>
                 <button
                   type="button"
                   onClick={() => void addLocation.mutateAsync()}
                   disabled={!locationForm.name.trim() || addLocation.isPending}
                   className="inline-flex items-center gap-2 rounded-xl border border-input bg-background px-3 py-2 text-xs hover:bg-accent disabled:opacity-50"
                 >
-                  {addLocation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                  {addLocation.isPending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Plus className="h-3.5 w-3.5" />
+                  )}
                   Add location
                 </button>
               </div>
             )}
 
             <div className="space-y-2">
-              {locations.length > 0 ? locations.map((location) => (
-                <div key={location.id} className="rounded-lg border border-border/60 bg-background p-3 text-sm">
-                  {editingLocationId === location.id ? (
-                    <div className="space-y-2">
-                      <input
-                        value={editingLocationForm.name}
-                        onChange={(event) => setEditingLocationForm((previous) => ({ ...previous, name: event.target.value }))}
-                        className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      />
-                      <input
-                        value={editingLocationForm.category}
-                        onChange={(event) => setEditingLocationForm((previous) => ({ ...previous, category: event.target.value }))}
-                        className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      />
-                      <textarea
-                        value={editingLocationForm.description}
-                        onChange={(event) => setEditingLocationForm((previous) => ({ ...previous, description: event.target.value }))}
-                        className="min-h-20 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      />
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() => void updateLocation.mutateAsync()}
-                          disabled={!editingLocationForm.name.trim() || updateLocation.isPending}
-                          className="inline-flex items-center gap-1 rounded-lg border border-input bg-background px-2.5 py-1.5 text-xs hover:bg-accent disabled:opacity-50"
-                        >
-                          {updateLocation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-                          Save
-                        </button>
-                        <button
-                          type="button"
-                          onClick={cancelEditingLocation}
-                          className="inline-flex items-center gap-1 rounded-lg border border-input bg-background px-2.5 py-1.5 text-xs hover:bg-accent"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <div className="font-medium text-foreground">{location.name}</div>
-                        <div className="text-xs text-muted-foreground">{location.category || location.description || 'No location summary set'}</div>
-                      </div>
-                      {canEdit && (
-                        <div className="flex gap-2">
+              {locations.length > 0 ? (
+                locations.map((location) => (
+                  <div key={location.id} className="rounded-lg border border-border/60 bg-background p-3 text-sm">
+                    {editingLocationId === location.id ? (
+                      <div className="space-y-2">
+                        <input
+                          value={editingLocationForm.name}
+                          onChange={(event) =>
+                            setEditingLocationForm((previous) => ({ ...previous, name: event.target.value }))
+                          }
+                          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        />
+                        <input
+                          value={editingLocationForm.category}
+                          onChange={(event) =>
+                            setEditingLocationForm((previous) => ({ ...previous, category: event.target.value }))
+                          }
+                          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        />
+                        <textarea
+                          value={editingLocationForm.description}
+                          onChange={(event) =>
+                            setEditingLocationForm((previous) => ({ ...previous, description: event.target.value }))
+                          }
+                          className="min-h-20 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        />
+                        <div className="space-y-2 rounded-lg border border-border/50 bg-background/40 p-3">
+                          <div>
+                            <div className="text-xs font-medium text-foreground">Linked drafts</div>
+                            <div className="text-[11px] text-muted-foreground">
+                              Curate which drafts support this location entry.
+                            </div>
+                          </div>
+                          <div className="flex flex-col gap-2 sm:flex-row">
+                            <select
+                              value={editingLocationPendingDraftId}
+                              onChange={(event) => setEditingLocationPendingDraftId(event.target.value)}
+                              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            >
+                              <option value="">Add a saved draft...</option>
+                              {draftOptions
+                                .filter((draft) => !editingLocationForm.draftIds.includes(draft.review_id))
+                                .map((draft) => (
+                                  <option key={`location-edit-${draft.review_id}`} value={draft.review_id}>
+                                    {draft.character_name || draft.seed}
+                                  </option>
+                                ))}
+                            </select>
+                            <button
+                              type="button"
+                              onClick={() => addLocationDraftLink(editingLocationPendingDraftId, true)}
+                              disabled={!editingLocationPendingDraftId}
+                              className="inline-flex items-center justify-center gap-2 rounded-lg border border-input bg-background px-3 py-2 text-xs hover:bg-accent disabled:opacity-50"
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                              Add draft
+                            </button>
+                          </div>
+                          {editingLocationForm.draftIds.length > 0 ? (
+                            <div className="flex flex-wrap gap-2">
+                              {editingLocationForm.draftIds.map((draftId) => (
+                                <span
+                                  key={`location-edit-chip-${draftId}`}
+                                  className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background px-2.5 py-1 text-xs text-foreground"
+                                >
+                                  {draftNameById.get(draftId) ?? draftId}
+                                  <button
+                                    type="button"
+                                    onClick={() => removeLocationDraftLink(draftId, true)}
+                                    className="text-muted-foreground hover:text-foreground"
+                                    aria-label="Remove linked draft"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-[11px] text-muted-foreground">No linked drafts yet.</p>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-2">
                           <button
                             type="button"
-                            onClick={() => startEditingLocation(location)}
-                            className="text-xs text-muted-foreground hover:underline"
+                            onClick={() => void updateLocation.mutateAsync()}
+                            disabled={!editingLocationForm.name.trim() || updateLocation.isPending}
+                            className="inline-flex items-center gap-1 rounded-lg border border-input bg-background px-2.5 py-1.5 text-xs hover:bg-accent disabled:opacity-50"
                           >
-                            Edit
+                            {updateLocation.isPending ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Check className="h-3.5 w-3.5" />
+                            )}
+                            Save
                           </button>
                           <button
                             type="button"
-                            onClick={() => void deleteLocation.mutateAsync(location.id)}
-                            className="text-xs text-destructive hover:underline"
+                            onClick={cancelEditingLocation}
+                            className="inline-flex items-center gap-1 rounded-lg border border-input bg-background px-2.5 py-1.5 text-xs hover:bg-accent"
                           >
-                            Delete
+                            <X className="h-3.5 w-3.5" />
+                            Cancel
                           </button>
                         </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )) : (
+                      </div>
+                    ) : (
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="font-medium text-foreground">{location.name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {location.category || location.description || 'No location summary set'}
+                          </div>
+                          {location.draftIds?.length ? (
+                            <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
+                              <span className="font-medium uppercase tracking-[0.14em]">Linked drafts</span>
+                              {location.draftIds.map((draftId) => (
+                                <Link
+                                  key={`${location.id}-${draftId}`}
+                                  to={`/drafts/${encodeURIComponent(draftId)}`}
+                                  className="rounded-full border border-border/60 bg-background/70 px-2 py-0.5 text-[10px] text-foreground hover:border-primary/40 hover:text-primary"
+                                >
+                                  {draftNameById.get(draftId) ?? draftId}
+                                </Link>
+                              ))}
+                            </div>
+                          ) : null}
+                        </div>
+                        {canEdit && (
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => startEditingLocation(location)}
+                              className="text-xs text-muted-foreground hover:underline"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void deleteLocation.mutateAsync(location.id)}
+                              className="text-xs text-destructive hover:underline"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))
+              ) : (
                 <p className="text-xs text-muted-foreground">No locations yet.</p>
               )}
             </div>

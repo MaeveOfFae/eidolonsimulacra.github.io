@@ -2,15 +2,7 @@
  * LLM engine types for the Eidolon Simulacra client.
  */
 
-export type LLMProvider =
-  | 'openai'
-  | 'google'
-  | 'openrouter'
-  | 'anthropic'
-  | 'deepseek'
-  | 'zai'
-  | 'moonshot'
-  | 'ollama';
+export type LLMProvider = 'openai' | 'google' | 'openrouter' | 'anthropic' | 'deepseek' | 'zai' | 'moonshot' | 'ollama';
 
 export type LLMEngineMode = 'auto' | 'explicit';
 
@@ -73,18 +65,12 @@ export interface LLMEngine {
   /**
    * Generate a completion (non-streaming)
    */
-  generate(
-    messages: LLMChatMessage[],
-    options?: GenerateOptions
-  ): Promise<GenerateResult>;
+  generate(messages: LLMChatMessage[], options?: GenerateOptions): Promise<GenerateResult>;
 
   /**
    * Generate a completion with streaming
    */
-  generateStream(
-    messages: LLMChatMessage[],
-    options?: StreamGenerateOptions
-  ): AsyncIterable<StreamChunk>;
+  generateStream(messages: LLMChatMessage[], options?: StreamGenerateOptions): AsyncIterable<StreamChunk>;
 
   /**
    * Test connection to LLM provider

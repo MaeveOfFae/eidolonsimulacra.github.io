@@ -3,7 +3,6 @@ import { CheckCircle2, Circle, Loader2, XCircle, FileText, Clock, RotateCcw, Sav
 import type { GenerationComplete, ImportedCharacter, Template } from '@char-gen/shared';
 import { GenerationService } from '../../lib/services/generation.js';
 import { configManager } from '../../lib/config/manager.js';
-import { queueAutoSync } from '../../lib/server/auto-sync.js';
 import {
   clearActiveGenerationSession,
   loadActiveGenerationSession,
@@ -93,10 +92,11 @@ export default function GenerationProgress({
   importedCharacterTemplateName = null,
   templates,
   onComplete,
-  onError,
   onCancel,
 }: GenerationProgressProps) {
-  const [status, setStatus] = useState<'initializing' | 'generating' | 'reviewing' | 'saving' | 'complete' | 'error'>('initializing');
+  const [status, setStatus] = useState<'initializing' | 'generating' | 'reviewing' | 'saving' | 'complete' | 'error'>(
+    'initializing',
+  );
   const [currentAsset, setCurrentAsset] = useState<string | null>(null);
   const [assets, setAssets] = useState<AssetProgress[]>([]);
   const [assetDrafts, setAssetDrafts] = useState<Record<string, string>>({});
@@ -111,12 +111,9 @@ export default function GenerationProgress({
 
   const selectedTemplate = useMemo(
     () => templates.find((candidate) => candidate.name === template),
-    [template, templates]
+    [template, templates],
   );
-  const referenceDraftIds = useMemo(
-    () => normalizeConnectedReferenceIds(connectedDraftIds),
-    [connectedDraftIds]
-  );
+  const referenceDraftIds = useMemo(() => normalizeConnectedReferenceIds(connectedDraftIds), [connectedDraftIds]);
   const importedCharacterSnapshot = useMemo<ImportedCharacterSnapshot | undefined>(() => {
     if (!importedCharacter) {
       return undefined;
@@ -127,7 +124,9 @@ export default function GenerationProgress({
       sourceFormat: importedCharacter.sourceFormat,
       ...(importedCharacter.sourcePreset ? { sourcePreset: importedCharacter.sourcePreset } : {}),
       ...(importedCharacterTemplateName ? { templateName: importedCharacterTemplateName } : {}),
-      assets: Object.fromEntries(Object.entries(importedCharacter.assets).sort(([left], [right]) => left.localeCompare(right))),
+      assets: Object.fromEntries(
+        Object.entries(importedCharacter.assets).sort(([left], [right]) => left.localeCompare(right)),
+      ),
     };
   }, [importedCharacter, importedCharacterTemplateName]);
   const importedSourceContext = useMemo(() => {
@@ -152,9 +151,7 @@ export default function GenerationProgress({
     const assetsByName = new Map(selectedTemplate.assets.map((asset) => [asset.name, asset] as const));
 
     // Required assets are always active.
-    selectedTemplate.assets
-      .filter((asset) => asset.required)
-      .forEach((asset) => selectedSet.add(asset.name));
+    selectedTemplate.assets.filter((asset) => asset.required).forEach((asset) => selectedSet.add(asset.name));
 
     // Ensure dependency closure for any selected asset.
     const visited = new Set<string>();
@@ -181,151 +178,163 @@ export default function GenerationProgress({
   }, [assetOrder, selectedAssets, selectedTemplate]);
 
   const updateAssetStatus = useCallback((assetName: string, nextStatus: AssetProgress['status'], content?: string) => {
-    setAssets((previous) => previous.map((asset) => (
-      asset.name === assetName
-        ? { ...asset, status: nextStatus, content: content ?? asset.content }
-        : asset
-    )));
+    setAssets((previous) =>
+      previous.map((asset) =>
+        asset.name === assetName ? { ...asset, status: nextStatus, content: content ?? asset.content } : asset,
+      ),
+    );
   }, []);
 
-  const getApprovedAssets = useCallback((upToIndex: number, currentOverride?: { name: string; content: string }) => {
-    const approved: Record<string, string> = {};
-    for (let index = 0; index < upToIndex; index += 1) {
-      const assetName = activeAssetOrder[index];
-      const content = assetDrafts[assetName];
-      if (content) {
-        approved[assetName] = content;
+  const getApprovedAssets = useCallback(
+    (upToIndex: number, currentOverride?: { name: string; content: string }) => {
+      const approved: Record<string, string> = {};
+      for (let index = 0; index < upToIndex; index += 1) {
+        const assetName = activeAssetOrder[index];
+        const content = assetDrafts[assetName];
+        if (content) {
+          approved[assetName] = content;
+        }
       }
-    }
-    if (currentOverride) {
-      approved[currentOverride.name] = currentOverride.content;
-    }
-    return approved;
-  }, [activeAssetOrder, assetDrafts]);
-
-  const loadConnectedReferenceSuites = useCallback(
-    async () => loadReferenceSuites(referenceDraftIds, {
-      resolveTemplate: (templateName) => templateName
-        ? templates.find((candidate) => candidate.name === templateName)
-        : undefined,
-    }),
-    [referenceDraftIds, templates]
+      if (currentOverride) {
+        approved[currentOverride.name] = currentOverride.content;
+      }
+      return approved;
+    },
+    [activeAssetOrder, assetDrafts],
   );
 
-  const generateAsset = useCallback(async (assetIndex: number, approvedAssets: Record<string, string>) => {
-    const assetName = activeAssetOrder[assetIndex];
-    if (!assetName) {
-      return;
-    }
+  const loadConnectedReferenceSuites = useCallback(
+    async () =>
+      loadReferenceSuites(referenceDraftIds, {
+        resolveTemplate: (templateName) =>
+          templateName ? templates.find((candidate) => candidate.name === templateName) : undefined,
+      }),
+    [referenceDraftIds, templates],
+  );
 
-    abortControllerRef.current?.abort();
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
+  const generateAsset = useCallback(
+    async (assetIndex: number, approvedAssets: Record<string, string>) => {
+      const assetName = activeAssetOrder[assetIndex];
+      if (!assetName) {
+        return;
+      }
 
-    setStatus('generating');
-    setCurrentAsset(assetName);
-    setEditorContent('');
-    setError(null);
-    updateAssetStatus(assetName, 'generating');
+      abortControllerRef.current?.abort();
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
 
-    let fullContent = '';
+      setStatus('generating');
+      setCurrentAsset(assetName);
+      setEditorContent('');
+      setError(null);
+      updateAssetStatus(assetName, 'generating');
 
-    try {
-      // Use client-side GenerationService for single asset generation
-      const referenceSuites = await loadConnectedReferenceSuites();
+      let fullContent = '';
 
-      for await (const progress of GenerationService.generateAsset({
-        seed,
-        mode: mode as 'SFW' | 'NSFW' | 'Platform-Safe',
-        template,
-        asset_name: assetName,
-        prior_assets: approvedAssets,
-        reference_suites: referenceSuites,
-        imported_source: importedSourceContext,
-      }, true, { signal: controller.signal })) {
+      try {
+        // Use client-side GenerationService for single asset generation
+        const referenceSuites = await loadConnectedReferenceSuites();
+
+        for await (const progress of GenerationService.generateAsset(
+          {
+            seed,
+            mode: mode as 'SFW' | 'NSFW' | 'Platform-Safe',
+            template,
+            asset_name: assetName,
+            prior_assets: approvedAssets,
+            reference_suites: referenceSuites,
+            imported_source: importedSourceContext,
+          },
+          true,
+          { signal: controller.signal },
+        )) {
+          if (controller.signal.aborted) {
+            return;
+          }
+
+          if (progress.type === 'chunk' && progress.content) {
+            fullContent += progress.content;
+            setEditorContent(fullContent);
+            setStatus('generating');
+          } else if (progress.type === 'asset' && progress.content) {
+            fullContent = progress.content;
+            setEditorContent(fullContent);
+            updateAssetStatus(assetName, 'reviewing', fullContent);
+            setStatus('reviewing');
+            return;
+          } else if (progress.type === 'error') {
+            throw new Error(progress.error || 'Asset generation failed');
+          }
+        }
+
+        if (!fullContent) {
+          throw new Error('No content generated');
+        }
+
+        updateAssetStatus(assetName, 'reviewing', fullContent);
+        setStatus('reviewing');
+      } catch (generationError) {
         if (controller.signal.aborted) {
           return;
         }
-
-        if (progress.type === 'chunk' && progress.content) {
-          fullContent += progress.content;
-          setEditorContent(fullContent);
-          setStatus('generating');
-        } else if (progress.type === 'asset' && progress.content) {
-          fullContent = progress.content;
-          setEditorContent(fullContent);
-          updateAssetStatus(assetName, 'reviewing', fullContent);
-          setStatus('reviewing');
-          return;
-        } else if (progress.type === 'error') {
-          throw new Error(progress.error || 'Asset generation failed');
-        }
+        const message = generationError instanceof Error ? generationError.message : 'Asset generation failed';
+        setError(message);
+        updateAssetStatus(assetName, 'error', fullContent || undefined);
+        setEditorContent(fullContent);
+        setStatus('reviewing');
       }
+    },
+    [activeAssetOrder, importedSourceContext, loadConnectedReferenceSuites, mode, seed, template, updateAssetStatus],
+  );
 
-      if (!fullContent) {
-        throw new Error('No content generated');
-      }
+  const saveApprovedDraft = useCallback(
+    async (approvedAssets: Record<string, string>) => {
+      abortControllerRef.current?.abort();
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+      setStatus('saving');
 
-      updateAssetStatus(assetName, 'reviewing', fullContent);
-      setStatus('reviewing');
-    } catch (generationError) {
-      if (controller.signal.aborted) {
-        return;
-      }
-      const message = generationError instanceof Error ? generationError.message : 'Asset generation failed';
-      setError(message);
-      updateAssetStatus(assetName, 'error', fullContent || undefined);
-      setEditorContent(fullContent);
-      setStatus('reviewing');
-    }
-  }, [activeAssetOrder, importedSourceContext, loadConnectedReferenceSuites, mode, seed, template, updateAssetStatus]);
+      try {
+        const { DraftStorage } = await import('../../lib/storage/draft-db.js');
+        const reviewId = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        const nextCharacterName = inferCharacterDisplayNameForTemplate(approvedAssets, template);
 
-  const saveApprovedDraft = useCallback(async (approvedAssets: Record<string, string>) => {
-    abortControllerRef.current?.abort();
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-    setStatus('saving');
+        const draft = {
+          path: reviewId,
+          metadata: {
+            review_id: reviewId,
+            seed,
+            mode: mode as 'SFW' | 'NSFW' | 'Platform-Safe',
+            model: configManager.getConfig().model,
+            created: new Date().toISOString(),
+            modified: new Date().toISOString(),
+            favorite: false,
+            template_name: template,
+            character_name: nextCharacterName,
+            connected_drafts: referenceDraftIds.length > 0 ? referenceDraftIds : undefined,
+          },
+          assets: approvedAssets,
+        };
 
-    try {
-      const { DraftStorage } = await import('../../lib/storage/draft-db.js');
-      const reviewId = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-      const nextCharacterName = inferCharacterDisplayNameForTemplate(approvedAssets, template);
+        await DraftStorage.saveDraft(draft);
 
-      const draft = {
-        path: reviewId,
-        metadata: {
-          review_id: reviewId,
-          seed,
-          mode: mode as 'SFW' | 'NSFW' | 'Platform-Safe',
-          model: configManager.getConfig().model,
-          created: new Date().toISOString(),
-          modified: new Date().toISOString(),
-          favorite: false,
-          template_name: template,
+        clearActiveGenerationSession();
+        setCharacterName(nextCharacterName ?? null);
+        setStatus('complete');
+        onComplete({
+          draft_path: reviewId,
+          draft_id: reviewId,
           character_name: nextCharacterName,
-          connected_drafts: referenceDraftIds.length > 0 ? referenceDraftIds : undefined,
-        },
-        assets: approvedAssets,
-      };
-
-      await DraftStorage.saveDraft(draft);
-      queueAutoSync('drafts');
-
-      clearActiveGenerationSession();
-      setCharacterName(nextCharacterName ?? null);
-      setStatus('complete');
-      onComplete({
-        draft_path: reviewId,
-        draft_id: reviewId,
-        character_name: nextCharacterName,
-        duration_ms: Date.now() - startTime,
-      });
-    } catch (saveError) {
-      const message = saveError instanceof Error ? saveError.message : 'Unknown storage error';
-      setError(`Failed to save draft: ${message}`);
-      setStatus('reviewing');
-    }
-  }, [mode, onComplete, referenceDraftIds, seed, startTime, template]);
+          duration_ms: Date.now() - startTime,
+        });
+      } catch (saveError) {
+        const message = saveError instanceof Error ? saveError.message : 'Unknown storage error';
+        setError(`Failed to save draft: ${message}`);
+        setStatus('reviewing');
+      }
+    },
+    [mode, onComplete, referenceDraftIds, seed, startTime, template],
+  );
 
   // Update elapsed time every second
   useEffect(() => {
@@ -338,7 +347,26 @@ export default function GenerationProgress({
   }, [startTime, status]);
 
   // Initialize assets from template
+  // Inline props (templates, selectedAssets, connectedDraftIds) get new identities on
+  // every parent render, so this effect fires even when nothing meaningful changed.
+  // Guard on a value signature so a re-run cannot reset state and loop forever.
+  const initializationSignature = JSON.stringify({
+    order: activeAssetOrder,
+    seed,
+    mode,
+    template,
+    references: referenceDraftIds,
+    importedCharacter: importedCharacterSnapshot ?? null,
+  });
+  const appliedInitializationRef = useRef<string | null>(null);
+
   useEffect(() => {
+    if (appliedInitializationRef.current === initializationSignature) {
+      return;
+    }
+
+    appliedInitializationRef.current = initializationSignature;
+
     if (activeAssetOrder.length === 0) {
       setAssets([]);
       setResumeAction({ type: 'idle' });
@@ -346,16 +374,17 @@ export default function GenerationProgress({
     }
 
     const storedSession = restoredSessionRef.current;
-    const canResume = storedSession
-      && matchesActiveGenerationSession(storedSession, {
+    const canResume =
+      storedSession &&
+      matchesActiveGenerationSession(storedSession, {
         seed,
         mode,
         template,
         selectedAssets: activeAssetOrder,
         connectedDraftIds: referenceDraftIds,
         importedCharacter: importedCharacterSnapshot,
-      })
-      && Object.keys(storedSession.assetDrafts).every((assetName) => activeAssetOrder.includes(assetName));
+      }) &&
+      Object.keys(storedSession.assetDrafts).every((assetName) => activeAssetOrder.includes(assetName));
 
     if (!canResume) {
       setAssets(activeAssetOrder.map((name) => ({ name, status: 'pending' })));
@@ -369,9 +398,10 @@ export default function GenerationProgress({
     }
 
     const approvedAssets = storedSession.assetDrafts;
-    const restoredCurrentAsset = storedSession.currentAsset && activeAssetOrder.includes(storedSession.currentAsset)
-      ? storedSession.currentAsset
-      : null;
+    const restoredCurrentAsset =
+      storedSession.currentAsset && activeAssetOrder.includes(storedSession.currentAsset)
+        ? storedSession.currentAsset
+        : null;
     const restoredAssets = activeAssetOrder.map((name) => {
       if (approvedAssets[name]) {
         return { name, status: 'complete' as const, content: approvedAssets[name] };
@@ -410,7 +440,7 @@ export default function GenerationProgress({
       assetIndex: nextAssetIndex >= 0 ? nextAssetIndex : 0,
       approvedAssets,
     });
-  }, [activeAssetOrder, importedCharacterSnapshot, mode, referenceDraftIds, seed, template]);
+  }, [activeAssetOrder, importedCharacterSnapshot, initializationSignature, mode, referenceDraftIds, seed, template]);
 
   // Start generation
   useEffect(() => {
@@ -419,6 +449,10 @@ export default function GenerationProgress({
     }
 
     const timeoutId = window.setTimeout(() => {
+      // Clear the queued action before dispatching so identity churn in the
+      // dependencies cannot re-schedule the same generation repeatedly.
+      setResumeAction({ type: 'idle' });
+
       if (resumeAction.type === 'new') {
         void generateAsset(0, {});
         return;
@@ -461,7 +495,19 @@ export default function GenerationProgress({
       startedAt: startTime,
       updatedAt: Date.now(),
     });
-  }, [activeAssetOrder, assetDrafts, currentAsset, editorContent, importedCharacterSnapshot, mode, referenceDraftIds, seed, startTime, status, template]);
+  }, [
+    activeAssetOrder,
+    assetDrafts,
+    currentAsset,
+    editorContent,
+    importedCharacterSnapshot,
+    mode,
+    referenceDraftIds,
+    seed,
+    startTime,
+    status,
+    template,
+  ]);
 
   const handleCancel = useCallback(() => {
     abortControllerRef.current?.abort();
@@ -495,7 +541,15 @@ export default function GenerationProgress({
     }
 
     await saveApprovedDraft(approved);
-  }, [activeAssetOrder.length, currentAsset, editorContent, generateAsset, getApprovedAssets, saveApprovedDraft, updateAssetStatus]);
+  }, [
+    activeAssetOrder,
+    currentAsset,
+    editorContent,
+    generateAsset,
+    getApprovedAssets,
+    saveApprovedDraft,
+    updateAssetStatus,
+  ]);
 
   const handleRegenerate = useCallback(async () => {
     if (!currentAsset) {
@@ -515,24 +569,29 @@ export default function GenerationProgress({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const completedCount = assets.filter(a => a.status === 'complete').length;
+  const completedCount = assets.filter((a) => a.status === 'complete').length;
   const progress = assets.length > 0 ? (completedCount / assets.length) * 100 : 0;
   const currentAssetIndex = currentAsset ? activeAssetOrder.indexOf(currentAsset) : -1;
   const isFinalAsset = currentAssetIndex >= 0 && currentAssetIndex === activeAssetOrder.length - 1;
-  const canSaveWithoutCurrentAsset = status === 'reviewing'
-    && isFinalAsset
-    && completedCount > 0
-    && !editorContent.trim();
+  const canSaveWithoutCurrentAsset =
+    status === 'reviewing' && isFinalAsset && completedCount > 0 && !editorContent.trim();
 
   const getStageLabel = (s: typeof status) => {
     switch (s) {
-      case 'initializing': return 'Preparing generation...';
-      case 'generating': return 'Generating current asset...';
-      case 'reviewing': return 'Review and edit this asset';
-      case 'saving': return 'Saving reviewed draft...';
-      case 'complete': return 'Complete!';
-      case 'error': return 'Error';
-      default: return s;
+      case 'initializing':
+        return 'Preparing generation...';
+      case 'generating':
+        return 'Generating current asset...';
+      case 'reviewing':
+        return 'Review and edit this asset';
+      case 'saving':
+        return 'Saving reviewed draft...';
+      case 'complete':
+        return 'Complete!';
+      case 'error':
+        return 'Error';
+      default:
+        return s;
     }
   };
 
@@ -578,9 +637,7 @@ export default function GenerationProgress({
           <p className="text-sm text-muted-foreground">
             {currentAsset ? `Current asset: ${currentAsset}` : 'Processing...'}
           </p>
-          {characterName && (
-            <p className="text-sm text-muted-foreground">Character: {characterName}</p>
-          )}
+          {characterName && <p className="text-sm text-muted-foreground">Character: {characterName}</p>}
           {referenceDraftIds.length > 0 && (
             <p className="text-sm text-muted-foreground">Connected references: {referenceDraftIds.length}</p>
           )}
@@ -603,29 +660,28 @@ export default function GenerationProgress({
       <div className="space-y-2">
         <div className="flex justify-between text-sm">
           <span>Progress</span>
-          <span>{completedCount} / {assets.length} assets</span>
+          <span>
+            {completedCount} / {assets.length} assets
+          </span>
         </div>
         <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
-          <div
-            className="h-full bg-primary transition-all duration-300"
-            style={{ width: `${progress}%` }}
-          />
+          <div className="h-full bg-primary transition-all duration-300" style={{ width: `${progress}%` }} />
         </div>
       </div>
 
       {/* Asset List */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-        {assets.map(asset => (
+        {assets.map((asset) => (
           <div
             key={asset.name}
             className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm ${
               asset.status === 'generating'
                 ? 'border-primary bg-primary/10'
                 : asset.status === 'reviewing'
-                ? 'border-amber-500/50 bg-amber-500/10'
-                : asset.status === 'complete'
-                ? 'border-green-500/50 bg-green-500/10'
-                : 'border-border'
+                  ? 'border-amber-500/50 bg-amber-500/10'
+                  : asset.status === 'complete'
+                    ? 'border-green-500/50 bg-green-500/10'
+                    : 'border-border'
             }`}
           >
             {getAssetIcon(asset.status)}

@@ -11,7 +11,13 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { detectAndParseCharacter, type ContentMode, type GenerationComplete, type ImportedCharacter, type Template } from '@char-gen/shared';
+import {
+  detectAndParseCharacter,
+  type ContentMode,
+  type GenerationComplete,
+  type ImportedCharacter,
+  type Template,
+} from '@char-gen/shared';
 import { api } from '../config/api';
 import CollapsibleTray from '../components/CollapsibleTray';
 import { SparklesIcon, DocumentTextIcon, TrashIcon } from '../components/Icons';
@@ -46,7 +52,7 @@ function normalizeAssetSelection(selection: readonly string[], templateDefinitio
 
   const templateAssetNames = new Set(templateDefinition.assets.map((asset) => asset.name));
   const requiredAssetNames = new Set(
-    templateDefinition.assets.filter((asset) => asset.required).map((asset) => asset.name)
+    templateDefinition.assets.filter((asset) => asset.required).map((asset) => asset.name),
   );
   const selected = new Set<string>();
 
@@ -58,9 +64,7 @@ function normalizeAssetSelection(selection: readonly string[], templateDefinitio
 
   requiredAssetNames.forEach((assetName) => selected.add(assetName));
 
-  return templateDefinition.assets
-    .map((asset) => asset.name)
-    .filter((assetName) => selected.has(assetName));
+  return templateDefinition.assets.map((asset) => asset.name).filter((assetName) => selected.has(assetName));
 }
 
 export default function GenerateScreen() {
@@ -75,7 +79,10 @@ export default function GenerateScreen() {
   const [error, setError] = useState('');
   const [result, setResult] = useState<GenerationComplete | null>(null);
   const [generationStage, setGenerationStage] = useState<string>('');
-  const [importedCharacter, setImportedCharacter] = useState<Pick<ImportedCharacter, 'name' | 'sourceFormat' | 'sourcePreset' | 'assets'> | null>(null);
+  const [importedCharacter, setImportedCharacter] = useState<Pick<
+    ImportedCharacter,
+    'name' | 'sourceFormat' | 'sourcePreset' | 'assets'
+  > | null>(null);
   const [importedTemplateName, setImportedTemplateName] = useState<string | null>(null);
   const [selectedTemplateAssets, setSelectedTemplateAssets] = useState<string[]>([]);
 
@@ -85,16 +92,17 @@ export default function GenerateScreen() {
   });
 
   const selectedTemplate = useMemo(
-    () => templates?.find((candidate: Template) => candidate.name === template)
-      ?? templates?.find((candidate: Template) => candidate.is_default)
-      ?? templates?.[0],
-    [template, templates]
+    () =>
+      templates?.find((candidate: Template) => candidate.name === template) ??
+      templates?.find((candidate: Template) => candidate.is_default) ??
+      templates?.[0],
+    [template, templates],
   );
   const effectiveImportTemplateName = selectedTemplate?.name ?? null;
   const importedAssetNames = importedCharacter ? Object.keys(importedCharacter.assets) : [];
   const optionalTemplateAssets = useMemo(
     () => selectedTemplate?.assets.filter((asset) => !asset.required) ?? [],
-    [selectedTemplate]
+    [selectedTemplate],
   );
 
   useEffect(() => {
@@ -179,10 +187,15 @@ export default function GenerateScreen() {
   const handleGenerate = async () => {
     if (!seed.trim()) return;
 
-    if (importedCharacter && importedTemplateName && effectiveImportTemplateName && importedTemplateName !== effectiveImportTemplateName) {
+    if (
+      importedCharacter &&
+      importedTemplateName &&
+      effectiveImportTemplateName &&
+      importedTemplateName !== effectiveImportTemplateName
+    ) {
       Alert.alert(
         'Re-import required',
-        `Imported source was mapped for ${importedTemplateName}. Re-import it after changing the template to ${effectiveImportTemplateName}.`
+        `Imported source was mapped for ${importedTemplateName}. Re-import it after changing the template to ${effectiveImportTemplateName}.`,
       );
       return;
     }
@@ -200,11 +213,13 @@ export default function GenerateScreen() {
         template: template || undefined,
         stream: true,
         selected_assets: selectedTemplateAssets,
-        imported_source: importedCharacter ? {
-          label: importedCharacter.name,
-          source: importedCharacter.sourcePreset || importedCharacter.sourceFormat,
-          assets: importedCharacter.assets,
-        } : undefined,
+        imported_source: importedCharacter
+          ? {
+              label: importedCharacter.name,
+              source: importedCharacter.sourcePreset || importedCharacter.sourceFormat,
+              assets: importedCharacter.assets,
+            }
+          : undefined,
       });
 
       stream.subscribe((event) => {
@@ -289,7 +304,7 @@ export default function GenerateScreen() {
           initiallyExpanded={Boolean(importedCharacter)}
           preview={
             <Text style={styles.setupPreviewText} numberOfLines={1}>
-              {(selectedTemplate?.name || 'Default')} • {mode}
+              {selectedTemplate?.name || 'Default'} • {mode}
               {importedCharacter ? ` • ${importedCharacter.name}` : ''}
             </Text>
           }
@@ -301,7 +316,9 @@ export default function GenerateScreen() {
           >
             <View style={styles.buttonContent}>
               <DocumentTextIcon color="#d1d5db" size={18} />
-              <Text style={styles.secondaryActionButtonText}>{templatesLoading ? 'Loading templates...' : 'Import source'}</Text>
+              <Text style={styles.secondaryActionButtonText}>
+                {templatesLoading ? 'Loading templates...' : 'Import source'}
+              </Text>
             </View>
           </TouchableOpacity>
 
@@ -346,9 +363,7 @@ export default function GenerateScreen() {
                   style={[styles.templateChip, !template && styles.templateChipActive]}
                   onPress={() => setTemplate('')}
                 >
-                  <Text style={[styles.templateChipText, !template && styles.templateChipTextActive]}>
-                    Default
-                  </Text>
+                  <Text style={[styles.templateChipText, !template && styles.templateChipTextActive]}>Default</Text>
                 </TouchableOpacity>
                 {templates?.map((t) => (
                   <TouchableOpacity
@@ -356,10 +371,7 @@ export default function GenerateScreen() {
                     style={[styles.templateChip, template === t.name && styles.templateChipActive]}
                     onPress={() => setTemplate(t.name)}
                   >
-                    <DocumentTextIcon
-                      color={template === t.name ? '#fff' : '#9ca3af'}
-                      size={14}
-                    />
+                    <DocumentTextIcon color={template === t.name ? '#fff' : '#9ca3af'} size={14} />
                     <Text style={[styles.templateChipText, template === t.name && styles.templateChipTextActive]}>
                       {t.name}
                     </Text>
@@ -378,9 +390,7 @@ export default function GenerateScreen() {
                   style={[styles.modeButton, mode === m && styles.modeButtonActive]}
                   onPress={() => setMode(m)}
                 >
-                  <Text style={[styles.modeButtonText, mode === m && styles.modeButtonTextActive]}>
-                    {m}
-                  </Text>
+                  <Text style={[styles.modeButtonText, mode === m && styles.modeButtonTextActive]}>{m}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -405,7 +415,9 @@ export default function GenerateScreen() {
                       </View>
                       <View style={styles.optionalAssetTextWrap}>
                         <Text style={styles.optionalAssetName}>{asset.name}</Text>
-                        {asset.description ? <Text style={styles.optionalAssetDescription}>{asset.description}</Text> : null}
+                        {asset.description ? (
+                          <Text style={styles.optionalAssetDescription}>{asset.description}</Text>
+                        ) : null}
                       </View>
                     </TouchableOpacity>
                   );
@@ -442,7 +454,7 @@ export default function GenerateScreen() {
               if (result?.draft_id) {
                 navigation.navigate('Drafts', {
                   screen: 'DraftDetail',
-                  params: { draftId: result.draft_id }
+                  params: { draftId: result.draft_id },
                 });
               } else {
                 navigation.navigate('Drafts');

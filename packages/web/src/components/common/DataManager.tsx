@@ -4,8 +4,8 @@
  * Import/Export drafts and configuration
  */
 
-import { useEffect, useRef, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -17,9 +17,18 @@ import {
   Trash2,
   Upload,
 } from 'lucide-react';
-import { DraftStorage, exportRawDraftStorage, getDraftStorageDiagnostics, type DraftStorageDiagnostics } from '../../lib/storage/draft-db.js';
+import {
+  DraftStorage,
+  exportRawDraftStorage,
+  getDraftStorageDiagnostics,
+  type DraftStorageDiagnostics,
+} from '../../lib/storage/draft-db.js';
 import { configManager } from '../../lib/config/manager.js';
-import { exportPersistentStorageSnapshot, getPersistentStorageDiagnostics, type PersistentStorageDiagnostics } from '../../lib/persistence/storage.js';
+import {
+  exportPersistentStorageSnapshot,
+  getPersistentStorageDiagnostics,
+  type PersistentStorageDiagnostics,
+} from '../../lib/persistence/storage.js';
 import {
   clearLocalLoreData,
   exportLocalLoreData,
@@ -29,12 +38,11 @@ import {
   importLocalLoreData,
   type DesktopLoreStorageDiagnostics,
 } from '../../lib/storage/desktop-lore-db.js';
-import { getAllFavoriteSeeds, parseFavoriteSeedsPayload, replaceFavoriteSeeds, replaceFavoriteSeedsFromServer } from '../../lib/seed-generator.js';
+import { getAllFavoriteSeeds, parseFavoriteSeedsPayload, replaceFavoriteSeeds } from '../../lib/seed-generator.js';
+import { exportWorkspaceBundleText, importWorkspaceBundleText } from '../../lib/device-link.js';
 import { isDesktopRuntime } from '../../lib/runtime.js';
-import { queueAutoSync } from '../../lib/server/auto-sync.js';
 import { pickFile, saveBlobDownload } from '../../utils/download';
 import { api } from '@/lib/api';
-import SyncControls from './SyncControls';
 
 interface DataStats {
   drafts: number;
@@ -50,12 +58,14 @@ interface DesktopStorageInspectorState {
 }
 
 export default function DataManager() {
+  const queryClient = useQueryClient();
   const desktopRuntime = isDesktopRuntime();
   const exportInputRef = useRef<HTMLInputElement | null>(null);
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const loreImportInputRef = useRef<HTMLInputElement | null>(null);
   const apiKeysImportInputRef = useRef<HTMLInputElement | null>(null);
   const seedsImportInputRef = useRef<HTMLInputElement | null>(null);
+  const workspaceBundleImportInputRef = useRef<HTMLInputElement | null>(null);
 
   const [stats, setStats] = useState<DataStats | null>(null);
   const [notice, setNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -77,17 +87,17 @@ export default function DataManager() {
 
   const selectedImportTemplate = templates.find((template) => template.name === importTemplateName);
 
-  useEffect(() => {
-    void loadStats();
-  }, []);
-
-  async function loadStats() {
+  const loadStats = useCallback(async () => {
     try {
       const [drafts, config, inspector] = await Promise.all([
         DraftStorage.getAllDrafts(),
         Promise.resolve(configManager.getConfig()),
         desktopRuntime
-          ? Promise.all([getDraftStorageDiagnostics(), getPersistentStorageDiagnostics(), getLocalLoreStorageDiagnostics()])
+          ? Promise.all([
+              getDraftStorageDiagnostics(),
+              getPersistentStorageDiagnostics(),
+              getLocalLoreStorageDiagnostics(),
+            ])
           : Promise.resolve(null),
       ]);
 
@@ -109,15 +119,20 @@ export default function DataManager() {
     } catch (error) {
       console.error('Failed to load stats:', error);
     }
-  }
+  }, [desktopRuntime]);
+
+  useEffect(() => {
+    void loadStats();
+  }, [loadStats]);
 
   async function handleExportDesktopStorage(kind: 'drafts' | 'device' | 'lore') {
     try {
-      const snapshot = kind === 'drafts'
-        ? await exportRawDraftStorage()
-        : kind === 'device'
-          ? await exportPersistentStorageSnapshot()
-          : await exportLocalLoreStorageSnapshot();
+      const snapshot =
+        kind === 'drafts'
+          ? await exportRawDraftStorage()
+          : kind === 'device'
+            ? await exportPersistentStorageSnapshot()
+            : await exportLocalLoreStorageSnapshot();
 
       if (!snapshot) {
         throw new Error('Desktop storage export is only available in the desktop runtime.');
@@ -169,7 +184,10 @@ export default function DataManager() {
       const data = configManager.exportApiKeys();
       const blob = new Blob([data], { type: 'application/json' });
       await saveBlobDownload(blob, `eidolon-simulacra-api-keys-${new Date().toISOString().split('T')[0]}.json`);
-      setNotice({ type: 'success', message: 'API keys exported successfully. Warning: API keys are sensitive - handle with care.' });
+      setNotice({
+        type: 'success',
+        message: 'API keys exported successfully. Warning: API keys are sensitive - handle with care.',
+      });
     } catch (error) {
       setNotice({ type: 'error', message: error instanceof Error ? error.message : 'Export failed' });
     }
@@ -177,16 +195,36 @@ export default function DataManager() {
 
   async function handleExportFavoriteSeeds() {
     try {
-      const data = JSON.stringify({
-        version: '1.0',
-        exportedAt: new Date().toISOString(),
-        seeds: getAllFavoriteSeeds(),
-      }, null, 2);
+      const data = JSON.stringify(
+        {
+          version: '1.0',
+          exportedAt: new Date().toISOString(),
+          seeds: getAllFavoriteSeeds(),
+        },
+        null,
+        2,
+      );
       const blob = new Blob([data], { type: 'application/json' });
       await saveBlobDownload(blob, `eidolon-simulacra-favorite-seeds-${new Date().toISOString().split('T')[0]}.json`);
       setNotice({ type: 'success', message: 'Favorite seeds exported successfully' });
     } catch (error) {
       setNotice({ type: 'error', message: error instanceof Error ? error.message : 'Export failed' });
+    }
+  }
+
+  async function handleExportWorkspaceBundle() {
+    try {
+      const data = await exportWorkspaceBundleText();
+      const blob = new Blob([data], { type: 'application/json' });
+      await saveBlobDownload(blob, `eidolon-simulacra-workspace-bundle-${new Date().toISOString().split('T')[0]}.json`);
+      setNotice({
+        type: 'success',
+        message: desktopRuntime
+          ? 'Workspace bundle exported. Import it on mobile to mirror this desktop workspace.'
+          : 'Workspace bundle exported. Import it on mobile or another PC/browser workspace to mirror this data.',
+      });
+    } catch (error) {
+      setNotice({ type: 'error', message: error instanceof Error ? error.message : 'Workspace bundle export failed' });
     }
   }
 
@@ -197,12 +235,9 @@ export default function DataManager() {
         sourceName: file.name,
         template: selectedImportTemplate,
       });
-      queueAutoSync('drafts');
       await loadStats();
 
-      const remapMessage = result.remapped > 0
-        ? ` (${result.remapped} review IDs remapped to avoid overwrite)`
-        : '';
+      const remapMessage = result.remapped > 0 ? ` (${result.remapped} review IDs remapped to avoid overwrite)` : '';
       setNotice({ type: 'success', message: `Imported ${result.imported} drafts from ${file.name}${remapMessage}` });
     } catch (error) {
       setNotice({ type: 'error', message: error instanceof Error ? error.message : 'Import failed' });
@@ -210,7 +245,10 @@ export default function DataManager() {
   }
 
   async function handleImportDrafts() {
-    const file = await pickFile({ accept: 'application/json,.json,text/markdown,.md,text/plain,.txt' }, importInputRef.current);
+    const file = await pickFile(
+      { accept: 'application/json,.json,text/markdown,.md,text/plain,.txt' },
+      importInputRef.current,
+    );
     if (!file) return;
     await handleImportDraftsFile(file);
   }
@@ -219,7 +257,6 @@ export default function DataManager() {
     try {
       const text = await file.text();
       configManager.importConfig(text);
-      queueAutoSync('config');
       await loadStats();
       setNotice({ type: 'success', message: `Configuration imported from ${file.name}` });
     } catch (error) {
@@ -238,7 +275,10 @@ export default function DataManager() {
       const text = await file.text();
       const result = await importLocalLoreData(text, { mode: 'merge' });
       await loadStats();
-      setNotice({ type: 'success', message: `Imported ${result.worlds} worlds, ${result.timelines} timelines, and ${result.events} events from ${file.name}` });
+      setNotice({
+        type: 'success',
+        message: `Imported ${result.worlds} worlds, ${result.timelines} timelines, and ${result.events} events from ${file.name}`,
+      });
     } catch (error) {
       setNotice({ type: 'error', message: error instanceof Error ? error.message : 'Lore import failed' });
     }
@@ -254,7 +294,6 @@ export default function DataManager() {
     try {
       const text = await file.text();
       configManager.importApiKeys(text);
-      queueAutoSync('config');
       await loadStats();
       setNotice({ type: 'success', message: `API keys imported from ${file.name}` });
     } catch (error) {
@@ -278,7 +317,6 @@ export default function DataManager() {
       }
 
       replaceFavoriteSeeds(favorites);
-      queueAutoSync('seeds');
       await loadStats();
       setNotice({ type: 'success', message: `Favorite seeds imported from ${file.name}` });
     } catch (error) {
@@ -292,6 +330,42 @@ export default function DataManager() {
     await handleImportFavoriteSeedsFile(file);
   }
 
+  async function handleImportWorkspaceBundleFile(file: File) {
+    try {
+      const result = await importWorkspaceBundleText(await file.text());
+      await Promise.all([
+        loadStats(),
+        queryClient.invalidateQueries({ queryKey: ['drafts'] }),
+        queryClient.invalidateQueries({ queryKey: ['templates'] }),
+        queryClient.invalidateQueries({ queryKey: ['blueprints'] }),
+      ]);
+
+      const importedSegments = [
+        result.drafts > 0 ? `${result.drafts} drafts` : null,
+        result.templates > 0 ? `${result.templates} templates` : null,
+        result.blueprintOverrides > 0 ? `${result.blueprintOverrides} blueprint overrides` : null,
+        result.configImported ? 'settings' : null,
+        result.apiKeys > 0 ? `${result.apiKeys} API keys` : null,
+      ].filter(Boolean);
+
+      setNotice({
+        type: 'success',
+        message:
+          importedSegments.length > 0
+            ? `Imported ${importedSegments.join(', ')} from ${file.name}.`
+            : `Workspace bundle from ${file.name} did not contain any importable records.`,
+      });
+    } catch (error) {
+      setNotice({ type: 'error', message: error instanceof Error ? error.message : 'Workspace bundle import failed' });
+    }
+  }
+
+  async function handleImportWorkspaceBundle() {
+    const file = await pickFile({ accept: 'application/json,.json' }, workspaceBundleImportInputRef.current);
+    if (!file) return;
+    await handleImportWorkspaceBundleFile(file);
+  }
+
   async function handleClearAll() {
     setIsClearing(true);
 
@@ -302,8 +376,6 @@ export default function DataManager() {
         Promise.resolve(replaceFavoriteSeeds([])),
         desktopRuntime ? clearLocalLoreData() : Promise.resolve(),
       ]);
-
-      queueAutoSync(['drafts', 'seeds', 'config'], { immediate: true });
 
       await loadStats();
       setNotice({ type: 'success', message: 'All data cleared successfully' });
@@ -321,11 +393,13 @@ export default function DataManager() {
         <div className="app-page-hero-grid">
           <div className="space-y-4">
             <p className="app-page-eyebrow">Local storage ops</p>
-            <h1 className="app-page-title">Back up, migrate, or purge the local workspace without touching blueprint source files.</h1>
+            <h1 className="app-page-title">
+              Back up, migrate, or purge the local workspace without touching blueprint source files.
+            </h1>
             <p className="app-page-summary">
               {desktopRuntime
                 ? 'This page manages desktop app data and local runtime state: exporting drafts, preserving provider configuration, importing local lore, and clearing the local workspace when you need a hard reset.'
-                : 'This page is for operational data management: exporting drafts, preserving provider configuration, syncing with an optional server, and clearing local state when you need a hard reset.'}
+                : 'This page is for operational data management: exporting drafts, preserving provider configuration, moving workspace bundles between devices, and clearing local state when you need a hard reset.'}
             </p>
           </div>
 
@@ -354,9 +428,13 @@ export default function DataManager() {
       </section>
 
       {notice && (
-        <div className={`app-note flex items-start gap-3 px-4 py-3 ${
-          notice.type === 'success' ? 'border-green-500/50 bg-green-500/10 text-green-700 dark:text-green-400' : 'border-destructive/50 bg-destructive/10 text-destructive'
-        }`}>
+        <div
+          className={`app-note flex items-start gap-3 px-4 py-3 ${
+            notice.type === 'success'
+              ? 'border-green-500/50 bg-green-500/10 text-green-700 dark:text-green-400'
+              : 'border-destructive/50 bg-destructive/10 text-destructive'
+          }`}
+        >
           {notice.type === 'success' ? (
             <CheckCircle2 className="h-5 w-5 shrink-0 mt-0.5" />
           ) : (
@@ -414,7 +492,8 @@ export default function DataManager() {
               Desktop Storage Inspector
             </h2>
             <p className="text-sm text-muted-foreground">
-              Inspect the local desktop stores and export raw snapshots when you need migration evidence or low-level backups.
+              Inspect the local desktop stores and export raw snapshots when you need migration evidence or low-level
+              backups.
             </p>
           </div>
           <div className="grid gap-4 p-4 xl:grid-cols-3">
@@ -429,18 +508,27 @@ export default function DataManager() {
               <div className="mt-4 grid gap-3 text-xs sm:grid-cols-3">
                 <div className="rounded-md border border-border bg-background/60 p-3">
                   <div className="text-muted-foreground">Drafts</div>
-                  <div className="mt-1 text-lg font-semibold text-foreground">{desktopInspector.draftStore.draftCount}</div>
+                  <div className="mt-1 text-lg font-semibold text-foreground">
+                    {desktopInspector.draftStore.draftCount}
+                  </div>
                 </div>
                 <div className="rounded-md border border-border bg-background/60 p-3">
                   <div className="text-muted-foreground">Asset rows</div>
-                  <div className="mt-1 text-lg font-semibold text-foreground">{desktopInspector.draftStore.assetActivityCount}</div>
+                  <div className="mt-1 text-lg font-semibold text-foreground">
+                    {desktopInspector.draftStore.assetActivityCount}
+                  </div>
                 </div>
                 <div className="rounded-md border border-border bg-background/60 p-3">
                   <div className="text-muted-foreground">Migration</div>
-                  <div className="mt-1 text-sm font-semibold text-foreground">{desktopInspector.draftStore.migrationChecked ? 'Checked' : 'Pending'}</div>
+                  <div className="mt-1 text-sm font-semibold text-foreground">
+                    {desktopInspector.draftStore.migrationChecked ? 'Checked' : 'Pending'}
+                  </div>
                 </div>
               </div>
-              <button onClick={() => handleExportDesktopStorage('drafts')} className="app-button app-button-secondary mt-4">
+              <button
+                onClick={() => handleExportDesktopStorage('drafts')}
+                className="app-button app-button-secondary mt-4"
+              >
                 <Download className="h-4 w-4" />
                 Export Raw Draft Store
               </button>
@@ -457,18 +545,27 @@ export default function DataManager() {
               <div className="mt-4 grid gap-3 text-xs sm:grid-cols-3">
                 <div className="rounded-md border border-border bg-background/60 p-3">
                   <div className="text-muted-foreground">Entries</div>
-                  <div className="mt-1 text-lg font-semibold text-foreground">{desktopInspector.deviceStore.entryCount}</div>
+                  <div className="mt-1 text-lg font-semibold text-foreground">
+                    {desktopInspector.deviceStore.entryCount}
+                  </div>
                 </div>
                 <div className="rounded-md border border-border bg-background/60 p-3">
                   <div className="text-muted-foreground">Initialized</div>
-                  <div className="mt-1 text-sm font-semibold text-foreground">{desktopInspector.deviceStore.initialized ? 'Ready' : 'No'}</div>
+                  <div className="mt-1 text-sm font-semibold text-foreground">
+                    {desktopInspector.deviceStore.initialized ? 'Ready' : 'No'}
+                  </div>
                 </div>
                 <div className="rounded-md border border-border bg-background/60 p-3">
                   <div className="text-muted-foreground">File</div>
-                  <div className="mt-1 text-sm font-semibold text-foreground">{desktopInspector.deviceStore.hasPersistedFile ? 'Present' : 'Not written yet'}</div>
+                  <div className="mt-1 text-sm font-semibold text-foreground">
+                    {desktopInspector.deviceStore.hasPersistedFile ? 'Present' : 'Not written yet'}
+                  </div>
                 </div>
               </div>
-              <button onClick={() => handleExportDesktopStorage('device')} className="app-button app-button-secondary mt-4">
+              <button
+                onClick={() => handleExportDesktopStorage('device')}
+                className="app-button app-button-secondary mt-4"
+              >
                 <Download className="h-4 w-4" />
                 Export Raw Device Store
               </button>
@@ -485,32 +582,47 @@ export default function DataManager() {
               <div className="mt-4 grid gap-3 text-xs sm:grid-cols-3">
                 <div className="rounded-md border border-border bg-background/60 p-3">
                   <div className="text-muted-foreground">Worlds</div>
-                  <div className="mt-1 text-lg font-semibold text-foreground">{desktopInspector.loreStore.worldCount}</div>
+                  <div className="mt-1 text-lg font-semibold text-foreground">
+                    {desktopInspector.loreStore.worldCount}
+                  </div>
                 </div>
                 <div className="rounded-md border border-border bg-background/60 p-3">
                   <div className="text-muted-foreground">Timelines</div>
-                  <div className="mt-1 text-lg font-semibold text-foreground">{desktopInspector.loreStore.timelineCount}</div>
+                  <div className="mt-1 text-lg font-semibold text-foreground">
+                    {desktopInspector.loreStore.timelineCount}
+                  </div>
                 </div>
                 <div className="rounded-md border border-border bg-background/60 p-3">
                   <div className="text-muted-foreground">Events</div>
-                  <div className="mt-1 text-lg font-semibold text-foreground">{desktopInspector.loreStore.eventCount}</div>
+                  <div className="mt-1 text-lg font-semibold text-foreground">
+                    {desktopInspector.loreStore.eventCount}
+                  </div>
                 </div>
               </div>
               <div className="mt-3 grid gap-3 text-xs sm:grid-cols-3">
                 <div className="rounded-md border border-border bg-background/60 p-3">
                   <div className="text-muted-foreground">Characters</div>
-                  <div className="mt-1 text-lg font-semibold text-foreground">{desktopInspector.loreStore.characterCount}</div>
+                  <div className="mt-1 text-lg font-semibold text-foreground">
+                    {desktopInspector.loreStore.characterCount}
+                  </div>
                 </div>
                 <div className="rounded-md border border-border bg-background/60 p-3">
                   <div className="text-muted-foreground">Factions</div>
-                  <div className="mt-1 text-lg font-semibold text-foreground">{desktopInspector.loreStore.factionCount}</div>
+                  <div className="mt-1 text-lg font-semibold text-foreground">
+                    {desktopInspector.loreStore.factionCount}
+                  </div>
                 </div>
                 <div className="rounded-md border border-border bg-background/60 p-3">
                   <div className="text-muted-foreground">Locations</div>
-                  <div className="mt-1 text-lg font-semibold text-foreground">{desktopInspector.loreStore.locationCount}</div>
+                  <div className="mt-1 text-lg font-semibold text-foreground">
+                    {desktopInspector.loreStore.locationCount}
+                  </div>
                 </div>
               </div>
-              <button onClick={() => handleExportDesktopStorage('lore')} className="app-button app-button-secondary mt-4">
+              <button
+                onClick={() => handleExportDesktopStorage('lore')}
+                className="app-button app-button-secondary mt-4"
+              >
                 <Download className="h-4 w-4" />
                 Export Raw Lore Store
               </button>
@@ -519,74 +631,69 @@ export default function DataManager() {
         </div>
       )}
 
-      {!desktopRuntime && (
-        <div className="app-panel">
-          <div className="border-b border-border p-4">
-            <h2 className="text-lg font-semibold flex items-center gap-2">
-              <Cloud className="h-5 w-5" />
-              Server Sync
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              Sync your data with a self-hosted server for backup and cross-device access.
+      <div className="app-panel">
+        <div className="border-b border-border p-4">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <Cloud className="h-5 w-5" />
+            Workspace Bundle Files
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            Move your workspace between mobile and this{' '}
+            {desktopRuntime ? 'desktop app' : 'browser or desktop workspace'} with one signed-off JSON bundle.
+            {desktopRuntime
+              ? ' If both devices are on the same LAN, Live PC Link in Device Link is usually faster.'
+              : ''}
+          </p>
+        </div>
+        <div className="space-y-3 p-4">
+          <div className="rounded-md border border-border p-4">
+            <h3 className="font-medium">What moves in the bundle</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Drafts, templates, blueprint overrides, settings, and optionally stored API keys. Use bundle files when
+              you want a signed-off snapshot, when devices are not on the same LAN, or when Live PC Link is unavailable.
             </p>
           </div>
-          <div className="p-4 space-y-6">
-            <div>
-              <h3 className="font-medium mb-2">Drafts</h3>
-              <SyncControls
-                dataType="drafts"
-                label="Drafts"
-                onGetLocalData={async () => JSON.parse(await DraftStorage.exportAll())}
-                onApplyData={async (data) => {
-                  if (data && typeof data === 'object' && 'drafts' in data) {
-                    await DraftStorage.import(JSON.stringify(data), { conflictStrategy: 'merge' });
-                    await loadStats();
-                  }
-                }}
-              />
-            </div>
 
-            <div>
-              <h3 className="font-medium mb-2">Favorite Seeds</h3>
-              <SyncControls
-                dataType="seeds"
-                label="Favorite seeds"
-                onGetLocalData={() => ({ seeds: getAllFavoriteSeeds() })}
-                onApplyData={async (data) => {
-                  const favorites = parseFavoriteSeedsPayload(data);
-                  if (favorites) {
-                    replaceFavoriteSeedsFromServer(favorites);
-                    await loadStats();
-                  }
-                }}
-              />
+          <div className="flex items-center justify-between rounded-md border border-border p-4">
+            <div className="flex items-center gap-3">
+              <Download className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <h3 className="font-medium">Export Workspace Bundle</h3>
+                <p className="text-xs text-muted-foreground">
+                  Create one JSON bundle for mobile import or another local workspace.
+                </p>
+              </div>
             </div>
+            <button onClick={handleExportWorkspaceBundle} className="app-button app-button-primary">
+              <Download className="h-4 w-4" />
+              Export Bundle
+            </button>
+          </div>
 
-            <div>
-              <h3 className="font-medium mb-2">Settings & API Keys</h3>
-              <SyncControls
-                dataType="config"
-                label="Settings"
-                onGetLocalData={async () => {
-                  const config = JSON.parse(configManager.exportConfig());
-                  const apiKeys = configManager.getApiKeys();
-                  return { config, apiKeys };
-                }}
-                onApplyData={async (data) => {
-                  if (data && typeof data === 'object') {
-                    const d = data as { config?: Record<string, unknown>; apiKeys?: Record<string, string> };
-                    if (d.config) {
-                      configManager.importConfig(JSON.stringify(d.config));
-                    }
-                    configManager.replaceApiKeys(d.apiKeys || {});
-                    await loadStats();
-                  }
-                }}
-              />
+          <div className="flex items-center justify-between rounded-md border border-border p-4">
+            <div className="flex items-center gap-3">
+              <Upload className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <h3 className="font-medium">Import Workspace Bundle</h3>
+                <p className="text-xs text-muted-foreground">
+                  Merge a bundle exported from mobile or another PC workspace.
+                </p>
+              </div>
             </div>
+            <button onClick={() => void handleImportWorkspaceBundle()} className="app-button app-button-primary">
+              <Upload className="h-4 w-4" />
+              Import Bundle
+            </button>
+            <input
+              ref={workspaceBundleImportInputRef}
+              type="file"
+              accept="application/json,.json"
+              className="hidden"
+              aria-label="Import workspace bundle file"
+            />
           </div>
         </div>
-      )}
+      </div>
 
       <div className="app-panel">
         <div className="border-b border-border p-4">
@@ -658,7 +765,9 @@ export default function DataManager() {
                 <Database className="h-5 w-5 text-muted-foreground" />
                 <div>
                   <h3 className="font-medium">Export Lore Data</h3>
-                  <p className="text-xs text-muted-foreground">Download local worlds, factions, locations, timelines, and events</p>
+                  <p className="text-xs text-muted-foreground">
+                    Download local worlds, factions, locations, timelines, and events
+                  </p>
                 </div>
               </div>
               <button onClick={handleExportLore} className="app-button app-button-primary">
@@ -673,9 +782,7 @@ export default function DataManager() {
       <div className="app-panel">
         <div className="border-b border-border p-4">
           <h2 className="text-lg font-semibold">Import Data</h2>
-          <p className="text-sm text-muted-foreground">
-            Restore your data from a previously exported backup file.
-          </p>
+          <p className="text-sm text-muted-foreground">Restore your data from a previously exported backup file.</p>
         </div>
         <div className="space-y-3 p-4">
           <div className="flex items-center justify-between rounded-md border border-border p-4">
@@ -683,7 +790,9 @@ export default function DataManager() {
               <Upload className="h-5 w-5 text-muted-foreground" />
               <div>
                 <h3 className="font-medium">Import Drafts</h3>
-                <p className="text-xs text-muted-foreground">Merge drafts from JSON backup or combined markdown export</p>
+                <p className="text-xs text-muted-foreground">
+                  Merge drafts from JSON backup or combined markdown export
+                </p>
               </div>
             </div>
             <div className="flex flex-col items-end gap-2">
@@ -720,7 +829,9 @@ export default function DataManager() {
               <Upload className="h-5 w-5 text-muted-foreground" />
               <div>
                 <h3 className="font-medium">Import Favorite Seeds</h3>
-                <p className="text-xs text-muted-foreground">Restore saved and archived seed records from a JSON backup</p>
+                <p className="text-xs text-muted-foreground">
+                  Restore saved and archived seed records from a JSON backup
+                </p>
               </div>
             </div>
             <button onClick={() => void handleImportFavoriteSeeds()} className="app-button app-button-primary">
@@ -784,7 +895,9 @@ export default function DataManager() {
                 <Upload className="h-5 w-5 text-muted-foreground" />
                 <div>
                   <h3 className="font-medium">Import Lore Data</h3>
-                  <p className="text-xs text-muted-foreground">Restore local worlds, factions, locations, timelines, and events from a JSON backup</p>
+                  <p className="text-xs text-muted-foreground">
+                    Restore local worlds, factions, locations, timelines, and events from a JSON backup
+                  </p>
                 </div>
               </div>
               <button onClick={() => void handleImportLore()} className="app-button app-button-primary">

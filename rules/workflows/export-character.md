@@ -8,7 +8,7 @@ Goal: export a draft or asset set using the current shared export model instead 
    - whether metadata should be included
 
 2) Confirm the available assets.
-   - Do not assume the legacy `system_prompt/post_history/character_sheet/intro_scene/intro_page/a1111/suno` pack.
+   - Do not assume the legacy `system_prompt/post_history/character_sheet/intro_scene/creator_notes/a1111/suno` pack.
    - Respect the selected template or the actual files present.
 
 3) Export using the current model:

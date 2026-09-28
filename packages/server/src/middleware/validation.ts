@@ -1,6 +1,6 @@
 // Request validation middleware using Zod
-import { NextFunction, Request, Response } from "express";
-import { AnyZodObject, ZodError } from "zod";
+import { NextFunction, Request, Response } from 'express';
+import { AnyZodObject, ZodError } from 'zod';
 
 /**
  * Middleware to validate request body against a Zod schema
@@ -13,7 +13,7 @@ export function validateBody(schema: AnyZodObject) {
     } catch (error) {
       if (error instanceof ZodError) {
         res.status(400).json({
-          error: "Validation failed",
+          error: 'Validation failed',
           details: error.flatten().fieldErrors,
         });
         return;
@@ -29,12 +29,12 @@ export function validateBody(schema: AnyZodObject) {
 export function validateQuery(schema: AnyZodObject) {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      req.query = await schema.parseAsync(req.query) as typeof req.query;
+      req.query = (await schema.parseAsync(req.query)) as typeof req.query;
       next();
     } catch (error) {
       if (error instanceof ZodError) {
         res.status(400).json({
-          error: "Validation failed",
+          error: 'Validation failed',
           details: error.flatten().fieldErrors,
         });
         return;
@@ -50,12 +50,12 @@ export function validateQuery(schema: AnyZodObject) {
 export function validateParams(schema: AnyZodObject) {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      req.params = await schema.parseAsync(req.params) as typeof req.params;
+      req.params = (await schema.parseAsync(req.params)) as typeof req.params;
       next();
     } catch (error) {
       if (error instanceof ZodError) {
         res.status(400).json({
-          error: "Validation failed",
+          error: 'Validation failed',
           details: error.flatten().fieldErrors,
         });
         return;

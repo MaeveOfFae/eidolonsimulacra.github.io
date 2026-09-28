@@ -4,7 +4,11 @@ import { BookOpen, Check, Copy, Download, Loader2, Plus, Save, Sparkles, Trash2,
 import type { Blueprint, FeatureCategory } from '@char-gen/shared';
 import { MAX_CONNECTED_DRAFT_REFERENCES } from '@char-gen/shared';
 import { api } from '@/lib/api';
-import { getBlueprintsForFeature, resolveBlueprintForFeature, toBlueprintOptions } from '@/lib/blueprints/featureSelection';
+import {
+  getBlueprintsForFeature,
+  resolveBlueprintForFeature,
+  toBlueprintOptions,
+} from '@/lib/blueprints/featureSelection';
 import { configManager } from '@/lib/config/manager';
 import {
   deleteLorebookPacket,
@@ -47,7 +51,8 @@ export default function LorebookGeneratorPanel({
   const [activePacketId, setActivePacketId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedBlueprintPath, setSelectedBlueprintPath] = useState<string>(
-    () => configManager.getConfig().feature_blueprints?.worldbook_generation || 'blueprints/system/lorebook_generator.md'
+    () =>
+      configManager.getConfig().feature_blueprints?.worldbook_generation || 'blueprints/system/lorebook_generator.md',
   );
   const [blueprintOverride, setBlueprintOverride] = useState<string | null>(null);
 
@@ -70,18 +75,18 @@ export default function LorebookGeneratorPanel({
   }, [blueprintList, selectedBlueprintPath]);
 
   const availableBlueprints = useMemo(
-    () => blueprintList ? toBlueprintOptions(getBlueprintsForFeature(blueprintList, PAGE_FEATURE_CATEGORY)) : [],
-    [blueprintList]
+    () => (blueprintList ? toBlueprintOptions(getBlueprintsForFeature(blueprintList, PAGE_FEATURE_CATEGORY)) : []),
+    [blueprintList],
   );
 
   const draftLookup = useMemo(
     () => new Map((draftsData?.drafts ?? []).map((draft) => [draft.review_id, draft] as const)),
-    [draftsData]
+    [draftsData],
   );
 
   const availableDrafts = useMemo(
     () => (draftsData?.drafts ?? []).filter((draft) => !selectedDraftIds.includes(draft.review_id)),
-    [draftsData, selectedDraftIds]
+    [draftsData, selectedDraftIds],
   );
 
   const effectiveBlueprint = blueprintOverride ?? blueprint?.content;
@@ -100,8 +105,9 @@ export default function LorebookGeneratorPanel({
     lorebook_promotable: canPromote,
   });
 
-  const resolveDraftIdForLinkedDrafts = (linkedDrafts: string[]): string | undefined => {
+  const resolveDraftIdsForLinkedDrafts = (linkedDrafts: string[]): string[] => {
     const normalizedLinkedDrafts = linkedDrafts.map((entry) => entry.trim().toLowerCase()).filter(Boolean);
+    const resolvedDraftIds: string[] = [];
     for (const draftId of selectedDraftIds) {
       const draft = draftLookup.get(draftId);
       const candidates = [draftId, draft?.character_name]
@@ -109,11 +115,11 @@ export default function LorebookGeneratorPanel({
         .map((value) => value.trim().toLowerCase());
 
       if (candidates.some((candidate) => normalizedLinkedDrafts.includes(candidate))) {
-        return draftId;
+        resolvedDraftIds.push(draftId);
       }
     }
 
-    return undefined;
+    return resolvedDraftIds;
   };
 
   const handleAddDraft = () => {
@@ -227,7 +233,7 @@ export default function LorebookGeneratorPanel({
     }
 
     if (!canPromote) {
-      setError(promotionStatusMessage || 'Server sync authentication is required to persist worlds.');
+      setError(promotionStatusMessage || 'Persisted world promotion is currently only available in the desktop app.');
       return;
     }
 
@@ -242,7 +248,9 @@ export default function LorebookGeneratorPanel({
     setNotice(null);
 
     try {
-      const worldTags = Array.from(new Set(parsedPacket.entries.flatMap((entry) => [entry.type, ...entry.keywords]))).slice(0, 12);
+      const worldTags = Array.from(
+        new Set(parsedPacket.entries.flatMap((entry) => [entry.type, ...entry.keywords])),
+      ).slice(0, 12);
       const { world } = await api.createWorld({
         name: worldName,
         description: parsedPacket.scope,
@@ -252,8 +260,9 @@ export default function LorebookGeneratorPanel({
 
       const characterEntries = parsedPacket.entries.filter((entry) => entry.type === 'character');
       for (const entry of characterEntries) {
+        const linkedDraftIds = resolveDraftIdsForLinkedDrafts(entry.linkedDrafts);
         await api.addWorldCharacter(world.id, {
-          draftId: resolveDraftIdForLinkedDrafts(entry.linkedDrafts),
+          draftId: linkedDraftIds[0],
           characterName: entry.title,
           role: entry.continuityRole || undefined,
           notes: [entry.summary, entry.content].filter(Boolean).join('\n\n') || undefined,
@@ -268,6 +277,7 @@ export default function LorebookGeneratorPanel({
           role: entry.continuityRole || undefined,
           notes: entry.content || undefined,
           tags: [entry.type, ...entry.keywords].slice(0, 10),
+          draftIds: resolveDraftIdsForLinkedDrafts(entry.linkedDrafts),
         });
       }
 
@@ -279,6 +289,7 @@ export default function LorebookGeneratorPanel({
           category: entry.continuityRole || undefined,
           notes: entry.content || undefined,
           tags: [entry.type, ...entry.keywords].slice(0, 10),
+          draftIds: resolveDraftIdsForLinkedDrafts(entry.linkedDrafts),
         });
       }
 
@@ -308,7 +319,9 @@ export default function LorebookGeneratorPanel({
       setNotice(`Promoted packet to world: ${world.name}`);
       onWorldPromoted?.(world.id);
     } catch (promotionError) {
-      setError(promotionError instanceof Error ? promotionError.message : 'Failed to promote lorebook packet into a world');
+      setError(
+        promotionError instanceof Error ? promotionError.message : 'Failed to promote lorebook packet into a world',
+      );
     } finally {
       setIsPromoting(false);
     }
@@ -329,7 +342,7 @@ export default function LorebookGeneratorPanel({
     setNotice(
       restoredDraftIds.length === packet.draftIds.length
         ? `Loaded saved packet: ${packet.title}`
-        : `Loaded saved packet: ${packet.title}. Some source draft identifiers could not be matched to current saved drafts.`
+        : `Loaded saved packet: ${packet.title}. Some source draft identifiers could not be matched to current saved drafts.`,
     );
     setError(null);
   };
@@ -379,7 +392,7 @@ export default function LorebookGeneratorPanel({
       setNotice(
         restoredDraftIds.length === importedPacket.draftIds.length
           ? `Imported lorebook packet: ${importedPacket.title}`
-          : `Imported lorebook packet: ${importedPacket.title}. Source drafts were recorded, but some could not be restored to active selections.`
+          : `Imported lorebook packet: ${importedPacket.title}. Source drafts were recorded, but some could not be restored to active selections.`,
       );
     } catch (importError) {
       setError(importError instanceof Error ? importError.message : 'Failed to import lorebook packet');
@@ -429,13 +442,19 @@ export default function LorebookGeneratorPanel({
             <div>
               <label className="mb-2 block text-sm font-medium">Reference drafts</label>
               <p className="mb-3 text-xs text-muted-foreground">
-                Select the drafts that should define shared canon. Best results come from drafts that already imply overlapping people, places, debts, incidents, or faction pressure.
+                Select the drafts that should define shared canon. Best results come from drafts that already imply
+                overlapping people, places, debts, incidents, or faction pressure.
               </p>
               <div className="flex flex-col gap-2 sm:flex-row">
                 <select
                   value={pendingDraftId}
                   onChange={(event) => setPendingDraftId(event.target.value)}
-                  disabled={isGenerating || draftsLoading || availableDrafts.length === 0 || selectedDraftIds.length >= MAX_CONNECTED_DRAFT_REFERENCES}
+                  disabled={
+                    isGenerating ||
+                    draftsLoading ||
+                    availableDrafts.length === 0 ||
+                    selectedDraftIds.length >= MAX_CONNECTED_DRAFT_REFERENCES
+                  }
                   aria-label="Lorebook reference draft"
                   className="w-full rounded-xl border border-input bg-background px-3 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
                 >
@@ -449,7 +468,9 @@ export default function LorebookGeneratorPanel({
                 <button
                   type="button"
                   onClick={handleAddDraft}
-                  disabled={!pendingDraftId || isGenerating || selectedDraftIds.length >= MAX_CONNECTED_DRAFT_REFERENCES}
+                  disabled={
+                    !pendingDraftId || isGenerating || selectedDraftIds.length >= MAX_CONNECTED_DRAFT_REFERENCES
+                  }
                   className="inline-flex items-center justify-center gap-2 rounded-xl border border-input bg-background px-4 py-2.5 text-sm hover:bg-accent disabled:opacity-50"
                 >
                   <Plus className="h-4 w-4" />
@@ -466,13 +487,16 @@ export default function LorebookGeneratorPanel({
               {selectedDraftIds.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
                   {selectedDraftIds.map((draftId) => (
-                    <span key={draftId} className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-foreground">
+                    <span
+                      key={draftId}
+                      className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-foreground"
+                    >
                       {draftLookup.get(draftId)?.character_name || draftId}
                       <button
                         type="button"
                         onClick={() => handleRemoveDraft(draftId)}
                         disabled={isGenerating}
-                        aria-label={`Remove ${(draftLookup.get(draftId)?.character_name || draftId)}`}
+                        aria-label={`Remove ${draftLookup.get(draftId)?.character_name || draftId}`}
                         className="text-muted-foreground hover:text-foreground disabled:opacity-50"
                       >
                         <X className="h-3.5 w-3.5" />
@@ -521,7 +545,8 @@ export default function LorebookGeneratorPanel({
                 {isGenerating ? 'Generating lorebook…' : 'Generate Lorebook Packet'}
               </button>
               <span className="text-xs text-muted-foreground">
-                Uses up to {MAX_CONNECTED_DRAFT_REFERENCES} reference drafts. Save locally or promote into a persisted world when sync is available.
+                Uses up to {MAX_CONNECTED_DRAFT_REFERENCES} reference drafts. Save locally or promote into a persisted
+                world when sync is available.
               </span>
             </div>
 
@@ -537,7 +562,7 @@ export default function LorebookGeneratorPanel({
               </button>
               {!canPromote && (
                 <span className="text-xs text-muted-foreground">
-                  {promotionStatusMessage || 'Enable and sign in to server sync to persist worlds.'}
+                  {promotionStatusMessage || 'Open the desktop app to persist worlds from this packet.'}
                 </span>
               )}
             </div>
@@ -626,7 +651,9 @@ export default function LorebookGeneratorPanel({
               <div className="mb-2 flex items-center justify-between gap-3">
                 <div>
                   <h4 className="text-sm font-semibold text-foreground">Saved packets</h4>
-                  <p className="text-xs text-muted-foreground">Stored locally in this browser until world persistence lands.</p>
+                  <p className="text-xs text-muted-foreground">
+                    Stored locally in this browser until world persistence lands.
+                  </p>
                 </div>
                 <span className="text-xs text-muted-foreground">{savedPackets.length} saved</span>
               </div>

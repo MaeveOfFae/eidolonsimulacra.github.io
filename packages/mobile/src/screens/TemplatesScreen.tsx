@@ -9,7 +9,11 @@ import { pickTextFile, saveDownload } from '../utils/file-transfer';
 export default function TemplatesScreen() {
   const queryClient = useQueryClient();
 
-  const { data: templates, isLoading, error } = useQuery({
+  const {
+    data: templates,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['templates'],
     queryFn: () => api.getTemplates(),
   });
@@ -22,18 +26,14 @@ export default function TemplatesScreen() {
   });
 
   const handleDelete = (name: string) => {
-    Alert.alert(
-      'Delete Template',
-      `Delete "${name}"? This cannot be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => deleteMutation.mutate(name),
-        },
-      ]
-    );
+    Alert.alert('Delete Template', `Delete "${name}"? This cannot be undone.`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => deleteMutation.mutate(name),
+      },
+    ]);
   };
 
   const handleImport = async () => {
@@ -87,9 +87,12 @@ export default function TemplatesScreen() {
     );
   }
 
-  const renderTemplate = ({ item }: { item: typeof templates[0] }) => {
+  const renderTemplate = ({ item }: { item: (typeof templates)[0] }) => {
     const assetCount = item.assets.length;
-    const assetPreview = item.assets.slice(0, 3).map((asset) => asset.name.replace(/_/g, ' ')).join(' • ');
+    const assetPreview = item.assets
+      .slice(0, 3)
+      .map((asset) => asset.name.replace(/_/g, ' '))
+      .join(' • ');
 
     return (
       <CollapsibleTray
@@ -103,12 +106,14 @@ export default function TemplatesScreen() {
             {assetCount > 3 ? ` • +${assetCount - 3} more` : ''}
           </Text>
         }
-        meta={item.is_default ? (
-          <View style={styles.defaultBadge}>
-            <StarIcon color="#eab308" size={14} />
-            <Text style={styles.defaultBadgeText}>Default</Text>
-          </View>
-        ) : undefined}
+        meta={
+          item.is_default ? (
+            <View style={styles.defaultBadge}>
+              <StarIcon color="#eab308" size={14} />
+              <Text style={styles.defaultBadgeText}>Default</Text>
+            </View>
+          ) : undefined
+        }
         style={styles.templateCard}
         contentStyle={styles.templateContent}
       >
@@ -117,27 +122,19 @@ export default function TemplatesScreen() {
           {item.assets.map((asset) => (
             <View key={asset.name} style={styles.assetItem}>
               <View style={styles.assetDot} />
-              <Text style={styles.assetName}>
-                {asset.name.replace(/_/g, ' ')}
-              </Text>
+              <Text style={styles.assetName}>{asset.name.replace(/_/g, ' ')}</Text>
             </View>
           ))}
         </View>
         <View style={styles.templateActions}>
-            <TouchableOpacity
-              onPress={() => void handleExport(item.name)}
-              style={styles.exportButton}
-            >
-              <Text style={styles.exportButtonText}>Export Template</Text>
+          <TouchableOpacity onPress={() => void handleExport(item.name)} style={styles.exportButton}>
+            <Text style={styles.exportButtonText}>Export Template</Text>
+          </TouchableOpacity>
+          {!item.is_default && (
+            <TouchableOpacity onPress={() => handleDelete(item.name)} style={styles.deleteButton}>
+              <Text style={styles.deleteButtonText}>Delete Template</Text>
             </TouchableOpacity>
-            {!item.is_default && (
-              <TouchableOpacity
-                onPress={() => handleDelete(item.name)}
-                style={styles.deleteButton}
-              >
-                <Text style={styles.deleteButtonText}>Delete Template</Text>
-              </TouchableOpacity>
-            )}
+          )}
         </View>
       </CollapsibleTray>
     );

@@ -15,7 +15,15 @@ export interface SavedLorebookPacketRecord {
   updatedAt: string;
 }
 
-export type LorebookPacketEntryType = 'character' | 'place' | 'event' | 'faction' | 'object' | 'custom' | 'rumor' | 'moment';
+export type LorebookPacketEntryType =
+  | 'character'
+  | 'place'
+  | 'event'
+  | 'faction'
+  | 'object'
+  | 'custom'
+  | 'rumor'
+  | 'moment';
 
 export interface ParsedLorebookPacketEntry {
   type: LorebookPacketEntryType;
@@ -125,16 +133,18 @@ function normalizeLorebookPacketRecord(value: unknown): SavedLorebookPacketRecor
     return null;
   }
 
-  const id = typeof value.id === 'string' && value.id.trim()
-    ? value.id.trim()
-    : `lorebook-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const id =
+    typeof value.id === 'string' && value.id.trim()
+      ? value.id.trim()
+      : `lorebook-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
   const createdAt = toIsoString(value.createdAt) ?? new Date().toISOString();
   const updatedAt = toIsoString(value.updatedAt) ?? createdAt;
-  const draftIds = normalizeDraftIds(Array.isArray(value.draftIds) ? value.draftIds.filter((entry): entry is string => typeof entry === 'string') : []);
-  const title = typeof value.title === 'string' && value.title.trim()
-    ? value.title.trim()
-    : deriveLorebookPacketTitle(content);
+  const draftIds = normalizeDraftIds(
+    Array.isArray(value.draftIds) ? value.draftIds.filter((entry): entry is string => typeof entry === 'string') : [],
+  );
+  const title =
+    typeof value.title === 'string' && value.title.trim() ? value.title.trim() : deriveLorebookPacketTitle(content);
 
   const normalized: SavedLorebookPacketRecord = {
     id,
@@ -227,10 +237,7 @@ export function saveLorebookPacket(input: {
     updatedAt: now,
   };
 
-  const next = [
-    record,
-    ...existing.filter((candidate) => candidate.id !== record.id),
-  ].slice(0, MAX_LOREBOOK_PACKETS);
+  const next = [record, ...existing.filter((candidate) => candidate.id !== record.id)].slice(0, MAX_LOREBOOK_PACKETS);
 
   writeLorebookPackets(next);
   return next;
@@ -243,11 +250,12 @@ export function deleteLorebookPacket(id: string): SavedLorebookPacketRecord[] {
 }
 
 export function getLorebookPacketFilename(title: string, extension: 'md' | 'txt'): string {
-  const sanitizedBase = title
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '') || 'lorebook_packet';
+  const sanitizedBase =
+    title
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '') || 'lorebook_packet';
 
   return `${sanitizedBase}.${extension}`;
 }
@@ -280,16 +288,17 @@ function parseLorebookEntry(block: string): ParsedLorebookPacketEntry | null {
   };
 
   const rawType = readField('type').toLowerCase();
-  const type = (
-    rawType === 'character'
-    || rawType === 'place'
-    || rawType === 'event'
-    || rawType === 'faction'
-    || rawType === 'object'
-    || rawType === 'custom'
-    || rawType === 'rumor'
-    || rawType === 'moment'
-  ) ? rawType : 'custom';
+  const type =
+    rawType === 'character' ||
+    rawType === 'place' ||
+    rawType === 'event' ||
+    rawType === 'faction' ||
+    rawType === 'object' ||
+    rawType === 'custom' ||
+    rawType === 'rumor' ||
+    rawType === 'moment'
+      ? rawType
+      : 'custom';
   const title = readField('title');
 
   if (!title) {

@@ -3,7 +3,7 @@
 Goal: make a blueprint change without breaking invariants.
 
 1) Ask me:
-   - which blueprint file (system_prompt.md, intro_page.md, etc.)
+   - which blueprint file (system_prompt.md, creator_notes.md, etc.)
    - desired change (one sentence)
    - whether this is a format change or content guidance change
 

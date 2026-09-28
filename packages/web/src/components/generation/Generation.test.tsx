@@ -100,7 +100,7 @@ describe('Generation', () => {
         <MemoryRouter initialEntries={['/generate']}>
           <Generation />
         </MemoryRouter>
-      </QueryClientProvider>
+      </QueryClientProvider>,
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Assets' }));
@@ -126,13 +126,12 @@ describe('Generation', () => {
         <MemoryRouter initialEntries={['/generate']}>
           <Generation />
         </MemoryRouter>
-      </QueryClientProvider>
+      </QueryClientProvider>,
     );
 
-    fireEvent.change(
-      await screen.findByPlaceholderText('e.g., a lonely space pirate searching for redemption'),
-      { target: { value: 'New interconnected character' } }
-    );
+    fireEvent.change(await screen.findByPlaceholderText('e.g., a lonely space pirate searching for redemption'), {
+      target: { value: 'New interconnected character' },
+    });
 
     fireEvent.change(screen.getByLabelText('Connected draft reference'), {
       target: { value: 'draft-1' },

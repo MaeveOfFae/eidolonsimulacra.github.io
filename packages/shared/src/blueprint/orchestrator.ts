@@ -7,7 +7,7 @@
 
 import type { Template } from '../types';
 import type { ContentMode } from '../types';
-import { DEFAULT_ASSET_ORDER } from '../templates';
+import { DEFAULT_ASSET_ORDER, OFFICIAL_TEMPLATE } from '../templates';
 
 export interface OrchestratorOptions {
   /**
@@ -31,54 +31,12 @@ export interface OrchestratorOptions {
  */
 export function getOfficialTemplate(): Template {
   return {
-    name: 'V2/V3 Card',
-    version: '3.1',
-    description: 'Built-in character card template with 6 standard assets',
-    is_official: true,
-    assets: [
-      {
-        name: 'system_prompt',
-        required: false,
-        depends_on: [],
-        description: 'System-level behavioral instructions',
-        blueprint_file: 'blueprints/system/system_prompt.md',
-      },
-      {
-        name: 'post_history',
-        required: false,
-        depends_on: ['system_prompt'],
-        description: 'Conversation context and relationship state',
-        blueprint_file: 'blueprints/system/post_history.md',
-      },
-      {
-        name: 'character_sheet',
-        required: true,
-        depends_on: [],
-        description: 'Structured character data',
-        blueprint_file: 'blueprints/system/character_sheet.md',
-      },
-      {
-        name: 'intro_scene',
-        required: true,
-        depends_on: ['character_sheet'],
-        description: 'First interaction scenario',
-        blueprint_file: 'blueprints/system/intro_scene.md',
-      },
-      {
-        name: 'intro_page',
-        required: true,
-        depends_on: ['character_sheet'],
-        description: 'Visual character introduction page',
-        blueprint_file: 'blueprints/system/intro_page.md',
-      },
-      {
-        name: 'a1111',
-        required: true,
-        depends_on: ['character_sheet'],
-        description: 'Stable Diffusion image generation prompt',
-        blueprint_file: 'blueprints/system/a1111.md',
-      },
-    ],
+    ...OFFICIAL_TEMPLATE,
+    assets: OFFICIAL_TEMPLATE.assets.map((asset) => ({
+      ...asset,
+      depends_on: [...asset.depends_on],
+      ...(asset.import_aliases ? { import_aliases: [...asset.import_aliases] } : {}),
+    })),
   };
 }
 
@@ -109,7 +67,7 @@ export function buildOrchestrator(options: OrchestratorOptions = {}): string {
   const targetTemplate = template || getOfficialTemplate();
 
   // Get asset order from template
-  const assetNames = targetTemplate.assets.map(a => a.name);
+  const assetNames = targetTemplate.assets.map((a) => a.name);
   const assetList = assetNames.join('\n');
 
   // Content mode instruction

@@ -1,0 +1,19 @@
+# Build output and generated files are never format targets.
+node_modules/
+dist/
+packages/*/dist/
+.turbo/
+coverage/
+
+# Tauri build output and generated bindings
+packages/web/src-tauri/target/
+packages/web/src-tauri/gen/
+
+# Expo / native prebuild output
+packages/mobile/.expo/
+packages/mobile/web-build/
+packages/mobile/android/
+packages/mobile/ios/
+
+# Generated source produced by tools/generation/generate-mobile-local-content.mjs
+packages/mobile/src/generated/

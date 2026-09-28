@@ -20,6 +20,10 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
+    // The workspace pins more than one React copy (web 19.2.x, mobile 19.1.x).
+    // Without deduping, component tests can bind two React instances and fail
+    // with "Invalid hook call".
+    dedupe: ['react', 'react-dom'],
   },
   server: {
     host: tauriHost || undefined,
@@ -41,6 +45,14 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
     css: true,
+    server: {
+      deps: {
+        // `@tanstack/react-query` and `react-router-dom` must be transformed by Vite
+        // like the app code; when they are loaded externally they resolve their own
+        // React copy and hooks fail with "Invalid hook call".
+        inline: ['@tanstack/react-query', 'react-router-dom', 'react-router'],
+      },
+    },
   },
   // Optimize for static deployment
   build: {
@@ -89,7 +101,12 @@ export default defineConfig({
             return 'storage-vendor';
           }
 
-          if (id.includes('/zustand/') || id.includes('/clsx/') || id.includes('/tailwind-merge/') || id.includes('/class-variance-authority/')) {
+          if (
+            id.includes('/zustand/') ||
+            id.includes('/clsx/') ||
+            id.includes('/tailwind-merge/') ||
+            id.includes('/class-variance-authority/')
+          ) {
             return 'ui-utils-vendor';
           }
 

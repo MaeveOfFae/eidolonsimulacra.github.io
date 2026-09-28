@@ -52,7 +52,7 @@ function decodeBase64ToArrayBuffer(base64: string): ArrayBuffer {
 
     bytes.push((b0 << 2) | (b1 >> 4));
     if (b2 !== -1) {
-      bytes.push(((b1 & 0x0F) << 4) | (b2 >> 2));
+      bytes.push(((b1 & 0x0f) << 4) | (b2 >> 2));
     }
     if (b2 !== -1 && b3 !== -1) {
       bytes.push(((b2 & 0x03) << 6) | b3);
@@ -197,14 +197,19 @@ async function writeBinaryFile(blob: Blob, filename: string): Promise<string> {
 export async function saveDownload(download: DownloadResponse, fallbackFilename: string): Promise<MobileSaveResult> {
   const filename = sanitizeFilename(download.filename ?? fallbackFilename);
   const mimeType = download.contentType ?? 'text/plain';
-  const uri = mimeType === 'image/png'
-    ? await writeBinaryFile(download.blob, filename)
-    : await writeTextFile(await readBlobAsText(download.blob), filename);
+  const uri =
+    mimeType === 'image/png'
+      ? await writeBinaryFile(download.blob, filename)
+      : await writeTextFile(await readBlobAsText(download.blob), filename);
 
   return shareFile(uri, filename, mimeType);
 }
 
-export async function saveTextFile(contents: string, filename: string, mimeType = 'text/plain'): Promise<MobileSaveResult> {
+export async function saveTextFile(
+  contents: string,
+  filename: string,
+  mimeType = 'text/plain',
+): Promise<MobileSaveResult> {
   const sanitizedFilename = sanitizeFilename(filename);
   const uri = await writeTextFile(contents, sanitizedFilename);
   return shareFile(uri, sanitizedFilename, mimeType);

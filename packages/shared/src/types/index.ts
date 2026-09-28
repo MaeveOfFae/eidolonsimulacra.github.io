@@ -232,6 +232,70 @@ export interface CharacterCardMetadata {
   chub?: CharacterCardChubMetadata;
 }
 
+export type DraftAssetReviewScore = 1 | 2 | 3 | 4 | 5;
+
+export interface DraftReviewAnnotations {
+  notes?: string;
+  asset_scores?: Record<string, DraftAssetReviewScore>;
+  asset_notes?: Record<string, string>;
+  updated_at?: string;
+}
+
+export interface DraftMergeProvenance {
+  strategy: 'single-asset' | 'staged-merge';
+  source_draft_id: string;
+  source_side: 'left' | 'right';
+  source_snapshot_id?: string;
+  base_draft_id: string;
+  base_side: 'left' | 'right';
+  base_snapshot_id?: string;
+  asset_names: string[];
+  created_at: string;
+}
+
+export interface DraftMergeResolutionDetail {
+  asset_name: string;
+  reason: 'content-drift' | 'review-drift' | 'left-only' | 'right-only';
+  target_previously_had_asset: boolean;
+  review_context_applied: boolean;
+}
+
+export interface DraftMergeHistoryEvent extends DraftMergeProvenance {
+  id: string;
+  undo_snapshot_id?: string;
+  asset_resolutions?: DraftMergeResolutionDetail[];
+}
+
+export interface DraftRevisionSnapshotState {
+  seed: string;
+  mode?: ContentMode;
+  model?: string;
+  tags?: string[];
+  genre?: string;
+  notes?: string;
+  favorite: boolean;
+  character_name?: string;
+  template_name?: string;
+  parent_drafts?: string[];
+  connected_drafts?: string[];
+  offspring_type?: string;
+  custom_instructions?: string;
+  component_send_order?: string[];
+  card_metadata?: CharacterCardMetadata;
+  review_annotations?: DraftReviewAnnotations;
+  merge_provenance?: DraftMergeProvenance;
+  merge_history?: DraftMergeHistoryEvent[];
+  assets: Record<string, string>;
+}
+
+export interface DraftRevisionSnapshot {
+  id: string;
+  label?: string;
+  reason?: string;
+  created_at: string;
+  state: DraftRevisionSnapshotState;
+}
+
 export interface DraftMetadata {
   review_id: string;
   seed: string;
@@ -252,6 +316,10 @@ export interface DraftMetadata {
   custom_instructions?: string;
   component_send_order?: string[];
   card_metadata?: CharacterCardMetadata;
+  review_annotations?: DraftReviewAnnotations;
+  merge_provenance?: DraftMergeProvenance;
+  merge_history?: DraftMergeHistoryEvent[];
+  revision_snapshots?: DraftRevisionSnapshot[];
 }
 
 export interface Draft {
@@ -305,6 +373,7 @@ export interface WorldFactionRecord {
   role?: string;
   notes?: string;
   tags: string[];
+  draftIds?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -317,6 +386,18 @@ export interface WorldLocationRecord {
   category?: string;
   notes?: string;
   tags: string[];
+  draftIds?: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WorldRelationshipRecord {
+  id: string;
+  worldId: string;
+  sourceCharacterId: string;
+  targetCharacterId: string;
+  label: string;
+  notes?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -329,6 +410,16 @@ export interface WorldCharacterRecord {
   role?: string;
   notes?: string;
   createdAt: string;
+  updatedAt: string;
+}
+
+export interface WorldCharacterDraftLinkRecord {
+  worldId: string;
+  worldName: string;
+  characterId: string;
+  draftId: string;
+  characterName: string;
+  role?: string;
   updatedAt: string;
 }
 
@@ -382,6 +473,7 @@ export interface WorldRecord {
   characters?: WorldCharacterRecord[];
   factions?: WorldFactionRecord[];
   locations?: WorldLocationRecord[];
+  relationships?: WorldRelationshipRecord[];
   timelines?: TimelineRecord[];
 }
 
@@ -713,13 +805,7 @@ export interface ModelsResponse {
 // Character Import Types
 // ============================================================================
 
-export type ImportedCharacterFormat =
-  | 'tavernai_v1'
-  | 'tavernai_v2'
-  | 'chubai'
-  | 'png_card'
-  | 'plain_text'
-  | 'unknown';
+export type ImportedCharacterFormat = 'tavernai_v1' | 'tavernai_v2' | 'chubai' | 'png_card' | 'plain_text' | 'unknown';
 
 export interface ImportedCharacter {
   name: string;
@@ -803,4 +889,35 @@ export interface TemplateWizardData {
   version: string;
   description: string;
   assets: AssetDefinitionWizard[];
+}
+
+// ============================================================================
+// Workspace Bundle Types
+// ============================================================================
+
+export interface WorkspaceBundleTemplateRecord {
+  template: Template;
+  blueprint_contents: Record<string, string>;
+  template_root?: string;
+}
+
+export interface WorkspaceBundleSource {
+  platform: 'web' | 'desktop' | 'mobile';
+  runtime: 'browser' | 'tauri' | 'expo';
+}
+
+export interface WorkspaceBundlePayload {
+  drafts: Draft[];
+  config?: Omit<Config, 'api_keys'>;
+  api_keys?: ApiKeys;
+  templates?: WorkspaceBundleTemplateRecord[];
+  blueprint_overrides?: Record<string, string>;
+}
+
+export interface WorkspaceBundle {
+  app: 'eidolon-simulacra';
+  version: '1.0';
+  exportedAt: string;
+  source: WorkspaceBundleSource;
+  payload: WorkspaceBundlePayload;
 }

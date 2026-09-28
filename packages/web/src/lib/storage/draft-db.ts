@@ -8,15 +8,18 @@ import type {
   CharacterImportOptions,
   CharacterCardMetadata,
   Draft,
+  DraftMergeHistoryEvent,
+  DraftMergeProvenance,
   DraftMetadata,
-  ImportedCharacter,
+  DraftReviewAnnotations,
+  DraftRevisionSnapshot,
 } from '@char-gen/shared';
 import {
   buildDraftLibraryExport,
+  normalizeAssetNameList,
+  normalizeAssetRecord,
   coerceDraftMetadata as coerceSharedDraftMetadata,
-  detectAndParseCharacter,
   MAX_CONNECTED_DRAFT_REFERENCES,
-  OFFICIAL_TEMPLATE,
   parseDraftImportText,
 } from '@char-gen/shared';
 import { isDesktopRuntime } from '../runtime.js';
@@ -45,6 +48,34 @@ export interface AssetEntity {
   createdAt: number;
 }
 
+function resolveDraftTemplateHint(templateName?: string) {
+  return resolveTemplateDefinition(templateName) ?? templateName;
+}
+
+function normalizeStoredMetadata(metadata: DraftMetadata): DraftMetadata {
+  const templateHint = resolveDraftTemplateHint(metadata.template_name);
+  const componentSendOrder = metadata.component_send_order
+    ? normalizeAssetNameList(metadata.component_send_order, templateHint)
+    : undefined;
+
+  return {
+    ...metadata,
+    ...(metadata.component_send_order
+      ? { component_send_order: componentSendOrder && componentSendOrder.length > 0 ? componentSendOrder : undefined }
+      : {}),
+  };
+}
+
+function normalizeStoredDraft(draft: Draft): Draft {
+  const templateHint = resolveDraftTemplateHint(draft.metadata.template_name);
+
+  return {
+    ...draft,
+    metadata: normalizeStoredMetadata(draft.metadata),
+    assets: normalizeAssetRecord(draft.assets, templateHint),
+  };
+}
+
 /**
  * Tag entity for indexing
  */
@@ -62,7 +93,8 @@ const DESKTOP_DRAFT_STORE_CONNECTION = `sqlite:${DESKTOP_DRAFT_STORE_FILE}`;
 const LEGACY_DESKTOP_DRAFT_STORE_FILE = 'eidolon-drafts.json';
 const DESKTOP_DRAFT_SNAPSHOT_FILE = 'eidolon-drafts-sqlite-snapshot.json';
 const DRAFT_DB_SCHEMA = {
-  drafts: '++id, reviewId, [metadata.character_name], createdAt, updatedAt, metadata.favorite, metadata.mode, metadata.genre',
+  drafts:
+    '++id, reviewId, [metadata.character_name], createdAt, updatedAt, metadata.favorite, metadata.mode, metadata.genre',
   assets: '++id, draftId, assetName, createdAt',
   tags: '++id, tag, draftId',
 } as const;
@@ -141,9 +173,10 @@ function describeStorageError(error: unknown): string {
 }
 
 function toDraftStorageError(error: unknown, backend: DraftStorageDiagnostics['backend']): Error {
-  const backendLabel = backend === 'desktop-app-data'
-    ? `desktop draft storage (${DESKTOP_DRAFT_STORE_FILE})`
-    : `browser draft storage (${DRAFT_DB_NAME})`;
+  const backendLabel =
+    backend === 'desktop-app-data'
+      ? `desktop draft storage (${DESKTOP_DRAFT_STORE_FILE})`
+      : `browser draft storage (${DRAFT_DB_NAME})`;
 
   return new Error(`${backendLabel}: ${describeStorageError(error)}`);
 }
@@ -179,19 +212,6 @@ function coerceContentMode(value: unknown): DraftMetadata['mode'] | undefined {
   }
 
   return value;
-}
-
-function coerceStringArray(value: unknown): string[] | undefined {
-  if (!Array.isArray(value)) {
-    return undefined;
-  }
-
-  const normalized = value
-    .filter((entry): entry is string => typeof entry === 'string')
-    .map((entry) => entry.trim())
-    .filter((entry) => entry.length > 0);
-
-  return normalized.length > 0 ? normalized : undefined;
 }
 
 function normalizeConnectedDraftIds(reviewId: string, value: unknown): string[] | undefined {
@@ -231,7 +251,7 @@ function getUniqueReviewId(usedIds: Set<string>): string {
   return candidate;
 }
 
-function useDesktopDraftStore(): boolean {
+function isDesktopDraftStoreEnabled(): boolean {
   return typeof window !== 'undefined' && isDesktopRuntime();
 }
 
@@ -262,6 +282,10 @@ interface SqlDraftRecordRow {
   templateName?: string | null;
   offspringType?: string | null;
   cardMetadataJson?: string | null;
+  reviewAnnotationsJson?: string | null;
+  mergeProvenanceJson?: string | null;
+  mergeHistoryJson?: string | null;
+  revisionSnapshotsJson?: string | null;
   createdAt: number;
   updatedAt: number;
 }
@@ -321,7 +345,23 @@ function createEmptyDesktopDraftStore(): DesktopDraftStore {
 }
 
 function cloneCardMetadata(cardMetadata?: CharacterCardMetadata): CharacterCardMetadata | undefined {
-  return cardMetadata ? JSON.parse(JSON.stringify(cardMetadata)) as CharacterCardMetadata : undefined;
+  return cardMetadata ? (JSON.parse(JSON.stringify(cardMetadata)) as CharacterCardMetadata) : undefined;
+}
+
+function cloneReviewAnnotations(reviewAnnotations?: DraftReviewAnnotations): DraftReviewAnnotations | undefined {
+  return reviewAnnotations ? (JSON.parse(JSON.stringify(reviewAnnotations)) as DraftReviewAnnotations) : undefined;
+}
+
+function cloneMergeProvenance(mergeProvenance?: DraftMergeProvenance): DraftMergeProvenance | undefined {
+  return mergeProvenance ? (JSON.parse(JSON.stringify(mergeProvenance)) as DraftMergeProvenance) : undefined;
+}
+
+function cloneMergeHistory(mergeHistory?: DraftMergeHistoryEvent[]): DraftMergeHistoryEvent[] | undefined {
+  return mergeHistory ? (JSON.parse(JSON.stringify(mergeHistory)) as DraftMergeHistoryEvent[]) : undefined;
+}
+
+function cloneRevisionSnapshots(revisionSnapshots?: DraftRevisionSnapshot[]): DraftRevisionSnapshot[] | undefined {
+  return revisionSnapshots ? (JSON.parse(JSON.stringify(revisionSnapshots)) as DraftRevisionSnapshot[]) : undefined;
 }
 
 function parseCardMetadataJson(value?: string | null): CharacterCardMetadata | undefined {
@@ -332,8 +372,64 @@ function parseCardMetadataJson(value?: string | null): CharacterCardMetadata | u
   try {
     const parsed = JSON.parse(value) as unknown;
     return typeof parsed === 'object' && parsed !== null
-      ? JSON.parse(JSON.stringify(parsed)) as CharacterCardMetadata
+      ? (JSON.parse(JSON.stringify(parsed)) as CharacterCardMetadata)
       : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function parseReviewAnnotationsJson(value?: string | null): DraftReviewAnnotations | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return typeof parsed === 'object' && parsed !== null
+      ? (JSON.parse(JSON.stringify(parsed)) as DraftReviewAnnotations)
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function parseMergeProvenanceJson(value?: string | null): DraftMergeProvenance | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return typeof parsed === 'object' && parsed !== null
+      ? (JSON.parse(JSON.stringify(parsed)) as DraftMergeProvenance)
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function parseMergeHistoryJson(value?: string | null): DraftMergeHistoryEvent[] | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return Array.isArray(parsed) ? (JSON.parse(JSON.stringify(parsed)) as DraftMergeHistoryEvent[]) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function parseRevisionSnapshotsJson(value?: string | null): DraftRevisionSnapshot[] | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return Array.isArray(parsed) ? (JSON.parse(JSON.stringify(parsed)) as DraftRevisionSnapshot[]) : undefined;
   } catch {
     return undefined;
   }
@@ -355,8 +451,14 @@ async function loadDraftSqlModule() {
   return draftSqlModulePromise;
 }
 
-async function ensureDesktopDraftColumn(database: DraftSqlDatabase, columnName: string, columnType: string): Promise<void> {
-  const columns = await database.select<Array<{ name: string }> extends never ? never : { name: string }>('PRAGMA table_info(draft_records)');
+async function ensureDesktopDraftColumn(
+  database: DraftSqlDatabase,
+  columnName: string,
+  columnType: string,
+): Promise<void> {
+  const columns = await database.select<Array<{ name: string }> extends never ? never : { name: string }>(
+    'PRAGMA table_info(draft_records)',
+  );
   if (!columns.some((column) => column.name === columnName)) {
     await database.execute(`ALTER TABLE draft_records ADD COLUMN ${columnName} ${columnType}`);
   }
@@ -379,6 +481,10 @@ async function ensureDesktopDraftSchema(database: DraftSqlDatabase): Promise<voi
       template_name TEXT,
       offspring_type TEXT,
       card_metadata_json TEXT,
+      review_annotations_json TEXT,
+      merge_provenance_json TEXT,
+      merge_history_json TEXT,
+      revision_snapshots_json TEXT,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     )`,
@@ -436,10 +542,14 @@ async function ensureDesktopDraftSchema(database: DraftSqlDatabase): Promise<voi
   }
 
   await ensureDesktopDraftColumn(database, 'card_metadata_json', 'TEXT');
+  await ensureDesktopDraftColumn(database, 'review_annotations_json', 'TEXT');
+  await ensureDesktopDraftColumn(database, 'merge_provenance_json', 'TEXT');
+  await ensureDesktopDraftColumn(database, 'merge_history_json', 'TEXT');
+  await ensureDesktopDraftColumn(database, 'revision_snapshots_json', 'TEXT');
 }
 
 async function getDesktopDraftDatabase(): Promise<DraftSqlDatabase> {
-  if (!useDesktopDraftStore()) {
+  if (!isDesktopDraftStoreEnabled()) {
     throw new Error('Local draft persistence is only available in the desktop runtime.');
   }
 
@@ -476,11 +586,12 @@ function coerceDraft(value: unknown, fallbackSeed = 'Imported draft'): Draft | n
   }
 
   const metadata = coerceDraftMetadata(isRecord(value.metadata) ? value.metadata : value, fallbackSeed);
-  const path = typeof value.path === 'string' && value.path.trim().length > 0
-    ? value.path
-    : typeof value.reviewId === 'string' && value.reviewId.trim().length > 0
-      ? value.reviewId
-    : metadata.review_id;
+  const path =
+    typeof value.path === 'string' && value.path.trim().length > 0
+      ? value.path
+      : typeof value.reviewId === 'string' && value.reviewId.trim().length > 0
+        ? value.reviewId
+        : metadata.review_id;
 
   return { metadata, assets, path };
 }
@@ -491,16 +602,18 @@ function normalizeStoredDraftEntity(value: unknown): DraftEntity | null {
     return null;
   }
 
-  const createdAt = typeof value.createdAt === 'number'
-    ? value.createdAt
-    : typeof draft.metadata.created === 'string'
-      ? Date.parse(draft.metadata.created)
-      : Date.now();
-  const updatedAt = typeof value.updatedAt === 'number'
-    ? value.updatedAt
-    : typeof draft.metadata.modified === 'string'
-      ? Date.parse(draft.metadata.modified)
-      : createdAt;
+  const createdAt =
+    typeof value.createdAt === 'number'
+      ? value.createdAt
+      : typeof draft.metadata.created === 'string'
+        ? Date.parse(draft.metadata.created)
+        : Date.now();
+  const updatedAt =
+    typeof value.updatedAt === 'number'
+      ? value.updatedAt
+      : typeof draft.metadata.modified === 'string'
+        ? Date.parse(draft.metadata.modified)
+        : createdAt;
 
   return {
     id: typeof value.id === 'number' ? value.id : undefined,
@@ -533,12 +646,14 @@ function normalizeStoredAssetEntity(value: unknown): AssetEntity | null {
 }
 
 function buildAssetRowsFromDraftEntities(entities: DraftEntity[]): AssetEntity[] {
-  return entities.flatMap((entity) => Object.entries(entity.assets).map(([assetName, content]) => ({
-    draftId: entity.reviewId,
-    assetName,
-    content,
-    createdAt: entity.updatedAt,
-  })));
+  return entities.flatMap((entity) =>
+    Object.entries(entity.assets).map(([assetName, content]) => ({
+      draftId: entity.reviewId,
+      assetName,
+      content,
+      createdAt: entity.updatedAt,
+    })),
+  );
 }
 
 function parseDesktopDraftStore(raw: string): DesktopDraftStore {
@@ -549,13 +664,15 @@ function parseDesktopDraftStore(raw: string): DesktopDraftStore {
     }
 
     const drafts = Array.isArray(parsed.drafts)
-      ? parsed.drafts.map((entry) => normalizeStoredDraftEntity(entry)).filter((entry): entry is DraftEntity => entry !== null)
+      ? parsed.drafts
+          .map((entry) => normalizeStoredDraftEntity(entry))
+          .filter((entry): entry is DraftEntity => entry !== null)
       : [];
     const reviewIds = new Set(drafts.map((entry) => entry.reviewId));
     const assetActivity = Array.isArray(parsed.assetActivity)
       ? parsed.assetActivity
-        .map((entry) => normalizeStoredAssetEntity(entry))
-        .filter((entry): entry is AssetEntity => entry !== null && reviewIds.has(entry.draftId))
+          .map((entry) => normalizeStoredAssetEntity(entry))
+          .filter((entry): entry is AssetEntity => entry !== null && reviewIds.has(entry.draftId))
       : [];
 
     return {
@@ -575,7 +692,7 @@ function normalizeSqlDraftRecordRow(
   draftTags: string[],
   componentSendOrder: string[],
   parentDrafts: string[],
-  connectedDrafts: string[]
+  connectedDrafts: string[],
 ): DraftEntity {
   const metadata: DraftMetadata = {
     review_id: row.reviewId,
@@ -589,12 +706,23 @@ function normalizeSqlDraftRecordRow(
   if (typeof row.modifiedIso === 'string' && row.modifiedIso.length > 0) metadata.modified = row.modifiedIso;
   if (typeof row.genre === 'string' && row.genre.length > 0) metadata.genre = row.genre;
   if (typeof row.notes === 'string' && row.notes.length > 0) metadata.notes = row.notes;
-  if (typeof row.customInstructions === 'string' && row.customInstructions.length > 0) metadata.custom_instructions = row.customInstructions;
-  if (typeof row.characterName === 'string' && row.characterName.length > 0) metadata.character_name = row.characterName;
+  if (typeof row.customInstructions === 'string' && row.customInstructions.length > 0)
+    metadata.custom_instructions = row.customInstructions;
+  if (typeof row.characterName === 'string' && row.characterName.length > 0)
+    metadata.character_name = row.characterName;
   if (typeof row.templateName === 'string' && row.templateName.length > 0) metadata.template_name = row.templateName;
-  if (typeof row.offspringType === 'string' && row.offspringType.length > 0) metadata.offspring_type = row.offspringType;
+  if (typeof row.offspringType === 'string' && row.offspringType.length > 0)
+    metadata.offspring_type = row.offspringType;
   const cardMetadata = parseCardMetadataJson(row.cardMetadataJson);
   if (cardMetadata) metadata.card_metadata = cardMetadata;
+  const reviewAnnotations = parseReviewAnnotationsJson(row.reviewAnnotationsJson);
+  if (reviewAnnotations) metadata.review_annotations = reviewAnnotations;
+  const mergeProvenance = parseMergeProvenanceJson(row.mergeProvenanceJson);
+  if (mergeProvenance) metadata.merge_provenance = mergeProvenance;
+  const mergeHistory = parseMergeHistoryJson(row.mergeHistoryJson);
+  if (mergeHistory) metadata.merge_history = mergeHistory;
+  const revisionSnapshots = parseRevisionSnapshotsJson(row.revisionSnapshotsJson);
+  if (revisionSnapshots) metadata.revision_snapshots = revisionSnapshots;
 
   const tags = draftTags;
   if (tags.length > 0) metadata.tags = tags;
@@ -638,27 +766,12 @@ function normalizeSqlAssetRow(row: SqlAssetActivityRow): AssetEntity | null {
   });
 }
 
-function parseDesktopStringArray(value?: string | null): string[] {
-  if (!value) {
-    return [];
-  }
-
-  try {
-    const parsed = JSON.parse(value) as unknown;
-    return Array.isArray(parsed)
-      ? parsed.filter((entry): entry is string => typeof entry === 'string')
-      : [];
-  } catch {
-    return [];
-  }
-}
-
 function draftEntityToDraft(entity: DraftEntity): Draft {
-  return {
+  return normalizeStoredDraft({
     path: entity.reviewId,
     metadata: entity.metadata,
     assets: entity.assets,
-  };
+  });
 }
 
 function filterDraftEntities(entities: DraftEntity[], options: DraftQueryOptions = {}): DraftEntity[] {
@@ -680,7 +793,7 @@ async function persistDesktopDraftStore(store: DesktopDraftStore): Promise<void>
 
     for (const draft of store.drafts) {
       await database.execute(
-        'INSERT INTO draft_records (review_id, seed, favorite, mode, model, created_iso, modified_iso, genre, notes, custom_instructions, character_name, template_name, offspring_type, card_metadata_json, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)',
+        'INSERT INTO draft_records (review_id, seed, favorite, mode, model, created_iso, modified_iso, genre, notes, custom_instructions, character_name, template_name, offspring_type, card_metadata_json, review_annotations_json, merge_provenance_json, merge_history_json, revision_snapshots_json, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)',
         [
           draft.reviewId,
           draft.metadata.seed,
@@ -696,43 +809,54 @@ async function persistDesktopDraftStore(store: DesktopDraftStore): Promise<void>
           draft.metadata.template_name ?? null,
           draft.metadata.offspring_type ?? null,
           draft.metadata.card_metadata ? JSON.stringify(cloneCardMetadata(draft.metadata.card_metadata)) : null,
+          draft.metadata.review_annotations
+            ? JSON.stringify(cloneReviewAnnotations(draft.metadata.review_annotations))
+            : null,
+          draft.metadata.merge_provenance
+            ? JSON.stringify(cloneMergeProvenance(draft.metadata.merge_provenance))
+            : null,
+          draft.metadata.merge_history ? JSON.stringify(cloneMergeHistory(draft.metadata.merge_history)) : null,
+          draft.metadata.revision_snapshots
+            ? JSON.stringify(cloneRevisionSnapshots(draft.metadata.revision_snapshots))
+            : null,
           draft.createdAt,
           draft.updatedAt,
-        ]
+        ],
       );
 
       for (const [sortOrder, tag] of (draft.metadata.tags ?? []).entries()) {
-        await database.execute(
-          'INSERT INTO draft_tags (review_id, tag, sort_order) VALUES ($1, $2, $3)',
-          [draft.reviewId, tag, sortOrder]
-        );
+        await database.execute('INSERT INTO draft_tags (review_id, tag, sort_order) VALUES ($1, $2, $3)', [
+          draft.reviewId,
+          tag,
+          sortOrder,
+        ]);
       }
 
       for (const [sortOrder, assetName] of (draft.metadata.component_send_order ?? []).entries()) {
         await database.execute(
           'INSERT INTO draft_component_send_order (review_id, asset_name, sort_order) VALUES ($1, $2, $3)',
-          [draft.reviewId, assetName, sortOrder]
+          [draft.reviewId, assetName, sortOrder],
         );
       }
 
       for (const [sortOrder, parentReviewId] of (draft.metadata.parent_drafts ?? []).entries()) {
         await database.execute(
           'INSERT INTO draft_parent_links (review_id, parent_review_id, sort_order) VALUES ($1, $2, $3)',
-          [draft.reviewId, parentReviewId, sortOrder]
+          [draft.reviewId, parentReviewId, sortOrder],
         );
       }
 
       for (const [sortOrder, connectedReviewId] of (draft.metadata.connected_drafts ?? []).entries()) {
         await database.execute(
           'INSERT INTO draft_connected_links (review_id, connected_review_id, sort_order) VALUES ($1, $2, $3)',
-          [draft.reviewId, connectedReviewId, sortOrder]
+          [draft.reviewId, connectedReviewId, sortOrder],
         );
       }
 
       for (const [assetName, content] of Object.entries(draft.assets)) {
         await database.execute(
           'INSERT INTO draft_assets (review_id, asset_name, content, updated_at) VALUES ($1, $2, $3, $4)',
-          [draft.reviewId, assetName, content, draft.updatedAt]
+          [draft.reviewId, assetName, content, draft.updatedAt],
         );
       }
     }
@@ -740,13 +864,13 @@ async function persistDesktopDraftStore(store: DesktopDraftStore): Promise<void>
     for (const row of store.assetActivity) {
       await database.execute(
         'INSERT INTO asset_activity (draft_id, asset_name, content, created_at) VALUES ($1, $2, $3, $4)',
-        [row.draftId, row.assetName, row.content, row.createdAt]
+        [row.draftId, row.assetName, row.content, row.createdAt],
       );
     }
 
     await database.execute(
       'INSERT INTO app_meta (key, value) VALUES ($1, $2) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
-      ['desktop_json_migration_checked', store.migrationChecked ? 'true' : 'false']
+      ['desktop_json_migration_checked', store.migrationChecked ? 'true' : 'false'],
     );
 
     await database.execute('COMMIT');
@@ -766,10 +890,10 @@ async function initializeDesktopDraftStore(): Promise<void> {
 
   try {
     const draftRows = await database.select<SqlDraftRecordRow>(
-      'SELECT review_id AS reviewId, seed, favorite, mode, model, created_iso AS createdIso, modified_iso AS modifiedIso, genre, notes, custom_instructions AS customInstructions, character_name AS characterName, template_name AS templateName, offspring_type AS offspringType, card_metadata_json AS cardMetadataJson, created_at AS createdAt, updated_at AS updatedAt FROM draft_records'
+      'SELECT review_id AS reviewId, seed, favorite, mode, model, created_iso AS createdIso, modified_iso AS modifiedIso, genre, notes, custom_instructions AS customInstructions, character_name AS characterName, template_name AS templateName, offspring_type AS offspringType, card_metadata_json AS cardMetadataJson, review_annotations_json AS reviewAnnotationsJson, merge_provenance_json AS mergeProvenanceJson, merge_history_json AS mergeHistoryJson, revision_snapshots_json AS revisionSnapshotsJson, created_at AS createdAt, updated_at AS updatedAt FROM draft_records',
     );
     const assetRowsForDrafts = await database.select<SqlDraftAssetRow>(
-      'SELECT review_id AS reviewId, asset_name AS assetName, content, updated_at AS updatedAt FROM draft_assets'
+      'SELECT review_id AS reviewId, asset_name AS assetName, content, updated_at AS updatedAt FROM draft_assets',
     );
     const assetsByDraft = new Map<string, Record<string, string>>();
     for (const row of assetRowsForDrafts) {
@@ -777,10 +901,22 @@ async function initializeDesktopDraftStore(): Promise<void> {
       current[row.assetName] = row.content;
       assetsByDraft.set(row.reviewId, current);
     }
-    const tagRows = await database.select<SqlDraftTagRow>('SELECT review_id AS reviewId, tag, sort_order AS sortOrder FROM draft_tags ORDER BY review_id ASC, sort_order ASC', []);
-    const componentRows = await database.select<SqlDraftOrderedAssetRow>('SELECT review_id AS reviewId, asset_name AS assetName, sort_order AS sortOrder FROM draft_component_send_order ORDER BY review_id ASC, sort_order ASC', []);
-    const parentRows = await database.select<SqlDraftRelationRow>('SELECT review_id AS reviewId, parent_review_id AS relatedReviewId, sort_order AS sortOrder FROM draft_parent_links ORDER BY review_id ASC, sort_order ASC', []);
-    const connectedRows = await database.select<SqlDraftRelationRow>('SELECT review_id AS reviewId, connected_review_id AS relatedReviewId, sort_order AS sortOrder FROM draft_connected_links ORDER BY review_id ASC, sort_order ASC', []);
+    const tagRows = await database.select<SqlDraftTagRow>(
+      'SELECT review_id AS reviewId, tag, sort_order AS sortOrder FROM draft_tags ORDER BY review_id ASC, sort_order ASC',
+      [],
+    );
+    const componentRows = await database.select<SqlDraftOrderedAssetRow>(
+      'SELECT review_id AS reviewId, asset_name AS assetName, sort_order AS sortOrder FROM draft_component_send_order ORDER BY review_id ASC, sort_order ASC',
+      [],
+    );
+    const parentRows = await database.select<SqlDraftRelationRow>(
+      'SELECT review_id AS reviewId, parent_review_id AS relatedReviewId, sort_order AS sortOrder FROM draft_parent_links ORDER BY review_id ASC, sort_order ASC',
+      [],
+    );
+    const connectedRows = await database.select<SqlDraftRelationRow>(
+      'SELECT review_id AS reviewId, connected_review_id AS relatedReviewId, sort_order AS sortOrder FROM draft_connected_links ORDER BY review_id ASC, sort_order ASC',
+      [],
+    );
 
     const tagsByDraft = new Map<string, string[]>();
     for (const row of tagRows) {
@@ -810,22 +946,26 @@ async function initializeDesktopDraftStore(): Promise<void> {
       connectedDraftsByDraft.set(row.reviewId, current);
     }
 
-    const drafts = draftRows.map((row) => normalizeSqlDraftRecordRow(
-      row,
-      assetsByDraft.get(row.reviewId) ?? {},
-      tagsByDraft.get(row.reviewId) ?? [],
-      componentOrderByDraft.get(row.reviewId) ?? [],
-      parentDraftsByDraft.get(row.reviewId) ?? [],
-      connectedDraftsByDraft.get(row.reviewId) ?? [],
-    ));
+    const drafts = draftRows.map((row) =>
+      normalizeSqlDraftRecordRow(
+        row,
+        assetsByDraft.get(row.reviewId) ?? {},
+        tagsByDraft.get(row.reviewId) ?? [],
+        componentOrderByDraft.get(row.reviewId) ?? [],
+        parentDraftsByDraft.get(row.reviewId) ?? [],
+        connectedDraftsByDraft.get(row.reviewId) ?? [],
+      ),
+    );
     const reviewIds = new Set(drafts.map((draft) => draft.reviewId));
     const assetRows = await database.select<SqlAssetActivityRow>(
-      'SELECT id, draft_id AS draftId, asset_name AS assetName, content, created_at AS createdAt FROM asset_activity ORDER BY created_at DESC'
+      'SELECT id, draft_id AS draftId, asset_name AS assetName, content, created_at AS createdAt FROM asset_activity ORDER BY created_at DESC',
     );
     const assetActivity = assetRows
       .map((row) => normalizeSqlAssetRow(row))
       .filter((row): row is AssetEntity => row !== null && reviewIds.has(row.draftId));
-    const metaRows = await database.select<SqlMetaRow>('SELECT value FROM app_meta WHERE key = $1 LIMIT 1', ['desktop_json_migration_checked']);
+    const metaRows = await database.select<SqlMetaRow>('SELECT value FROM app_meta WHERE key = $1 LIMIT 1', [
+      'desktop_json_migration_checked',
+    ]);
 
     store = {
       version: 1,
@@ -840,7 +980,7 @@ async function initializeDesktopDraftStore(): Promise<void> {
   try {
     if (store.drafts.length === 0) {
       const legacyRows = await database.select<SqlLegacyDraftBlobRow>(
-        'SELECT review_id AS reviewId, metadata_json AS metadataJson, assets_json AS assetsJson, created_at AS createdAt, updated_at AS updatedAt FROM drafts'
+        'SELECT review_id AS reviewId, metadata_json AS metadataJson, assets_json AS assetsJson, created_at AS createdAt, updated_at AS updatedAt FROM drafts',
       );
       const legacyDrafts = legacyRows
         .map((row) => normalizeLegacySqlDraftRow(row))
@@ -858,14 +998,18 @@ async function initializeDesktopDraftStore(): Promise<void> {
   const { exists, readTextFile, BaseDirectory } = await loadDraftFsModule();
 
   try {
-    if (!store.migrationChecked && await exists(LEGACY_DESKTOP_DRAFT_STORE_FILE, { baseDir: BaseDirectory.AppData })) {
+    if (
+      !store.migrationChecked &&
+      (await exists(LEGACY_DESKTOP_DRAFT_STORE_FILE, { baseDir: BaseDirectory.AppData }))
+    ) {
       const raw = await readTextFile(LEGACY_DESKTOP_DRAFT_STORE_FILE, { baseDir: BaseDirectory.AppData });
       const legacyStore = parseDesktopDraftStore(raw);
       if (legacyStore.drafts.length > 0) {
         store.drafts = legacyStore.drafts;
-        store.assetActivity = legacyStore.assetActivity.length > 0
-          ? legacyStore.assetActivity
-          : buildAssetRowsFromDraftEntities(legacyStore.drafts);
+        store.assetActivity =
+          legacyStore.assetActivity.length > 0
+            ? legacyStore.assetActivity
+            : buildAssetRowsFromDraftEntities(legacyStore.drafts);
       }
     }
   } catch (error) {
@@ -879,9 +1023,8 @@ async function initializeDesktopDraftStore(): Promise<void> {
       if (indexedDbDrafts.length > 0) {
         const indexedDbAssets = await db.assets.toArray();
         store.drafts = indexedDbDrafts;
-        store.assetActivity = indexedDbAssets.length > 0
-          ? indexedDbAssets
-          : buildAssetRowsFromDraftEntities(indexedDbDrafts);
+        store.assetActivity =
+          indexedDbAssets.length > 0 ? indexedDbAssets : buildAssetRowsFromDraftEntities(indexedDbDrafts);
       }
     } catch (error) {
       console.warn('Failed to migrate IndexedDB drafts into desktop app data:', error);
@@ -901,13 +1044,16 @@ async function initializeDesktopDraftStore(): Promise<void> {
 
 function queueDesktopDraftStoreTask<T>(task: () => Promise<T>): Promise<T> {
   const scheduled = desktopDraftStoreQueue.then(task, task);
-  desktopDraftStoreQueue = scheduled.then(() => undefined, () => undefined);
+  desktopDraftStoreQueue = scheduled.then(
+    () => undefined,
+    () => undefined,
+  );
   return scheduled;
 }
 
 async function withDesktopDraftStore<T>(
   work: (store: DesktopDraftStore) => Promise<T> | T,
-  options: { persist?: boolean } = {}
+  options: { persist?: boolean } = {},
 ): Promise<T> {
   return queueDesktopDraftStoreTask(async () => {
     if (!desktopDraftStore && !desktopDraftStoreInitPromise) {
@@ -934,146 +1080,6 @@ async function withDesktopDraftStore<T>(
   });
 }
 
-function parseJsonDraftPayload(data: unknown): Draft[] {
-  if (Array.isArray(data)) {
-    return data.map((entry) => coerceDraft(entry)).filter((entry): entry is Draft => entry !== null);
-  }
-
-  if (!isRecord(data)) {
-    return [];
-  }
-
-  if (Array.isArray(data.drafts)) {
-    return data.drafts.map((entry) => coerceDraft(entry)).filter((entry): entry is Draft => entry !== null);
-  }
-
-  if (isRecord(data.draft)) {
-    const singleDraft = coerceDraft(data.draft);
-    return singleDraft ? [singleDraft] : [];
-  }
-
-  const single = coerceDraft(data);
-  return single ? [single] : [];
-}
-
-function isExplicitEmptyDraftPayload(data: unknown): boolean {
-  if (Array.isArray(data)) {
-    return data.length === 0;
-  }
-
-  return isRecord(data) && Array.isArray(data.drafts) && data.drafts.length === 0;
-}
-
-function isRecognizedDraftJsonPayload(data: unknown): boolean {
-  if (Array.isArray(data)) {
-    return true;
-  }
-
-  if (!isRecord(data)) {
-    return false;
-  }
-
-  return Array.isArray(data.drafts)
-    || isRecord(data.draft)
-    || isRecord(data.assets)
-    || isRecord(data.metadata)
-    || typeof data.reviewId === 'string'
-    || typeof data.review_id === 'string';
-}
-
-function normalizeAssetHeading(heading: string): string {
-  return heading.trim().toLowerCase().replace(/\s+/g, '_');
-}
-
-function parseMarkdownDraftPayload(markdown: string): Draft[] {
-  const titleMatch = markdown.match(/^#\s+(.+)$/m);
-  const fallbackSeed = titleMatch?.[1]?.trim() || 'Imported draft';
-  const headingRegex = /^##\s+(.+)$/gm;
-  const headings: Array<{ title: string; start: number; bodyStart: number }> = [];
-
-  let match: RegExpExecArray | null;
-  while ((match = headingRegex.exec(markdown)) !== null) {
-    headings.push({
-      title: match[1].trim(),
-      start: match.index,
-      bodyStart: headingRegex.lastIndex,
-    });
-  }
-
-  if (headings.length === 0) {
-    return [];
-  }
-
-  const assets: Record<string, string> = {};
-  let metadataSource: unknown = undefined;
-
-  for (let index = 0; index < headings.length; index += 1) {
-    const current = headings[index];
-    const next = headings[index + 1];
-    const rawBody = markdown.slice(current.bodyStart, next ? next.start : markdown.length);
-    const body = rawBody.replace(/^\n+/, '').trimEnd().replace(/^\\##/gm, '##');
-    if (!body) {
-      continue;
-    }
-
-    if (current.title.trim().toLowerCase() === 'metadata') {
-      try {
-        metadataSource = JSON.parse(body);
-      } catch {
-        // Ignore malformed metadata blocks and still import asset content.
-      }
-      continue;
-    }
-
-    const assetName = normalizeAssetHeading(current.title);
-    assets[assetName] = body;
-  }
-
-  if (Object.keys(assets).length === 0) {
-    return [];
-  }
-
-  const metadata = coerceDraftMetadata(metadataSource, fallbackSeed);
-  return [{
-    path: metadata.review_id,
-    metadata,
-    assets,
-  }];
-}
-
-function buildImportedDraftFromCharacter(character: ImportedCharacter, sourceName?: string): Draft {
-  const reviewId = createImportedReviewId();
-  const characterName = character.name.trim() || sourceName?.replace(/\.[^.]+$/, '') || 'Imported draft';
-  const seed = sourceName ? `Imported from ${sourceName}` : `Imported draft: ${characterName}`;
-  const sourceLabel = character.sourcePreset || character.sourceFormat;
-  const unmappedCount = Object.keys(character.unmappedFields || {}).length;
-  const notes = unmappedCount > 0
-    ? `Imported from ${sourceLabel}. Preserved ${unmappedCount} unmapped field${unmappedCount === 1 ? '' : 's'} in the upload preview.`
-    : `Imported from ${sourceLabel}.`;
-
-  return {
-    path: reviewId,
-    metadata: {
-      review_id: reviewId,
-      seed,
-      favorite: false,
-      character_name: characterName,
-      template_name: OFFICIAL_TEMPLATE.name,
-      notes,
-    },
-    assets: character.assets,
-  };
-}
-
-function parseLooseDraftPayload(raw: string, sourceName?: string): Draft[] {
-  const character = detectAndParseCharacter(raw, sourceName);
-  if (Object.keys(character.assets).length === 0) {
-    return [];
-  }
-
-  return [buildImportedDraftFromCharacter(character, sourceName)];
-}
-
 /**
  * Draft database
  */
@@ -1092,7 +1098,7 @@ class DraftDatabase extends Dexie {
 }
 
 export async function getDraftStorageDiagnostics(): Promise<DraftStorageDiagnostics> {
-  if (useDesktopDraftStore()) {
+  if (isDesktopDraftStoreEnabled()) {
     return withDesktopDraftStore(async (store) => ({
       backend: 'desktop-app-data',
       fileName: DESKTOP_DRAFT_STORE_FILE,
@@ -1115,7 +1121,7 @@ export async function getDraftStorageDiagnostics(): Promise<DraftStorageDiagnost
 }
 
 export async function exportRawDraftStorage(): Promise<{ fileName: string; contents: string } | null> {
-  if (!useDesktopDraftStore()) {
+  if (!isDesktopDraftStoreEnabled()) {
     return null;
   }
 
@@ -1199,46 +1205,60 @@ export class DraftStorage {
    * Save or update a draft
    */
   static async saveDraft(draft: Draft): Promise<void> {
-    if (useDesktopDraftStore()) {
+    const normalizedDraft = normalizeStoredDraft(draft);
+
+    if (isDesktopDraftStoreEnabled()) {
       try {
-        return await withDesktopDraftStore(async (store) => {
-          const now = Date.now();
-          const inferredCharacterName = inferCharacterDisplayNameForTemplate(
-            draft.assets,
-            draft.metadata.template_name
-          );
-          const nextMetadata: DraftMetadata = {
-            ...draft.metadata,
-            character_name: draft.metadata.character_name || inferredCharacterName,
-            connected_drafts: normalizeConnectedDraftIds(draft.metadata.review_id, draft.metadata.connected_drafts),
-            created: draft.metadata.created || new Date(now).toISOString(),
-            modified: draft.metadata.modified || new Date(now).toISOString(),
-          };
+        return await withDesktopDraftStore(
+          async (store) => {
+            const now = Date.now();
+            const inferredCharacterName = inferCharacterDisplayNameForTemplate(
+              normalizedDraft.assets,
+              normalizedDraft.metadata.template_name,
+            );
+            const nextMetadata: DraftMetadata = {
+              ...normalizedDraft.metadata,
+              character_name: normalizedDraft.metadata.character_name || inferredCharacterName,
+              connected_drafts: normalizeConnectedDraftIds(
+                normalizedDraft.metadata.review_id,
+                normalizedDraft.metadata.connected_drafts,
+              ),
+              created: normalizedDraft.metadata.created || new Date(now).toISOString(),
+              modified: normalizedDraft.metadata.modified || new Date(now).toISOString(),
+            };
 
-          const entity: DraftEntity = {
-            reviewId: draft.metadata.review_id,
-            metadata: nextMetadata,
-            assets: draft.assets,
-            createdAt: nextMetadata.created ? new Date(nextMetadata.created).getTime() : now,
-            updatedAt: nextMetadata.modified ? new Date(nextMetadata.modified).getTime() : now,
-          };
+            const entity: DraftEntity = {
+              reviewId: normalizedDraft.metadata.review_id,
+              metadata: nextMetadata,
+              assets: normalizedDraft.assets,
+              createdAt: nextMetadata.created ? new Date(nextMetadata.created).getTime() : now,
+              updatedAt: nextMetadata.modified ? new Date(nextMetadata.modified).getTime() : now,
+            };
 
-          const existingIndex = store.drafts.findIndex((entry) => entry.reviewId === draft.metadata.review_id);
-          if (existingIndex >= 0) {
-            entity.id = store.drafts[existingIndex].id;
-            store.drafts[existingIndex] = entity;
-          } else {
-            store.drafts.push(entity);
-          }
+            const existingIndex = store.drafts.findIndex(
+              (entry) => entry.reviewId === normalizedDraft.metadata.review_id,
+            );
+            if (existingIndex >= 0) {
+              entity.id = store.drafts[existingIndex].id;
+              store.drafts[existingIndex] = entity;
+            } else {
+              store.drafts.push(entity);
+            }
 
-          store.assetActivity = store.assetActivity.filter((entry) => entry.draftId !== draft.metadata.review_id);
-          store.assetActivity.push(...Object.entries(draft.assets).map(([assetName, content]) => ({
-            draftId: draft.metadata.review_id,
-            assetName,
-            content,
-            createdAt: now,
-          })));
-        }, { persist: true });
+            store.assetActivity = store.assetActivity.filter(
+              (entry) => entry.draftId !== normalizedDraft.metadata.review_id,
+            );
+            store.assetActivity.push(
+              ...Object.entries(normalizedDraft.assets).map(([assetName, content]) => ({
+                draftId: normalizedDraft.metadata.review_id,
+                assetName,
+                content,
+                createdAt: now,
+              })),
+            );
+          },
+          { persist: true },
+        );
       } catch (error) {
         console.error('Desktop draft save failed:', error);
         throw toDraftStorageError(error, 'desktop-app-data');
@@ -1250,26 +1270,29 @@ export class DraftStorage {
 
       const now = Date.now();
       const inferredCharacterName = inferCharacterDisplayNameForTemplate(
-        draft.assets,
-        draft.metadata.template_name
+        normalizedDraft.assets,
+        normalizedDraft.metadata.template_name,
       );
       const nextMetadata: DraftMetadata = {
-        ...draft.metadata,
-        character_name: draft.metadata.character_name || inferredCharacterName,
-        connected_drafts: normalizeConnectedDraftIds(draft.metadata.review_id, draft.metadata.connected_drafts),
-        created: draft.metadata.created || new Date(now).toISOString(),
-        modified: draft.metadata.modified || new Date(now).toISOString(),
+        ...normalizedDraft.metadata,
+        character_name: normalizedDraft.metadata.character_name || inferredCharacterName,
+        connected_drafts: normalizeConnectedDraftIds(
+          normalizedDraft.metadata.review_id,
+          normalizedDraft.metadata.connected_drafts,
+        ),
+        created: normalizedDraft.metadata.created || new Date(now).toISOString(),
+        modified: normalizedDraft.metadata.modified || new Date(now).toISOString(),
       };
 
       const entity: DraftEntity = {
-        reviewId: draft.metadata.review_id,
+        reviewId: normalizedDraft.metadata.review_id,
         metadata: nextMetadata,
-        assets: draft.assets,
+        assets: normalizedDraft.assets,
         createdAt: nextMetadata.created ? new Date(nextMetadata.created).getTime() : now,
         updatedAt: nextMetadata.modified ? new Date(nextMetadata.modified).getTime() : now,
       };
 
-      const existing = await db.drafts.where('reviewId').equals(draft.metadata.review_id).first();
+      const existing = await db.drafts.where('reviewId').equals(normalizedDraft.metadata.review_id).first();
 
       if (existing) {
         entity.id = existing.id;
@@ -1277,11 +1300,11 @@ export class DraftStorage {
 
       await db.transaction('rw', db.drafts, db.assets, db.tags, async () => {
         await db.drafts.put(entity);
-        await db.assets.where('draftId').equals(draft.metadata.review_id).delete();
-        await db.tags.where('draftId').equals(draft.metadata.review_id).delete();
+        await db.assets.where('draftId').equals(normalizedDraft.metadata.review_id).delete();
+        await db.tags.where('draftId').equals(normalizedDraft.metadata.review_id).delete();
 
-        const assetEntities = Object.entries(draft.assets).map(([assetName, content]) => ({
-          draftId: draft.metadata.review_id,
+        const assetEntities = Object.entries(normalizedDraft.assets).map(([assetName, content]) => ({
+          draftId: normalizedDraft.metadata.review_id,
           assetName,
           content,
           createdAt: now,
@@ -1289,10 +1312,10 @@ export class DraftStorage {
 
         await db.assets.bulkAdd(assetEntities);
 
-        if (draft.metadata.tags) {
-          const tagEntities = draft.metadata.tags.map(tag => ({
+        if (normalizedDraft.metadata.tags) {
+          const tagEntities = normalizedDraft.metadata.tags.map((tag) => ({
             tag,
-            draftId: draft.metadata.review_id,
+            draftId: normalizedDraft.metadata.review_id,
             createdAt: now,
           }));
           await db.tags.bulkAdd(tagEntities);
@@ -1308,7 +1331,7 @@ export class DraftStorage {
    * Get a draft by review ID
    */
   static async getDraft(reviewId: string): Promise<Draft | null> {
-    if (useDesktopDraftStore()) {
+    if (isDesktopDraftStoreEnabled()) {
       return withDesktopDraftStore(async (store) => {
         const entity = store.drafts.find((entry) => entry.reviewId === reviewId);
         return entity ? draftEntityToDraft(entity) : null;
@@ -1323,18 +1346,18 @@ export class DraftStorage {
       return null;
     }
 
-    return {
+    return normalizeStoredDraft({
       path: entity.reviewId,
       metadata: entity.metadata,
       assets: entity.assets,
-    };
+    });
   }
 
   /**
    * Get asset activity rows for a draft, newest first.
    */
   static async getAssetActivity(reviewId: string): Promise<AssetEntity[]> {
-    if (useDesktopDraftStore()) {
+    if (isDesktopDraftStoreEnabled()) {
       return withDesktopDraftStore(async (store) => {
         return store.assetActivity
           .filter((entry) => entry.draftId === reviewId)
@@ -1352,7 +1375,7 @@ export class DraftStorage {
    * Get all drafts
    */
   static async getAllDrafts(): Promise<Draft[]> {
-    if (useDesktopDraftStore()) {
+    if (isDesktopDraftStoreEnabled()) {
       return withDesktopDraftStore(async (store) => {
         return filterDraftEntities(store.drafts).map((entity) => draftEntityToDraft(entity));
       });
@@ -1364,7 +1387,7 @@ export class DraftStorage {
 
     return entities
       .filter((entity) => matchesDraftArchiveState(entity.metadata))
-      .map(entity => ({
+      .map((entity) => ({
         path: entity.reviewId,
         metadata: entity.metadata,
         assets: entity.assets,
@@ -1372,7 +1395,7 @@ export class DraftStorage {
   }
 
   static async getAllDraftsWithOptions(options: DraftQueryOptions = {}): Promise<Draft[]> {
-    if (useDesktopDraftStore()) {
+    if (isDesktopDraftStoreEnabled()) {
       return withDesktopDraftStore(async (store) => {
         return filterDraftEntities(store.drafts, options).map((entity) => draftEntityToDraft(entity));
       });
@@ -1384,20 +1407,20 @@ export class DraftStorage {
 
     return entities
       .filter((entity) => matchesDraftArchiveState(entity.metadata, options))
-      .map(entity => ({
-      path: entity.reviewId,
-      metadata: entity.metadata,
-      assets: entity.assets,
-    }));
+      .map((entity) => ({
+        path: entity.reviewId,
+        metadata: entity.metadata,
+        assets: entity.assets,
+      }));
   }
 
   /**
    * Get draft metadata for listing
    */
   static async getAllMetadata(options: DraftQueryOptions = {}): Promise<DraftMetadata[]> {
-    if (useDesktopDraftStore()) {
+    if (isDesktopDraftStoreEnabled()) {
       return withDesktopDraftStore(async (store) => {
-        return filterDraftEntities(store.drafts, options).map((entity) => entity.metadata);
+        return filterDraftEntities(store.drafts, options).map((entity) => normalizeStoredMetadata(entity.metadata));
       });
     }
 
@@ -1406,18 +1429,21 @@ export class DraftStorage {
     const entities = await db.drafts.toArray();
     return entities
       .filter((entity) => matchesDraftArchiveState(entity.metadata, options))
-      .map(e => e.metadata);
+      .map((entity) => normalizeStoredMetadata(entity.metadata));
   }
 
   /**
    * Delete a draft
    */
   static async deleteDraft(reviewId: string): Promise<void> {
-    if (useDesktopDraftStore()) {
-      return withDesktopDraftStore(async (store) => {
-        store.drafts = store.drafts.filter((entry) => entry.reviewId !== reviewId);
-        store.assetActivity = store.assetActivity.filter((entry) => entry.draftId !== reviewId);
-      }, { persist: true });
+    if (isDesktopDraftStoreEnabled()) {
+      return withDesktopDraftStore(
+        async (store) => {
+          store.drafts = store.drafts.filter((entry) => entry.reviewId !== reviewId);
+          store.assetActivity = store.assetActivity.filter((entry) => entry.draftId !== reviewId);
+        },
+        { persist: true },
+      );
     }
 
     await this.ensureReady();
@@ -1433,25 +1459,31 @@ export class DraftStorage {
    * Update draft metadata
    */
   static async updateMetadata(reviewId: string, updates: Partial<DraftMetadata>): Promise<void> {
-    if (useDesktopDraftStore()) {
-      return withDesktopDraftStore(async (store) => {
-        const existing = store.drafts.find((entry) => entry.reviewId === reviewId);
-        if (!existing) {
-          throw new Error(`Draft ${reviewId} not found`);
-        }
+    if (isDesktopDraftStoreEnabled()) {
+      return withDesktopDraftStore(
+        async (store) => {
+          const existing = store.drafts.find((entry) => entry.reviewId === reviewId);
+          if (!existing) {
+            throw new Error(`Draft ${reviewId} not found`);
+          }
 
-        const now = Date.now();
-        const normalizedConnectedDraftIds = updates.connected_drafts === undefined
-          ? undefined
-          : normalizeConnectedDraftIds(reviewId, updates.connected_drafts);
-        existing.metadata = {
-          ...existing.metadata,
-          ...updates,
-          connected_drafts: normalizedConnectedDraftIds ?? (updates.connected_drafts === undefined ? existing.metadata.connected_drafts : undefined),
-          modified: new Date(now).toISOString(),
-        };
-        existing.updatedAt = now;
-      }, { persist: true });
+          const now = Date.now();
+          const normalizedConnectedDraftIds =
+            updates.connected_drafts === undefined
+              ? undefined
+              : normalizeConnectedDraftIds(reviewId, updates.connected_drafts);
+          existing.metadata = {
+            ...existing.metadata,
+            ...updates,
+            connected_drafts:
+              normalizedConnectedDraftIds ??
+              (updates.connected_drafts === undefined ? existing.metadata.connected_drafts : undefined),
+            modified: new Date(now).toISOString(),
+          };
+          existing.updatedAt = now;
+        },
+        { persist: true },
+      );
     }
 
     await this.ensureReady();
@@ -1463,13 +1495,16 @@ export class DraftStorage {
     }
 
     const now = Date.now();
-    const normalizedConnectedDraftIds = updates.connected_drafts === undefined
-      ? undefined
-      : normalizeConnectedDraftIds(reviewId, updates.connected_drafts);
+    const normalizedConnectedDraftIds =
+      updates.connected_drafts === undefined
+        ? undefined
+        : normalizeConnectedDraftIds(reviewId, updates.connected_drafts);
     existing.metadata = {
       ...existing.metadata,
       ...updates,
-      connected_drafts: normalizedConnectedDraftIds ?? (updates.connected_drafts === undefined ? existing.metadata.connected_drafts : undefined),
+      connected_drafts:
+        normalizedConnectedDraftIds ??
+        (updates.connected_drafts === undefined ? existing.metadata.connected_drafts : undefined),
       modified: new Date(now).toISOString(),
     };
     existing.updatedAt = now;
@@ -1480,7 +1515,7 @@ export class DraftStorage {
     if (updates.tags !== undefined) {
       await db.tags.where('draftId').equals(reviewId).delete();
       if (updates.tags) {
-        const tagEntities = updates.tags.map(tag => ({
+        const tagEntities = updates.tags.map((tag) => ({
           tag,
           draftId: reviewId,
           createdAt: now,
@@ -1497,55 +1532,64 @@ export class DraftStorage {
     reviewId: string,
     assetName: string,
     content: string,
-    options: AssetWriteOptions = {}
+    options: AssetWriteOptions = {},
   ): Promise<'created' | 'updated'> {
-    if (useDesktopDraftStore()) {
-      return withDesktopDraftStore(async (store) => {
-        const existing = store.drafts.find((entry) => entry.reviewId === reviewId);
+    if (isDesktopDraftStoreEnabled()) {
+      return withDesktopDraftStore(
+        async (store) => {
+          const existing = store.drafts.find((entry) => entry.reviewId === reviewId);
 
-        if (!existing) {
-          throw new Error(`Draft ${reviewId} not found`);
-        }
-
-        const hadExistingAsset = Object.prototype.hasOwnProperty.call(existing.assets, assetName);
-        const currentContent = hadExistingAsset ? existing.assets[assetName] : null;
-
-        if (hadExistingAsset && options.overwrite === false) {
-          throw new Error(`Asset ${assetName} already exists. Reload the draft before trying a different action.`);
-        }
-
-        if (options.expectedPreviousContent !== undefined && currentContent !== options.expectedPreviousContent) {
-          if (hadExistingAsset) {
-            throw new Error(`Asset ${assetName} changed since you loaded it. Reload the draft before overwriting it.`);
+          if (!existing) {
+            throw new Error(`Draft ${reviewId} not found`);
           }
 
-          throw new Error(`Asset ${assetName} was created after this session started. Reload the draft before saving.`);
-        }
+          const hadExistingAsset = Object.prototype.hasOwnProperty.call(existing.assets, assetName);
+          const currentContent = hadExistingAsset ? existing.assets[assetName] : null;
 
-        existing.assets[assetName] = content;
-        existing.updatedAt = Date.now();
-        existing.metadata = {
-          ...existing.metadata,
-          modified: new Date(existing.updatedAt).toISOString(),
-          character_name: inferCharacterDisplayNameForTemplate(existing.assets, existing.metadata.template_name) || existing.metadata.character_name,
-        };
+          if (hadExistingAsset && options.overwrite === false) {
+            throw new Error(`Asset ${assetName} already exists. Reload the draft before trying a different action.`);
+          }
 
-        const existingRow = store.assetActivity.find(
-          (entry) => entry.draftId === reviewId && entry.assetName === assetName
-        );
-        store.assetActivity = store.assetActivity.filter(
-          (entry) => !(entry.draftId === reviewId && entry.assetName === assetName)
-        );
-        store.assetActivity.push({
-          id: existingRow?.id,
-          draftId: reviewId,
-          assetName,
-          content,
-          createdAt: existing.updatedAt,
-        });
+          if (options.expectedPreviousContent !== undefined && currentContent !== options.expectedPreviousContent) {
+            if (hadExistingAsset) {
+              throw new Error(
+                `Asset ${assetName} changed since you loaded it. Reload the draft before overwriting it.`,
+              );
+            }
 
-        return hadExistingAsset ? 'updated' : 'created';
-      }, { persist: true });
+            throw new Error(
+              `Asset ${assetName} was created after this session started. Reload the draft before saving.`,
+            );
+          }
+
+          existing.assets[assetName] = content;
+          existing.updatedAt = Date.now();
+          existing.metadata = {
+            ...existing.metadata,
+            modified: new Date(existing.updatedAt).toISOString(),
+            character_name:
+              inferCharacterDisplayNameForTemplate(existing.assets, existing.metadata.template_name) ||
+              existing.metadata.character_name,
+          };
+
+          const existingRow = store.assetActivity.find(
+            (entry) => entry.draftId === reviewId && entry.assetName === assetName,
+          );
+          store.assetActivity = store.assetActivity.filter(
+            (entry) => !(entry.draftId === reviewId && entry.assetName === assetName),
+          );
+          store.assetActivity.push({
+            id: existingRow?.id,
+            draftId: reviewId,
+            assetName,
+            content,
+            createdAt: existing.updatedAt,
+          });
+
+          return hadExistingAsset ? 'updated' : 'created';
+        },
+        { persist: true },
+      );
     }
 
     await this.ensureReady();
@@ -1576,7 +1620,9 @@ export class DraftStorage {
     existing.metadata = {
       ...existing.metadata,
       modified: new Date(existing.updatedAt).toISOString(),
-      character_name: inferCharacterDisplayNameForTemplate(existing.assets, existing.metadata.template_name) || existing.metadata.character_name,
+      character_name:
+        inferCharacterDisplayNameForTemplate(existing.assets, existing.metadata.template_name) ||
+        existing.metadata.character_name,
     };
 
     await db.drafts.put(existing);
@@ -1604,22 +1650,24 @@ export class DraftStorage {
    * Search drafts by query
    */
   static async searchDrafts(query: string, options: DraftQueryOptions = {}): Promise<DraftMetadata[]> {
-    if (useDesktopDraftStore()) {
+    if (isDesktopDraftStoreEnabled()) {
       return withDesktopDraftStore(async (store) => {
         const q = query.toLowerCase();
 
-        return store.drafts.filter((entity) => {
-          if (!matchesDraftArchiveState(entity.metadata, options)) {
-            return false;
-          }
+        return store.drafts
+          .filter((entity) => {
+            if (!matchesDraftArchiveState(entity.metadata, options)) {
+              return false;
+            }
 
-          const name = entity.metadata.character_name?.toLowerCase() || '';
-          const seed = entity.metadata.seed?.toLowerCase() || '';
-          const notes = entity.metadata.notes?.toLowerCase() || '';
-          const genre = entity.metadata.genre?.toLowerCase() || '';
+            const name = entity.metadata.character_name?.toLowerCase() || '';
+            const seed = entity.metadata.seed?.toLowerCase() || '';
+            const notes = entity.metadata.notes?.toLowerCase() || '';
+            const genre = entity.metadata.genre?.toLowerCase() || '';
 
-          return name.includes(q) || seed.includes(q) || notes.includes(q) || genre.includes(q);
-        }).map((entity) => entity.metadata);
+            return name.includes(q) || seed.includes(q) || notes.includes(q) || genre.includes(q);
+          })
+          .map((entity) => entity.metadata);
       });
     }
 
@@ -1627,32 +1675,29 @@ export class DraftStorage {
 
     const q = query.toLowerCase();
 
-    const entities = await db.drafts.filter(entity => {
-      if (!matchesDraftArchiveState(entity.metadata, options)) {
-        return false;
-      }
+    const entities = await db.drafts
+      .filter((entity) => {
+        if (!matchesDraftArchiveState(entity.metadata, options)) {
+          return false;
+        }
 
-      const name = entity.metadata.character_name?.toLowerCase() || '';
-      const seed = entity.metadata.seed?.toLowerCase() || '';
-      const notes = entity.metadata.notes?.toLowerCase() || '';
-      const genre = entity.metadata.genre?.toLowerCase() || '';
+        const name = entity.metadata.character_name?.toLowerCase() || '';
+        const seed = entity.metadata.seed?.toLowerCase() || '';
+        const notes = entity.metadata.notes?.toLowerCase() || '';
+        const genre = entity.metadata.genre?.toLowerCase() || '';
 
-      return (
-        name.includes(q) ||
-        seed.includes(q) ||
-        notes.includes(q) ||
-        genre.includes(q)
-      );
-    }).toArray();
+        return name.includes(q) || seed.includes(q) || notes.includes(q) || genre.includes(q);
+      })
+      .toArray();
 
-    return entities.map(e => e.metadata);
+    return entities.map((e) => e.metadata);
   }
 
   /**
    * Get drafts by tag
    */
   static async getDraftsByTag(tag: string, options: DraftQueryOptions = {}): Promise<DraftMetadata[]> {
-    if (useDesktopDraftStore()) {
+    if (isDesktopDraftStoreEnabled()) {
       return withDesktopDraftStore(async (store) => {
         return store.drafts
           .filter((entity) => matchesDraftArchiveState(entity.metadata, options) && entity.metadata.tags?.includes(tag))
@@ -1663,23 +1708,18 @@ export class DraftStorage {
     await this.ensureReady();
 
     const draftIds = await db.tags.where('tag').equals(tag).toArray();
-    const reviewIds = [...new Set(draftIds.map(t => t.draftId))];
+    const reviewIds = [...new Set(draftIds.map((t) => t.draftId))];
 
-    const entities = await db.drafts
-      .where('reviewId')
-      .anyOf(reviewIds)
-      .toArray();
+    const entities = await db.drafts.where('reviewId').anyOf(reviewIds).toArray();
 
-    return entities
-      .filter((entity) => matchesDraftArchiveState(entity.metadata, options))
-      .map(e => e.metadata);
+    return entities.filter((entity) => matchesDraftArchiveState(entity.metadata, options)).map((e) => e.metadata);
   }
 
   /**
    * Get all tags
    */
   static async getAllTags(): Promise<string[]> {
-    if (useDesktopDraftStore()) {
+    if (isDesktopDraftStoreEnabled()) {
       return withDesktopDraftStore(async (store) => {
         const uniqueTags = [...new Set(store.drafts.flatMap((entity) => entity.metadata.tags ?? []))];
         return uniqueTags.sort();
@@ -1689,7 +1729,7 @@ export class DraftStorage {
     await this.ensureReady();
 
     const tags = await db.tags.toArray();
-    const uniqueTags = [...new Set(tags.map(t => t.tag))];
+    const uniqueTags = [...new Set(tags.map((t) => t.tag))];
     return uniqueTags.sort();
   }
 
@@ -1697,7 +1737,7 @@ export class DraftStorage {
    * Get favorite drafts
    */
   static async getFavorites(options: DraftQueryOptions = {}): Promise<DraftMetadata[]> {
-    if (useDesktopDraftStore()) {
+    if (isDesktopDraftStoreEnabled()) {
       return withDesktopDraftStore(async (store) => {
         return store.drafts
           .filter((entity) => entity.metadata.favorite === true && matchesDraftArchiveState(entity.metadata, options))
@@ -1707,15 +1747,17 @@ export class DraftStorage {
 
     await this.ensureReady();
 
-    const entities = await db.drafts.filter((draft) => draft.metadata.favorite === true && matchesDraftArchiveState(draft.metadata, options)).toArray();
-    return entities.map(e => e.metadata);
+    const entities = await db.drafts
+      .filter((draft) => draft.metadata.favorite === true && matchesDraftArchiveState(draft.metadata, options))
+      .toArray();
+    return entities.map((e) => e.metadata);
   }
 
   /**
    * Get drafts by mode
    */
   static async getDraftsByMode(mode: string, options: DraftQueryOptions = {}): Promise<DraftMetadata[]> {
-    if (useDesktopDraftStore()) {
+    if (isDesktopDraftStoreEnabled()) {
       return withDesktopDraftStore(async (store) => {
         return store.drafts
           .filter((entity) => entity.metadata.mode === mode && matchesDraftArchiveState(entity.metadata, options))
@@ -1726,16 +1768,14 @@ export class DraftStorage {
     await this.ensureReady();
 
     const entities = await db.drafts.where('metadata.mode').equals(mode).toArray();
-    return entities
-      .filter((entity) => matchesDraftArchiveState(entity.metadata, options))
-      .map(e => e.metadata);
+    return entities.filter((entity) => matchesDraftArchiveState(entity.metadata, options)).map((e) => e.metadata);
   }
 
   /**
    * Get drafts by genre
    */
   static async getDraftsByGenre(genre: string, options: DraftQueryOptions = {}): Promise<DraftMetadata[]> {
-    if (useDesktopDraftStore()) {
+    if (isDesktopDraftStoreEnabled()) {
       return withDesktopDraftStore(async (store) => {
         return store.drafts
           .filter((entity) => entity.metadata.genre === genre && matchesDraftArchiveState(entity.metadata, options))
@@ -1746,9 +1786,7 @@ export class DraftStorage {
     await this.ensureReady();
 
     const entities = await db.drafts.where('metadata.genre').equals(genre).toArray();
-    return entities
-      .filter((entity) => matchesDraftArchiveState(entity.metadata, options))
-      .map(e => e.metadata);
+    return entities.filter((entity) => matchesDraftArchiveState(entity.metadata, options)).map((e) => e.metadata);
   }
 
   /**
@@ -1761,7 +1799,7 @@ export class DraftStorage {
     byMode: Record<string, number>;
     byGenre: Record<string, number>;
   }> {
-    if (useDesktopDraftStore()) {
+    if (isDesktopDraftStoreEnabled()) {
       return withDesktopDraftStore(async (store) => {
         const all = store.drafts;
         const visible = filterDraftEntities(all, options);
@@ -1796,7 +1834,7 @@ export class DraftStorage {
     const stats = {
       total: visible.length,
       archived: archived.length,
-      favorites: visible.filter(e => e.metadata.favorite).length,
+      favorites: visible.filter((e) => e.metadata.favorite).length,
       byMode: {} as Record<string, number>,
       byGenre: {} as Record<string, number>,
     };
@@ -1831,21 +1869,21 @@ export class DraftStorage {
       conflictStrategy?: 'remap' | 'merge';
       sourceName?: string;
       template?: CharacterImportOptions['template'];
-    } = {}
+    } = {},
   ): Promise<{ imported: number; remapped: number }> {
     await this.ensureReady();
     const conflictStrategy = options.conflictStrategy ?? 'remap';
-    const { drafts, recognizedJsonPayload, explicitEmptyPayload } = parseDraftImportText(
-      raw,
-      options.sourceName,
-      { template: options.template ?? resolveTemplateDefinition() }
-    );
+    const { drafts, recognizedJsonPayload, explicitEmptyPayload } = parseDraftImportText(raw, options.sourceName, {
+      template: options.template ?? resolveTemplateDefinition(),
+    });
 
     if (drafts.length === 0) {
       if (recognizedJsonPayload || explicitEmptyPayload) {
         return { imported: 0, remapped: 0 };
       }
-      throw new Error('Invalid draft import format. Supported: exported drafts JSON, combined markdown draft files, or raw text/JSON uploads.');
+      throw new Error(
+        'Invalid draft import format. Supported: exported drafts JSON, combined markdown draft files, or raw text/JSON uploads.',
+      );
     }
 
     const existingMetadata = await this.getAllMetadata({ includeArchived: true });
@@ -1898,26 +1936,29 @@ export class DraftStorage {
    * Clear all drafts
    */
   static async clearAll(): Promise<void> {
-    if (useDesktopDraftStore()) {
-      await withDesktopDraftStore(async (store) => {
-        store.drafts = [];
-        store.assetActivity = [];
-        store.migrationChecked = true;
+    if (isDesktopDraftStoreEnabled()) {
+      await withDesktopDraftStore(
+        async (store) => {
+          store.drafts = [];
+          store.assetActivity = [];
+          store.migrationChecked = true;
 
-        if (typeof indexedDB !== 'undefined') {
-          await db.transaction('rw', db.drafts, db.assets, db.tags, async () => {
-            await db.drafts.clear();
-            await db.assets.clear();
-            await db.tags.clear();
-          });
+          if (typeof indexedDB !== 'undefined') {
+            await db.transaction('rw', db.drafts, db.assets, db.tags, async () => {
+              await db.drafts.clear();
+              await db.assets.clear();
+              await db.tags.clear();
+            });
 
-          for (const legacyName of LEGACY_DRAFT_DB_NAMES) {
-            if (await Dexie.exists(legacyName)) {
-              await Dexie.delete(legacyName);
+            for (const legacyName of LEGACY_DRAFT_DB_NAMES) {
+              if (await Dexie.exists(legacyName)) {
+                await Dexie.delete(legacyName);
+              }
             }
           }
-        }
-      }, { persist: true });
+        },
+        { persist: true },
+      );
 
       migrationPromise = null;
       return;

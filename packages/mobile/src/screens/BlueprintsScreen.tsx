@@ -104,7 +104,10 @@ export default function BlueprintsScreen() {
             initiallyExpanded={Boolean(normalizedQuery || section.title === filteredSections[0]?.title)}
             preview={
               <Text style={styles.trayPreviewText} numberOfLines={1}>
-                {section.blueprints.slice(0, 2).map((blueprint) => blueprint.name).join(' • ')}
+                {section.blueprints
+                  .slice(0, 2)
+                  .map((blueprint) => blueprint.name)
+                  .join(' • ')}
                 {section.blueprints.length > 2 ? ` • +${section.blueprints.length - 2} more` : ''}
               </Text>
             }
@@ -127,7 +130,9 @@ export default function BlueprintsScreen() {
                     initiallyExpanded={Boolean(normalizedQuery)}
                     preview={
                       <View style={styles.blueprintPreviewMeta}>
-                        <Text style={styles.metaText} numberOfLines={1}>{blueprint.path}</Text>
+                        <Text style={styles.metaText} numberOfLines={1}>
+                          {blueprint.path}
+                        </Text>
                         <Text style={styles.metaText}>v{blueprint.version}</Text>
                       </View>
                     }

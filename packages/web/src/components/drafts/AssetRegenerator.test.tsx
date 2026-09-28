@@ -22,6 +22,7 @@ vi.mock('@/lib/api', () => ({
     getTemplates: vi.fn(),
     updateAsset: vi.fn(),
     updateMetadata: vi.fn(),
+    createDraftSnapshot: vi.fn(),
   },
 }));
 
@@ -87,10 +88,7 @@ const templatesResponse = [
   },
 ];
 
-function createWrapper(options?: {
-  route?: string;
-  element?: React.ReactNode;
-}) {
+function createWrapper(options?: { route?: string; element?: React.ReactNode }) {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
@@ -106,7 +104,7 @@ function createWrapper(options?: {
           <Route path="/drafts/:id/assets/:assetName/regenerate" element={options?.element ?? <AssetRegenerator />} />
         </Routes>
       </MemoryRouter>
-    </QueryClientProvider>
+    </QueryClientProvider>,
   );
 }
 
@@ -117,7 +115,11 @@ describe('AssetRegenerator', () => {
     vi.mocked(api.getDraft).mockResolvedValue(draftResponse as never);
     vi.mocked(api.getDrafts).mockResolvedValue({ drafts: [] } as never);
     vi.mocked(api.getTemplates).mockResolvedValue(templatesResponse as never);
-    vi.mocked(api.updateAsset).mockResolvedValue({ status: 'updated', draft_id: 'review-1', asset_name: 'system_prompt' } as never);
+    vi.mocked(api.updateAsset).mockResolvedValue({
+      status: 'updated',
+      draft_id: 'review-1',
+      asset_name: 'system_prompt',
+    } as never);
     vi.mocked(api.updateMetadata).mockResolvedValue(undefined as never);
     vi.mocked(GenerationService.previewBlueprint).mockReset();
     vi.mocked(GenerationService.generateAsset).mockReset();
@@ -152,25 +154,28 @@ describe('AssetRegenerator', () => {
   });
 
   it('restores a saved asset regeneration session for the same draft and asset', async () => {
-    window.localStorage.setItem('eidolon.active-asset-regenerator-session', JSON.stringify({
-      version: 1,
-      draftId: 'review-1',
-      assetName: 'system_prompt',
-      generationCount: 2,
-      customInstructions: 'Make it colder and more severe.',
-      blueprintOverrideContent: '',
-      generatedCandidates: [
-        {
-          id: 'candidate-1',
-          content: 'restored candidate',
-          timestamp: 1710000000000,
-        },
-      ],
-      expandedCandidates: ['candidate-1'],
-      generatingContent: '',
-      status: 'ready',
-      updatedAt: 1710000001000,
-    }));
+    window.localStorage.setItem(
+      'eidolon.active-asset-regenerator-session',
+      JSON.stringify({
+        version: 1,
+        draftId: 'review-1',
+        assetName: 'system_prompt',
+        generationCount: 2,
+        customInstructions: 'Make it colder and more severe.',
+        blueprintOverrideContent: '',
+        generatedCandidates: [
+          {
+            id: 'candidate-1',
+            content: 'restored candidate',
+            timestamp: 1710000000000,
+          },
+        ],
+        expandedCandidates: ['candidate-1'],
+        generatingContent: '',
+        status: 'ready',
+        updatedAt: 1710000001000,
+      }),
+    );
 
     createWrapper();
 
@@ -211,7 +216,11 @@ describe('AssetRegenerator', () => {
         character_sheet: 'character sheet content',
       },
     } as never);
-    vi.mocked(api.updateAsset).mockResolvedValue({ status: 'created', draft_id: 'review-1', asset_name: 'post_history' } as never);
+    vi.mocked(api.updateAsset).mockResolvedValue({
+      status: 'created',
+      draft_id: 'review-1',
+      asset_name: 'post_history',
+    } as never);
     vi.mocked(GenerationService.generateAsset).mockImplementation(async function* () {
       yield { type: 'asset', content: 'generated missing post history' } as never;
     });
@@ -220,7 +229,11 @@ describe('AssetRegenerator', () => {
       route: '/drafts/review-1/assets/post_history/regenerate',
     });
 
-    expect(await screen.findByText('This draft does not have a saved post history yet. Generate a candidate to create it from the current seed and prior asset chain.')).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        'This draft does not have a saved post history yet. Generate a candidate to create it from the current seed and prior asset chain.',
+      ),
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Generate One' }));
     expect(await screen.findByText('generated missing post history')).toBeInTheDocument();
@@ -297,16 +310,15 @@ describe('AssetRegenerator', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Generate One' }));
 
     await waitFor(() => {
-      expect(GenerationService.generateAsset).toHaveBeenCalledWith(expect.objectContaining({
-        asset_name: 'system_prompt',
-        prior_assets: {
-          character_sheet: 'character sheet content',
-        },
-        additional_instructions: [
-          'Keep the overall tone severe.',
-          'Sharpen the system prompt.',
-        ],
-      }));
+      expect(GenerationService.generateAsset).toHaveBeenCalledWith(
+        expect.objectContaining({
+          asset_name: 'system_prompt',
+          prior_assets: {
+            character_sheet: 'character sheet content',
+          },
+          additional_instructions: ['Keep the overall tone severe.', 'Sharpen the system prompt.'],
+        }),
+      );
     });
   });
 
@@ -329,7 +341,14 @@ describe('AssetRegenerator', () => {
 
     createWrapper({
       route: '/drafts/review-2/assets/intro_scene/regenerate',
-      element: <AssetRegenerator templates={templatesResponse as never} fixedAssetName="intro_scene" embedded enableDraftSelection />,
+      element: (
+        <AssetRegenerator
+          templates={templatesResponse as never}
+          fixedAssetName="intro_scene"
+          embedded
+          enableDraftSelection
+        />
+      ),
     });
 
     expect(await screen.findByText('Generate Asset Variants')).toBeInTheDocument();

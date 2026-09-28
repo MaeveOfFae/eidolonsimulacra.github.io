@@ -1,5 +1,15 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod companion;
+
+use companion::{
+  desktop_companion_peek_incoming_workspace_bundle,
+  desktop_companion_publish_workspace_bundle,
+  desktop_companion_rotate_pair_code,
+  desktop_companion_status,
+  desktop_companion_take_incoming_workspace_bundle,
+  DesktopCompanion,
+};
 use serde::Deserialize;
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_sql::{Migration, MigrationKind};
@@ -43,6 +53,8 @@ fn save_export(
 }
 
 fn main() {
+  let desktop_companion = DesktopCompanion::start();
+
   let _draft_migrations = vec![
     Migration {
       version: 1,
@@ -657,9 +669,54 @@ fn main() {
       ",
       kind: MigrationKind::Up,
     },
+    Migration {
+      version: 4,
+      description: "add_lore_draft_link_tables",
+      sql: "
+        CREATE TABLE IF NOT EXISTS world_faction_draft_links (
+          faction_id TEXT NOT NULL,
+          draft_id TEXT NOT NULL,
+          sort_order INTEGER NOT NULL DEFAULT 0,
+          PRIMARY KEY (faction_id, draft_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS world_location_draft_links (
+          location_id TEXT NOT NULL,
+          draft_id TEXT NOT NULL,
+          sort_order INTEGER NOT NULL DEFAULT 0,
+          PRIMARY KEY (location_id, draft_id)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_world_faction_draft_links_faction_id ON world_faction_draft_links(faction_id);
+        CREATE INDEX IF NOT EXISTS idx_world_location_draft_links_location_id ON world_location_draft_links(location_id);
+      ",
+      kind: MigrationKind::Up,
+    },
+    Migration {
+      version: 5,
+      description: "add_world_relationships",
+      sql: "
+        CREATE TABLE IF NOT EXISTS world_relationships (
+          id TEXT PRIMARY KEY NOT NULL,
+          world_id TEXT NOT NULL,
+          source_character_id TEXT NOT NULL,
+          target_character_id TEXT NOT NULL,
+          label TEXT NOT NULL,
+          notes TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_world_relationships_world_id ON world_relationships(world_id);
+        CREATE INDEX IF NOT EXISTS idx_world_relationships_source_character_id ON world_relationships(source_character_id);
+        CREATE INDEX IF NOT EXISTS idx_world_relationships_target_character_id ON world_relationships(target_character_id);
+      ",
+      kind: MigrationKind::Up,
+    },
   ];
 
   tauri::Builder::default()
+    .manage(desktop_companion)
     .plugin(tauri_plugin_dialog::init())
     .plugin(tauri_plugin_fs::init())
     .plugin(
@@ -667,7 +724,14 @@ fn main() {
         .add_migrations("sqlite:eidolon-lore.db", lore_migrations)
         .build(),
     )
-    .invoke_handler(tauri::generate_handler![save_export])
+    .invoke_handler(tauri::generate_handler![
+      save_export,
+      desktop_companion_status,
+      desktop_companion_rotate_pair_code,
+      desktop_companion_publish_workspace_bundle,
+      desktop_companion_peek_incoming_workspace_bundle,
+      desktop_companion_take_incoming_workspace_bundle,
+    ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }

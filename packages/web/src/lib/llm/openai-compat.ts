@@ -3,9 +3,7 @@
  * Handles OpenAI, OpenRouter, DeepSeek, Zai, and Moonshot APIs
  */
 
-import {
-  BaseLLMEngine,
-} from './base.js';
+import { BaseLLMEngine } from './base.js';
 import { buildProviderHeaders } from './factory.js';
 import type {
   ChatMessage,
@@ -19,9 +17,11 @@ import type {
 
 interface OpenAIChoice {
   text?: unknown;
-  error?: {
-    message?: string;
-  } | string;
+  error?:
+    | {
+        message?: string;
+      }
+    | string;
   message?: {
     role: string;
     content?: unknown;
@@ -44,9 +44,11 @@ interface OpenAIResponse {
   id?: string;
   choices: OpenAIChoice[];
   output_text?: unknown;
-  error?: {
-    message?: string;
-  } | string;
+  error?:
+    | {
+        message?: string;
+      }
+    | string;
   usage?: {
     prompt_tokens: number;
     completion_tokens: number;
@@ -92,7 +94,7 @@ export class OpenAICompatEngine extends BaseLLMEngine {
     if (this.config.baseUrl && this.config.proxyKey) {
       return {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.config.proxyKey}`,
+        Authorization: `Bearer ${this.config.proxyKey}`,
       };
     }
 
@@ -122,10 +124,9 @@ export class OpenAICompatEngine extends BaseLLMEngine {
       return true;
     }
 
-    return partType === 'text'
-      || partType === 'text_delta'
-      || partType === 'output_text'
-      || partType === 'output_text_delta';
+    return (
+      partType === 'text' || partType === 'text_delta' || partType === 'output_text' || partType === 'output_text_delta'
+    );
   }
 
   private extractTextValue(value: unknown): string {
@@ -140,7 +141,7 @@ export class OpenAICompatEngine extends BaseLLMEngine {
     if (value && typeof value === 'object') {
       const record = value as Record<string, unknown>;
 
-       if (!this.isDisplayContentRecord(record)) {
+      if (!this.isDisplayContentRecord(record)) {
         return '';
       }
 
@@ -193,20 +194,17 @@ export class OpenAICompatEngine extends BaseLLMEngine {
 
   private extractChoiceMessageContent(choice?: OpenAIChoice, response?: OpenAIResponse): string {
     return this.extractTextValue(
-      choice?.message?.content
-      ?? choice?.message?.output_text
-      ?? choice?.message?.parts
-      ?? choice?.text
-      ?? response?.output_text
+      choice?.message?.content ??
+        choice?.message?.output_text ??
+        choice?.message?.parts ??
+        choice?.text ??
+        response?.output_text,
     );
   }
 
   private extractChoiceDeltaContent(choice?: OpenAIChoice): string {
     return this.extractTextValue(
-      choice?.delta?.content
-      ?? choice?.delta?.output_text
-      ?? choice?.delta?.parts
-      ?? choice?.text
+      choice?.delta?.content ?? choice?.delta?.output_text ?? choice?.delta?.parts ?? choice?.text,
     );
   }
 
@@ -215,7 +213,12 @@ export class OpenAICompatEngine extends BaseLLMEngine {
     if (typeof responseError === 'string' && responseError.trim()) {
       return responseError;
     }
-    if (responseError && typeof responseError === 'object' && typeof responseError.message === 'string' && responseError.message.trim()) {
+    if (
+      responseError &&
+      typeof responseError === 'object' &&
+      typeof responseError.message === 'string' &&
+      responseError.message.trim()
+    ) {
       return responseError.message;
     }
 
@@ -223,7 +226,12 @@ export class OpenAICompatEngine extends BaseLLMEngine {
     if (typeof choiceError === 'string' && choiceError.trim()) {
       return choiceError;
     }
-    if (choiceError && typeof choiceError === 'object' && typeof choiceError.message === 'string' && choiceError.message.trim()) {
+    if (
+      choiceError &&
+      typeof choiceError === 'object' &&
+      typeof choiceError.message === 'string' &&
+      choiceError.message.trim()
+    ) {
       return choiceError.message;
     }
 
@@ -267,7 +275,7 @@ export class OpenAICompatEngine extends BaseLLMEngine {
   private assertBrowserSupported(): void {
     if (this.isDirectBrowserOpenAIRequest()) {
       throw new Error(
-        'Direct OpenAI requests from the browser are blocked by CORS. Use OpenRouter, or configure a custom base URL that points to your own proxy or relay.'
+        'Direct OpenAI requests from the browser are blocked by CORS. Use OpenRouter, or configure a custom base URL that points to your own proxy or relay.',
       );
     }
   }
@@ -276,16 +284,13 @@ export class OpenAICompatEngine extends BaseLLMEngine {
     role: string;
     content: string;
   }> {
-    return messages.map(m => ({
+    return messages.map((m) => ({
       role: m.role,
       content: m.content,
     }));
   }
 
-  async generate(
-    messages: ChatMessage[],
-    options?: GenerateOptions
-  ): Promise<GenerateResult> {
+  async generate(messages: ChatMessage[], options?: GenerateOptions): Promise<GenerateResult> {
     this.assertBrowserSupported();
     const opts = this.mergeOptions(options);
 
@@ -320,18 +325,17 @@ export class OpenAICompatEngine extends BaseLLMEngine {
     return {
       content,
       finishReason: choice.finish_reason,
-      usage: data.usage ? {
-        promptTokens: data.usage.prompt_tokens,
-        completionTokens: data.usage.completion_tokens,
-        totalTokens: data.usage.total_tokens,
-      } : undefined,
+      usage: data.usage
+        ? {
+            promptTokens: data.usage.prompt_tokens,
+            completionTokens: data.usage.completion_tokens,
+            totalTokens: data.usage.total_tokens,
+          }
+        : undefined,
     };
   }
 
-  async *generateStream(
-    messages: ChatMessage[],
-    options?: StreamGenerateOptions
-  ): AsyncIterable<StreamChunk> {
+  async *generateStream(messages: ChatMessage[], options?: StreamGenerateOptions): AsyncIterable<StreamChunk> {
     this.assertBrowserSupported();
     const opts = this.mergeOptions(options);
 

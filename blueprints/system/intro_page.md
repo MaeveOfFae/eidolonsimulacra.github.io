@@ -1,6 +1,6 @@
 ---
-name: Intro Page
-description: Generate a character intro page with Markdown.
+name: Creator Notes
+description: Generate creator notes with Markdown.
 invokable: true
 always: false
 version: 3.3
@@ -9,11 +9,11 @@ feature_category: generation
 
 # Blueprint Agent
 
-<intro_page_module>
+<creator_notes_module>
 
 <system_mandate>
   Role = "Blueprint Agent"
-  Task = "Generate a character intro page as a single Markdown snippet from the active character context plus any provided references"
+  Task = "Generate creator notes as a single Markdown snippet from the active character context plus any provided references"
   Format = "Keep the layout lean and replace every placeholder with character-specific text"
   Version_Note = "Version tracks the format spec for this blueprint, not a bundle version"
 </system_mandate>
@@ -27,8 +27,8 @@ feature_category: generation
   Cross_Asset_Coherence = "Keep every section aligned with the upstream system prompt, character sheet, and intro scene; do not beautify away contradictions or rough edges"
   Reference_Continuity = "If references are provided, use them to ground the Background and Relationships sections in real shared context, factions, obligations, rivalries, or history"
   Identity_Distinction = "Keep the current character distinct; do not let references overwrite the page into another character's profile"
-  Tone_Guardrail = "Do not turn the page into sanitized marketing copy; preserve the character's pressure points, damage, hunger, and friction when the seed implies them"
-  Output_Constraint = "Output ONLY the finished intro page markdown content with no commentary, explanations, or surrounding code fences"
+  Tone_Guardrail = "Do not turn the notes into sanitized marketing copy; preserve the character's pressure points, damage, hunger, and friction when the seed implies them"
+  Output_Constraint = "Output ONLY the finished creator notes markdown content with no commentary, explanations, or surrounding code fences"
 </critical_requirements>
 
 <markdown_output_contract>
@@ -60,4 +60,4 @@ feature_category: generation
   Delivery = "Output the result as raw markdown content"
 </markdown_output_contract>
 
-</intro_page_module>
+</creator_notes_module>

@@ -1,25 +1,12 @@
-import { getOrderedAssets, type Draft, type Template } from '@char-gen/shared';
+import { getOrderedAssets, normalizeAssetNameList, type Draft, type Template } from '@char-gen/shared';
+
+type DraftOrderContext = Pick<Draft, 'assets'> & {
+  metadata?: Draft['metadata'];
+};
 
 export interface DraftSendOrderWarning {
   assetName: string;
   dependencyNames: string[];
-}
-
-function normalizeAssetNames(names: readonly string[]): string[] {
-  const seen = new Set<string>();
-  const normalized: string[] = [];
-
-  for (const name of names) {
-    const trimmed = typeof name === 'string' ? name.trim() : '';
-    if (!trimmed || seen.has(trimmed)) {
-      continue;
-    }
-
-    seen.add(trimmed);
-    normalized.push(trimmed);
-  }
-
-  return normalized;
 }
 
 function getTemplateAssetNames(template?: Template): string[] {
@@ -30,24 +17,26 @@ function getTemplateAssetNames(template?: Template): string[] {
   return getOrderedAssets(template).map((asset) => asset.name);
 }
 
-export function getDefaultDraftComponentSendOrder(
-  draft: Pick<Draft, 'assets'> | undefined,
-  template?: Template
-): string[] {
+export function getDefaultDraftComponentSendOrder(draft: DraftOrderContext | undefined, template?: Template): string[] {
   const templateAssetNames = getTemplateAssetNames(template);
   const draftAssetNames = draft ? Object.keys(draft.assets) : [];
 
-  return normalizeAssetNames([...templateAssetNames, ...draftAssetNames]);
+  return normalizeAssetNameList(
+    [...templateAssetNames, ...draftAssetNames],
+    template ?? draft?.metadata?.template_name,
+  );
 }
 
 export function getEffectiveDraftComponentSendOrder(
-  draft: Pick<Draft, 'assets' | 'metadata'> | undefined,
-  template?: Template
+  draft: DraftOrderContext | undefined,
+  template?: Template,
 ): string[] {
   const defaultOrder = getDefaultDraftComponentSendOrder(draft, template);
   const availableNames = new Set(defaultOrder);
-  const savedOrder = normalizeAssetNames(draft?.metadata.component_send_order ?? [])
-    .filter((assetName) => availableNames.has(assetName));
+  const savedOrder = normalizeAssetNameList(
+    draft?.metadata?.component_send_order ?? [],
+    template ?? draft?.metadata?.template_name,
+  ).filter((assetName) => availableNames.has(assetName));
   const seen = new Set(savedOrder);
 
   return [...savedOrder, ...defaultOrder.filter((assetName) => !seen.has(assetName))];
@@ -55,13 +44,14 @@ export function getEffectiveDraftComponentSendOrder(
 
 export function normalizeDraftComponentSendOrderForSave(
   componentSendOrder: readonly string[],
-  draft: Pick<Draft, 'assets'> | undefined,
-  template?: Template
+  draft: DraftOrderContext | undefined,
+  template?: Template,
 ): string[] | undefined {
   const defaultOrder = getDefaultDraftComponentSendOrder(draft, template);
   const availableNames = new Set(defaultOrder);
-  const normalized = normalizeAssetNames(componentSendOrder)
-    .filter((assetName) => availableNames.has(assetName));
+  const normalized = normalizeAssetNameList(componentSendOrder, template ?? draft?.metadata?.template_name).filter(
+    (assetName) => availableNames.has(assetName),
+  );
   const seen = new Set(normalized);
   const completedOrder = [...normalized, ...defaultOrder.filter((assetName) => !seen.has(assetName))];
 
@@ -78,7 +68,7 @@ export function normalizeDraftComponentSendOrderForSave(
 
 export function getDraftSendOrderWarnings(
   componentSendOrder: readonly string[],
-  template?: Template
+  template?: Template,
 ): DraftSendOrderWarning[] {
   if (!template) {
     return [];
@@ -112,7 +102,7 @@ export function getDraftSendOrderWarnings(
 export function buildDraftPriorAssets(
   draft: Pick<Draft, 'assets' | 'metadata'>,
   targetAssetName: string,
-  template?: Template
+  template?: Template,
 ): Record<string, string> {
   const effectiveOrder = getEffectiveDraftComponentSendOrder(draft, template);
   const targetIndex = effectiveOrder.indexOf(targetAssetName);
@@ -133,10 +123,7 @@ export function buildDraftPriorAssets(
   return priorAssets;
 }
 
-export function mergeDraftAdditionalInstructions(
-  savedInstructions?: string,
-  transientInstructions?: string
-): string[] {
+export function mergeDraftAdditionalInstructions(savedInstructions?: string, transientInstructions?: string): string[] {
   return [savedInstructions, transientInstructions]
     .filter((value): value is string => typeof value === 'string')
     .map((value) => value.trim())

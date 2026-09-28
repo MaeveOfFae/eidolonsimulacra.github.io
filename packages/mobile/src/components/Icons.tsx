@@ -121,13 +121,7 @@ export function ChevronDownIcon({ color, size = 24 }: IconProps) {
   return (
     <View style={{ width: size, height: size }}>
       <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-        <Path
-          d="M6 9L12 15L18 9"
-          stroke={color}
-          strokeWidth={1.5}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
+        <Path d="M6 9L12 15L18 9" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
       </Svg>
     </View>
   );
@@ -137,13 +131,7 @@ export function ChevronUpIcon({ color, size = 24 }: IconProps) {
   return (
     <View style={{ width: size, height: size }}>
       <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-        <Path
-          d="M6 15L12 9L18 15"
-          stroke={color}
-          strokeWidth={1.5}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
+        <Path d="M6 15L12 9L18 15" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
       </Svg>
     </View>
   );
@@ -201,12 +189,7 @@ export function BabyIcon({ color, size = 24 }: IconProps) {
           strokeWidth={1.5}
           strokeLinecap="round"
         />
-        <Path
-          d="M9 8H9.01M15 8H15.01"
-          stroke={color}
-          strokeWidth={2}
-          strokeLinecap="round"
-        />
+        <Path d="M9 8H9.01M15 8H15.01" stroke={color} strokeWidth={2} strokeLinecap="round" />
         <Path
           d="M10 11C10.5 11.5 11 12 12 12C13 12 13.5 11.5 14 11"
           stroke={color}
@@ -251,13 +234,7 @@ export function PlusIcon({ color, size = 24 }: IconProps) {
   return (
     <View style={{ width: size, height: size }}>
       <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-        <Path
-          d="M12 5V19M5 12H19"
-          stroke={color}
-          strokeWidth={2}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
+        <Path d="M12 5V19M5 12H19" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
       </Svg>
     </View>
   );
@@ -322,13 +299,7 @@ export function ClipboardIcon({ color, size = 24 }: IconProps) {
           strokeLinecap="round"
           strokeLinejoin="round"
         />
-        <Path
-          d="M9 12H15M9 16H12"
-          stroke={color}
-          strokeWidth={1.5}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
+        <Path d="M9 12H15M9 16H12" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
       </Svg>
     </View>
   );
@@ -361,13 +332,7 @@ export function PaperAirplaneIcon({ color, size = 24 }: IconProps) {
           strokeLinecap="round"
           strokeLinejoin="round"
         />
-        <Path
-          d="M6 12H13.5"
-          stroke={color}
-          strokeWidth={1.5}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
+        <Path d="M6 12H13.5" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
       </Svg>
     </View>
   );
@@ -407,13 +372,7 @@ export function PencilIcon({ color, size = 24 }: IconProps) {
           strokeLinecap="round"
           strokeLinejoin="round"
         />
-        <Path
-          d="M15 6L18.5 9.5"
-          stroke={color}
-          strokeWidth={1.5}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
+        <Path d="M15 6L18.5 9.5" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
         <Path
           d="M21 12V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19V5C3 3.89543 3.89543 3 5 3H12"
           stroke={color}

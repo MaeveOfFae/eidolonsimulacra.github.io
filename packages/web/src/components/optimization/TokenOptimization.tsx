@@ -20,29 +20,30 @@ export default function TokenOptimization() {
   const sourceAssetName = searchParams.get('asset');
 
   const optimizeMutation = useMutation({
-    mutationFn: (request: OptimizeTextRequest) => new Promise<string>((resolve, reject) => {
-      const stream = api.optimizeText(request);
-      let fullContent = '';
+    mutationFn: (request: OptimizeTextRequest) =>
+      new Promise<string>((resolve, reject) => {
+        const stream = api.optimizeText(request);
+        let fullContent = '';
 
-      stream.subscribe((event) => {
-        if (event.event === 'chunk' && 'content' in event.data) {
-          const data = event.data as { content: string };
-          fullContent += data.content;
-          setOutput(fullContent);
-        }
+        stream.subscribe((event) => {
+          if (event.event === 'chunk' && 'content' in event.data) {
+            const data = event.data as { content: string };
+            fullContent += data.content;
+            setOutput(fullContent);
+          }
 
-        if (event.event === 'complete' && 'content' in event.data) {
-          const data = event.data as { content: string };
-          const finalContent = data.content || fullContent;
-          setOutput(finalContent);
-          resolve(finalContent);
-        }
-      });
+          if (event.event === 'complete' && 'content' in event.data) {
+            const data = event.data as { content: string };
+            const finalContent = data.content || fullContent;
+            setOutput(finalContent);
+            resolve(finalContent);
+          }
+        });
 
-      stream.onError_((error) => reject(new Error(error)));
+        stream.onError_((error) => reject(new Error(error)));
 
-      void stream.start().catch(reject);
-    }),
+        void stream.start().catch(reject);
+      }),
   });
 
   const applyMutation = useMutation({
@@ -70,9 +71,8 @@ export default function TokenOptimization() {
   const inputStats = useMemo(() => estimateTextStats(input), [input]);
   const outputStats = useMemo(() => estimateTextStats(output), [output]);
   const tokenDelta = inputStats.estimatedTokens - outputStats.estimatedTokens;
-  const tokenReductionPercent = inputStats.estimatedTokens > 0
-    ? Math.round((tokenDelta / inputStats.estimatedTokens) * 100)
-    : 0;
+  const tokenReductionPercent =
+    inputStats.estimatedTokens > 0 ? Math.round((tokenDelta / inputStats.estimatedTokens) * 100) : 0;
 
   useAssistantScreenContext({
     input_length: input.length,
@@ -107,7 +107,7 @@ export default function TokenOptimization() {
     await navigator.clipboard.writeText(value);
     setCopied(source);
     window.setTimeout(() => {
-      setCopied((current) => current === source ? null : current);
+      setCopied((current) => (current === source ? null : current));
     }, 1500);
   };
 
@@ -157,7 +157,9 @@ export default function TokenOptimization() {
               </div>
               <div className="app-page-metric">
                 <p className="app-page-metric-label">Reduction</p>
-                <div className="app-page-metric-value text-2xl">{output ? `${Math.max(0, tokenReductionPercent)}%` : '--'}</div>
+                <div className="app-page-metric-value text-2xl">
+                  {output ? `${Math.max(0, tokenReductionPercent)}%` : '--'}
+                </div>
               </div>
             </div>
           </div>
@@ -169,13 +171,17 @@ export default function TokenOptimization() {
           <CollapsibleSection
             title="Input"
             subtitle="Paste the text you want to compress"
-            preview={input.trim() ? `${input.trim().slice(0, 120)}${input.trim().length > 120 ? '...' : ''}` : 'No text yet'}
+            preview={
+              input.trim() ? `${input.trim().slice(0, 120)}${input.trim().length > 120 ? '...' : ''}` : 'No text yet'
+            }
             defaultExpanded
             className="app-panel"
           >
             <div className="space-y-4">
               <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
-                <span>{inputStats.characters} chars • {inputStats.words} words • ~{inputStats.estimatedTokens} tokens</span>
+                <span>
+                  {inputStats.characters} chars • {inputStats.words} words • ~{inputStats.estimatedTokens} tokens
+                </span>
                 <button
                   type="button"
                   onClick={() => void handleCopy(input, 'input')}
@@ -199,13 +205,19 @@ export default function TokenOptimization() {
           <CollapsibleSection
             title="Optimized output"
             subtitle="Shorter wording with relevant data preserved"
-            preview={output.trim() ? `${output.trim().slice(0, 120)}${output.trim().length > 120 ? '...' : ''}` : 'No optimized output yet'}
+            preview={
+              output.trim()
+                ? `${output.trim().slice(0, 120)}${output.trim().length > 120 ? '...' : ''}`
+                : 'No optimized output yet'
+            }
             defaultExpanded={Boolean(output)}
             className="app-panel"
           >
             <div className="space-y-4">
               <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground">
-                <span>{outputStats.characters} chars • {outputStats.words} words • ~{outputStats.estimatedTokens} tokens</span>
+                <span>
+                  {outputStats.characters} chars • {outputStats.words} words • ~{outputStats.estimatedTokens} tokens
+                </span>
                 <div className="flex flex-wrap justify-end gap-2">
                   <button
                     type="button"
@@ -248,7 +260,9 @@ export default function TokenOptimization() {
           >
             <div className="space-y-4">
               <div className="space-y-2">
-                <label htmlFor="token-optimization-target" className="text-sm font-medium">Target reduction</label>
+                <label htmlFor="token-optimization-target" className="text-sm font-medium">
+                  Target reduction
+                </label>
                 <input
                   id="token-optimization-target"
                   type="range"
@@ -259,7 +273,9 @@ export default function TokenOptimization() {
                   onChange={(event) => setTargetReduction(Number(event.target.value))}
                   className="w-full"
                 />
-                <div className="text-xs text-muted-foreground">Aim for about {targetReduction}% fewer tokens if meaning can be preserved.</div>
+                <div className="text-xs text-muted-foreground">
+                  Aim for about {targetReduction}% fewer tokens if meaning can be preserved.
+                </div>
               </div>
 
               <label className="flex items-center gap-2 text-sm">
@@ -278,7 +294,11 @@ export default function TokenOptimization() {
                 disabled={optimizeMutation.isPending || !input.trim()}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {optimizeMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ScissorsLineDashed className="h-4 w-4" />}
+                {optimizeMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <ScissorsLineDashed className="h-4 w-4" />
+                )}
                 {optimizeMutation.isPending ? 'Optimizing...' : 'Optimize text'}
               </button>
 
@@ -289,7 +309,11 @@ export default function TokenOptimization() {
                   disabled={applyMutation.isPending || !output.trim()}
                   className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-input bg-background px-4 py-3 text-sm font-semibold hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {applyMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRightLeft className="h-4 w-4" />}
+                  {applyMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <ArrowRightLeft className="h-4 w-4" />
+                  )}
                   {applyMutation.isPending ? 'Applying...' : `Apply to ${sourceAssetName}`}
                 </button>
               )}
@@ -307,7 +331,8 @@ export default function TokenOptimization() {
               <p>Compression should come from shorter phrasing, deduplication, and removing filler or repetition.</p>
               <p>It should not summarize away requirements, names, constraints, or other meaningful details.</p>
               <div className="rounded-lg border border-border/60 bg-background/50 px-3 py-2.5 text-xs">
-                Use this for prompts, blueprints, scene text, rules, or notes when the goal is lower token usage without meaning loss.
+                Use this for prompts, blueprints, scene text, rules, or notes when the goal is lower token usage without
+                meaning loss.
               </div>
             </div>
           </CollapsibleSection>

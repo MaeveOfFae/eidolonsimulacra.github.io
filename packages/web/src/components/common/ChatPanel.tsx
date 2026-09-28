@@ -32,10 +32,12 @@ export default function ChatPanel({ draftId, assetName, onAssetRefined }: ChatPa
 
   useEffect(() => {
     if (isOpen && messages.length === 0) {
-      setMessages([{
-        role: 'assistant',
-        content: `Hi! I'm here to help you refine this character${selectedAsset ? `'s ${selectedAsset.replace(/_/g, ' ')}` : ''}. What would you like to change or improve?`
-      }]);
+      setMessages([
+        {
+          role: 'assistant',
+          content: `Hi! I'm here to help you refine this character${selectedAsset ? `'s ${selectedAsset.replace(/_/g, ' ')}` : ''}. What would you like to change or improve?`,
+        },
+      ]);
     }
   }, [isOpen, messages.length, selectedAsset]);
 
@@ -47,7 +49,7 @@ export default function ChatPanel({ draftId, assetName, onAssetRefined }: ChatPa
     if (!input.trim() || isStreaming) return;
 
     const userMessage: ChatMessage = { role: 'user', content: input.trim() };
-    setMessages(prev => [...prev, userMessage]);
+    setMessages((prev) => [...prev, userMessage]);
     setInput('');
     setIsStreaming(true);
     setStreamingContent('');
@@ -67,7 +69,7 @@ export default function ChatPanel({ draftId, assetName, onAssetRefined }: ChatPa
           setStreamingContent(fullContent);
         }
         if (event.event === 'complete') {
-          setMessages(prev => [...prev, { role: 'assistant', content: fullContent }]);
+          setMessages((prev) => [...prev, { role: 'assistant', content: fullContent }]);
           setStreamingContent('');
           setIsStreaming(false);
         }
@@ -75,13 +77,16 @@ export default function ChatPanel({ draftId, assetName, onAssetRefined }: ChatPa
 
       stream.onError_((error) => {
         setIsStreaming(false);
-        setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${error}` }]);
+        setMessages((prev) => [...prev, { role: 'assistant', content: `Error: ${error}` }]);
       });
 
       await stream.start();
     } catch (err) {
       setIsStreaming(false);
-      setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${err instanceof Error ? err.message : 'Unknown error'}` }]);
+      setMessages((prev) => [
+        ...prev,
+        { role: 'assistant', content: `Error: ${err instanceof Error ? err.message : 'Unknown error'}` },
+      ]);
     }
   };
 
@@ -109,9 +114,10 @@ export default function ChatPanel({ draftId, assetName, onAssetRefined }: ChatPa
         }
         if (event.event === 'complete') {
           setRefinedContent(fullContent);
-          setMessages(prev => [...prev,
+          setMessages((prev) => [
+            ...prev,
             { role: 'user', content: `Refine ${selectedAsset}: ${userMessage}` },
-            { role: 'assistant', content: `Here's the updated ${selectedAsset.replace(/_/g, ' ')}:` }
+            { role: 'assistant', content: `Here's the updated ${selectedAsset.replace(/_/g, ' ')}:` },
           ]);
           setIsStreaming(false);
         }
@@ -119,7 +125,7 @@ export default function ChatPanel({ draftId, assetName, onAssetRefined }: ChatPa
 
       stream.onError_((error) => {
         setIsStreaming(false);
-        setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${error}` }]);
+        setMessages((prev) => [...prev, { role: 'assistant', content: `Error: ${error}` }]);
       });
 
       await stream.start();
@@ -132,7 +138,7 @@ export default function ChatPanel({ draftId, assetName, onAssetRefined }: ChatPa
     if (refinedContent && selectedAsset && onAssetRefined) {
       onAssetRefined(selectedAsset, refinedContent);
       setRefinedContent(null);
-      setMessages(prev => [...prev, { role: 'assistant', content: '✅ Applied!' }]);
+      setMessages((prev) => [...prev, { role: 'assistant', content: '✅ Applied!' }]);
     }
   };
 
@@ -150,7 +156,10 @@ export default function ChatPanel({ draftId, assetName, onAssetRefined }: ChatPa
   }
 
   return (
-    <div data-global-assistant-root="true" className="fixed bottom-6 right-6 w-96 max-h-[600px] rounded-lg border border-border bg-card shadow-xl flex flex-col z-50">
+    <div
+      data-global-assistant-root="true"
+      className="fixed bottom-6 right-6 w-96 max-h-[600px] rounded-lg border border-border bg-card shadow-xl flex flex-col z-50"
+    >
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-border">
         <div className="flex items-center gap-2">
@@ -177,24 +186,17 @@ export default function ChatPanel({ draftId, assetName, onAssetRefined }: ChatPa
           className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm"
         >
           <option value="">All assets</option>
-          {assetName && (
-            <option value={assetName}>{assetName.replace(/_/g, ' ')}</option>
-          )}
+          {assetName && <option value={assetName}>{assetName.replace(/_/g, ' ')}</option>}
         </select>
       </div>
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[200px] max-h-[300px]">
         {messages.map((msg, idx) => (
-          <div
-            key={idx}
-            className={`text-sm ${msg.role === 'user' ? 'text-right' : ''}`}
-          >
+          <div key={idx} className={`text-sm ${msg.role === 'user' ? 'text-right' : ''}`}>
             <div
               className={`inline-block rounded-lg px-3 py-2 max-w-[85%] ${
-                msg.role === 'user'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted'
+                msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'
               }`}
             >
               {msg.content}
@@ -203,9 +205,7 @@ export default function ChatPanel({ draftId, assetName, onAssetRefined }: ChatPa
         ))}
         {streamingContent && (
           <div className="text-sm">
-            <div className="inline-block rounded-lg px-3 py-2 max-w-[85%] bg-muted">
-              {streamingContent}
-            </div>
+            <div className="inline-block rounded-lg px-3 py-2 max-w-[85%] bg-muted">{streamingContent}</div>
           </div>
         )}
         <div ref={messagesEndRef} />
@@ -261,11 +261,7 @@ export default function ChatPanel({ draftId, assetName, onAssetRefined }: ChatPa
             disabled={!input.trim() || isStreaming}
             className="inline-flex items-center justify-center rounded-md bg-primary px-3 py-2 text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
-            {isStreaming ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
+            {isStreaming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </button>
         </div>
         {selectedAsset && (

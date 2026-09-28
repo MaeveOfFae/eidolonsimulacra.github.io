@@ -12,9 +12,11 @@ type ProviderModelsPayload = {
     };
     supported_parameters?: string[];
   }>;
-  error?: {
-    message?: string;
-  } | string;
+  error?:
+    | {
+        message?: string;
+      }
+    | string;
 };
 
 export function getFallbackModels(provider: LLMProvider): ModelsResponse['models'] {
@@ -29,11 +31,13 @@ export async function fetchProviderModels(
   provider: LLMProvider,
   apiKey: string,
   baseUrl: string,
-  options: { includeContentTypeHeader?: boolean } = {}
+  options: { includeContentTypeHeader?: boolean } = {},
 ): Promise<ModelsResponse> {
-  const headers = buildProviderHeaders(provider, apiKey, options.includeContentTypeHeader
-    ? { contentType: 'application/json' }
-    : undefined);
+  const headers = buildProviderHeaders(
+    provider,
+    apiKey,
+    options.includeContentTypeHeader ? { contentType: 'application/json' } : undefined,
+  );
 
   const response = await fetch(`${baseUrl}/models`, {
     method: 'GET',
@@ -43,7 +47,7 @@ export async function fetchProviderModels(
   if (!response.ok) {
     let error = `HTTP ${response.status}`;
     try {
-      const payload = await response.json() as ProviderModelsPayload;
+      const payload = (await response.json()) as ProviderModelsPayload;
       if (typeof payload.error === 'string') {
         error = payload.error;
       } else if (payload.error?.message) {
@@ -56,7 +60,7 @@ export async function fetchProviderModels(
     throw new Error(error);
   }
 
-  const payload = await response.json() as ProviderModelsPayload;
+  const payload = (await response.json()) as ProviderModelsPayload;
   const models = (payload.data || [])
     .filter((model): model is NonNullable<ProviderModelsPayload['data']>[number] & { id: string } => Boolean(model?.id))
     .map((model) => ({

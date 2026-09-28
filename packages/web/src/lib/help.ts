@@ -81,42 +81,48 @@ export const gettingStartedSteps: HelpGuideStep[] = [
   {
     id: 'browser-storage',
     title: 'Understand where your work lives',
-    description: 'Drafts, templates, settings, and theme edits stay in this browser profile by default. Clearing browser storage removes them unless you export a backup first.',
+    description:
+      'Drafts, templates, settings, and theme edits stay in this browser profile by default. Clearing browser storage removes them unless you export a backup first.',
     to: '/about',
     actionLabel: 'Read about browser storage',
   },
   {
     id: 'api-keys',
     title: 'Set up an API key',
-    description: 'Open Settings, pick the provider you actually use, and paste the provider key you want the browser app to send with generation requests.',
+    description:
+      'Open Settings, pick the provider you actually use, and paste the provider key you want the browser app to send with generation requests.',
     to: '/settings',
     actionLabel: 'Open Settings',
   },
   {
     id: 'template',
     title: 'Choose a template before you generate',
-    description: 'Templates define which assets are produced and what export structure must be preserved. Start with the built-in template before making custom ones.',
+    description:
+      'Templates define which assets are produced and what export structure must be preserved. Start with the built-in template before making custom ones.',
     to: '/templates',
     actionLabel: 'Review templates',
   },
   {
     id: 'generate',
     title: 'Create your first draft',
-    description: 'Go to Generate, enter a seed, confirm the content mode, and let the app produce a full draft pack you can review asset by asset.',
+    description:
+      'Go to Generate, enter a seed, confirm the content mode, and let the app produce a full draft pack you can review asset by asset.',
     to: '/generate',
     actionLabel: 'Start generating',
   },
   {
     id: 'review',
     title: 'Review before exporting',
-    description: 'Open the saved draft, check for consistency and missing details, and refine anything that does not fit the character you want to keep.',
+    description:
+      'Open the saved draft, check for consistency and missing details, and refine anything that does not fit the character you want to keep.',
     to: '/drafts',
     actionLabel: 'Open draft library',
   },
   {
     id: 'export',
     title: 'Export with browser expectations in mind',
-    description: 'On mobile or in a browser, export may use a share sheet, a new tab, or the download tray instead of a desktop-style save dialog.',
+    description:
+      'On mobile or in a browser, export may use a share sheet, a new tab, or the download tray instead of a desktop-style save dialog.',
     to: '/data',
     actionLabel: 'See backup and export tools',
   },
@@ -127,7 +133,8 @@ export const helpTopics: HelpTopic[] = [
     id: 'what-is-a-template',
     title: 'Templates vs. blueprints',
     category: 'Concepts',
-    summary: 'Templates choose the asset graph. Blueprints define how each asset is generated. Most users should start with templates and leave blueprints alone until they understand the workflow.',
+    summary:
+      'Templates choose the asset graph. Blueprints define how each asset is generated. Most users should start with templates and leave blueprints alone until they understand the workflow.',
     bullets: [
       'Templates decide which files exist and in what order they depend on each other.',
       'Blueprints are stricter and can break parser-facing output if edited casually.',
@@ -142,7 +149,8 @@ export const helpTopics: HelpTopic[] = [
     id: 'how-export-works',
     title: 'How export works in the browser',
     category: 'Getting Started',
-    summary: 'Browser export behavior depends on the device and browser. Normal web apps do not always get a native filename prompt.',
+    summary:
+      'Browser export behavior depends on the device and browser. Normal web apps do not always get a native filename prompt.',
     bullets: [
       'Desktop browsers often save directly to Downloads.',
       'Mobile browsers may show a share sheet or open a new tab instead of prompting for a filename.',
@@ -157,7 +165,8 @@ export const helpTopics: HelpTopic[] = [
     id: 'api-key-setup',
     title: 'API key setup without guesswork',
     category: 'Getting Started',
-    summary: 'The browser app talks to your chosen model provider using the API key you enter in Settings. No local backend service is required for the current web runtime.',
+    summary:
+      'The browser app talks to your chosen model provider using the API key you enter in Settings. No local backend service is required for the current web runtime.',
     bullets: [
       'Choose the provider you really use before selecting a model.',
       'If a key looks corrupted or includes invisible characters, the app will reject it.',
@@ -172,7 +181,8 @@ export const helpTopics: HelpTopic[] = [
     id: 'first-draft-review',
     title: 'How to review a first draft',
     category: 'Concepts',
-    summary: 'A good review checks structure first, then consistency, then polish. Do not export just because generation finished.',
+    summary:
+      'A good review checks structure first, then consistency, then polish. Do not export just because generation finished.',
     bullets: [
       'Confirm the character name, major facts, and tone stay consistent across assets.',
       'Watch for unresolved placeholders or format drift in strict assets.',
@@ -213,7 +223,8 @@ export const guidedTours: GuidedTour[] = [
       {
         id: 'start-home',
         title: 'Start from Home',
-        description: 'Home is the launch surface for the beginner path. It tells you what the current browser app can do and where to go next.',
+        description:
+          'Home is the launch surface for the beginner path. It tells you what the current browser app can do and where to go next.',
         to: '/',
         routeLabel: 'Home',
         bullets: [
@@ -224,7 +235,8 @@ export const guidedTours: GuidedTour[] = [
       {
         id: 'set-up-provider',
         title: 'Set up provider access',
-        description: 'Open Settings before you generate anything. This avoids the most common first-run failure: trying to generate with a missing or mismatched provider key.',
+        description:
+          'Open Settings before you generate anything. This avoids the most common first-run failure: trying to generate with a missing or mismatched provider key.',
         to: '/settings',
         routeLabel: 'Settings',
         targetId: 'settings-api-keys',
@@ -238,7 +250,8 @@ export const guidedTours: GuidedTour[] = [
       {
         id: 'choose-template',
         title: 'Choose the template first',
-        description: 'Templates decide which assets exist and how the draft will export. Make this choice before refining the prompt or seed.',
+        description:
+          'Templates decide which assets exist and how the draft will export. Make this choice before refining the prompt or seed.',
         to: '/templates',
         routeLabel: 'Templates',
         bullets: [
@@ -249,7 +262,8 @@ export const guidedTours: GuidedTour[] = [
       {
         id: 'generate-draft',
         title: 'Generate the first draft',
-        description: 'Once provider setup and template choice are in place, Generate becomes the first full workflow step.',
+        description:
+          'Once provider setup and template choice are in place, Generate becomes the first full workflow step.',
         to: '/generate',
         routeLabel: 'Generate',
         targetId: 'generation-submit',
@@ -262,7 +276,8 @@ export const guidedTours: GuidedTour[] = [
       {
         id: 'review-library',
         title: 'Review saved drafts',
-        description: 'The library is where you reopen saved work and decide what should move into deeper review, validation, or export.',
+        description:
+          'The library is where you reopen saved work and decide what should move into deeper review, validation, or export.',
         to: '/drafts',
         routeLabel: 'Library',
         bullets: [
@@ -273,27 +288,27 @@ export const guidedTours: GuidedTour[] = [
       {
         id: 'protect-work',
         title: 'Protect your work with backups',
-        description: 'Data Manager is the safety net for browser-local storage. Use it before clearing browser data or moving to another device.',
+        description:
+          'Data Manager is the safety net for browser-local storage. Use it before clearing browser data or moving to another device.',
         to: '/data',
         routeLabel: 'Data Manager',
-        bullets: [
-          'Export backups before risky changes.',
-          'Treat API key exports as sensitive data.',
-        ],
+        bullets: ['Export backups before risky changes.', 'Treat API key exports as sensitive data.'],
       },
     ],
   },
   {
     id: SAFE_STORAGE_TOUR_ID,
     title: 'Protect Your Work Tour',
-    summary: 'Learn the browser-storage model, backup path, and the pages that matter when you need to avoid losing work.',
+    summary:
+      'Learn the browser-storage model, backup path, and the pages that matter when you need to avoid losing work.',
     audience: 'Users who are worried about where data lives and how to recover it safely.',
     estimatedMinutes: 4,
     steps: [
       {
         id: 'storage-model',
         title: 'Confirm the storage model',
-        description: 'About explains that the current product surface is the browser app. That matters because drafts and configuration live in browser storage by default.',
+        description:
+          'About explains that the current product surface is the browser app. That matters because drafts and configuration live in browser storage by default.',
         to: '/about',
         routeLabel: 'About',
         bullets: [
@@ -304,18 +319,17 @@ export const guidedTours: GuidedTour[] = [
       {
         id: 'backup-tools',
         title: 'Use backup tools intentionally',
-        description: 'Data Manager is where you export or restore browser-stored content when you need to migrate, recover, or safeguard work.',
+        description:
+          'Data Manager is where you export or restore browser-stored content when you need to migrate, recover, or safeguard work.',
         to: '/data',
         routeLabel: 'Data Manager',
-        bullets: [
-          'Back up before clearing site data.',
-          'Use restore only with files you trust and understand.',
-        ],
+        bullets: ['Back up before clearing site data.', 'Use restore only with files you trust and understand.'],
       },
       {
         id: 'privacy-expectations',
         title: 'Understand privacy expectations',
-        description: 'Privacy explains the difference between local browser storage and the provider requests you intentionally send during generation.',
+        description:
+          'Privacy explains the difference between local browser storage and the provider requests you intentionally send during generation.',
         to: '/privacy',
         routeLabel: 'Privacy',
         bullets: [
@@ -326,7 +340,8 @@ export const guidedTours: GuidedTour[] = [
       {
         id: 'secure-settings',
         title: 'Review secure settings habits',
-        description: 'Settings is where you control provider keys and persistence choices, so it is part of the data-protection workflow too.',
+        description:
+          'Settings is where you control provider keys and persistence choices, so it is part of the data-protection workflow too.',
         to: '/settings',
         routeLabel: 'Settings',
         targetId: 'settings-api-keys',
@@ -362,7 +377,8 @@ export const guidedTours: GuidedTour[] = [
       {
         id: 'review-validate',
         title: 'Validate before export',
-        description: 'Use validation before exporting when the draft has been edited or when the template has strict structure requirements.',
+        description:
+          'Use validation before exporting when the draft has been edited or when the template has strict structure requirements.',
         to: '/drafts/',
         routeLabel: 'Draft Review',
         matchMode: 'prefix',
@@ -376,7 +392,8 @@ export const guidedTours: GuidedTour[] = [
       {
         id: 'review-assets',
         title: 'Read the assets, not just the title',
-        description: 'The asset list is where consistency problems usually reveal themselves. Check names, tone, and required sections across multiple assets.',
+        description:
+          'The asset list is where consistency problems usually reveal themselves. Check names, tone, and required sections across multiple assets.',
         to: '/drafts/',
         routeLabel: 'Draft Review',
         matchMode: 'prefix',
@@ -390,7 +407,8 @@ export const guidedTours: GuidedTour[] = [
       {
         id: 'review-export',
         title: 'Export with browser expectations in mind',
-        description: 'When the draft is coherent, use Export. On browser and mobile surfaces this may hand off through a share sheet, new tab, or downloads tray instead of a native save dialog.',
+        description:
+          'When the draft is coherent, use Export. On browser and mobile surfaces this may hand off through a share sheet, new tab, or downloads tray instead of a native save dialog.',
         to: '/drafts/',
         routeLabel: 'Draft Review',
         matchMode: 'prefix',
@@ -404,7 +422,8 @@ export const guidedTours: GuidedTour[] = [
       {
         id: 'export-choose-preset',
         title: 'Choose the export preset inside the modal',
-        description: 'Once the export modal opens, choose the preset that matches the system you are exporting for instead of blindly taking the first option.',
+        description:
+          'Once the export modal opens, choose the preset that matches the system you are exporting for instead of blindly taking the first option.',
         to: '/drafts/',
         routeLabel: 'Export Modal',
         matchMode: 'prefix',
@@ -418,7 +437,8 @@ export const guidedTours: GuidedTour[] = [
       {
         id: 'export-confirm',
         title: 'Confirm export and watch the handoff result',
-        description: 'Use the Export button after the preset is selected, then follow the browser-specific save or share flow the app reports back to you.',
+        description:
+          'Use the Export button after the preset is selected, then follow the browser-specific save or share flow the app reports back to you.',
         to: '/drafts/',
         routeLabel: 'Export Modal',
         matchMode: 'prefix',
@@ -441,7 +461,8 @@ export const guidedTours: GuidedTour[] = [
       {
         id: 'draft-library-overview',
         title: 'Treat Drafts as your working library',
-        description: 'The library is not just storage. It is where you decide which drafts are worth opening for deeper review or export.',
+        description:
+          'The library is not just storage. It is where you decide which drafts are worth opening for deeper review or export.',
         to: '/drafts',
         routeLabel: 'Library',
         targetId: 'drafts-list',
@@ -454,7 +475,8 @@ export const guidedTours: GuidedTour[] = [
       {
         id: 'draft-workbench',
         title: 'Use the workbench for comparison and checks',
-        description: 'The workbench keeps review aids in view so you can compare outputs and think before opening a draft for editing.',
+        description:
+          'The workbench keeps review aids in view so you can compare outputs and think before opening a draft for editing.',
         to: '/drafts',
         routeLabel: 'Library',
         targetId: 'drafts-workbench',
@@ -467,7 +489,8 @@ export const guidedTours: GuidedTour[] = [
       {
         id: 'draft-review-hand-off',
         title: 'Open one draft for real review',
-        description: 'Once a draft looks worth keeping, open it and continue with validation, editing, and export on the review page.',
+        description:
+          'Once a draft looks worth keeping, open it and continue with validation, editing, and export on the review page.',
         to: '/drafts',
         routeLabel: 'Drafts',
         targetId: 'drafts-open-review',
@@ -482,14 +505,16 @@ export const guidedTours: GuidedTour[] = [
   {
     id: VALIDATION_TOUR_ID,
     title: 'Validation Workflow Tour',
-    summary: 'Walk through the validation screen so structural checks become a normal part of review instead of a last-minute panic step.',
+    summary:
+      'Walk through the validation screen so structural checks become a normal part of review instead of a last-minute panic step.',
     audience: 'Users who edit drafts or export to strict formats and need to know when validation matters.',
     estimatedMinutes: 4,
     steps: [
       {
         id: 'validation-overview',
         title: 'Use validation as a structural checkpoint',
-        description: 'Validation is where you confirm the draft still matches the expected structure before you export or hand it off to another tool.',
+        description:
+          'Validation is where you confirm the draft still matches the expected structure before you export or hand it off to another tool.',
         to: '/validation',
         routeLabel: 'Validation',
         targetId: 'validation-draft-panel',
@@ -502,7 +527,8 @@ export const guidedTours: GuidedTour[] = [
       {
         id: 'validation-run',
         title: 'Choose the simplest input path',
-        description: 'Most users should validate a saved draft by review ID instead of typing a manual path unless they know exactly what they are checking.',
+        description:
+          'Most users should validate a saved draft by review ID instead of typing a manual path unless they know exactly what they are checking.',
         to: '/validation',
         routeLabel: 'Validation',
         targetId: 'validation-draft-run',
@@ -515,7 +541,8 @@ export const guidedTours: GuidedTour[] = [
       {
         id: 'validation-results',
         title: 'Read the results for real blockers',
-        description: 'The result panel tells you whether the draft passed and shows the lines that need attention before export.',
+        description:
+          'The result panel tells you whether the draft passed and shows the lines that need attention before export.',
         to: '/validation',
         routeLabel: 'Validation',
         targetId: 'validation-results',
@@ -530,14 +557,17 @@ export const guidedTours: GuidedTour[] = [
   {
     id: BLUEPRINTS_SAFETY_TOUR_ID,
     title: 'Blueprint Safety Tour',
-    summary: 'Learn when to leave blueprints alone, when to inspect them carefully, and where to bail out to safer surfaces.',
-    audience: 'Non-technical or first-time users who might wander into blueprints before understanding template contracts.',
+    summary:
+      'Learn when to leave blueprints alone, when to inspect them carefully, and where to bail out to safer surfaces.',
+    audience:
+      'Non-technical or first-time users who might wander into blueprints before understanding template contracts.',
     estimatedMinutes: 4,
     steps: [
       {
         id: 'blueprints-search',
         title: 'Treat Blueprints as inspection first, editing second',
-        description: 'Start by searching and reading. Do not jump into editing unless you know why a blueprint needs to change.',
+        description:
+          'Start by searching and reading. Do not jump into editing unless you know why a blueprint needs to change.',
         to: '/blueprints',
         routeLabel: 'Blueprints',
         targetId: 'blueprints-search',
@@ -550,7 +580,8 @@ export const guidedTours: GuidedTour[] = [
       {
         id: 'blueprints-tools',
         title: 'Use browser safety tools before editing',
-        description: 'The lint and sandbox tools exist so you can inspect behavior without immediately rewriting contract-heavy text.',
+        description:
+          'The lint and sandbox tools exist so you can inspect behavior without immediately rewriting contract-heavy text.',
         to: '/blueprints',
         routeLabel: 'Blueprints',
         targetId: 'blueprints-tools',
@@ -563,7 +594,8 @@ export const guidedTours: GuidedTour[] = [
       {
         id: 'blueprints-exit-ramp',
         title: 'Know the safer alternative',
-        description: 'If you are trying to change workflow shape rather than raw blueprint text, templates are usually the safer surface for early users.',
+        description:
+          'If you are trying to change workflow shape rather than raw blueprint text, templates are usually the safer surface for early users.',
         to: '/blueprints',
         routeLabel: 'Blueprints',
         targetId: 'blueprints-list',
@@ -583,7 +615,8 @@ export const pageHelpEntries: PageHelpEntry[] = [
     match: '/',
     matchMode: 'exact',
     title: 'Home help',
-    summary: 'Use Home as a focused dashboard for the next step, recent work, guided setup, and a compact set of supporting tools.',
+    summary:
+      'Use Home as a focused dashboard for the next step, recent work, guided setup, and a compact set of supporting tools.',
     keyActions: [
       'Follow the starter checklist if this is your first run.',
       'Use the next-steps panel to move from setup into generation and review.',
@@ -604,7 +637,8 @@ export const pageHelpEntries: PageHelpEntry[] = [
     match: '/generate',
     matchMode: 'exact',
     title: 'Generate help',
-    summary: 'Generation is where you choose the template, seed, provider, and content mode that become a full draft pack.',
+    summary:
+      'Generation is where you choose the template, seed, provider, and content mode that become a full draft pack.',
     keyActions: [
       'Choose the template before you spend time refining the seed.',
       'Keep the seed concrete enough that the model has something to preserve across assets.',
@@ -625,7 +659,8 @@ export const pageHelpEntries: PageHelpEntry[] = [
     match: '/optimize',
     matchMode: 'exact',
     title: 'Token optimization help',
-    summary: 'Token Optimization shortens wording and removes bloat while preserving relevant content and structure as much as possible.',
+    summary:
+      'Token Optimization shortens wording and removes bloat while preserving relevant content and structure as much as possible.',
     keyActions: [
       'Paste the full text you want to compress before deciding whether formatting should be preserved.',
       'Use the output comparison to confirm that names, constraints, and required details survived the rewrite.',
@@ -651,9 +686,7 @@ export const pageHelpEntries: PageHelpEntry[] = [
       'Generate multiple seeds and keep the one with the clearest identity.',
       'Pass the best seed into Generate instead of trying to export from here.',
     ],
-    pitfalls: [
-      'A seed is not a finished draft; it still needs a template and generation pass.',
-    ],
+    pitfalls: ['A seed is not a finished draft; it still needs a template and generation pass.'],
     actions: [
       { label: 'Open Generate', to: '/generate' },
       { label: 'Open Help Center', to: '/help' },
@@ -665,14 +698,13 @@ export const pageHelpEntries: PageHelpEntry[] = [
     match: '/validation',
     matchMode: 'exact',
     title: 'Validation help',
-    summary: 'Validation helps you catch structural issues before export, especially on strict templates or edited drafts.',
+    summary:
+      'Validation helps you catch structural issues before export, especially on strict templates or edited drafts.',
     keyActions: [
       'Validate after major edits and before export.',
       'Treat missing required assets or unresolved placeholders as blockers, not cosmetic warnings.',
     ],
-    pitfalls: [
-      'Passing generation does not guarantee export readiness.',
-    ],
+    pitfalls: ['Passing generation does not guarantee export readiness.'],
     actions: [
       { label: 'Open Library', to: '/drafts' },
       { label: 'Open Help Center', to: '/help' },
@@ -689,9 +721,7 @@ export const pageHelpEntries: PageHelpEntry[] = [
       'Keep concurrency conservative until you know your provider limits.',
       'Use batch for throughput, not for first-time learning of the workflow.',
     ],
-    pitfalls: [
-      'High concurrency can make failures harder to interpret.',
-    ],
+    pitfalls: ['High concurrency can make failures harder to interpret.'],
     actions: [
       { label: 'Open Generate', to: '/generate' },
       { label: 'Open Settings', to: '/settings' },
@@ -703,14 +733,13 @@ export const pageHelpEntries: PageHelpEntry[] = [
     match: '/drafts',
     matchMode: 'exact',
     title: 'Library help',
-    summary: 'The library is where you reopen saved work, check metadata, and decide which draft should move into review or export.',
+    summary:
+      'The library is where you reopen saved work, check metadata, and decide which draft should move into review or export.',
     keyActions: [
       'Open the review page for the draft you want to polish or export.',
       'Use metadata and favorites to keep the library manageable as it grows.',
     ],
-    pitfalls: [
-      'Deleting a draft removes the browser-local copy unless you already exported or backed it up.',
-    ],
+    pitfalls: ['Deleting a draft removes the browser-local copy unless you already exported or backed it up.'],
     actions: [
       { label: 'Open Data Manager', to: '/data' },
       { label: 'Open Validation', to: '/validation' },
@@ -722,7 +751,8 @@ export const pageHelpEntries: PageHelpEntry[] = [
     match: '/drafts/',
     matchMode: 'prefix',
     title: 'Draft review help',
-    summary: 'Review is where you inspect generated assets, refine weak spots, validate structure, and export only when the pack is coherent.',
+    summary:
+      'Review is where you inspect generated assets, refine weak spots, validate structure, and export only when the pack is coherent.',
     keyActions: [
       'Check the character name, core traits, and tone across multiple assets before exporting.',
       'Use refine tools for targeted edits instead of regenerating the whole draft immediately.',
@@ -743,14 +773,13 @@ export const pageHelpEntries: PageHelpEntry[] = [
     match: '/templates',
     matchMode: 'exact',
     title: 'Templates help',
-    summary: 'Templates define which assets exist, how they depend on each other, and what export structure needs to remain valid.',
+    summary:
+      'Templates define which assets exist, how they depend on each other, and what export structure needs to remain valid.',
     keyActions: [
       'Use the built-in template first so you understand the app’s baseline workflow.',
       'Treat template changes as structural decisions, not cosmetic ones.',
     ],
-    pitfalls: [
-      'Changing template expectations late can invalidate assumptions in review and export.',
-    ],
+    pitfalls: ['Changing template expectations late can invalidate assumptions in review and export.'],
     actions: [
       { label: 'Open Generate', to: '/generate' },
       { label: 'Open Help Center', to: '/help' },
@@ -762,14 +791,13 @@ export const pageHelpEntries: PageHelpEntry[] = [
     match: '/blueprints',
     matchMode: 'exact',
     title: 'Blueprints help',
-    summary: 'Blueprints are advanced prompt/compiler definitions. They are powerful, but they are not a safe first editing surface for non-technical users.',
+    summary:
+      'Blueprints are advanced prompt/compiler definitions. They are powerful, but they are not a safe first editing surface for non-technical users.',
     keyActions: [
       'Prefer templates unless you are intentionally changing generation structure.',
       'Preserve parser-facing formats and placeholders carefully when editing.',
     ],
-    pitfalls: [
-      'A casual blueprint edit can break validation or export even if the text still looks readable.',
-    ],
+    pitfalls: ['A casual blueprint edit can break validation or export even if the text still looks readable.'],
     actions: [
       { label: 'Open templates', to: '/templates' },
       { label: 'Open Help Center', to: '/help' },
@@ -781,14 +809,13 @@ export const pageHelpEntries: PageHelpEntry[] = [
     match: '/blueprints/edit',
     matchMode: 'prefix',
     title: 'Blueprint editor help',
-    summary: 'The editor is for advanced changes to blueprint text and should be treated as a strict contract surface, not a freeform note field.',
+    summary:
+      'The editor is for advanced changes to blueprint text and should be treated as a strict contract surface, not a freeform note field.',
     keyActions: [
       'Keep output structures intact when the target asset expects rigid formatting.',
       'Validate edits before using them in a generation workflow.',
     ],
-    pitfalls: [
-      'Unfilled placeholders, broken structure, or dependency mistakes can cascade through later assets.',
-    ],
+    pitfalls: ['Unfilled placeholders, broken structure, or dependency mistakes can cascade through later assets.'],
     actions: [
       { label: 'Open Validation', to: '/validation' },
       { label: 'Open Help Center', to: '/help' },
@@ -800,13 +827,10 @@ export const pageHelpEntries: PageHelpEntry[] = [
     match: '/similarity',
     matchMode: 'exact',
     title: 'Similarity help',
-    summary: 'Similarity helps you inspect overlap between drafts so you can catch repeats, redundancy, or near-duplicates.',
-    keyActions: [
-      'Use it after building a larger draft library or batch output set.',
-    ],
-    pitfalls: [
-      'Similarity is analysis support, not a replacement for human review.',
-    ],
+    summary:
+      'Similarity helps you inspect overlap between drafts so you can catch repeats, redundancy, or near-duplicates.',
+    keyActions: ['Use it after building a larger draft library or batch output set.'],
+    pitfalls: ['Similarity is analysis support, not a replacement for human review.'],
     actions: [
       { label: 'Open Library', to: '/drafts' },
       { label: 'Open Help Center', to: '/help' },
@@ -818,13 +842,10 @@ export const pageHelpEntries: PageHelpEntry[] = [
     match: '/offspring',
     matchMode: 'exact',
     title: 'Offspring help',
-    summary: 'Offspring combines parent drafts into a derivative result, so parent quality and consistency matter before you start.',
-    keyActions: [
-      'Choose parents that are already reviewed and structurally healthy.',
-    ],
-    pitfalls: [
-      'Using unstable or contradictory parents gives unstable offspring output.',
-    ],
+    summary:
+      'Offspring combines parent drafts into a derivative result, so parent quality and consistency matter before you start.',
+    keyActions: ['Choose parents that are already reviewed and structurally healthy.'],
+    pitfalls: ['Using unstable or contradictory parents gives unstable offspring output.'],
     actions: [
       { label: 'Open Library', to: '/drafts' },
       { label: 'Open Validation', to: '/validation' },
@@ -837,9 +858,7 @@ export const pageHelpEntries: PageHelpEntry[] = [
     matchMode: 'exact',
     title: 'Lineage help',
     summary: 'Lineage shows how related drafts connect over time so you can track derivations and review ancestry.',
-    keyActions: [
-      'Use lineage when you need provenance, not when you need direct editing.',
-    ],
+    keyActions: ['Use lineage when you need provenance, not when you need direct editing.'],
     pitfalls: [
       'Lineage helps you understand relationships, but it does not repair structural draft issues on its own.',
     ],
@@ -854,15 +873,30 @@ export const pageHelpEntries: PageHelpEntry[] = [
     match: '/themes',
     matchMode: 'exact',
     title: 'Themes help',
-    summary: 'Themes control the browser UI appearance. Runtime theme behavior lives in the app, not in the reference TOML files under resources.',
-    keyActions: [
-      'Use presets as a base and save customizations intentionally.',
-    ],
-    pitfalls: [
-      'Editing reference theme files in the repo is not the same as changing the live browser theme runtime.',
-    ],
+    summary:
+      'Themes control the browser UI appearance. Runtime theme behavior lives in the app, not in the reference TOML files under resources.',
+    keyActions: ['Use presets as a base and save customizations intentionally.'],
+    pitfalls: ['Editing reference theme files in the repo is not the same as changing the live browser theme runtime.'],
     actions: [
       { label: 'Open Settings', to: '/settings' },
+      { label: 'Open Help Center', to: '/help' },
+    ],
+    relatedTopicIds: ['common-blockers'],
+  },
+  {
+    id: 'tokenizer-theme',
+    match: '/tokenizer',
+    matchMode: 'exact',
+    title: 'Tokenizer colors help',
+    summary:
+      'Tokenizer colors control syntax-highlighted prompt and review surfaces without changing the rest of the app palette.',
+    keyActions: [
+      'Use this page when you want to tune bracket, pipe, and annotation colors independently from the main app theme.',
+      'Return to Themes for broader app palette work and preset management.',
+    ],
+    pitfalls: ['Tokenizer changes affect highlighted editing and review surfaces, not the entire app chrome.'],
+    actions: [
+      { label: 'Open Themes', to: '/themes' },
       { label: 'Open Help Center', to: '/help' },
     ],
     relatedTopicIds: ['common-blockers'],
@@ -872,15 +906,14 @@ export const pageHelpEntries: PageHelpEntry[] = [
     match: '/settings',
     matchMode: 'exact',
     title: 'Settings help',
-    summary: 'Settings is split into focused sections for setup, providers, generation defaults, help preferences, and optional sync.',
+    summary:
+      'Settings is split into focused sections for setup, providers, generation defaults, help preferences, and optional sync.',
     keyActions: [
       'Start with Setup when you need to configure the active provider and runtime defaults.',
       'Use Providers to edit stored credentials one provider at a time instead of scanning every key field.',
       'Open Generation only when you need batch tuning or blueprint defaults.',
     ],
-    pitfalls: [
-      'Saving API keys in browser storage is convenient, but it should be limited to devices you trust.',
-    ],
+    pitfalls: ['Saving API keys in browser storage is convenient, but it should be limited to devices you trust.'],
     actions: [
       { label: 'Open Help Center', to: '/help' },
       { label: 'Open About', to: '/about' },
@@ -897,9 +930,7 @@ export const pageHelpEntries: PageHelpEntry[] = [
       'Export backups before clearing browser data or changing devices.',
       'Treat API-key export files as sensitive data.',
     ],
-    pitfalls: [
-      'Clearing browser storage without a backup removes local drafts and settings.',
-    ],
+    pitfalls: ['Clearing browser storage without a backup removes local drafts and settings.'],
     actions: [
       { label: 'Open Help Center', to: '/help' },
       { label: 'Open Settings', to: '/settings' },
@@ -911,13 +942,10 @@ export const pageHelpEntries: PageHelpEntry[] = [
     match: '/whats-new',
     matchMode: 'exact',
     title: 'What’s New help',
-    summary: 'Use this page to understand recent product changes and staged roadmap work before assuming the workflow still behaves the same way.',
-    keyActions: [
-      'Check release notes after updates when a flow feels different.',
-    ],
-    pitfalls: [
-      'Roadmap items are not the same as implemented features.',
-    ],
+    summary:
+      'Use this page to understand recent product changes and staged roadmap work before assuming the workflow still behaves the same way.',
+    keyActions: ['Check release notes after updates when a flow feels different.'],
+    pitfalls: ['Roadmap items are not the same as implemented features.'],
     actions: [
       { label: 'Open Help Center', to: '/help' },
       { label: 'Open Home', to: '/' },
@@ -929,10 +957,9 @@ export const pageHelpEntries: PageHelpEntry[] = [
     match: '/about',
     matchMode: 'exact',
     title: 'About help',
-    summary: 'About explains the current browser-first product surface, storage model, and the difference between the app runtime and repo reference assets.',
-    keyActions: [
-      'Use About when you need to confirm how the browser app stores or handles your work.',
-    ],
+    summary:
+      'About explains the current browser-first product surface, storage model, and the difference between the app runtime and repo reference assets.',
+    keyActions: ['Use About when you need to confirm how the browser app stores or handles your work.'],
     pitfalls: [
       'Do not assume older Python/backend flows exist in the current product unless you can see them in the app.',
     ],
@@ -947,7 +974,8 @@ export const pageHelpEntries: PageHelpEntry[] = [
     match: '/help',
     matchMode: 'exact',
     title: 'Help Center help',
-    summary: 'Help Center is the structured fallback when you want answers without guessing which page or workflow to visit next.',
+    summary:
+      'Help Center is the structured fallback when you want answers without guessing which page or workflow to visit next.',
     keyActions: [
       'Start with the Getting Started section if you are still learning the workflow.',
       'Use concepts when the terminology is the blocker.',
@@ -963,17 +991,34 @@ export const pageHelpEntries: PageHelpEntry[] = [
     relatedTopicIds: ['api-key-setup', 'common-blockers'],
   },
   {
+    id: 'community',
+    match: '/community',
+    matchMode: 'exact',
+    title: 'Community help',
+    summary:
+      'Community collects the current public project spaces: repository, issue tracking, support links, and internal conduct guidance.',
+    keyActions: [
+      'Use repository issues for concrete bugs and feature requests that should stay visible and traceable.',
+      'Use support or direct contact links when the goal is outreach rather than issue tracking.',
+    ],
+    pitfalls: [
+      'This page only lists spaces confirmed in the current build, so missing Discord or forum links are intentional rather than hidden.',
+    ],
+    actions: [
+      { label: 'Open About', to: '/about' },
+      { label: 'Open Code of Conduct', to: '/code-of-conduct' },
+    ],
+    relatedTopicIds: ['common-blockers'],
+  },
+  {
     id: 'license',
     match: '/license',
     matchMode: 'exact',
     title: 'License help',
-    summary: 'License explains the repository licensing terms and should be read when you need usage or redistribution clarity.',
-    keyActions: [
-      'Use this page when you need the exact license text or attribution expectations.',
-    ],
-    pitfalls: [
-      'License answers legal distribution questions, not workflow or storage questions.',
-    ],
+    summary:
+      'License explains the repository licensing terms and should be read when you need usage or redistribution clarity.',
+    keyActions: ['Use this page when you need the exact license text or attribution expectations.'],
+    pitfalls: ['License answers legal distribution questions, not workflow or storage questions.'],
     actions: [
       { label: 'Open About', to: '/about' },
       { label: 'Open Help Center', to: '/help' },
@@ -985,13 +1030,10 @@ export const pageHelpEntries: PageHelpEntry[] = [
     match: '/terms',
     matchMode: 'exact',
     title: 'Terms help',
-    summary: 'Terms of Use covers the rules around using the app, exports, and generated content through the current browser surface.',
-    keyActions: [
-      'Use this page when you need policy guidance rather than workflow guidance.',
-    ],
-    pitfalls: [
-      'Terms is not a how-to page. Use Help Center for workflow questions.',
-    ],
+    summary:
+      'Terms of Use covers the rules around using the app, exports, and generated content through the current browser surface.',
+    keyActions: ['Use this page when you need policy guidance rather than workflow guidance.'],
+    pitfalls: ['Terms is not a how-to page. Use Help Center for workflow questions.'],
     actions: [
       { label: 'Open Help Center', to: '/help' },
       { label: 'Open Privacy', to: '/privacy' },
@@ -1003,13 +1045,12 @@ export const pageHelpEntries: PageHelpEntry[] = [
     match: '/privacy',
     matchMode: 'exact',
     title: 'Privacy help',
-    summary: 'Privacy explains what stays in browser storage, what reaches provider APIs, and what sensitive data you are responsible for handling carefully.',
+    summary:
+      'Privacy explains what stays in browser storage, what reaches provider APIs, and what sensitive data you are responsible for handling carefully.',
     keyActions: [
       'Use this page when you need to understand local storage, API key handling, or data exposure to providers.',
     ],
-    pitfalls: [
-      'Browser-local does not mean impossible to lose. You still need backups if the data matters.',
-    ],
+    pitfalls: ['Browser-local does not mean impossible to lose. You still need backups if the data matters.'],
     actions: [
       { label: 'Open Data Manager', to: '/data' },
       { label: 'Open Settings', to: '/settings' },
@@ -1021,13 +1062,10 @@ export const pageHelpEntries: PageHelpEntry[] = [
     match: '/security',
     matchMode: 'exact',
     title: 'Security help',
-    summary: 'Security covers vulnerability reporting and safe handling of provider keys and browser-stored configuration.',
-    keyActions: [
-      'Use this page when the question is about secure handling or vulnerability reporting.',
-    ],
-    pitfalls: [
-      'Security policy does not replace provider-specific account protection practices.',
-    ],
+    summary:
+      'Security covers vulnerability reporting and safe handling of provider keys and browser-stored configuration.',
+    keyActions: ['Use this page when the question is about secure handling or vulnerability reporting.'],
+    pitfalls: ['Security policy does not replace provider-specific account protection practices.'],
     actions: [
       { label: 'Open Settings', to: '/settings' },
       { label: 'Open Privacy', to: '/privacy' },
@@ -1040,12 +1078,8 @@ export const pageHelpEntries: PageHelpEntry[] = [
     matchMode: 'exact',
     title: 'Code of Conduct help',
     summary: 'Code of Conduct covers collaboration expectations for the repository and project community spaces.',
-    keyActions: [
-      'Use this page for contribution and interaction standards, not workflow setup.',
-    ],
-    pitfalls: [
-      'Community rules are separate from app usage or licensing terms.',
-    ],
+    keyActions: ['Use this page for contribution and interaction standards, not workflow setup.'],
+    pitfalls: ['Community rules are separate from app usage or licensing terms.'],
     actions: [
       { label: 'Open About', to: '/about' },
       { label: 'Open Help Center', to: '/help' },
@@ -1071,10 +1105,12 @@ export const routeCoverageManifest: RouteCoverageManifestEntry[] = [
   { route: '/similarity', pageHelpId: 'similarity', coverage: 'complete' },
   { route: '/offspring', pageHelpId: 'offspring', coverage: 'complete' },
   { route: '/themes', pageHelpId: 'themes', coverage: 'complete' },
+  { route: '/tokenizer', pageHelpId: 'tokenizer-theme', coverage: 'complete' },
   { route: '/settings', pageHelpId: 'settings', coverage: 'complete' },
   { route: '/data', pageHelpId: 'data', coverage: 'complete' },
   { route: '/about', pageHelpId: 'about', coverage: 'complete' },
   { route: '/help', pageHelpId: 'help-center', coverage: 'complete' },
+  { route: '/community', pageHelpId: 'community', coverage: 'complete' },
   { route: '/whats-new', pageHelpId: 'whats-new', coverage: 'complete' },
   { route: '/license', pageHelpId: 'license', coverage: 'complete' },
   { route: '/terms', pageHelpId: 'terms', coverage: 'complete' },
@@ -1131,7 +1167,7 @@ function routeSupportsPath(routePath: string, stepPath: string, matchMode: 'exac
 
 export function resolvePageHelp(pathname: string): PageHelpEntry | null {
   const matches = pageHelpEntries.filter((entry) =>
-    entry.matchMode === 'exact' ? pathname === entry.match : pathname.startsWith(entry.match)
+    entry.matchMode === 'exact' ? pathname === entry.match : pathname.startsWith(entry.match),
   );
 
   if (matches.length === 0) {
@@ -1180,7 +1216,7 @@ export function validateHelpRouteCoverage(routeEntries: readonly AppRouteHelpCov
 
 export function validateGuidedTourConfiguration(
   routeEntries: readonly AppRouteHelpCoverageEntry[],
-  targetEntries: readonly GuidedTourTargetCatalogEntry[]
+  targetEntries: readonly GuidedTourTargetCatalogEntry[],
 ): string[] {
   const targetCatalog = new Map(targetEntries.map((entry) => [entry.id, entry.route]));
   const issues: string[] = [];
@@ -1206,7 +1242,7 @@ export function validateGuidedTourConfiguration(
 
       if (!routeSupportsPath(targetRoute, step.to, matchMode)) {
         issues.push(
-          `Guided tour step target route mismatch: ${tour.id}/${step.id} -> ${step.targetId} is cataloged for ${targetRoute}, step route is ${step.to}`
+          `Guided tour step target route mismatch: ${tour.id}/${step.id} -> ${step.targetId} is cataloged for ${targetRoute}, step route is ${step.to}`,
         );
       }
     }

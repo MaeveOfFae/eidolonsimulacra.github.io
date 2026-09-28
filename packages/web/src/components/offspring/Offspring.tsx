@@ -4,7 +4,11 @@ import { Link } from 'react-router-dom';
 import { Baby, Loader2, Users, CheckCircle, Square } from 'lucide-react';
 import type { Blueprint, ContentMode, FeatureCategory, GenerationComplete, Template } from '@char-gen/shared';
 import { api } from '@/lib/api';
-import { getBlueprintsForFeature, resolveBlueprintForFeature, toBlueprintOptions } from '@/lib/blueprints/featureSelection';
+import {
+  getBlueprintsForFeature,
+  resolveBlueprintForFeature,
+  toBlueprintOptions,
+} from '@/lib/blueprints/featureSelection';
 import {
   clearActiveOffspringSession,
   loadActiveOffspringSession,
@@ -16,14 +20,32 @@ import CollapsibleSection from '../common/CollapsibleSection';
 import GenerationProgress from '../generation/GenerationProgress';
 import { configManager } from '@/lib/config/manager';
 
-type OffspringStage = 'idle' | 'loading_parents' | 'building_prompt' | 'generating' | 'review_seed' | 'generating_character' | 'saving' | 'complete' | 'cancelled' | 'error';
+type OffspringStage =
+  | 'idle'
+  | 'loading_parents'
+  | 'building_prompt'
+  | 'generating'
+  | 'review_seed'
+  | 'generating_character'
+  | 'saving'
+  | 'complete'
+  | 'cancelled'
+  | 'error';
 
 const OFFSPRING_STAGES: Array<{ key: Exclude<OffspringStage, 'idle' | 'error'>; label: string; detail: string }> = [
   { key: 'loading_parents', label: 'Load Parents', detail: 'Reading both parent drafts from local storage.' },
   { key: 'building_prompt', label: 'Build Prompt', detail: 'Combining parent suites with the offspring blueprint.' },
   { key: 'generating', label: 'Generate Seed', detail: 'Producing the descendant seed from both parent profiles.' },
-  { key: 'review_seed', label: 'Review Seed', detail: 'Inspect or edit the synthesized offspring seed before compiling assets.' },
-  { key: 'generating_character', label: 'Generate Character', detail: 'Running the normal character generator against the offspring seed.' },
+  {
+    key: 'review_seed',
+    label: 'Review Seed',
+    detail: 'Inspect or edit the synthesized offspring seed before compiling assets.',
+  },
+  {
+    key: 'generating_character',
+    label: 'Generate Character',
+    detail: 'Running the normal character generator against the offspring seed.',
+  },
   { key: 'saving', label: 'Save Draft', detail: 'Writing the offspring draft and lineage metadata to storage.' },
   { key: 'complete', label: 'Complete', detail: 'Offspring draft is ready for review.' },
 ];
@@ -31,11 +53,13 @@ const OFFSPRING_STAGES: Array<{ key: Exclude<OffspringStage, 'idle' | 'error'>; 
 const PLANNED_OFFSPRING_MODULES = [
   {
     name: 'Trait inheritance',
-    description: 'Structured inheritance breakdowns remain staged until the generated offspring flow exposes durable trait data.',
+    description:
+      'Structured inheritance breakdowns remain staged until the generated offspring flow exposes durable trait data.',
   },
   {
     name: 'Breeding history',
-    description: 'Longer breeding-chain views stay staged until lineage interactions and summaries have a clearer review surface.',
+    description:
+      'Longer breeding-chain views stay staged until lineage interactions and summaries have a clearer review surface.',
   },
 ];
 
@@ -82,7 +106,8 @@ export default function Offspring() {
   const [blueprintLoading, setBlueprintLoading] = useState(true);
   const [blueprintError, setBlueprintError] = useState<string | null>(null);
   const [selectedBlueprintPath, setSelectedBlueprintPath] = useState<string>(
-    () => configManager.getConfig().feature_blueprints?.offspring_generation || 'blueprints/system/offspring_generator.md'
+    () =>
+      configManager.getConfig().feature_blueprints?.offspring_generation || 'blueprints/system/offspring_generator.md',
   );
   const [offspringBlueprintOverride, setOffspringBlueprintOverride] = useState<string | null>(null);
   const [availableBlueprints, setAvailableBlueprints] = useState<Array<{ name: string; label: string }>>([]);
@@ -109,11 +134,7 @@ export default function Offspring() {
         const matching = getBlueprintsForFeature(list, PAGE_FEATURE_CATEGORY);
         setAvailableBlueprints(toBlueprintOptions(matching));
 
-        const resolved = resolveBlueprintForFeature(
-          list,
-          PAGE_FEATURE_CATEGORY,
-          selectedBlueprintPath
-        );
+        const resolved = resolveBlueprintForFeature(list, PAGE_FEATURE_CATEGORY, selectedBlueprintPath);
 
         if (resolved) {
           setBlueprint(resolved);
@@ -143,16 +164,15 @@ export default function Offspring() {
 
   const parent1TemplateName = parent1 ? getDraftMetadata(parent1)?.template_name || null : null;
   const parent2TemplateName = parent2 ? getDraftMetadata(parent2)?.template_name || null : null;
-  const sharedParentTemplate = parent1TemplateName && parent1TemplateName === parent2TemplateName
-    ? parent1TemplateName
-    : null;
+  const sharedParentTemplate =
+    parent1TemplateName && parent1TemplateName === parent2TemplateName ? parent1TemplateName : null;
   const isThirdTemplateChoice = Boolean(
-    parent1TemplateName
-    && parent2TemplateName
-    && parent1TemplateName !== parent2TemplateName
-    && template
-    && template !== parent1TemplateName
-    && template !== parent2TemplateName
+    parent1TemplateName &&
+    parent2TemplateName &&
+    parent1TemplateName !== parent2TemplateName &&
+    template &&
+    template !== parent1TemplateName &&
+    template !== parent2TemplateName,
   );
 
   useEffect(() => {
@@ -163,7 +183,8 @@ export default function Offspring() {
       return;
     }
 
-    const sharedTemplateExists = sharedParentTemplate && templates.some((availableTemplate) => availableTemplate.name === sharedParentTemplate);
+    const sharedTemplateExists =
+      sharedParentTemplate && templates.some((availableTemplate) => availableTemplate.name === sharedParentTemplate);
 
     if (!templateManuallySelected && sharedTemplateExists && template !== sharedParentTemplate) {
       setTemplate(sharedParentTemplate);
@@ -353,39 +374,47 @@ export default function Offspring() {
     clearActiveOffspringSession();
   };
 
-  const handleWorkflowComplete = useCallback((data: GenerationComplete) => {
-    void (async () => {
-      if (!data.draft_id || !offspringSeed) {
-        setError('Offspring asset workflow completed without a saved draft id.');
+  const handleWorkflowComplete = useCallback(
+    (data: GenerationComplete) => {
+      void (async () => {
+        if (!data.draft_id || !offspringSeed) {
+          setError('Offspring asset workflow completed without a saved draft id.');
+          setStage('error');
+          setIsRunningAssetWorkflow(false);
+          return;
+        }
+
+        await api.createDraftSnapshot(data.draft_id, {
+          label: 'Before finalizing offspring lineage',
+          reason: 'pre-offspring-finalization',
+        });
+
+        await api.updateMetadata(data.draft_id, {
+          seed: offspringSeed,
+          parent_drafts: [parent1, parent2],
+          offspring_type: 'offspring',
+        });
+
+        await queryClient.invalidateQueries({ queryKey: ['drafts'] });
+
+        setResult({
+          draftId: data.draft_id,
+          characterName: data.character_name || 'Unknown',
+        });
+        setStage('complete');
+        setIsRunningAssetWorkflow(false);
+        setResumeNotice(null);
+        clearActiveOffspringSession();
+      })().catch((completionError) => {
+        setError(completionError instanceof Error ? completionError.message : 'Failed to finalize offspring draft');
         setStage('error');
         setIsRunningAssetWorkflow(false);
-        return;
-      }
-
-      await api.updateMetadata(data.draft_id, {
-        seed: offspringSeed,
-        parent_drafts: [parent1, parent2],
-        offspring_type: 'offspring',
+        setResumeNotice(null);
+        clearActiveOffspringSession();
       });
-
-      await queryClient.invalidateQueries({ queryKey: ['drafts'] });
-
-      setResult({
-        draftId: data.draft_id,
-        characterName: data.character_name || 'Unknown',
-      });
-      setStage('complete');
-      setIsRunningAssetWorkflow(false);
-      setResumeNotice(null);
-      clearActiveOffspringSession();
-    })().catch((completionError) => {
-      setError(completionError instanceof Error ? completionError.message : 'Failed to finalize offspring draft');
-      setStage('error');
-      setIsRunningAssetWorkflow(false);
-      setResumeNotice(null);
-      clearActiveOffspringSession();
-    });
-  }, [offspringSeed, parent1, parent2, queryClient]);
+    },
+    [offspringSeed, parent1, parent2, queryClient],
+  );
 
   const handleWorkflowError = useCallback((message: string) => {
     setError(message);
@@ -464,11 +493,7 @@ export default function Offspring() {
     }
 
     const hasPersistentState = Boolean(
-      parent1
-      || parent2
-      || offspringSeed
-      || output.trim()
-      || templateManuallySelected
+      parent1 || parent2 || offspringSeed || output.trim() || templateManuallySelected,
     );
 
     if (!hasPersistentState && !isGeneratingSeed) {
@@ -494,11 +519,26 @@ export default function Offspring() {
             : 'configuring',
       updatedAt: Date.now(),
     });
-  }, [isGeneratingSeed, isRunningAssetWorkflow, mode, offspringSeed, output, parent1, parent2, result, stage, template, templateManuallySelected]);
+  }, [
+    isGeneratingSeed,
+    isRunningAssetWorkflow,
+    mode,
+    offspringSeed,
+    output,
+    parent1,
+    parent2,
+    result,
+    stage,
+    template,
+    templateManuallySelected,
+  ]);
 
-  useEffect(() => () => {
-    abortRef.current?.();
-  }, []);
+  useEffect(
+    () => () => {
+      abortRef.current?.();
+    },
+    [],
+  );
 
   if (isLoading) {
     return (
@@ -576,61 +616,53 @@ export default function Offspring() {
         preview={`${parent1 ? getParentName(parent1) : 'Parent 1'} • ${parent2 ? getParentName(parent2) : 'Parent 2'}`}
         defaultExpanded
       >
-      <div className="grid gap-6 md:grid-cols-2">
-        <div className="app-panel p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Users className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold">Parent 1</h2>
+        <div className="grid gap-6 md:grid-cols-2">
+          <div className="app-panel p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Users className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-semibold">Parent 1</h2>
+            </div>
+            <select
+              value={parent1}
+              onChange={(e) => setParent1(e.target.value)}
+              aria-label="Parent 1"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="">Select parent 1...</option>
+              {draftsData?.drafts
+                .filter((d) => d.review_id !== parent2)
+                .map((draft) => (
+                  <option key={draft.review_id} value={draft.review_id}>
+                    {draft.character_name || draft.review_id}
+                  </option>
+                ))}
+            </select>
+            {parent1 && <p className="mt-2 text-sm text-muted-foreground">Selected: {getParentName(parent1)}</p>}
           </div>
-          <select
-            value={parent1}
-            onChange={(e) => setParent1(e.target.value)}
-            aria-label="Parent 1"
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <option value="">Select parent 1...</option>
-            {draftsData?.drafts
-              .filter((d) => d.review_id !== parent2)
-              .map((draft) => (
-                <option key={draft.review_id} value={draft.review_id}>
-                  {draft.character_name || draft.review_id}
-                </option>
-              ))}
-          </select>
-          {parent1 && (
-            <p className="mt-2 text-sm text-muted-foreground">
-              Selected: {getParentName(parent1)}
-            </p>
-          )}
-        </div>
 
-        <div className="app-panel p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Users className="h-5 w-5 text-secondary" />
-            <h2 className="text-lg font-semibold">Parent 2</h2>
+          <div className="app-panel p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Users className="h-5 w-5 text-secondary" />
+              <h2 className="text-lg font-semibold">Parent 2</h2>
+            </div>
+            <select
+              value={parent2}
+              onChange={(e) => setParent2(e.target.value)}
+              aria-label="Parent 2"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="">Select parent 2...</option>
+              {draftsData?.drafts
+                .filter((d) => d.review_id !== parent1)
+                .map((draft) => (
+                  <option key={draft.review_id} value={draft.review_id}>
+                    {draft.character_name || draft.review_id}
+                  </option>
+                ))}
+            </select>
+            {parent2 && <p className="mt-2 text-sm text-muted-foreground">Selected: {getParentName(parent2)}</p>}
           </div>
-          <select
-            value={parent2}
-            onChange={(e) => setParent2(e.target.value)}
-            aria-label="Parent 2"
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <option value="">Select parent 2...</option>
-            {draftsData?.drafts
-              .filter((d) => d.review_id !== parent1)
-              .map((draft) => (
-                <option key={draft.review_id} value={draft.review_id}>
-                  {draft.character_name || draft.review_id}
-                </option>
-              ))}
-          </select>
-          {parent2 && (
-            <p className="mt-2 text-sm text-muted-foreground">
-              Selected: {getParentName(parent2)}
-            </p>
-          )}
         </div>
-      </div>
       </CollapsibleSection>
 
       <CollapsibleSection
@@ -649,9 +681,7 @@ export default function Offspring() {
                 key={m}
                 onClick={() => setMode(m)}
                 className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  mode === m
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted hover:bg-muted/80'
+                  mode === m ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80'
                 }`}
               >
                 {m}
@@ -700,7 +730,8 @@ export default function Offspring() {
           )}
           {isThirdTemplateChoice && (
             <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-300">
-              Parent templates differ: {parent1TemplateName} and {parent2TemplateName}. You selected {template}, so the offspring will be compiled into a third layout.
+              Parent templates differ: {parent1TemplateName} and {parent2TemplateName}. You selected {template}, so the
+              offspring will be compiled into a third layout.
             </div>
           )}
         </div>
@@ -708,7 +739,9 @@ export default function Offspring() {
         <div className="flex flex-col gap-3 sm:flex-row">
           <button
             onClick={handleGenerate}
-            disabled={!parent1 || !parent2 || !template || parent1 === parent2 || isGenerating || templates.length === 0}
+            disabled={
+              !parent1 || !parent2 || !template || parent1 === parent2 || isGenerating || templates.length === 0
+            }
             className="flex-1 flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isGenerating ? (
@@ -745,10 +778,15 @@ export default function Offspring() {
         title="Generation tracking"
         subtitle="Seed synthesis happens first, then the normal asset workflow takes over"
         preview={getStageLabel(stage)}
-        meta={<span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${stage === 'error' ? 'bg-destructive/10 text-destructive' : stage === 'complete' ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : stage === 'cancelled' ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300' : 'bg-muted text-muted-foreground'}`}>{getStageLabel(stage)}</span>}
+        meta={
+          <span
+            className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${stage === 'error' ? 'bg-destructive/10 text-destructive' : stage === 'complete' ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : stage === 'cancelled' ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300' : 'bg-muted text-muted-foreground'}`}
+          >
+            {getStageLabel(stage)}
+          </span>
+        }
         defaultExpanded={stage !== 'idle' || Boolean(offspringSeed) || Boolean(output) || Boolean(result)}
       >
-
         {stage === 'cancelled' && (
           <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-300">
             Offspring generation was cancelled before completion.
@@ -768,7 +806,9 @@ export default function Offspring() {
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="text-sm font-medium text-foreground">{entry.label}</div>
-                  <div className={`h-2.5 w-2.5 rounded-full ${isCurrent ? 'bg-primary' : isComplete ? 'bg-emerald-500' : 'bg-muted-foreground/40'}`} />
+                  <div
+                    className={`h-2.5 w-2.5 rounded-full ${isCurrent ? 'bg-primary' : isComplete ? 'bg-emerald-500' : 'bg-muted-foreground/40'}`}
+                  />
                 </div>
                 <p className="mt-2 text-xs text-muted-foreground">{entry.detail}</p>
               </div>
@@ -778,15 +818,11 @@ export default function Offspring() {
       </CollapsibleSection>
 
       {error && (
-        <div className="app-note border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
-          {error}
-        </div>
+        <div className="app-note border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">{error}</div>
       )}
 
       {resumeNotice && !error && (
-        <div className="app-note border-primary/30 bg-primary/10 p-4 text-sm text-foreground">
-          {resumeNotice}
-        </div>
+        <div className="app-note border-primary/30 bg-primary/10 p-4 text-sm text-foreground">{resumeNotice}</div>
       )}
 
       {offspringSeed && !isGeneratingSeed && !isRunningAssetWorkflow && !result && (
@@ -794,10 +830,13 @@ export default function Offspring() {
           title="Review seed"
           subtitle="Edit the synthesized offspring seed before compiling assets"
           preview={offspringSeed.slice(0, 140) + (offspringSeed.length > 140 ? '...' : '')}
-          meta={<span className="shrink-0 rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-300">Seed Ready</span>}
+          meta={
+            <span className="shrink-0 rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-300">
+              Seed Ready
+            </span>
+          }
           defaultExpanded
         >
-
           <textarea
             value={offspringSeed}
             onChange={(event) => handleSeedChange(event.target.value)}
@@ -895,7 +934,8 @@ export default function Offspring() {
           <div>
             <h2 className="text-lg font-semibold">Staged offspring modules</h2>
             <p className="text-sm text-muted-foreground">
-              The live offspring flow stops at seed review and draft creation. Deeper inheritance and breeding-chain analysis stay staged until their supporting data is real.
+              The live offspring flow stops at seed review and draft creation. Deeper inheritance and breeding-chain
+              analysis stay staged until their supporting data is real.
             </p>
           </div>
           <span className="app-pill app-pill-muted">Not live</span>

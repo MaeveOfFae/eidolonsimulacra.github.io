@@ -14,7 +14,8 @@ blueprints/
 │   ├── post_history.md
 │   ├── character_sheet.md
 │   ├── intro_scene.md
-│   ├── intro_page.md
+│   ├── creator_notes.md
+│   ├── intro_page.md          # Legacy alias retained for compatibility
 │   └── a1111.md
 ├── templates/                 # Template manifests
 │   ├── official_v2v3/
@@ -40,7 +41,7 @@ This remains the default built-in template used by the browser generation flow. 
 2. `post_history`
 3. `character_sheet`
 4. `intro_scene`
-5. `intro_page`
+5. `creator_notes`
 6. `a1111`
 
 `suno` is not part of the current official default.
@@ -81,7 +82,8 @@ Current starter examples under `blueprints/examples/` include:
 - `generic_post_history.md`
 - `generic_character_sheet.md`
 - `generic_intro_scene.md`
-- `generic_intro_page.md`
+- `generic_creator_notes.md`
+- `generic_intro_page.md` (legacy alias)
 - `generic_initial_message.md`
 - `a1111_sdxl_comfyui.md`
 

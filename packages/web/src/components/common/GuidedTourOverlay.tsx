@@ -8,14 +8,7 @@ const ACTIVE_TOUR_TARGET_SELECTOR = '[data-guided-tour-active="true"]';
 
 export default function GuidedTourOverlay() {
   const location = useLocation();
-  const {
-    activeTourId,
-    activeStepIndex,
-    closeTour,
-    goToCurrentStep,
-    goToNextStep,
-    goToPreviousStep,
-  } = useGuidedTour();
+  const { activeTourId, activeStepIndex, closeTour, goToCurrentStep, goToNextStep, goToPreviousStep } = useGuidedTour();
   const [targetFound, setTargetFound] = useState(false);
 
   const activeTour = activeTourId ? getGuidedTour(activeTourId) : null;
@@ -112,7 +105,9 @@ export default function GuidedTourOverlay() {
             <div className="mt-4 rounded-2xl border border-border/50 bg-background/40 p-4">
               <div className="flex items-center gap-2 text-sm font-medium text-foreground">
                 <ScanSearch className="h-4 w-4 text-primary" />
-                {targetFound ? `Highlighted target: ${activeStep.targetLabel}` : `Looking for ${activeStep.targetLabel}`}
+                {targetFound
+                  ? `Highlighted target: ${activeStep.targetLabel}`
+                  : `Looking for ${activeStep.targetLabel}`}
               </div>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
                 {targetFound
@@ -124,7 +119,10 @@ export default function GuidedTourOverlay() {
 
           <div className="mt-4 space-y-3">
             {activeStep.bullets.map((bullet) => (
-              <div key={bullet} className="flex items-start gap-3 rounded-xl border border-border/50 bg-background/40 p-4 text-sm text-muted-foreground">
+              <div
+                key={bullet}
+                className="flex items-start gap-3 rounded-xl border border-border/50 bg-background/40 p-4 text-sm text-muted-foreground"
+              >
                 <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                 <p className="leading-6">{bullet}</p>
               </div>

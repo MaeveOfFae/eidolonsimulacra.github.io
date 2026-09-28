@@ -1,9 +1,9 @@
 // API Key encryption service using AES-256-GCM
-import { createCipheriv, createDecipheriv, randomBytes } from "crypto";
-import { env } from "../env.js";
+import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
+import { env } from '../env.js';
 
-const ALGORITHM = "aes-256-gcm";
-const KEY = Buffer.from(env.ENCRYPTION_KEY, "hex"); // 32 bytes
+const ALGORITHM = 'aes-256-gcm';
+const KEY = Buffer.from(env.ENCRYPTION_KEY, 'hex'); // 32 bytes
 
 export interface EncryptedData {
   encrypted: Buffer;
@@ -18,10 +18,7 @@ export function encrypt(data: string): EncryptedData {
   const nonce = randomBytes(12); // 96 bits for GCM
   const cipher = createCipheriv(ALGORITHM, KEY, nonce);
 
-  const encrypted = Buffer.concat([
-    cipher.update(data, "utf8"),
-    cipher.final(),
-  ]);
+  const encrypted = Buffer.concat([cipher.update(data, 'utf8'), cipher.final()]);
 
   const authTag = cipher.getAuthTag();
 
@@ -35,12 +32,9 @@ export function decrypt(encrypted: Buffer, nonce: Buffer, authTag: Buffer): stri
   const decipher = createDecipheriv(ALGORITHM, KEY, nonce);
   decipher.setAuthTag(authTag);
 
-  const decrypted = Buffer.concat([
-    decipher.update(encrypted),
-    decipher.final(),
-  ]);
+  const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
 
-  return decrypted.toString("utf8");
+  return decrypted.toString('utf8');
 }
 
 /**

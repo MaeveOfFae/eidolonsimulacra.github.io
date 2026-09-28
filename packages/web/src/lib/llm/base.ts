@@ -37,18 +37,12 @@ export abstract class BaseLLMEngine {
   /**
    * Generate a completion (non-streaming)
    */
-  abstract generate(
-    messages: ChatMessage[],
-    options?: GenerateOptions
-  ): Promise<GenerateResult>;
+  abstract generate(messages: ChatMessage[], options?: GenerateOptions): Promise<GenerateResult>;
 
   /**
    * Generate a completion with streaming
    */
-  async *generateStream(
-    messages: ChatMessage[],
-    options?: StreamGenerateOptions
-  ): AsyncIterable<StreamChunk> {
+  async *generateStream(messages: ChatMessage[], options?: StreamGenerateOptions): AsyncIterable<StreamChunk> {
     // Default implementation: fall back to non-streaming and yield the result
     const result = await this.generate(messages, options);
     yield {
@@ -110,9 +104,7 @@ export abstract class BaseLLMEngine {
     });
 
     // Combine signals
-    const combinedSignal = signal
-      ? anySignal([signal, controller.signal])
-      : controller.signal;
+    const combinedSignal = signal ? anySignal([signal, controller.signal]) : controller.signal;
 
     return {
       signal: combinedSignal as AbortSignal,
@@ -121,11 +113,15 @@ export abstract class BaseLLMEngine {
 
   protected normalizeRequestError(error: unknown): Error {
     if (error instanceof Error && error.name === 'AbortError') {
-      return new Error('The request timed out or was cancelled. Try again, reduce the request size, or choose a faster model/provider.');
+      return new Error(
+        'The request timed out or was cancelled. Try again, reduce the request size, or choose a faster model/provider.',
+      );
     }
 
     if (error instanceof Error && /operation was aborted/i.test(error.message)) {
-      return new Error('The request timed out or was cancelled. Try again, reduce the request size, or choose a faster model/provider.');
+      return new Error(
+        'The request timed out or was cancelled. Try again, reduce the request size, or choose a faster model/provider.',
+      );
     }
 
     return error instanceof Error ? error : new Error('Request failed');

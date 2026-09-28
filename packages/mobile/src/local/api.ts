@@ -1,8 +1,10 @@
 import {
   APIError,
+  appendDraftRevisionSnapshot,
   applyDraftFilters,
   buildAssetContextBlock as buildSharedAssetContextBlock,
   buildDraftExportArtifact,
+  buildDraftRevisionSnapshot,
   buildMissingTemplateBlueprintWarnings,
   buildStoredTemplateRecord,
   buildDraftListResponse,
@@ -15,12 +17,13 @@ import {
   getFallbackModels,
   getOrderedAssets,
   inferCharacterDisplayNameFromAssets,
+  canonicalizeLegacyAssetName,
+  normalizeAssetNameList as normalizeSharedAssetNameList,
   selectRelevantPriorAssets,
   stripReasoningArtifacts,
   unwrapSingleCodeFence,
   validateDraftAssets,
   validateTemplate,
-  type ImportedCharacter,
   type ApiKeys,
   type Blueprint,
   type BlueprintList,
@@ -84,7 +87,11 @@ type StreamEventType = 'status' | 'chunk' | 'complete' | 'error' | 'batch_start'
 type StreamEventMap = {
   status: { stage?: string; asset?: string; progress?: number };
   chunk: { content: string };
-  complete: GenerationComplete | { draft_id?: string; character_name?: string } | { content: string } | { status: 'done' };
+  complete:
+    | GenerationComplete
+    | { draft_id?: string; character_name?: string }
+    | { content: string }
+    | { status: 'done' };
   error: { error: string };
   batch_start: { index: number; seed: string };
   batch_complete: { index: number; seed: string; draft_id?: string; character_name?: string };
@@ -95,17 +102,32 @@ export type LocalStreamEvent = {
   [EventType in StreamEventType]: {
     event: EventType;
     data: StreamEventMap[EventType];
-  }
+  };
 }[StreamEventType];
 
 type StreamReader = (event: LocalStreamEvent) => void;
 
 const MODEL_CACHE_TTL_MS = 5 * 60 * 1000;
 const EXPORT_PRESETS: ExportPresetSummary[] = [
-  { name: 'Official PNG Character Card', path: 'png', format: 'png', description: 'Export a standard PNG character card with embedded V2/V3 card data.' },
-  { name: 'Official V2/V3 Card JSON', path: 'json', format: 'json', description: 'Export a Chub-compatible V2/V3 character card JSON with Eidolon round-trip extensions.' },
+  {
+    name: 'Official PNG Character Card',
+    path: 'png',
+    format: 'png',
+    description: 'Export a standard PNG character card with embedded V2/V3 card data.',
+  },
+  {
+    name: 'Official V2/V3 Card JSON',
+    path: 'json',
+    format: 'json',
+    description: 'Export a Chub-compatible V2/V3 character card JSON with Eidolon round-trip extensions.',
+  },
   { name: 'text', path: 'text', format: 'text', description: 'Export draft assets as plain text sections.' },
-  { name: 'combined', path: 'combined', format: 'combined', description: 'Export a markdown bundle with metadata and assets.' },
+  {
+    name: 'combined',
+    path: 'combined',
+    format: 'combined',
+    description: 'Export a markdown bundle with metadata and assets.',
+  },
 ];
 
 type CachedModelsEntry = {
@@ -137,7 +159,7 @@ const PROMPT_ASSET_CHAR_LIMITS: Record<string, number> = {
   post_history: 500,
   character_sheet: 1400,
   intro_scene: 700,
-  intro_page: 420,
+  creator_notes: 420,
   a1111: 360,
   reference_summary: 360,
   default: 420,
@@ -148,18 +170,18 @@ const PROMPT_ASSET_LINE_LIMITS: Record<string, number> = {
   post_history: 8,
   character_sheet: 24,
   intro_scene: 10,
-  intro_page: 8,
+  creator_notes: 8,
   a1111: 6,
   reference_summary: 6,
   default: 8,
 };
 
 function getPromptAssetCharLimit(assetName: string): number {
-  return PROMPT_ASSET_CHAR_LIMITS[assetName] ?? PROMPT_ASSET_CHAR_LIMITS.default;
+  return PROMPT_ASSET_CHAR_LIMITS[canonicalizeLegacyAssetName(assetName)] ?? PROMPT_ASSET_CHAR_LIMITS.default;
 }
 
 function getPromptAssetLineLimit(assetName: string): number {
-  return PROMPT_ASSET_LINE_LIMITS[assetName] ?? PROMPT_ASSET_LINE_LIMITS.default;
+  return PROMPT_ASSET_LINE_LIMITS[canonicalizeLegacyAssetName(assetName)] ?? PROMPT_ASSET_LINE_LIMITS.default;
 }
 
 function normalizeModelOutput(content: string): string {
@@ -189,7 +211,7 @@ function getConfiguredBaseUrl(config: Config, provider: LLMProvider): string {
 
 function createConfiguredEngine(config: Config = getStoredDeviceConfig()) {
   const provider = resolveConfiguredProvider(config);
-  const apiKey = provider === 'ollama' ? undefined : (config.api_keys[provider] || getFallbackApiKey(config.api_keys));
+  const apiKey = provider === 'ollama' ? undefined : config.api_keys[provider] || getFallbackApiKey(config.api_keys);
 
   if (provider !== 'ollama' && (!apiKey || apiKey.trim().length === 0)) {
     throw new APIError(400, `No API key configured for ${provider}`);
@@ -224,27 +246,37 @@ async function buildReferenceContext(draftIds: string[] | undefined): Promise<st
     return '';
   }
 
-  return relevantDrafts.map((draft) => {
-    const preferredAssets = ['character_sheet', 'post_history', 'system_prompt'];
-    const chosenAssets = preferredAssets.filter((assetName) => typeof draft.assets[assetName] === 'string' && draft.assets[assetName].trim().length > 0);
-    const assetNames = chosenAssets.length > 0 ? chosenAssets : Object.keys(draft.assets).slice(0, 2);
-    const assetBlocks = assetNames.map((assetName) => buildAssetContextBlock(assetName, draft.assets[assetName] || '', {
-      rawTextCharLimit: getPromptAssetCharLimit(assetName),
-      rawTextLineLimit: getPromptAssetLineLimit(assetName),
-    })).join('\n\n');
-    return [
-      `## Reference Draft: ${draft.metadata.character_name || draft.metadata.review_id}`,
-      `Seed: ${draft.metadata.seed}`,
-      draft.metadata.mode ? `Mode: ${draft.metadata.mode}` : '',
-      assetBlocks,
-    ].filter(Boolean).join('\n\n');
-  }).join('\n\n');
+  return relevantDrafts
+    .map((draft) => {
+      const preferredAssets = ['character_sheet', 'post_history', 'system_prompt'];
+      const chosenAssets = preferredAssets.filter(
+        (assetName) => typeof draft.assets[assetName] === 'string' && draft.assets[assetName].trim().length > 0,
+      );
+      const assetNames = chosenAssets.length > 0 ? chosenAssets : Object.keys(draft.assets).slice(0, 2);
+      const assetBlocks = assetNames
+        .map((assetName) =>
+          buildAssetContextBlock(assetName, draft.assets[assetName] || '', {
+            rawTextCharLimit: getPromptAssetCharLimit(assetName),
+            rawTextLineLimit: getPromptAssetLineLimit(assetName),
+          }),
+        )
+        .join('\n\n');
+      return [
+        `## Reference Draft: ${draft.metadata.character_name || draft.metadata.review_id}`,
+        `Seed: ${draft.metadata.seed}`,
+        draft.metadata.mode ? `Mode: ${draft.metadata.mode}` : '',
+        assetBlocks,
+      ]
+        .filter(Boolean)
+        .join('\n\n');
+    })
+    .join('\n\n');
 }
 
 function resolveRelevantPriorAssets(
   template: Template,
   assetName: string,
-  priorAssets: Record<string, string>
+  priorAssets: Record<string, string>,
 ): Record<string, string> {
   return selectRelevantPriorAssets(template, assetName, priorAssets);
 }
@@ -252,7 +284,7 @@ function resolveRelevantPriorAssets(
 function buildAssetContextBlock(
   assetName: string,
   content: string,
-  options: { rawTextCharLimit?: number; rawTextLineLimit?: number } = {}
+  options: { rawTextCharLimit?: number; rawTextLineLimit?: number } = {},
 ): string {
   return buildSharedAssetContextBlock(assetName, content, {
     rawTextCharLimit: options.rawTextCharLimit ?? getPromptAssetCharLimit(assetName),
@@ -260,32 +292,17 @@ function buildAssetContextBlock(
   });
 }
 
-function normalizeAssetNameList(names: readonly string[]): string[] {
-  const seen = new Set<string>();
-  const normalized: string[] = [];
-
-  for (const name of names) {
-    const trimmed = typeof name === 'string' ? name.trim() : '';
-    if (!trimmed || seen.has(trimmed)) {
-      continue;
-    }
-
-    seen.add(trimmed);
-    normalized.push(trimmed);
-  }
-
-  return normalized;
+function normalizeAssetNameList(names: readonly string[], template?: Template | string): string[] {
+  return normalizeSharedAssetNameList(names, template);
 }
 
-function getEffectiveDraftComponentSendOrder(
-  draft: Pick<Draft, 'assets' | 'metadata'>,
-  template: Template
-): string[] {
+function getEffectiveDraftComponentSendOrder(draft: Pick<Draft, 'assets' | 'metadata'>, template: Template): string[] {
   const templateAssetNames = getOrderedAssets(template).map((asset) => asset.name);
-  const defaultOrder = normalizeAssetNameList([...templateAssetNames, ...Object.keys(draft.assets)]);
+  const defaultOrder = normalizeAssetNameList([...templateAssetNames, ...Object.keys(draft.assets)], template);
   const availableNames = new Set(defaultOrder);
-  const savedOrder = normalizeAssetNameList(draft.metadata.component_send_order ?? [])
-    .filter((assetName) => availableNames.has(assetName));
+  const savedOrder = normalizeAssetNameList(draft.metadata.component_send_order ?? [], template).filter((assetName) =>
+    availableNames.has(assetName),
+  );
   const seen = new Set(savedOrder);
 
   return [...savedOrder, ...defaultOrder.filter((assetName) => !seen.has(assetName))];
@@ -294,7 +311,7 @@ function getEffectiveDraftComponentSendOrder(
 function buildDraftPriorAssets(
   draft: Pick<Draft, 'assets' | 'metadata'>,
   targetAssetName: string,
-  template: Template
+  template: Template,
 ): Record<string, string> {
   const effectiveOrder = getEffectiveDraftComponentSendOrder(draft, template);
   const targetIndex = effectiveOrder.indexOf(targetAssetName);
@@ -328,7 +345,7 @@ type MobileGenerateRequest = GenerateRequest & {
 function buildImportedSourceContext(
   template: Template,
   assetName: string,
-  importedSource?: ImportedSourceContext
+  importedSource?: ImportedSourceContext,
 ): string {
   if (!importedSource) {
     return '';
@@ -368,10 +385,11 @@ function buildPerAssetMessages(
   assetName: string,
   priorAssets: Record<string, string>,
   referenceContext: string,
-  extraInstruction?: string
+  extraInstruction?: string,
 ): ChatMessage[] {
-  const blueprintContent = resolveTemplateBlueprintContent(template.name, assetName)
-    || `Generate the ${assetName} asset for the active template.`;
+  const blueprintContent =
+    resolveTemplateBlueprintContent(template.name, assetName) ||
+    `Generate the ${assetName} asset for the active template.`;
   const relevantPriorAssets = resolveRelevantPriorAssets(template, assetName, priorAssets);
 
   const userLines: string[] = [
@@ -382,7 +400,9 @@ function buildPerAssetMessages(
   ];
 
   if (assetName === 'a1111') {
-    userLines.push('OUTPUT: Return only the final raw A1111 prompt lines. Do not write narration, scene prose, explanations, headings, labels, or code fences.');
+    userLines.push(
+      'OUTPUT: Return only the final raw A1111 prompt lines. Do not write narration, scene prose, explanations, headings, labels, or code fences.',
+    );
   }
 
   userLines.push('');
@@ -429,8 +449,12 @@ function buildPerAssetMessages(
 
 function buildSeedMessages(request: SeedGenerationRequest): ChatMessage[] {
   const config = getStoredDeviceConfig();
-  const blueprintPath = request.blueprint_path || config.feature_blueprints?.seed_generation || 'blueprints/system/seed_generator.md';
-  const blueprintContent = request.blueprint_content || getBlueprintCatalog().get(blueprintPath)?.content || 'Generate concise character seed ideas.';
+  const blueprintPath =
+    request.blueprint_path || config.feature_blueprints?.seed_generation || 'blueprints/system/seed_generator.md';
+  const blueprintContent =
+    request.blueprint_content ||
+    getBlueprintCatalog().get(blueprintPath)?.content ||
+    'Generate concise character seed ideas.';
   return [
     {
       role: 'system',
@@ -465,7 +489,8 @@ function buildSimilarityMessages(left: Draft, right: Draft): ChatMessage[] {
   return [
     {
       role: 'system',
-      content: 'Compare two character drafts. Return concise relationship potential notes only, with no JSON and no extra headings.',
+      content:
+        'Compare two character drafts. Return concise relationship potential notes only, with no JSON and no extra headings.',
     },
     {
       role: 'user',
@@ -483,7 +508,8 @@ function buildSimilarityMessages(left: Draft, right: Draft): ChatMessage[] {
 function buildOffspringSeedMessages(parent1: Draft, parent2: Draft, mode: string): ChatMessage[] {
   const config = getStoredDeviceConfig();
   const blueprintPath = config.feature_blueprints?.offspring_generation || 'blueprints/system/offspring_generator.md';
-  const blueprintContent = getBlueprintCatalog().get(blueprintPath)?.content || 'Generate a single offspring seed from two parent drafts.';
+  const blueprintContent =
+    getBlueprintCatalog().get(blueprintPath)?.content || 'Generate a single offspring seed from two parent drafts.';
   return [
     {
       role: 'system',
@@ -506,14 +532,17 @@ function buildOffspringSeedMessages(parent1: Draft, parent2: Draft, mode: string
 function buildChatMessages(request: ChatRequest, draft: Draft | null): ChatMessage[] {
   const contextParts = [
     draft ? `Current draft metadata: ${JSON.stringify(draft.metadata)}` : '',
-    request.context_asset && draft?.assets[request.context_asset] ? `Focused asset (${request.context_asset}):\n${draft.assets[request.context_asset]}` : '',
+    request.context_asset && draft?.assets[request.context_asset]
+      ? `Focused asset (${request.context_asset}):\n${draft.assets[request.context_asset]}`
+      : '',
     request.screen_context ? `Screen context: ${JSON.stringify(request.screen_context)}` : '',
   ].filter(Boolean);
 
   return [
     {
       role: 'system',
-      content: 'You are the in-app assistant for Eidolon Simulacra. Be concise and practical. Use the provided draft and screen context when relevant.',
+      content:
+        'You are the in-app assistant for Eidolon Simulacra. Be concise and practical. Use the provided draft and screen context when relevant.',
     },
     ...(contextParts.length > 0 ? [{ role: 'system' as const, content: contextParts.join('\n\n') }] : []),
     ...request.messages,
@@ -529,9 +558,7 @@ function isStreamingUnsupportedError(error: unknown): boolean {
   }
 
   const message = error.message.toLowerCase();
-  return message.includes('no response body')
-    || message.includes('getreader')
-    || message.includes('body stream');
+  return message.includes('no response body') || message.includes('getreader') || message.includes('body stream');
 }
 
 async function collectStreamedContent(
@@ -539,7 +566,7 @@ async function collectStreamedContent(
   signal?: AbortSignal,
   onChunk?: (chunk: string) => void,
   onStatus?: (stage: string, progress?: number, asset?: string) => void,
-  nativeProgress?: { start: number; end: number; asset?: string; maxTokens?: number }
+  nativeProgress?: { start: number; end: number; asset?: string; maxTokens?: number },
 ): Promise<string> {
   const { engine } = createConfiguredEngine();
 
@@ -615,7 +642,7 @@ async function runGeneration(
     parentDraftIds?: string[];
     offspringType?: string;
     extraInstruction?: string;
-  } = {}
+  } = {},
 ): Promise<GenerationComplete> {
   const startedAt = Date.now();
   const template = resolveTemplateDefinition(request.template);
@@ -631,14 +658,12 @@ async function runGeneration(
   const selectedAssetSet = new Set(
     (request.selected_assets ?? [])
       .map((assetName) => (typeof assetName === 'string' ? assetName.trim() : ''))
-      .filter(Boolean)
+      .filter(Boolean),
   );
   const templateAssetsByName = new Map(template.assets.map((asset) => [asset.name, asset] as const));
 
   // Required assets are always generated.
-  template.assets
-    .filter((asset) => asset.required)
-    .forEach((asset) => selectedAssetSet.add(asset.name));
+  template.assets.filter((asset) => asset.required).forEach((asset) => selectedAssetSet.add(asset.name));
 
   // Ensure selected assets include their full dependency chain.
   const visitedAssetDependencies = new Set<string>();
@@ -679,24 +704,24 @@ async function runGeneration(
     const maxTokens = configuredMaxTokens;
 
     options.onStatus?.('building_asset_prompt', assetStart, asset.name);
-    const messages = buildPerAssetMessages(request, template, asset.name, assets, referenceContext, options.extraInstruction);
-    options.onStatus?.('contacting_provider', Math.min(assetStart + 0.02, assetEnd), asset.name);
-    const rawAssetContent = await collectStreamedContent(
-      messages,
-      options.signal,
-      undefined,
-      options.onStatus,
-      {
-        start: Math.min(assetStart + 0.04, assetEnd),
-        end: Math.max(assetEnd - 0.01, assetStart + 0.04),
-        asset: asset.name,
-        maxTokens,
-      }
+    const messages = buildPerAssetMessages(
+      request,
+      template,
+      asset.name,
+      assets,
+      referenceContext,
+      options.extraInstruction,
     );
+    options.onStatus?.('contacting_provider', Math.min(assetStart + 0.02, assetEnd), asset.name);
+    const rawAssetContent = await collectStreamedContent(messages, options.signal, undefined, options.onStatus, {
+      start: Math.min(assetStart + 0.04, assetEnd),
+      end: Math.max(assetEnd - 0.01, assetStart + 0.04),
+      asset: asset.name,
+      maxTokens,
+    });
 
-    const assetContent = asset.name === 'a1111'
-      ? rawAssetContent.trim()
-      : unwrapSingleCodeFence(rawAssetContent).trim();
+    const assetContent =
+      asset.name === 'a1111' ? rawAssetContent.trim() : unwrapSingleCodeFence(rawAssetContent).trim();
 
     if (!assetContent) {
       throw new APIError(502, `Generated asset ${asset.name} was empty`);
@@ -751,7 +776,7 @@ class LocalStream {
     private executor: (context: {
       emit: <EventType extends StreamEventType>(event: EventType, data: StreamEventMap[EventType]) => void;
       signal: AbortSignal;
-    }) => Promise<void>
+    }) => Promise<void>,
   ) {}
 
   subscribe(callback: StreamReader): () => void {
@@ -836,7 +861,9 @@ export class MobileLocalAPI {
       success: result.success,
       latency_ms: result.latencyMs,
       error: result.error,
-      model_info: result.modelInfo ? { name: result.modelInfo.name, context_length: result.modelInfo.contextLength } : undefined,
+      model_info: result.modelInfo
+        ? { name: result.modelInfo.name, context_length: result.modelInfo.contextLength }
+        : undefined,
     } as ConnectionTestResult;
   }
 
@@ -853,7 +880,12 @@ export class MobileLocalAPI {
 
     const fallbackModels = getFallbackModels(typedProvider);
     if (!apiKey) {
-      return { provider, models: fallbackModels, cached: true, error: 'No API key configured for provider model lookup.' };
+      return {
+        provider,
+        models: fallbackModels,
+        cached: true,
+        error: 'No API key configured for provider model lookup.',
+      };
     }
 
     try {
@@ -911,11 +943,7 @@ export class MobileLocalAPI {
       throw new APIError(404, `Template ${name} not found`);
     }
 
-    return createDownload(
-      JSON.stringify(record, null, 2),
-      `${slugifyFileName(name)}.json`,
-      'application/json'
-    );
+    return createDownload(JSON.stringify(record, null, 2), `${slugifyFileName(name)}.json`, 'application/json');
   }
 
   async importTemplateFromText(raw: string, sourceName = 'template.json'): Promise<Template> {
@@ -987,9 +1015,8 @@ export class MobileLocalAPI {
     }
 
     const validation = validateTemplate(record.template);
-    const warnings = buildMissingTemplateBlueprintWarnings(
-      record.template,
-      (assetName) => resolveTemplateBlueprintContent(record.template.name, assetName)
+    const warnings = buildMissingTemplateBlueprintWarnings(record.template, (assetName) =>
+      resolveTemplateBlueprintContent(record.template.name, assetName),
     );
     return { errors: validation.errors, warnings };
   }
@@ -1023,6 +1050,11 @@ export class MobileLocalAPI {
     customInstructions?: string;
     componentSendOrder?: string[];
     connectedDraftIds?: string[];
+    parentDraftIds?: string[];
+    cardMetadata?: DraftMetadata['card_metadata'];
+    reviewAnnotations?: DraftMetadata['review_annotations'];
+    mergeProvenance?: DraftMetadata['merge_provenance'];
+    mergeHistory?: DraftMetadata['merge_history'];
     assets?: Record<string, string>;
   }): Promise<Draft> {
     const seed = request.seed.trim();
@@ -1057,12 +1089,84 @@ export class MobileLocalAPI {
         custom_instructions: request.customInstructions?.trim() || undefined,
         component_send_order: request.componentSendOrder,
         connected_drafts: (request.connectedDraftIds ?? []).map((draftId) => draftId.trim()).filter(Boolean),
+        parent_drafts: (request.parentDraftIds ?? []).map((draftId) => draftId.trim()).filter(Boolean),
+        card_metadata: request.cardMetadata ? JSON.parse(JSON.stringify(request.cardMetadata)) : undefined,
+        review_annotations: request.reviewAnnotations
+          ? JSON.parse(JSON.stringify(request.reviewAnnotations))
+          : undefined,
+        merge_provenance: request.mergeProvenance ? JSON.parse(JSON.stringify(request.mergeProvenance)) : undefined,
+        merge_history: request.mergeHistory ? JSON.parse(JSON.stringify(request.mergeHistory)) : undefined,
       },
       assets: request.assets ?? {},
     };
 
     await saveDraft(draft);
     return draft;
+  }
+
+  async createDraftSnapshot(
+    reviewId: string,
+    options: { label?: string; reason?: string } = {},
+  ): Promise<{ status: 'created'; draft_id: string; snapshot_id: string }> {
+    const draft = await this.getDraft(reviewId);
+    const snapshot = buildDraftRevisionSnapshot(draft, {
+      label: options.label ?? `${draft.metadata.character_name || draft.metadata.seed} restore point`,
+      reason: options.reason,
+    });
+
+    await updateMetadata(reviewId, {
+      revision_snapshots: appendDraftRevisionSnapshot(draft.metadata.revision_snapshots, snapshot),
+    });
+
+    return { status: 'created', draft_id: reviewId, snapshot_id: snapshot.id };
+  }
+
+  async restoreDraftSnapshot(
+    reviewId: string,
+    snapshotId: string,
+  ): Promise<{ status: 'restored'; draft_id: string; snapshot_id: string }> {
+    const draft = await this.getDraft(reviewId);
+    const snapshot = draft.metadata.revision_snapshots?.find((entry) => entry.id === snapshotId);
+    if (!snapshot) {
+      throw new APIError(404, `Snapshot ${snapshotId} not found for draft ${reviewId}`);
+    }
+
+    const safeguardSnapshot = buildDraftRevisionSnapshot(draft, {
+      label: `Before restore ${new Date().toLocaleString()}`,
+      reason: `pre-restore:${snapshotId}`,
+    });
+    const nextSnapshots = appendDraftRevisionSnapshot(draft.metadata.revision_snapshots, safeguardSnapshot);
+    const state = snapshot.state;
+
+    await saveDraft({
+      path: draft.path,
+      metadata: {
+        ...draft.metadata,
+        seed: state.seed,
+        mode: state.mode,
+        model: state.model,
+        tags: state.tags,
+        genre: state.genre,
+        notes: state.notes,
+        favorite: state.favorite,
+        character_name: state.character_name,
+        template_name: state.template_name,
+        parent_drafts: state.parent_drafts,
+        connected_drafts: state.connected_drafts,
+        offspring_type: state.offspring_type,
+        custom_instructions: state.custom_instructions,
+        component_send_order: state.component_send_order,
+        card_metadata: state.card_metadata ? JSON.parse(JSON.stringify(state.card_metadata)) : undefined,
+        review_annotations: state.review_annotations ? JSON.parse(JSON.stringify(state.review_annotations)) : undefined,
+        merge_provenance: state.merge_provenance ? JSON.parse(JSON.stringify(state.merge_provenance)) : undefined,
+        merge_history: state.merge_history ? JSON.parse(JSON.stringify(state.merge_history)) : undefined,
+        revision_snapshots: nextSnapshots,
+        modified: new Date().toISOString(),
+      },
+      assets: JSON.parse(JSON.stringify(state.assets)) as Draft['assets'],
+    });
+
+    return { status: 'restored', draft_id: reviewId, snapshot_id: snapshotId };
   }
 
   async saveDraft(draftId: string, updates: Partial<Draft>): Promise<Draft> {
@@ -1082,7 +1186,10 @@ export class MobileLocalAPI {
     return saveDraft(nextDraft);
   }
 
-  async updateMetadata(reviewId: string, updates: Partial<DraftMetadata>): Promise<{ status: string; draft_id: string }> {
+  async updateMetadata(
+    reviewId: string,
+    updates: Partial<DraftMetadata>,
+  ): Promise<{ status: string; draft_id: string }> {
     await updateMetadata(reviewId, updates);
     return { status: 'updated', draft_id: reviewId };
   }
@@ -1092,7 +1199,11 @@ export class MobileLocalAPI {
     return { status: 'deleted', draft_id: reviewId };
   }
 
-  async updateAsset(reviewId: string, assetName: string, content: string): Promise<{ status: 'created' | 'updated'; draft_id: string; asset_name: string }> {
+  async updateAsset(
+    reviewId: string,
+    assetName: string,
+    content: string,
+  ): Promise<{ status: 'created' | 'updated'; draft_id: string; asset_name: string }> {
     const status = await updateAsset(reviewId, assetName, content);
     return { status, draft_id: reviewId, asset_name: assetName };
   }
@@ -1164,13 +1275,16 @@ export class MobileLocalAPI {
       const runSeed = async (seed: string, index: number) => {
         emit('batch_start', { index, seed });
         try {
-          const result = await runGeneration({
-            seed,
-            mode: request.mode,
-            template: request.template,
-            selected_assets: request.selected_assets,
-            connected_draft_ids: request.connected_draft_ids,
-          }, { signal });
+          const result = await runGeneration(
+            {
+              seed,
+              mode: request.mode,
+              template: request.template,
+              selected_assets: request.selected_assets,
+              connected_draft_ids: request.connected_draft_ids,
+            },
+            { signal },
+          );
           emit('batch_complete', {
             index,
             seed,
@@ -1178,23 +1292,29 @@ export class MobileLocalAPI {
             character_name: result.character_name,
           });
         } catch (error) {
-          emit('batch_error', { index, seed, error: error instanceof Error ? error.message : 'Batch generation failed' });
+          emit('batch_error', {
+            index,
+            seed,
+            error: error instanceof Error ? error.message : 'Batch generation failed',
+          });
         }
       };
 
       if (request.parallel) {
         let nextIndex = 0;
         const workerCount = Math.min(Math.max(request.max_concurrent ?? 3, 1), seeds.length || 1);
-        await Promise.all(Array.from({ length: workerCount }, async () => {
-          while (!signal.aborted) {
-            const index = nextIndex;
-            nextIndex += 1;
-            if (index >= seeds.length) {
-              return;
+        await Promise.all(
+          Array.from({ length: workerCount }, async () => {
+            while (!signal.aborted) {
+              const index = nextIndex;
+              nextIndex += 1;
+              if (index >= seeds.length) {
+                return;
+              }
+              await runSeed(seeds[index], index);
             }
-            await runSeed(seeds[index], index);
-          }
-        }));
+          }),
+        );
       } else {
         for (let index = 0; index < seeds.length; index += 1) {
           if (signal.aborted) {
@@ -1214,7 +1334,9 @@ export class MobileLocalAPI {
     return buildLineageResponse(await getAllMetadata());
   }
 
-  async compareCharacters(request: SimilarityRequest & { mode?: string; use_llm?: boolean }): Promise<SimilarityResult> {
+  async compareCharacters(
+    request: SimilarityRequest & { mode?: string; use_llm?: boolean },
+  ): Promise<SimilarityResult> {
     const left = await this.getDraft(request.draft1_id);
     const right = await this.getDraft(request.draft2_id);
     const baseResult = buildSimilarityResult(left, right);
@@ -1248,24 +1370,28 @@ export class MobileLocalAPI {
         buildOffspringSeedMessages(parent1, parent2, request.mode),
         signal,
         undefined,
-        (stage, progress, asset) => emit('status', { stage, progress, asset })
+        (stage, progress, asset) => emit('status', { stage, progress, asset }),
       );
       const derivedSeed = parseSeedOutput(seedOutput)[0] || `${parent1.metadata.seed} / ${parent2.metadata.seed}`;
       emit('chunk', { content: `Derived offspring seed: ${derivedSeed}\n\n` });
 
-      const result = await runGeneration({
-        seed: derivedSeed,
-        mode: request.mode,
-        template: request.template,
-        connected_draft_ids: [request.parent1_id, request.parent2_id],
-      }, {
-        signal,
-        parentDraftIds: [request.parent1_id, request.parent2_id],
-        offspringType: 'blended',
-        extraInstruction: 'Treat the generated character as offspring derived from the provided parent drafts and preserve inherited contrasts or overlaps where relevant.',
-        onChunk: (content) => emit('chunk', { content }),
-        onStatus: (stage, progress, asset) => emit('status', { stage, progress, asset }),
-      });
+      const result = await runGeneration(
+        {
+          seed: derivedSeed,
+          mode: request.mode,
+          template: request.template,
+          connected_draft_ids: [request.parent1_id, request.parent2_id],
+        },
+        {
+          signal,
+          parentDraftIds: [request.parent1_id, request.parent2_id],
+          offspringType: 'blended',
+          extraInstruction:
+            'Treat the generated character as offspring derived from the provided parent drafts and preserve inherited contrasts or overlaps where relevant.',
+          onChunk: (content) => emit('chunk', { content }),
+          onStatus: (stage, progress, asset) => emit('status', { stage, progress, asset }),
+        },
+      );
 
       if (!signal.aborted) {
         emit('complete', { draft_id: result.draft_id, character_name: result.character_name });
@@ -1279,7 +1405,8 @@ export class MobileLocalAPI {
 
   async exportDraft(request: ExportRequest): Promise<DownloadResponse> {
     const draft = await this.getDraft(request.draft_id);
-    const preset = request.preset === 'text' || request.preset === 'combined' || request.preset === 'png' ? request.preset : 'json';
+    const preset =
+      request.preset === 'text' || request.preset === 'combined' || request.preset === 'png' ? request.preset : 'json';
     const includeMetadata = request.include_metadata !== false;
     const fileBase = slugifyFileName(draft.metadata.character_name || draft.metadata.seed || draft.metadata.review_id);
     const artifact = buildDraftExportArtifact(draft, preset, includeMetadata);
@@ -1318,7 +1445,7 @@ export class MobileLocalAPI {
   }
 
   generateAssetVariant(
-    request: Pick<GenerateAssetRequest, 'asset_name' | 'additional_instructions'> & { draft_id: string }
+    request: Pick<GenerateAssetRequest, 'asset_name' | 'additional_instructions'> & { draft_id: string },
   ): LocalStream {
     return new LocalStream(async ({ emit, signal }) => {
       const draft = await this.getDraft(request.draft_id);
@@ -1331,10 +1458,7 @@ export class MobileLocalAPI {
         throw new APIError(404, `Asset ${request.asset_name} is not part of template ${template.name}`);
       }
 
-      const extraInstructions = [
-        draft.metadata.custom_instructions,
-        ...(request.additional_instructions ?? []),
-      ]
+      const extraInstructions = [draft.metadata.custom_instructions, ...(request.additional_instructions ?? [])]
         .filter((value): value is string => typeof value === 'string')
         .map((value) => value.trim())
         .filter((value) => value.length > 0)
@@ -1352,7 +1476,7 @@ export class MobileLocalAPI {
         request.asset_name,
         buildDraftPriorAssets(draft, request.asset_name, template),
         '',
-        extraInstructions || undefined
+        extraInstructions || undefined,
       );
 
       emit('status', { stage: 'contacting_provider', progress: 0.2, asset: request.asset_name });
@@ -1367,12 +1491,11 @@ export class MobileLocalAPI {
           end: 0.84,
           asset: request.asset_name,
           maxTokens: Math.max(256, Math.round(getStoredDeviceConfig().max_tokens)),
-        }
+        },
       );
 
-      const assetContent = request.asset_name === 'a1111'
-        ? rawAssetContent.trim()
-        : unwrapSingleCodeFence(rawAssetContent).trim();
+      const assetContent =
+        request.asset_name === 'a1111' ? rawAssetContent.trim() : unwrapSingleCodeFence(rawAssetContent).trim();
 
       if (!assetContent) {
         throw new APIError(502, `Generated asset ${request.asset_name} was empty`);
@@ -1395,7 +1518,8 @@ export class MobileLocalAPI {
       const messages: ChatMessage[] = [
         {
           role: 'system',
-          content: 'Rewrite the provided asset according to the user request. Return only the revised asset content with no extra commentary.',
+          content:
+            'Rewrite the provided asset according to the user request. Return only the revised asset content with no extra commentary.',
         },
         {
           role: 'user',

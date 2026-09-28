@@ -36,13 +36,13 @@ description = "First interaction scenario"
 blueprint_file = "blueprints/system/intro_scene.md"
 
 [[assets]]
-name = "intro_page"
+name = "creator_notes"
 required = true
 depends_on = [
     "character_sheet",
 ]
-description = "Visual character introduction page"
-blueprint_file = "blueprints/system/intro_page.md"
+description = "Creator notes section"
+blueprint_file = "blueprints/system/creator_notes.md"
 
 [[assets]]
 name = "a1111"

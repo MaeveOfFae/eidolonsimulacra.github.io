@@ -13,9 +13,9 @@ import type {
   ImportedCharacter,
   ImportedCharacterFormat,
   ExportPreset,
-  Template,
 } from '../types';
 import { extractPngCharaChunk, parseEmbeddedPngBytes, pngBytesToDataUrl } from '../png-card';
+import { normalizeAssetName, normalizeAssetNameList, normalizeAssetRecord, OFFICIAL_TEMPLATE } from '../templates';
 
 // ============================================================================
 // Format Detection
@@ -55,7 +55,10 @@ function cloneJsonValue<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
-function mergeCardMetadata(base: CharacterCardMetadata | undefined, override: CharacterCardMetadata | undefined): CharacterCardMetadata | undefined {
+function mergeCardMetadata(
+  base: CharacterCardMetadata | undefined,
+  override: CharacterCardMetadata | undefined,
+): CharacterCardMetadata | undefined {
   if (!base && !override) {
     return undefined;
   }
@@ -215,12 +218,14 @@ function hasCardSpec(data: Record<string, unknown>): boolean {
     return false;
   }
 
-  return specVersion === '2'
-    || specVersion === '2.0'
-    || specVersion === '3'
-    || specVersion === '3.0'
-    || specVersion.startsWith('2.')
-    || specVersion.startsWith('3.');
+  return (
+    specVersion === '2' ||
+    specVersion === '2.0' ||
+    specVersion === '3' ||
+    specVersion === '3.0' ||
+    specVersion.startsWith('2.') ||
+    specVersion.startsWith('3.')
+  );
 }
 
 function readEidolonExtension(data: Record<string, unknown>): Record<string, unknown> | null {
@@ -238,57 +243,15 @@ function readEidolonExtension(data: Record<string, unknown>): Record<string, unk
 }
 
 function hasChubSignals(data: Record<string, unknown>): boolean {
-  return Array.isArray(data.tags)
-    || typeof data.creator === 'string'
-    || typeof data.creator_notes === 'string'
-    || typeof data.system_prompt === 'string'
-    || typeof data.post_history_instructions === 'string'
-    || Array.isArray(data.alternate_greetings)
-    || readEidolonExtension(data) !== null;
-}
-
-function mergeNoteValues(primary?: string | null, secondary?: string | null): string | undefined {
-  const parts = [primary, secondary]
-    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
-    .map((value) => value.trim());
-
-  if (parts.length === 0) {
-    return undefined;
-  }
-
-  if (parts.length === 1) {
-    return parts[0];
-  }
-
-  return Array.from(new Set(parts)).join('\n\n');
-}
-
-function collectSections(sections: Array<{ title?: string; value?: string | null }>): string | null {
-  const normalized: Array<{ title?: string; value: string }> = [];
-
-  for (const section of sections) {
-    const value = section.value?.trim();
-    if (!value) {
-      continue;
-    }
-
-    normalized.push({
-      title: section.title?.trim(),
-      value,
-    });
-  }
-
-  if (normalized.length === 0) {
-    return null;
-  }
-
-  if (normalized.length === 1 && !normalized[0].title) {
-    return normalized[0].value;
-  }
-
-  return normalized
-    .map((section) => section.title ? `## ${section.title}\n\n${section.value}` : section.value)
-    .join('\n\n');
+  return (
+    Array.isArray(data.tags) ||
+    typeof data.creator === 'string' ||
+    typeof data.creator_notes === 'string' ||
+    typeof data.system_prompt === 'string' ||
+    typeof data.post_history_instructions === 'string' ||
+    Array.isArray(data.alternate_greetings) ||
+    readEidolonExtension(data) !== null
+  );
 }
 
 function extractEidolonAssets(data: Record<string, unknown>): Record<string, string> {
@@ -300,7 +263,7 @@ function extractEidolonAssets(data: Record<string, unknown>): Record<string, str
   return Object.fromEntries(
     Object.entries(extension.assets)
       .filter((entry): entry is [string, string] => typeof entry[1] === 'string' && entry[1].trim().length > 0)
-      .map(([key, value]) => [key, value.trim()])
+      .map(([key, value]) => [key, value.trim()]),
   );
 }
 
@@ -336,7 +299,12 @@ function extractImportedMetadata(data: Record<string, unknown>, name: string): P
     assignString('custom_instructions', rawMetadata.custom_instructions, rawMetadata.customInstructions);
     assignString('offspring_type', rawMetadata.offspring_type, rawMetadata.offspringType);
 
-    if (rawMetadata.mode === 'SFW' || rawMetadata.mode === 'NSFW' || rawMetadata.mode === 'Platform-Safe' || rawMetadata.mode === 'Auto') {
+    if (
+      rawMetadata.mode === 'SFW' ||
+      rawMetadata.mode === 'NSFW' ||
+      rawMetadata.mode === 'Platform-Safe' ||
+      rawMetadata.mode === 'Auto'
+    ) {
       metadata.mode = rawMetadata.mode;
     }
 
@@ -407,15 +375,9 @@ function buildPostHistoryAsset(data: Record<string, unknown>): string | null {
   const unwrappedInstructions = postHistoryInstructions ? unwrapContent(postHistoryInstructions) : null;
 
   if (unwrappedExample && unwrappedInstructions && unwrappedInstructions !== unwrappedExample) {
-    return [
-      'Example Dialogue',
-      '',
-      unwrappedExample,
-      '',
-      'Post-History Instructions',
-      '',
-      unwrappedInstructions,
-    ].join('\n');
+    return ['Example Dialogue', '', unwrappedExample, '', 'Post-History Instructions', '', unwrappedInstructions].join(
+      '\n',
+    );
   }
 
   return unwrappedExample ?? unwrappedInstructions;
@@ -448,11 +410,7 @@ export function detectJsonFormat(data: unknown): ImportedCharacterFormat {
 
   const cardData = isRecord(data.data) ? data.data : data;
 
-  if (
-    typeof cardData.description === 'string' &&
-    typeof cardData.first_mes === 'string' &&
-    hasChubSignals(cardData)
-  ) {
+  if (typeof cardData.description === 'string' && typeof cardData.first_mes === 'string' && hasChubSignals(cardData)) {
     return 'chubai';
   }
 
@@ -488,14 +446,7 @@ const TAVERNAI_FIELD_MAP: Record<string, string> = {
   personality: 'system_prompt',
   first_mes: 'intro_scene',
   mes_example: 'post_history',
-  scenario: 'intro_page',
-};
-
-const CHUBAI_FIELD_MAP: Record<string, string> = {
-  description: 'character_sheet',
-  personality: 'system_prompt',
-  first_mes: 'intro_scene',
-  mes_example: 'post_history',
+  scenario: 'creator_notes',
 };
 
 const LOREBOOK_SOURCE_KEYS = ['character_book', 'lorebook', 'world_info'] as const;
@@ -532,19 +483,16 @@ function unwrapContent(content: string, wrapper?: string): string {
 
   // Common wrapper pattern: <START>\n...{{char}}: {{content}} or similar
   // Try to find the content after the last {{char}}: or {{content}} placeholder
-  const charPatterns = [
-    /\{\{char\}\}:\s*/g,
-    /<START>/gi,
-  ];
 
   // If the wrapper contains <START>, try to strip it
   if (wrapper.includes('<START>')) {
     // Remove <START> prefix lines
     const lines = normalizedContent.split('\n');
-    const startIndex = lines.findIndex(line =>
-      line.trim().toLowerCase() === '<start>' ||
-      line.trim().startsWith('{{user}}:') ||
-      line.trim().startsWith('{{char}}:')
+    const startIndex = lines.findIndex(
+      (line) =>
+        line.trim().toLowerCase() === '<start>' ||
+        line.trim().startsWith('{{user}}:') ||
+        line.trim().startsWith('{{char}}:'),
     );
 
     if (startIndex >= 0) {
@@ -593,13 +541,14 @@ function formatLorebookEntry(entry: unknown, index: number): string | null {
     return serialized ? `## Entry ${index}\n\n${serialized}` : null;
   }
 
-  const title = typeof entry.name === 'string' && entry.name.trim()
-    ? entry.name.trim()
-    : typeof entry.comment === 'string' && entry.comment.trim()
-      ? entry.comment.trim()
-      : Array.isArray(entry.keys) && entry.keys.length > 0
-        ? entry.keys.filter((key): key is string => typeof key === 'string' && key.trim().length > 0).join(', ')
-        : `Entry ${index}`;
+  const title =
+    typeof entry.name === 'string' && entry.name.trim()
+      ? entry.name.trim()
+      : typeof entry.comment === 'string' && entry.comment.trim()
+        ? entry.comment.trim()
+        : Array.isArray(entry.keys) && entry.keys.length > 0
+          ? entry.keys.filter((key): key is string => typeof key === 'string' && key.trim().length > 0).join(', ')
+          : `Entry ${index}`;
 
   const details: string[] = [];
   const keys = Array.isArray(entry.keys)
@@ -625,13 +574,14 @@ function formatLorebookEntry(entry: unknown, index: number): string | null {
     details.push('Enabled: false');
   }
 
-  const content = typeof entry.content === 'string' && entry.content.trim()
-    ? entry.content.trim()
-    : typeof entry.entry === 'string' && entry.entry.trim()
-      ? entry.entry.trim()
-      : typeof entry.text === 'string' && entry.text.trim()
-        ? entry.text.trim()
-        : null;
+  const content =
+    typeof entry.content === 'string' && entry.content.trim()
+      ? entry.content.trim()
+      : typeof entry.entry === 'string' && entry.entry.trim()
+        ? entry.entry.trim()
+        : typeof entry.text === 'string' && entry.text.trim()
+          ? entry.text.trim()
+          : null;
 
   const bodyParts = [`## ${title}`];
   if (details.length > 0) {
@@ -665,9 +615,10 @@ function formatLorebookSource(label: string, value: unknown): string | null {
     return stringifyUnknown(value);
   }
 
-  const heading = typeof value.name === 'string' && value.name.trim()
-    ? `# ${value.name.trim()}`
-    : `# ${label.replace(/_/g, ' ').replace(/\b\w/g, (segment) => segment.toUpperCase())}`;
+  const heading =
+    typeof value.name === 'string' && value.name.trim()
+      ? `# ${value.name.trim()}`
+      : `# ${label.replace(/_/g, ' ').replace(/\b\w/g, (segment) => segment.toUpperCase())}`;
   const sections: string[] = [heading];
 
   if (typeof value.description === 'string' && value.description.trim()) {
@@ -700,7 +651,10 @@ function formatLorebookSource(label: string, value: unknown): string | null {
   return sections.join('\n\n').trim() || null;
 }
 
-function extractLorebookAssets(data: Record<string, unknown>): { assets: Record<string, string>; sourceKeys: string[] } {
+function extractLorebookAssets(data: Record<string, unknown>): {
+  assets: Record<string, string>;
+  sourceKeys: string[];
+} {
   const assets: Record<string, string> = {};
   const sourceKeys: string[] = [];
   const sources: Array<{ key: string; value: unknown }> = [];
@@ -783,7 +737,11 @@ function formatImportedAliasValue(alias: string, value: unknown): string | null 
     return formatLorebookSource(normalizedAlias, value);
   }
 
-  if (normalizedAlias === 'mes_example' || normalizedAlias === 'system_prompt' || normalizedAlias === 'post_history_instructions') {
+  if (
+    normalizedAlias === 'mes_example' ||
+    normalizedAlias === 'system_prompt' ||
+    normalizedAlias === 'post_history_instructions'
+  ) {
     const text = readString(value);
     return text ? unwrapContent(text) : null;
   }
@@ -810,9 +768,8 @@ function getDefaultAssetNamesForImportAlias(alias: string, data: Record<string, 
     case 'post_history_instructions':
       return ['post_history'];
     case 'scenario':
-      return ['intro_page'];
     case 'creator_notes':
-      return ['creator_notes'];
+      return ['creator_notes', 'intro_page'];
     case 'avatar':
       return ['avatar'];
     case 'creator':
@@ -852,9 +809,7 @@ function applyTemplateImportAliases(
   const consumedDefaultAssets = new Set<string>();
 
   for (const asset of templateAssets) {
-    const aliases = (asset.import_aliases ?? [])
-      .map((alias) => alias.trim())
-      .filter((alias) => alias.length > 0);
+    const aliases = (asset.import_aliases ?? []).map((alias) => alias.trim()).filter((alias) => alias.length > 0);
 
     if (aliases.length === 0) {
       continue;
@@ -910,13 +865,25 @@ export function parseTavernAICard(
   }
 
   const data = flattenCardData(raw);
-  const assets: Record<string, string> = extractEidolonAssets(data);
   const unmappedFields: Record<string, string> = {};
   const lorebook = extractLorebookAssets(data);
-  const metadata = extractImportedMetadata(data, typeof data.name === 'string' ? data.name.trim() : 'Imported Character');
 
   // Extract character name
   const name = typeof data.name === 'string' ? data.name.trim() : 'Imported Character';
+  const importedMetadata = extractImportedMetadata(data, name);
+  const templateHint = options?.template ?? importedMetadata?.template_name ?? OFFICIAL_TEMPLATE.name;
+  const metadata = importedMetadata
+    ? {
+        ...importedMetadata,
+        ...(importedMetadata.component_send_order
+          ? {
+              component_send_order: normalizeAssetNameList(importedMetadata.component_send_order, templateHint),
+            }
+          : {}),
+      }
+    : undefined;
+  const assets: Record<string, string> = normalizeAssetRecord(extractEidolonAssets(data), templateHint);
+  const creatorNotesAssetName = normalizeAssetName('intro_page', templateHint);
 
   if (!assets.character_sheet) {
     const characterSheet = buildCharacterSheetAsset(data);
@@ -953,16 +920,16 @@ export function parseTavernAICard(
     }
   }
 
-  if (!assets.intro_page) {
-    const scenario = readString(data.scenario);
-    if (scenario) {
-      assets.intro_page = scenario;
-    }
+  const creatorNotes = readString(data.creator_notes);
+  if (creatorNotes && !assets[creatorNotesAssetName]) {
+    assets[creatorNotesAssetName] = creatorNotes;
   }
 
-  const creatorNotes = readString(data.creator_notes);
-  if (creatorNotes && !assets.creator_notes) {
-    assets.creator_notes = creatorNotes;
+  if (!assets[creatorNotesAssetName]) {
+    const scenario = readString(data.scenario);
+    if (scenario) {
+      assets[creatorNotesAssetName] = scenario;
+    }
   }
 
   const avatar = readString(data.avatar);
@@ -1035,14 +1002,18 @@ export function parseTavernAICard(
     }
   }
 
-  return applyTemplateImportAliases({
-    name,
-    assets,
-    sourceFormat,
-    sourcePreset: sourceFormat === 'tavernai_v2' ? 'TavernAI / SillyTavern V2/V3' : 'TavernAI / SillyTavern',
-    unmappedFields: Object.keys(unmappedFields).length > 0 ? unmappedFields : undefined,
-    metadata,
-  }, data, options);
+  return applyTemplateImportAliases(
+    {
+      name,
+      assets,
+      sourceFormat,
+      sourcePreset: sourceFormat === 'tavernai_v2' ? 'TavernAI / SillyTavern V2/V3' : 'TavernAI / SillyTavern',
+      unmappedFields: Object.keys(unmappedFields).length > 0 ? unmappedFields : undefined,
+      metadata,
+    },
+    data,
+    options,
+  );
 }
 
 /**
@@ -1062,7 +1033,11 @@ export function parseChubAICard(raw: unknown, options?: CharacterImportOptions):
 /**
  * Serialize unknown JSON into a single raw text asset so later steps can interpret it.
  */
-export function parseGenericCharacter(raw: unknown, filename?: string, options?: CharacterImportOptions): ImportedCharacter {
+export function parseGenericCharacter(
+  raw: unknown,
+  filename?: string,
+  options?: CharacterImportOptions,
+): ImportedCharacter {
   if (!isRecord(raw)) {
     throw new Error('Invalid character data: expected JSON object');
   }
@@ -1070,23 +1045,28 @@ export function parseGenericCharacter(raw: unknown, filename?: string, options?:
   const data = flattenCardData(raw);
   const rawText = JSON.stringify(raw, null, 2);
   const lorebook = extractLorebookAssets(data);
-  const nameCandidate = typeof data.name === 'string' && data.name.trim()
-    ? data.name.trim()
-    : typeof data.character_name === 'string' && data.character_name.trim()
-      ? data.character_name.trim()
-      : filename?.replace(/\.[^.]+$/, '') || 'Imported Character';
+  const nameCandidate =
+    typeof data.name === 'string' && data.name.trim()
+      ? data.name.trim()
+      : typeof data.character_name === 'string' && data.character_name.trim()
+        ? data.character_name.trim()
+        : filename?.replace(/\.[^.]+$/, '') || 'Imported Character';
 
-  return applyTemplateImportAliases({
-    name: nameCandidate,
-    assets: {
-      character_sheet: rawText,
-      ...lorebook.assets,
+  return applyTemplateImportAliases(
+    {
+      name: nameCandidate,
+      assets: {
+        character_sheet: rawText,
+        ...lorebook.assets,
+      },
+      sourceFormat: 'unknown',
+      metadata: {
+        character_name: nameCandidate,
+      },
     },
-    sourceFormat: 'unknown',
-    metadata: {
-      character_name: nameCandidate,
-    },
-  }, data, options);
+    data,
+    options,
+  );
 }
 
 /**
@@ -1160,11 +1140,12 @@ export function detectAndParseCharacter(
         if (jsonData && isRecord(jsonData)) {
           try {
             const format = detectJsonFormat(jsonData);
-            const result = format === 'chubai'
-              ? parseChubAICard(jsonData, options)
-              : format !== 'unknown'
-                ? parseTavernAICard(jsonData, format === 'tavernai_v2' ? 'tavernai_v2' : 'tavernai_v1', options)
-                : parseGenericCharacter(jsonData, filename, options);
+            const result =
+              format === 'chubai'
+                ? parseChubAICard(jsonData, options)
+                : format !== 'unknown'
+                  ? parseTavernAICard(jsonData, format === 'tavernai_v2' ? 'tavernai_v2' : 'tavernai_v1', options)
+                  : parseGenericCharacter(jsonData, filename, options);
             const nextAssets = { ...result.assets };
             if (!nextAssets.card_image) {
               nextAssets.card_image = pngBytesToDataUrl(new Uint8Array(data));
@@ -1187,18 +1168,12 @@ export function detectAndParseCharacter(
 
   // Handle string data
   if (typeof data !== 'string') {
-    return parsePlainTextContent(
-      `[Unsupported data format]`,
-      filename,
-    );
+    return parsePlainTextContent(`[Unsupported data format]`, filename);
   }
 
   const trimmed = data.trim();
   if (!trimmed) {
-    return parsePlainTextContent(
-      `[Empty file]`,
-      filename,
-    );
+    return parsePlainTextContent(`[Empty file]`, filename);
   }
 
   // Try JSON parsing first

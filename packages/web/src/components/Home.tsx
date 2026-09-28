@@ -8,6 +8,7 @@ import {
   Layers,
   PlayCircle,
   RotateCcw,
+  Server,
   Settings,
   ShieldCheck,
   Sparkles,
@@ -16,8 +17,10 @@ import {
 } from 'lucide-react';
 import type { DraftMetadata } from '@char-gen/shared';
 import { api } from '@/lib/api';
-import { getGuidedTour, gettingStartedSteps, guidedTours } from '@/lib/help';
+import { GETTING_STARTED_GUIDE_ID, getGuidedTour, gettingStartedSteps, guidedTours } from '@/lib/help';
+import { isDesktopRuntime } from '@/lib/runtime';
 import CollapsibleSection from './common/CollapsibleSection';
+import GettingStartedGuide from './common/GettingStartedGuide';
 import { useGuidedTour } from './common/GuidedTourContext';
 import { useAssistantScreenContext } from './common/useAssistantContext';
 
@@ -99,11 +102,19 @@ interface MetricTileProps {
 
 function MetricTile({ label, value, tone = 'default' }: MetricTileProps) {
   return (
-    <div className={`rounded-xl border px-4 py-3 ${tone === 'accent' ? 'border-primary/30 bg-primary/10' : 'border-border/60 bg-background/50'}`}>
-      <p className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground font-semibold" style={{ fontFamily: '"IBM Plex Mono", monospace' }}>
+    <div
+      className={`rounded-xl border px-4 py-3 ${tone === 'accent' ? 'border-primary/30 bg-primary/10' : 'border-border/60 bg-background/50'}`}
+    >
+      <p
+        className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground font-semibold"
+        style={{ fontFamily: '"IBM Plex Mono", monospace' }}
+      >
         {label}
       </p>
-      <div className="mt-2 text-2xl font-semibold text-foreground" style={{ fontFamily: '"Space Grotesk", sans-serif' }}>
+      <div
+        className="mt-2 text-2xl font-semibold text-foreground"
+        style={{ fontFamily: '"Space Grotesk", sans-serif' }}
+      >
         {value}
       </div>
     </div>
@@ -121,20 +132,32 @@ interface LaneCardProps {
 
 function WorkflowStepRow({ to, eyebrow, title, description, detail, icon: Icon }: LaneCardProps) {
   return (
-    <Link to={to} className="group flex items-start justify-between gap-4 rounded-2xl border border-border/60 bg-background/35 px-4 py-4 transition-all duration-300 hover:border-primary/35 hover:bg-background/55">
+    <Link
+      to={to}
+      className="group flex items-start justify-between gap-4 rounded-2xl border border-border/60 bg-background/35 px-4 py-4 transition-all duration-300 hover:border-primary/35 hover:bg-background/55"
+    >
       <div className="flex min-w-0 items-start gap-3">
         <div className="rounded-xl border border-border/60 bg-background/60 p-2 text-primary transition-colors duration-300 group-hover:bg-primary/10">
           <Icon className="h-4 w-4" />
         </div>
         <div className="min-w-0">
-          <p className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground font-semibold" style={{ fontFamily: '"IBM Plex Mono", monospace' }}>
+          <p
+            className="text-[10px] uppercase tracking-[0.24em] text-muted-foreground font-semibold"
+            style={{ fontFamily: '"IBM Plex Mono", monospace' }}
+          >
             {eyebrow}
           </p>
-          <h3 className="mt-2 text-base font-semibold text-foreground" style={{ fontFamily: '"Space Grotesk", sans-serif' }}>
+          <h3
+            className="mt-2 text-base font-semibold text-foreground"
+            style={{ fontFamily: '"Space Grotesk", sans-serif' }}
+          >
             {title}
           </h3>
           <p className="mt-1.5 text-sm leading-6 text-muted-foreground">{description}</p>
-          <p className="mt-2 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground" style={{ fontFamily: '"IBM Plex Mono", monospace' }}>
+          <p
+            className="mt-2 text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground"
+            style={{ fontFamily: '"IBM Plex Mono", monospace' }}
+          >
             {detail}
           </p>
         </div>
@@ -164,7 +187,9 @@ function ToolLink({ to, label, description, icon: Icon }: ToolLinkProps) {
       </div>
       <div className="min-w-0">
         <div className="font-medium">{label}</div>
-        <div className="text-xs text-muted-foreground transition-colors group-hover:text-muted-foreground">{description}</div>
+        <div className="text-xs text-muted-foreground transition-colors group-hover:text-muted-foreground">
+          {description}
+        </div>
       </div>
     </Link>
   );
@@ -178,7 +203,10 @@ interface GettingStartedRowProps {
 
 function GettingStartedRow({ to, title, description }: GettingStartedRowProps) {
   return (
-    <Link to={to} className="group flex items-start justify-between gap-3 rounded-xl border border-border/60 bg-background/40 px-4 py-3 transition-colors hover:border-primary/35 hover:bg-background/60">
+    <Link
+      to={to}
+      className="group flex items-start justify-between gap-3 rounded-xl border border-border/60 bg-background/40 px-4 py-3 transition-colors hover:border-primary/35 hover:bg-background/60"
+    >
       <div className="min-w-0">
         <div className="text-sm font-semibold text-foreground">{title}</div>
         <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p>
@@ -196,10 +224,16 @@ interface RecentDraftCardProps {
 
 function RecentDraftCard({ to, name, meta }: RecentDraftCardProps) {
   return (
-    <Link to={to} className="group flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-background/50 px-4 py-3 transition-all duration-300 hover:border-primary/35 hover:bg-background/70">
+    <Link
+      to={to}
+      className="group flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-background/50 px-4 py-3 transition-all duration-300 hover:border-primary/35 hover:bg-background/70"
+    >
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-semibold text-foreground">{name}</div>
-        <div className="mt-0.5 truncate text-xs text-muted-foreground" style={{ fontFamily: '"IBM Plex Mono", monospace' }}>
+        <div
+          className="mt-0.5 truncate text-xs text-muted-foreground"
+          style={{ fontFamily: '"IBM Plex Mono", monospace' }}
+        >
           {meta}
         </div>
       </div>
@@ -211,7 +245,9 @@ function RecentDraftCard({ to, name, meta }: RecentDraftCardProps) {
 }
 
 export default function Home() {
-  const { activeStepIndex, activeTourId, goToCurrentStep, isTourCompleted, restartTour, startTour } = useGuidedTour();
+  const { activeStepIndex, activeTourId, goToCurrentStep, helpState, isTourCompleted, restartTour, startTour } =
+    useGuidedTour();
+  const desktopRuntime = isDesktopRuntime();
   const { data: statsData } = useQuery({
     queryKey: ['drafts', 'stats', RECENT_DRAFT_LIMIT],
     queryFn: () => api.getDrafts({ limit: RECENT_DRAFT_LIMIT }),
@@ -226,7 +262,9 @@ export default function Home() {
     draft_count: statsData?.stats?.total_drafts ?? 0,
     favorite_count: statsData?.stats?.favorites ?? 0,
     template_count: templatesData?.length ?? 0,
-    recent_drafts: (statsData?.drafts ?? []).slice(0, 5).map((draft: DraftMetadata) => draft.character_name || draft.seed),
+    recent_drafts: (statsData?.drafts ?? [])
+      .slice(0, 5)
+      .map((draft: DraftMetadata) => draft.character_name || draft.seed),
   });
 
   const stats = statsData?.stats;
@@ -235,6 +273,9 @@ export default function Home() {
   const nextIncompleteTour = guidedTours.find((tour) => !isTourCompleted(tour.id)) ?? null;
   const activeTour = activeTourId ? getGuidedTour(activeTourId) : null;
   const activeTourStep = activeTour?.steps[activeStepIndex] ?? null;
+  const starterGuideComplete =
+    helpState.first_run_completed || helpState.completed_guides.includes(GETTING_STARTED_GUIDE_ID);
+  const starterTemplateName = templatesData?.[0]?.name;
 
   return (
     <div className="space-y-8 pb-10">
@@ -250,25 +291,48 @@ export default function Home() {
             <div className="space-y-5">
               <div className="space-y-3">
                 <p className="home-kicker">Workspace</p>
-                <h1 className="max-w-4xl text-4xl font-semibold tracking-tight text-foreground sm:text-5xl" style={{ fontFamily: '"Space Grotesk", sans-serif' }}>
+                <h1
+                  className="max-w-4xl text-4xl font-semibold tracking-tight text-foreground sm:text-5xl"
+                  style={{ fontFamily: '"Space Grotesk", sans-serif' }}
+                >
                   Return to the next useful task.
                 </h1>
-                <p className="max-w-2xl text-base leading-7 text-muted-foreground">Keep setup, generation, and review in view without surfacing every tool at once.</p>
+                <p className="max-w-2xl text-base leading-7 text-muted-foreground">
+                  Keep setup, generation, and review in view without surfacing every tool at once.
+                </p>
               </div>
 
               <div className="flex flex-wrap gap-2">
-                <Link to="/generate" className="inline-flex items-center gap-2 rounded-2xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
+                <Link
+                  to="/generate"
+                  className="inline-flex items-center gap-2 rounded-2xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+                >
                   <Zap className="h-4 w-4" />
                   Start a draft
                 </Link>
-                <Link to="/drafts" className="inline-flex items-center gap-2 rounded-2xl border border-border/60 bg-background/55 px-5 py-3 text-sm font-semibold text-foreground transition-colors hover:border-primary/35 hover:text-primary">
+                <Link
+                  to="/drafts"
+                  className="inline-flex items-center gap-2 rounded-2xl border border-border/60 bg-background/55 px-5 py-3 text-sm font-semibold text-foreground transition-colors hover:border-primary/35 hover:text-primary"
+                >
                   <FolderOpen className="h-4 w-4" />
                   Open library
                 </Link>
-                <Link to="/settings" className="inline-flex items-center gap-2 rounded-2xl border border-border/60 bg-background/55 px-5 py-3 text-sm font-semibold text-foreground transition-colors hover:border-primary/35 hover:text-primary">
+                <Link
+                  to="/settings"
+                  className="inline-flex items-center gap-2 rounded-2xl border border-border/60 bg-background/55 px-5 py-3 text-sm font-semibold text-foreground transition-colors hover:border-primary/35 hover:text-primary"
+                >
                   <Settings className="h-4 w-4" />
                   Configure runtime
                 </Link>
+                {desktopRuntime && (
+                  <Link
+                    to="/settings?section=sync"
+                    className="inline-flex items-center gap-2 rounded-2xl border border-border/60 bg-background/55 px-5 py-3 text-sm font-semibold text-foreground transition-colors hover:border-primary/35 hover:text-primary"
+                  >
+                    <Server className="h-4 w-4" />
+                    Open Device Link
+                  </Link>
+                )}
               </div>
             </div>
 
@@ -283,62 +347,66 @@ export default function Home() {
 
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
         <div className="space-y-6">
-        <div className="rounded-[1.75rem] border border-border/60 p-6 sm:p-7">
-          <div className="mb-6">
-            <h2 className="text-2xl font-semibold text-foreground" style={{ fontFamily: '"Space Grotesk", sans-serif' }}>
-              {recentDrafts.length > 0 ? 'Continue working' : 'Start here'}
-            </h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {recentDrafts.length > 0
-                ? 'Jump back into the latest draft without scanning the full library.'
-                : 'Use the shortest path from setup to a first saved draft.'}
-            </p>
+          {!starterGuideComplete && <GettingStartedGuide templateName={starterTemplateName} />}
+          <div className="rounded-[1.75rem] border border-border/60 p-6 sm:p-7">
+            <div className="mb-6">
+              <h2
+                className="text-2xl font-semibold text-foreground"
+                style={{ fontFamily: '"Space Grotesk", sans-serif' }}
+              >
+                {recentDrafts.length > 0 ? 'Continue working' : 'Start here'}
+              </h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {recentDrafts.length > 0
+                  ? 'Jump back into the latest draft without scanning the full library.'
+                  : 'Use the shortest path from setup to a first saved draft.'}
+              </p>
+            </div>
+
+            {recentDrafts.length > 0 ? (
+              <div className="grid gap-2">
+                {recentDrafts.map((draft: DraftMetadata) => (
+                  <RecentDraftCard
+                    key={draft.review_id}
+                    to={`/drafts/${encodeURIComponent(draft.review_id)}`}
+                    name={draft.character_name || draft.seed}
+                    meta={`${draft.template_name || 'V2/V3'} • ${draft.mode || 'SFW'}`}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-3 rounded-[1.5rem] border border-dashed border-border/70 bg-background/40 p-4">
+                {gettingStartedSteps.slice(0, 4).map((step) => (
+                  <GettingStartedRow key={step.id} to={step.to} title={step.title} description={step.description} />
+                ))}
+              </div>
+            )}
+
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Link
+                to="/drafts"
+                className="inline-flex items-center gap-2 rounded-2xl border border-border/60 bg-background/55 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary/35 hover:text-primary"
+              >
+                View full library
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
           </div>
 
-          {recentDrafts.length > 0 ? (
-            <div className="grid gap-2">
-              {recentDrafts.map((draft: DraftMetadata) => (
-                <RecentDraftCard
-                  key={draft.review_id}
-                  to={`/drafts/${encodeURIComponent(draft.review_id)}`}
-                  name={draft.character_name || draft.seed}
-                  meta={`${draft.template_name || 'V2/V3'} • ${draft.mode || 'SFW'}`}
-                />
+          <CollapsibleSection
+            title="Supporting tools"
+            subtitle="Keep these nearby without giving them the same weight as the main workflow"
+            preview={EXPLORATION_ACTIONS.map((action) => action.label)
+              .slice(0, 3)
+              .join(' • ')}
+            className="rounded-[1.75rem]"
+          >
+            <div className="grid gap-3 md:grid-cols-2">
+              {EXPLORATION_ACTIONS.map((action) => (
+                <ToolLink key={action.to} {...action} />
               ))}
             </div>
-          ) : (
-            <div className="space-y-3 rounded-[1.5rem] border border-dashed border-border/70 bg-background/40 p-4">
-              {gettingStartedSteps.slice(0, 4).map((step) => (
-                <GettingStartedRow
-                  key={step.id}
-                  to={step.to}
-                  title={step.title}
-                  description={step.description}
-                />
-              ))}
-            </div>
-          )}
-
-          <div className="mt-6 flex flex-wrap gap-3">
-            <Link to="/drafts" className="inline-flex items-center gap-2 rounded-2xl border border-border/60 bg-background/55 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary/35 hover:text-primary">
-              View full library
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-        </div>
-
-        <CollapsibleSection
-          title="Supporting tools"
-          subtitle="Keep these nearby without giving them the same weight as the main workflow"
-          preview={EXPLORATION_ACTIONS.map((action) => action.label).slice(0, 3).join(' • ')}
-          className="rounded-[1.75rem]"
-        >
-          <div className="grid gap-3 md:grid-cols-2">
-            {EXPLORATION_ACTIONS.map((action) => (
-              <ToolLink key={action.to} {...action} />
-            ))}
-          </div>
-        </CollapsibleSection>
+          </CollapsibleSection>
         </div>
 
         <aside className="space-y-6">
@@ -358,12 +426,16 @@ export default function Home() {
 
           <CollapsibleSection
             title="Guided help"
-            subtitle={activeTour && activeTourStep
-              ? `Next stop: ${activeTourStep.title}`
-              : nextIncompleteTour
-                ? `${completedTours}/${guidedTours.length} tours completed`
-                : 'All guided tours are complete.'}
-            preview={activeTour ? 'Resume active tour' : nextIncompleteTour ? nextIncompleteTour.title : 'All tours complete'}
+            subtitle={
+              activeTour && activeTourStep
+                ? `Next stop: ${activeTourStep.title}`
+                : nextIncompleteTour
+                  ? `${completedTours}/${guidedTours.length} tours completed`
+                  : 'All guided tours are complete.'
+            }
+            preview={
+              activeTour ? 'Resume active tour' : nextIncompleteTour ? nextIncompleteTour.title : 'All tours complete'
+            }
             defaultExpanded={Boolean(activeTour)}
             className="rounded-[1.75rem]"
           >
@@ -398,7 +470,10 @@ export default function Home() {
                   Restart
                 </button>
               ) : null}
-              <Link to="/help" className="inline-flex items-center gap-2 rounded-2xl border border-border/60 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary/35 hover:text-primary">
+              <Link
+                to="/help"
+                className="inline-flex items-center gap-2 rounded-2xl border border-border/60 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary/35 hover:text-primary"
+              >
                 <PlayCircle className="h-4 w-4" />
                 Open help center
               </Link>

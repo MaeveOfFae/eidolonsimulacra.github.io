@@ -16,7 +16,7 @@ export function useAssistantScreenContext(context: AssistantScreenContext) {
   const serializedContext = useMemo(() => JSON.stringify(context), [context]);
   const stableContext = useMemo<AssistantScreenContext>(
     () => JSON.parse(serializedContext) as AssistantScreenContext,
-    [serializedContext]
+    [serializedContext],
   );
 
   useEffect(() => {

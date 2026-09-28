@@ -47,9 +47,11 @@ If you discover a vulnerability or sensitive data exposure issue, follow the rep
     <DocumentPage
       eyebrow="Privacy"
       title="Privacy"
-      summary={desktopRuntime
-        ? 'How desktop app data, API keys, provider requests, and exports are handled in the desktop runtime.'
-        : 'How browser storage, API keys, provider requests, and exports are handled in the current browser-first architecture.'}
+      summary={
+        desktopRuntime
+          ? 'How desktop app data, API keys, provider requests, and exports are handled in the desktop runtime.'
+          : 'How browser storage, API keys, provider requests, and exports are handled in the current browser-first architecture.'
+      }
       markdown={privacyMarkdown}
     />
   );

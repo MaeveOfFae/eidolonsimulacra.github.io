@@ -82,10 +82,10 @@ function encodeBase64(value: string): string {
     const b = i + 1 < bytes.length ? bytes[i + 1]! : 0;
     const c = i + 2 < bytes.length ? bytes[i + 2]! : 0;
     const trio = (a << 16) | (b << 8) | c;
-    result += lookup[(trio >> 18) & 0x3F];
-    result += lookup[(trio >> 12) & 0x3F];
-    result += i + 1 < bytes.length ? lookup[(trio >> 6) & 0x3F] : '=';
-    result += i + 2 < bytes.length ? lookup[trio & 0x3F] : '=';
+    result += lookup[(trio >> 18) & 0x3f];
+    result += lookup[(trio >> 12) & 0x3f];
+    result += i + 1 < bytes.length ? lookup[(trio >> 6) & 0x3f] : '=';
+    result += i + 2 < bytes.length ? lookup[trio & 0x3f] : '=';
   }
   return result;
 }
@@ -105,7 +105,7 @@ function getBrowserApiKeysHeader(): Record<string, string> {
 
       const parsed = JSON.parse(raw) as Record<string, string>;
       const keys = Object.fromEntries(
-        Object.entries(parsed).filter(([, value]) => typeof value === 'string' && value.trim().length > 0)
+        Object.entries(parsed).filter(([, value]) => typeof value === 'string' && value.trim().length > 0),
       );
 
       if (Object.keys(keys).length === 0) {
@@ -159,17 +159,14 @@ class EidolonAPI {
     return merged;
   }
 
-  private async request<T>(
-    path: string,
-    options: RequestInit = {}
-  ): Promise<T> {
+  private async request<T>(path: string, options: RequestInit = {}): Promise<T> {
     const response = await fetch(`${this.getApiBaseUrl()}${path}`, {
       ...options,
       headers: this.buildHeaders(options.headers, 'application/json'),
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ detail: response.statusText })) as { detail?: string };
+      const errorData = (await response.json().catch(() => ({ detail: response.statusText }))) as { detail?: string };
       throw new APIError(response.status, errorData.detail || 'Request failed');
     }
 
@@ -202,7 +199,7 @@ class EidolonAPI {
   private async requestDownload(
     path: string,
     options: RequestInit = {},
-    fallbackError: string
+    fallbackError: string,
   ): Promise<DownloadResponse> {
     const response = await fetch(`${this.getApiBaseUrl()}${path}`, {
       ...options,
@@ -210,7 +207,7 @@ class EidolonAPI {
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ detail: response.statusText })) as { detail?: string };
+      const errorData = (await response.json().catch(() => ({ detail: response.statusText }))) as { detail?: string };
       throw new APIError(response.status, errorData.detail || fallbackError);
     }
 
@@ -255,11 +252,7 @@ class EidolonAPI {
   }
 
   async exportTheme(name: string): Promise<DownloadResponse> {
-    return this.requestDownload(
-      `/config/themes/${encodeURIComponent(name)}/export`,
-      {},
-      'Theme export failed'
-    );
+    return this.requestDownload(`/config/themes/${encodeURIComponent(name)}/export`, {}, 'Theme export failed');
   }
 
   async importTheme(file: File, options: ThemeImportRequest = {}): Promise<ThemePreset> {
@@ -279,7 +272,7 @@ class EidolonAPI {
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ detail: response.statusText })) as { detail?: string };
+      const errorData = (await response.json().catch(() => ({ detail: response.statusText }))) as { detail?: string };
       throw new APIError(response.status, errorData.detail || 'Theme import failed');
     }
 
@@ -345,9 +338,7 @@ class EidolonAPI {
   }
 
   async getTemplateBlueprintContents(name: string): Promise<TemplateBlueprintContentsResponse> {
-    return this.request<TemplateBlueprintContentsResponse>(
-      `/templates/${encodeURIComponent(name)}/blueprint-contents`
-    );
+    return this.request<TemplateBlueprintContentsResponse>(`/templates/${encodeURIComponent(name)}/blueprint-contents`);
   }
 
   async createTemplate(template: CreateTemplateRequest): Promise<Template> {
@@ -382,11 +373,7 @@ class EidolonAPI {
   }
 
   async exportTemplate(name: string): Promise<DownloadResponse> {
-    return this.requestDownload(
-      `/templates/${encodeURIComponent(name)}/export`,
-      {},
-      'Template export failed'
-    );
+    return this.requestDownload(`/templates/${encodeURIComponent(name)}/export`, {}, 'Template export failed');
   }
 
   async importTemplate(file: File): Promise<Template> {
@@ -400,7 +387,7 @@ class EidolonAPI {
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ detail: response.statusText })) as { detail?: string };
+      const errorData = (await response.json().catch(() => ({ detail: response.statusText }))) as { detail?: string };
       throw new APIError(response.status, errorData.detail || 'Template import failed');
     }
 
@@ -434,10 +421,7 @@ class EidolonAPI {
   // ===========================================================================
 
   generate(request: GenerateRequest): GenerationStream {
-    return new GenerationStream(
-      `${this.getApiBaseUrl()}/generate/single`,
-      request
-    );
+    return new GenerationStream(`${this.getApiBaseUrl()}/generate/single`, request);
   }
 
   async generateAsset(request: GenerateAssetRequest, signal?: AbortSignal): Promise<GenerateAssetResponse> {
@@ -456,11 +440,11 @@ class EidolonAPI {
     });
   }
 
-  generateBatch(seeds: string[], options: Omit<GenerateRequest, 'seed'> & { parallel?: boolean; max_concurrent?: number }): GenerationStream {
-    return new GenerationStream(
-      `${this.getApiBaseUrl()}/generate/batch`,
-      { seeds, ...options }
-    );
+  generateBatch(
+    seeds: string[],
+    options: Omit<GenerateRequest, 'seed'> & { parallel?: boolean; max_concurrent?: number },
+  ): GenerationStream {
+    return new GenerationStream(`${this.getApiBaseUrl()}/generate/batch`, { seeds, ...options });
   }
 
   // ===========================================================================
@@ -473,7 +457,7 @@ class EidolonAPI {
       Object.entries(filters).forEach(([key, value]) => {
         if (value !== undefined) {
           if (Array.isArray(value)) {
-            value.forEach(v => params.append(key, String(v)));
+            value.forEach((v) => params.append(key, String(v)));
           } else {
             params.set(key, String(value));
           }
@@ -506,23 +490,17 @@ class EidolonAPI {
   }
 
   async updateAsset(draftId: string, assetName: string, content: string): Promise<void> {
-    return this.request<void>(
-      `/drafts/${encodeURIComponent(draftId)}/assets/${encodeURIComponent(assetName)}`,
-      {
-        method: 'PUT',
-        body: JSON.stringify({ content }),
-      }
-    );
+    return this.request<void>(`/drafts/${encodeURIComponent(draftId)}/assets/${encodeURIComponent(assetName)}`, {
+      method: 'PUT',
+      body: JSON.stringify({ content }),
+    });
   }
 
   async updateMetadata(draftId: string, metadata: Partial<Draft['metadata']>): Promise<void> {
-    return this.request<void>(
-      `/drafts/${encodeURIComponent(draftId)}/metadata`,
-      {
-        method: 'PUT',
-        body: JSON.stringify(metadata),
-      }
-    );
+    return this.request<void>(`/drafts/${encodeURIComponent(draftId)}/metadata`, {
+      method: 'PUT',
+      body: JSON.stringify(metadata),
+    });
   }
 
   // ===========================================================================
@@ -536,7 +514,9 @@ class EidolonAPI {
     });
   }
 
-  async compareCharacters(request: SimilarityRequest & { mode?: string; use_llm?: boolean }): Promise<SimilarityResult> {
+  async compareCharacters(
+    request: SimilarityRequest & { mode?: string; use_llm?: boolean },
+  ): Promise<SimilarityResult> {
     return this.request<SimilarityResult>('/similarity/compare', {
       method: 'POST',
       body: JSON.stringify(request),
@@ -548,10 +528,7 @@ class EidolonAPI {
   // ===========================================================================
 
   generateOffspring(request: OffspringRequest): GenerationStream {
-    return new GenerationStream(
-      `${this.getApiBaseUrl()}/offspring`,
-      request
-    );
+    return new GenerationStream(`${this.getApiBaseUrl()}/offspring`, request);
   }
 
   // ===========================================================================
@@ -566,7 +543,7 @@ class EidolonAPI {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(request),
       },
-      'Export failed'
+      'Export failed',
     );
   }
 
@@ -580,24 +557,15 @@ class EidolonAPI {
   // ===========================================================================
 
   chat(request: ChatRequest): GenerationStream {
-    return new GenerationStream(
-      `${this.getApiBaseUrl()}/chat`,
-      request
-    );
+    return new GenerationStream(`${this.getApiBaseUrl()}/chat`, request);
   }
 
   refine(request: RefineRequest): GenerationStream {
-    return new GenerationStream(
-      `${this.getApiBaseUrl()}/chat/refine`,
-      request
-    );
+    return new GenerationStream(`${this.getApiBaseUrl()}/chat/refine`, request);
   }
 
   optimizeText(request: OptimizeTextRequest): GenerationStream {
-    return new GenerationStream(
-      `${this.getApiBaseUrl()}/chat/optimize`,
-      request
-    );
+    return new GenerationStream(`${this.getApiBaseUrl()}/chat/optimize`, request);
   }
 
   // ===========================================================================
@@ -626,7 +594,17 @@ export { EidolonAPI };
 // SSE Streaming Helper
 // ============================================================================
 
-export type GenerationEventType = 'status' | 'chunk' | 'asset' | 'asset_complete' | 'progress' | 'complete' | 'error' | 'batch_start' | 'batch_complete' | 'batch_error';
+export type GenerationEventType =
+  | 'status'
+  | 'chunk'
+  | 'asset'
+  | 'asset_complete'
+  | 'progress'
+  | 'complete'
+  | 'error'
+  | 'batch_start'
+  | 'batch_complete'
+  | 'batch_error';
 
 export type GenerationEventData =
   | GenerationProgress
@@ -651,7 +629,7 @@ export class GenerationStream {
 
   constructor(
     private url: string,
-    private body: object
+    private body: object,
   ) {}
 
   subscribe(callback: (event: GenerationEvent) => void): () => void {
@@ -704,7 +682,7 @@ export class GenerationStream {
         for (const line of lines) {
           const event = this.parseSSELine(line);
           if (event) {
-            this.readers.forEach(cb => cb(event));
+            this.readers.forEach((cb) => cb(event));
 
             if (event.event === 'complete' && this.onComplete) {
               this.onComplete(event.data as GenerationComplete);
@@ -718,7 +696,7 @@ export class GenerationStream {
 
       const trailingEvent = this.parseSSELine('');
       if (trailingEvent) {
-        this.readers.forEach(cb => cb(trailingEvent));
+        this.readers.forEach((cb) => cb(trailingEvent));
         if (trailingEvent.event === 'complete' && this.onComplete) {
           this.onComplete(trailingEvent.data as GenerationComplete);
         }
@@ -772,7 +750,7 @@ export class GenerationStream {
 export class APIError extends Error {
   constructor(
     public status: number,
-    message: string
+    message: string,
   ) {
     super(message);
     this.name = 'APIError';

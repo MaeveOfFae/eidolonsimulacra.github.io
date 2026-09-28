@@ -1,30 +1,23 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import {
-  Save,
-  XCircle,
-  Eye,
-  EyeOff,
-  RotateCcw,
-  Shield,
-  Zap,
-  Lock,
-  BookOpen,
-  Server,
-} from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Save, XCircle, Eye, EyeOff, RotateCcw, Shield, Zap, Lock, BookOpen, Server } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
 import type { Config, FeatureCategory, ModelInfo } from '@char-gen/shared';
 import { api } from '../../lib/api.js';
-import { CONFIG_MANAGER_CHANGED_EVENT, configManager, isInvalidApiKeyValue, normalizeApiKeyValue } from '../../lib/config/manager.js';
-import { isDesktopRuntime, isSelfContainedDesktopRuntime } from '../../lib/runtime.js';
-import { queueAutoSync } from '../../lib/server/auto-sync.js';
+import {
+  CONFIG_MANAGER_CHANGED_EVENT,
+  configManager,
+  isInvalidApiKeyValue,
+  normalizeApiKeyValue,
+} from '../../lib/config/manager.js';
+import { isDesktopRuntime } from '../../lib/runtime.js';
 import { createEngine, MODEL_SUGGESTIONS } from '../../lib/llm/factory.js';
 import CollapsibleSection from '../common/CollapsibleSection';
-import ServerSettings from './ServerSettings';
+import DeviceLinkSettings from './DeviceLinkSettings';
 import { getBlueprintsForFeature } from '@/lib/blueprints/featureSelection';
 
 const ALL_PROVIDERS = ['openai', 'google', 'openrouter', 'anthropic', 'deepseek', 'zai', 'moonshot', 'ollama'] as const;
-type Provider = typeof ALL_PROVIDERS[number];
+type Provider = (typeof ALL_PROVIDERS)[number];
 
 // Provider colors for badges
 const PROVIDER_COLORS: Record<Provider, string> = {
@@ -45,8 +38,12 @@ const SETTINGS_SECTIONS: Array<{ id: SettingsSectionId; label: string }> = [
   { id: 'providers', label: 'Providers' },
   { id: 'generation', label: 'Generation' },
   { id: 'help', label: 'Help' },
-  { id: 'sync', label: 'Sync' },
+  { id: 'sync', label: 'Device Link' },
 ];
+
+function isSettingsSectionId(value: string | null): value is SettingsSectionId {
+  return SETTINGS_SECTIONS.some((section) => section.id === value);
+}
 
 const PROVIDER_LABELS: Record<Provider, string> = {
   openai: 'OpenAI',
@@ -60,8 +57,8 @@ const PROVIDER_LABELS: Record<Provider, string> = {
 };
 
 export default function Settings() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const desktopRuntime = isDesktopRuntime();
-  const selfContainedDesktop = isSelfContainedDesktopRuntime();
   const [showKeys, setShowKeys] = useState<Record<string, boolean>>({});
   const [testResult, setTestResult] = useState<{ provider: string; success: boolean; message: string } | null>(null);
   const [selectedProvider, setSelectedProvider] = useState<Provider>('openrouter');
@@ -72,11 +69,21 @@ export default function Settings() {
   const [availableModels, setAvailableModels] = useState<ModelInfo[]>([]);
   const [modelsLoading, setModelsLoading] = useState(false);
   const [modelsNotice, setModelsNotice] = useState<string | null>(null);
-  const [activeSection, setActiveSection] = useState<SettingsSectionId>('setup');
+  const requestedSection = searchParams.get('section');
+  const [activeSection, setActiveSection] = useState<SettingsSectionId>(() =>
+    isSettingsSectionId(requestedSection) ? requestedSection : 'setup',
+  );
   const { data: blueprintList } = useQuery({
     queryKey: ['settings-blueprints'],
     queryFn: () => api.getBlueprints(),
   });
+
+  useEffect(() => {
+    const nextSection = isSettingsSectionId(requestedSection) ? requestedSection : 'setup';
+    if (nextSection !== activeSection) {
+      setActiveSection(nextSection);
+    }
+  }, [activeSection, requestedSection]);
 
   const featureBlueprintOptions = useMemo(() => {
     if (!blueprintList) {
@@ -91,8 +98,11 @@ export default function Settings() {
       } as Record<FeatureCategory, Array<{ value: string; label: string }>>;
     }
 
-    const buildOptions = (feature: FeatureCategory) => getBlueprintsForFeature(blueprintList, feature)
-      .map((entry) => ({ value: entry.path, label: entry.name || entry.path }));
+    const buildOptions = (feature: FeatureCategory) =>
+      getBlueprintsForFeature(blueprintList, feature).map((entry) => ({
+        value: entry.path,
+        label: entry.name || entry.path,
+      }));
 
     return {
       orchestration: buildOptions('orchestration'),
@@ -194,12 +204,6 @@ export default function Settings() {
     };
   }, [selectedProvider, localConfig.api_keys?.[selectedProvider]]);
 
-  useEffect(() => {
-    if (selfContainedDesktop && activeSection === 'sync') {
-      setActiveSection('setup');
-    }
-  }, [activeSection, selfContainedDesktop]);
-
   // Test connection with client-side engine
   const testConnection = async (provider: string) => {
     setTestResult(null);
@@ -273,7 +277,6 @@ export default function Settings() {
         delete nextApiKeys[provider];
         configManager.clearApiKey(provider);
       }
-      queueAutoSync('config');
       return {
         ...previous,
         api_keys: nextApiKeys,
@@ -380,14 +383,12 @@ export default function Settings() {
       help: nextHelpState,
     }));
     configManager.updateHelpState(nextHelpState);
-    queueAutoSync('config');
     setThemeNotice('Getting Started has been reset. Return to Home to run through it again.');
     setThemeError(null);
   };
 
   const handleResetHelpPreferences = () => {
     configManager.resetHelpState();
-    queueAutoSync('config');
     setLocalConfig((previous) => ({
       ...previous,
       help: configManager.getHelpState(),
@@ -397,11 +398,26 @@ export default function Settings() {
   };
 
   const currentModel = localConfig.model || '';
-  const compactModelLabel = currentModel ? currentModel.split('/').filter(Boolean).slice(-1)[0] || currentModel : 'Unset';
+  const compactModelLabel = currentModel
+    ? currentModel.split('/').filter(Boolean).slice(-1)[0] || currentModel
+    : 'Unset';
   const activeProviderKey = localConfig.api_keys?.[selectedProvider] || '';
   const configuredProviderCount = ALL_PROVIDERS.filter((provider) => Boolean(localConfig.api_keys?.[provider])).length;
   const configuredFeatureBlueprintCount = Object.values(localConfig.feature_blueprints ?? {}).filter(Boolean).length;
-  const visibleSections = SETTINGS_SECTIONS.filter((section) => section.id !== 'sync' || !selfContainedDesktop);
+  const visibleSections = SETTINGS_SECTIONS;
+
+  const handleSectionChange = (section: SettingsSectionId) => {
+    setActiveSection(section);
+
+    const nextParams = new URLSearchParams(searchParams);
+    if (section === 'setup') {
+      nextParams.delete('section');
+    } else {
+      nextParams.set('section', section);
+    }
+
+    setSearchParams(nextParams, { replace: true });
+  };
 
   return (
     <div className="app-page space-y-8 pb-8">
@@ -448,7 +464,7 @@ export default function Settings() {
           <button
             key={section.id}
             type="button"
-            onClick={() => setActiveSection(section.id)}
+            onClick={() => handleSectionChange(section.id)}
             className={`rounded-xl border px-3 py-2 text-sm font-medium transition-colors ${
               activeSection === section.id
                 ? 'border-primary/35 bg-primary/15 text-foreground'
@@ -466,7 +482,7 @@ export default function Settings() {
             <button
               key={section.id}
               type="button"
-              onClick={() => setActiveSection(section.id)}
+              onClick={() => handleSectionChange(section.id)}
               data-active={activeSection === section.id ? 'true' : 'false'}
               className="app-tab-button"
             >
@@ -477,11 +493,13 @@ export default function Settings() {
       </div>
 
       {(themeNotice || themeError) && (
-        <div className={`app-note flex items-center gap-2 px-4 py-3 text-sm ${
-          themeError
-            ? 'border-destructive/50 bg-destructive/10 text-destructive'
-            : 'border-primary/30 bg-primary/10 text-foreground'
-        }`}>
+        <div
+          className={`app-note flex items-center gap-2 px-4 py-3 text-sm ${
+            themeError
+              ? 'border-destructive/50 bg-destructive/10 text-destructive'
+              : 'border-primary/30 bg-primary/10 text-foreground'
+          }`}
+        >
           <Shield className={`h-4 w-4 flex-shrink-0 ${themeError ? 'text-destructive' : 'text-primary'}`} />
           {themeError || themeNotice}
           <button
@@ -506,7 +524,9 @@ export default function Settings() {
               </div>
               <div>
                 <h2 className="text-xl font-bold">Runtime</h2>
-                <p className="text-sm text-muted-foreground">Pick the provider, model, and default generation behavior.</p>
+                <p className="text-sm text-muted-foreground">
+                  Pick the provider, model, and default generation behavior.
+                </p>
               </div>
             </div>
 
@@ -541,7 +561,9 @@ export default function Settings() {
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <label htmlFor="provider-select" className="text-sm font-medium">Provider</label>
+                  <label htmlFor="provider-select" className="text-sm font-medium">
+                    Provider
+                  </label>
                   <select
                     id="provider-select"
                     value={selectedProvider}
@@ -557,7 +579,9 @@ export default function Settings() {
                 </div>
 
                 <div className="space-y-2">
-                  <label htmlFor="model-select" className="text-sm font-medium">Model</label>
+                  <label htmlFor="model-select" className="text-sm font-medium">
+                    Model
+                  </label>
                   <select
                     id="model-select"
                     value={currentModel}
@@ -578,9 +602,7 @@ export default function Settings() {
                         ? `Loaded ${availableModels.length} models.`
                         : 'Showing built-in suggestions.'}
                   </p>
-                  {modelsNotice && (
-                    <p className="text-xs text-amber-700 dark:text-amber-300">{modelsNotice}</p>
-                  )}
+                  {modelsNotice && <p className="text-xs text-amber-700 dark:text-amber-300">{modelsNotice}</p>}
                 </div>
               </div>
 
@@ -597,7 +619,9 @@ export default function Settings() {
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <label htmlFor="temperature-input" className="text-sm font-medium">Temperature</label>
+                  <label htmlFor="temperature-input" className="text-sm font-medium">
+                    Temperature
+                  </label>
                   <input
                     id="temperature-input"
                     type="number"
@@ -605,7 +629,9 @@ export default function Settings() {
                     max="2"
                     step="0.1"
                     value={localConfig.temperature ?? 0.7}
-                    onChange={(e) => setLocalConfig((previous) => ({ ...previous, temperature: parseFloat(e.target.value) }))}
+                    onChange={(e) =>
+                      setLocalConfig((previous) => ({ ...previous, temperature: parseFloat(e.target.value) }))
+                    }
                     inputMode="decimal"
                     className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   />
@@ -616,12 +642,16 @@ export default function Settings() {
                 </div>
 
                 <div className="space-y-2">
-                  <label htmlFor="max-tokens-input" className="text-sm font-medium">Max Tokens</label>
+                  <label htmlFor="max-tokens-input" className="text-sm font-medium">
+                    Max Tokens
+                  </label>
                   <input
                     id="max-tokens-input"
                     type="number"
                     value={localConfig.max_tokens ?? 4096}
-                    onChange={(e) => setLocalConfig((previous) => ({ ...previous, max_tokens: parseInt(e.target.value, 10) || 0 }))}
+                    onChange={(e) =>
+                      setLocalConfig((previous) => ({ ...previous, max_tokens: parseInt(e.target.value, 10) || 0 }))
+                    }
                     className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   />
                 </div>
@@ -630,67 +660,74 @@ export default function Settings() {
               <CollapsibleSection
                 title="Advanced transport"
                 subtitle="Base URL, proxy key, and provider-specific transport notes"
-                preview={localConfig.base_url || localConfig.api_proxy_key ? 'Custom transport configured' : 'Using provider defaults'}
+                preview={
+                  localConfig.base_url || localConfig.api_proxy_key
+                    ? 'Custom transport configured'
+                    : 'Using provider defaults'
+                }
                 defaultExpanded={Boolean(localConfig.base_url || localConfig.api_proxy_key)}
                 className="bg-background/35"
                 bodyClassName="space-y-4"
               >
-                  {selectedProvider === 'openai' && (
-                    <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-900 dark:text-amber-100">
-                      Direct OpenAI calls from this browser app are blocked by CORS on api.openai.com. Use OpenRouter for browser-direct usage, or point the base URL at your own proxy or relay.
-                    </div>
-                  )}
+                {selectedProvider === 'openai' && (
+                  <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-900 dark:text-amber-100">
+                    Direct OpenAI calls from this browser app are blocked by CORS on api.openai.com. Use OpenRouter for
+                    browser-direct usage, or point the base URL at your own proxy or relay.
+                  </div>
+                )}
 
-                  {selectedProvider === 'ollama' && (
-                    <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 p-3 text-sm text-blue-900 dark:text-blue-100">
-                      Ollama runs locally on your machine. Make sure Ollama is running on <code className="rounded bg-blue-500/20 px-1 py-0.5">http://localhost:11434</code> or configure a custom base URL.
-                    </div>
-                  )}
+                {selectedProvider === 'ollama' && (
+                  <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 p-3 text-sm text-blue-900 dark:text-blue-100">
+                    Ollama runs locally on your machine. Make sure Ollama is running on{' '}
+                    <code className="rounded bg-blue-500/20 px-1 py-0.5">http://localhost:11434</code> or configure a
+                    custom base URL.
+                  </div>
+                )}
 
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <label className="text-sm font-medium">Custom API Base URL</label>
-                      <button
-                        type="button"
-                        onClick={handleTestApiConnection}
-                        disabled={!localConfig.base_url}
-                        className="rounded-md border border-border px-2 py-1 text-xs transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        Test Connection
-                      </button>
-                    </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium">Custom API Base URL</label>
+                    <button
+                      type="button"
+                      onClick={handleTestApiConnection}
+                      disabled={!localConfig.base_url}
+                      className="rounded-md border border-border px-2 py-1 text-xs transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Test Connection
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    value={localConfig.base_url || ''}
+                    onChange={(e) => handleBaseUrlChange(e.target.value)}
+                    placeholder="e.g., https://your-proxy.example.com/v1"
+                    className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Proxy API Key (Optional)</label>
+                  <div className="relative">
                     <input
-                      type="text"
-                      value={localConfig.base_url || ''}
-                      onChange={(e) => handleBaseUrlChange(e.target.value)}
-                      placeholder="e.g., https://your-proxy.example.com/v1"
-                      className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      type={showKeys.proxy ? 'text' : 'password'}
+                      value={localConfig.api_proxy_key || ''}
+                      onChange={(e) => handleProxyKeyChange(e.target.value)}
+                      placeholder="Enter proxy API key if required"
+                      className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 pr-11 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     />
+                    <button
+                      type="button"
+                      onClick={() => toggleShowKey('proxy')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 transition-colors hover:bg-accent"
+                    >
+                      {showKeys.proxy ? (
+                        <EyeOff className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <Eye className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </button>
                   </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Proxy API Key (Optional)</label>
-                    <div className="relative">
-                      <input
-                        type={showKeys.proxy ? 'text' : 'password'}
-                        value={localConfig.api_proxy_key || ''}
-                        onChange={(e) => handleProxyKeyChange(e.target.value)}
-                        placeholder="Enter proxy API key if required"
-                        className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 pr-11 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => toggleShowKey('proxy')}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 transition-colors hover:bg-accent"
-                      >
-                        {showKeys.proxy ? (
-                          <EyeOff className="h-4 w-4 text-muted-foreground" />
-                        ) : (
-                          <Eye className="h-4 w-4 text-muted-foreground" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
+                </div>
               </CollapsibleSection>
             </div>
           </section>
@@ -733,11 +770,13 @@ export default function Settings() {
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <div>
                     <h3 className="text-sm font-semibold text-foreground">Active provider</h3>
-                    <p className="text-xs text-muted-foreground">Switch providers without opening every key field at once.</p>
+                    <p className="text-xs text-muted-foreground">
+                      Switch providers without opening every key field at once.
+                    </p>
                   </div>
                   <button
                     type="button"
-                    onClick={() => setActiveSection('providers')}
+                    onClick={() => handleSectionChange('providers')}
                     className="rounded-lg border border-border/60 bg-background/60 px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:border-primary/35 hover:text-primary"
                   >
                     Manage all providers
@@ -772,7 +811,9 @@ export default function Settings() {
               <div className="rounded-xl border border-border/60 bg-background/35 p-4">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <h3 className="text-base font-semibold text-foreground">{PROVIDER_LABELS[selectedProvider]} access</h3>
+                    <h3 className="text-base font-semibold text-foreground">
+                      {PROVIDER_LABELS[selectedProvider]} access
+                    </h3>
                     <p className="mt-1 text-sm text-muted-foreground">
                       {selectedProvider === 'ollama'
                         ? 'Ollama does not need an API key unless your local setup is proxied.'
@@ -798,7 +839,11 @@ export default function Settings() {
                     type={showKeys[selectedProvider] ? 'text' : 'password'}
                     value={activeProviderKey}
                     onChange={(e) => handleApiKeyChange(selectedProvider, e.target.value)}
-                    placeholder={selectedProvider === 'ollama' ? 'Optional - Ollama runs locally without auth' : `Enter your ${selectedProvider} API key`}
+                    placeholder={
+                      selectedProvider === 'ollama'
+                        ? 'Optional - Ollama runs locally without auth'
+                        : `Enter your ${selectedProvider} API key`
+                    }
                     className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 pr-12 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   />
                   <button
@@ -850,8 +895,12 @@ export default function Settings() {
               </label>
 
               <div className="rounded-xl border border-border/60 bg-background/35 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Configured providers</p>
-                <div className="mt-2 text-2xl font-semibold text-foreground">{configuredProviderCount} / {ALL_PROVIDERS.length}</div>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                  Configured providers
+                </p>
+                <div className="mt-2 text-2xl font-semibold text-foreground">
+                  {configuredProviderCount} / {ALL_PROVIDERS.length}
+                </div>
               </div>
 
               <div className="grid gap-2">
@@ -888,7 +937,9 @@ export default function Settings() {
               </div>
               <div>
                 <h2 className="text-xl font-bold">{PROVIDER_LABELS[selectedProvider]}</h2>
-                <p className="text-sm text-muted-foreground">Edit the selected provider without scanning the full list.</p>
+                <p className="text-sm text-muted-foreground">
+                  Edit the selected provider without scanning the full list.
+                </p>
               </div>
             </div>
 
@@ -898,7 +949,11 @@ export default function Settings() {
                   type={showKeys[selectedProvider] ? 'text' : 'password'}
                   value={activeProviderKey}
                   onChange={(e) => handleApiKeyChange(selectedProvider, e.target.value)}
-                  placeholder={selectedProvider === 'ollama' ? 'Optional - Ollama runs locally without auth' : `Enter your ${selectedProvider} API key`}
+                  placeholder={
+                    selectedProvider === 'ollama'
+                      ? 'Optional - Ollama runs locally without auth'
+                      : `Enter your ${selectedProvider} API key`
+                  }
                   className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 pr-12 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
                 <button
@@ -936,20 +991,28 @@ export default function Settings() {
               </div>
 
               {testResult?.provider === selectedProvider && (
-                <div className={`rounded-lg border px-4 py-3 text-sm ${
-                  testResult.success
-                    ? 'border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-300'
-                    : 'border-destructive/30 bg-destructive/10 text-destructive'
-                }`}>
+                <div
+                  className={`rounded-lg border px-4 py-3 text-sm ${
+                    testResult.success
+                      ? 'border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-300'
+                      : 'border-destructive/30 bg-destructive/10 text-destructive'
+                  }`}
+                >
                   {testResult.message}
                 </div>
               )}
 
               <div className="rounded-xl border border-border/60 bg-background/35 p-4 text-sm text-muted-foreground">
-                {selectedProvider === 'openrouter' && 'Recommended default for browser-direct usage because it avoids the OpenAI CORS constraint.'}
-                {selectedProvider === 'openai' && 'Use a proxy or switch to OpenRouter when you want browser-direct generation without CORS issues.'}
-                {selectedProvider === 'ollama' && 'Keep Ollama running locally and use a base URL only when your instance is not on the default port.'}
-                {selectedProvider !== 'openrouter' && selectedProvider !== 'openai' && selectedProvider !== 'ollama' && 'Store only the providers you actually use so the browser profile does not collect stale keys.'}
+                {selectedProvider === 'openrouter' &&
+                  'Recommended default for browser-direct usage because it avoids the OpenAI CORS constraint.'}
+                {selectedProvider === 'openai' &&
+                  'Use a proxy or switch to OpenRouter when you want browser-direct generation without CORS issues.'}
+                {selectedProvider === 'ollama' &&
+                  'Keep Ollama running locally and use a base URL only when your instance is not on the default port.'}
+                {selectedProvider !== 'openrouter' &&
+                  selectedProvider !== 'openai' &&
+                  selectedProvider !== 'ollama' &&
+                  'Store only the providers you actually use so the browser profile does not collect stale keys.'}
               </div>
             </div>
           </section>
@@ -971,7 +1034,9 @@ export default function Settings() {
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <label htmlFor="max-concurrent-input" className="text-sm font-medium">Max Concurrent</label>
+                <label htmlFor="max-concurrent-input" className="text-sm font-medium">
+                  Max Concurrent
+                </label>
                 <input
                   id="max-concurrent-input"
                   type="number"
@@ -992,7 +1057,9 @@ export default function Settings() {
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="rate-limit-input" className="text-sm font-medium">Rate Limit Delay</label>
+                <label htmlFor="rate-limit-input" className="text-sm font-medium">
+                  Rate Limit Delay
+                </label>
                 <input
                   id="rate-limit-input"
                   type="number"
@@ -1024,17 +1091,21 @@ export default function Settings() {
           >
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <label htmlFor="blueprint-orchestration" className="text-sm font-medium">Orchestration</label>
+                <label htmlFor="blueprint-orchestration" className="text-sm font-medium">
+                  Orchestration
+                </label>
                 <select
                   id="blueprint-orchestration"
                   value={localConfig.feature_blueprints?.orchestration || 'blueprints/system/generator.md'}
-                  onChange={(e) => setLocalConfig((prev) => ({
-                    ...prev,
-                    feature_blueprints: {
-                      ...prev.feature_blueprints,
-                      orchestration: e.target.value || undefined,
-                    },
-                  }))}
+                  onChange={(e) =>
+                    setLocalConfig((prev) => ({
+                      ...prev,
+                      feature_blueprints: {
+                        ...prev.feature_blueprints,
+                        orchestration: e.target.value || undefined,
+                      },
+                    }))
+                  }
                   className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <option value="blueprints/system/generator.md">Orchestrator (Default)</option>
@@ -1047,21 +1118,27 @@ export default function Settings() {
                     ))}
                   <option value="">None (Built-in)</option>
                 </select>
-                <p className="text-xs text-muted-foreground">Blueprint used for the orchestrator on the Generate New tab.</p>
+                <p className="text-xs text-muted-foreground">
+                  Blueprint used for the orchestrator on the Generate New tab.
+                </p>
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="blueprint-seed" className="text-sm font-medium">Seed Generation</label>
+                <label htmlFor="blueprint-seed" className="text-sm font-medium">
+                  Seed Generation
+                </label>
                 <select
                   id="blueprint-seed"
                   value={localConfig.feature_blueprints?.seed_generation || 'blueprints/system/seed_generator.md'}
-                  onChange={(e) => setLocalConfig((prev) => ({
-                    ...prev,
-                    feature_blueprints: {
-                      ...prev.feature_blueprints,
-                      seed_generation: e.target.value || undefined,
-                    },
-                  }))}
+                  onChange={(e) =>
+                    setLocalConfig((prev) => ({
+                      ...prev,
+                      feature_blueprints: {
+                        ...prev.feature_blueprints,
+                        seed_generation: e.target.value || undefined,
+                      },
+                    }))
+                  }
                   className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <option value="blueprints/system/seed_generator.md">Seed Generator (Default)</option>
@@ -1074,21 +1151,29 @@ export default function Settings() {
                     ))}
                   <option value="">None (Built-in)</option>
                 </select>
-                <p className="text-xs text-muted-foreground">Blueprint used for generating seed batches from genre lines.</p>
+                <p className="text-xs text-muted-foreground">
+                  Blueprint used for generating seed batches from genre lines.
+                </p>
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="blueprint-offspring" className="text-sm font-medium">Offspring Generation</label>
+                <label htmlFor="blueprint-offspring" className="text-sm font-medium">
+                  Offspring Generation
+                </label>
                 <select
                   id="blueprint-offspring"
-                  value={localConfig.feature_blueprints?.offspring_generation || 'blueprints/system/offspring_generator.md'}
-                  onChange={(e) => setLocalConfig((prev) => ({
-                    ...prev,
-                    feature_blueprints: {
-                      ...prev.feature_blueprints,
-                      offspring_generation: e.target.value || undefined,
-                    },
-                  }))}
+                  value={
+                    localConfig.feature_blueprints?.offspring_generation || 'blueprints/system/offspring_generator.md'
+                  }
+                  onChange={(e) =>
+                    setLocalConfig((prev) => ({
+                      ...prev,
+                      feature_blueprints: {
+                        ...prev.feature_blueprints,
+                        offspring_generation: e.target.value || undefined,
+                      },
+                    }))
+                  }
                   className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <option value="blueprints/system/offspring_generator.md">Offspring Generator (Default)</option>
@@ -1105,17 +1190,21 @@ export default function Settings() {
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="blueprint-intro-scene" className="text-sm font-medium">Intro Scene Generation</label>
+                <label htmlFor="blueprint-intro-scene" className="text-sm font-medium">
+                  Intro Scene Generation
+                </label>
                 <select
                   id="blueprint-intro-scene"
                   value={localConfig.feature_blueprints?.intro_scene_generation || 'blueprints/system/intro_scene.md'}
-                  onChange={(e) => setLocalConfig((prev) => ({
-                    ...prev,
-                    feature_blueprints: {
-                      ...prev.feature_blueprints,
-                      intro_scene_generation: e.target.value || undefined,
-                    },
-                  }))}
+                  onChange={(e) =>
+                    setLocalConfig((prev) => ({
+                      ...prev,
+                      feature_blueprints: {
+                        ...prev.feature_blueprints,
+                        intro_scene_generation: e.target.value || undefined,
+                      },
+                    }))
+                  }
                   className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <option value="blueprints/system/intro_scene.md">Intro Scene (Default)</option>
@@ -1128,21 +1217,29 @@ export default function Settings() {
                     ))}
                   <option value="">None (Built-in)</option>
                 </select>
-                <p className="text-xs text-muted-foreground">Blueprint used by the Assets tab when generating additional intro scenes.</p>
+                <p className="text-xs text-muted-foreground">
+                  Blueprint used by the Assets tab when generating additional intro scenes.
+                </p>
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="blueprint-worldbook" className="text-sm font-medium">Worldbook Generation</label>
+                <label htmlFor="blueprint-worldbook" className="text-sm font-medium">
+                  Worldbook Generation
+                </label>
                 <select
                   id="blueprint-worldbook"
-                  value={localConfig.feature_blueprints?.worldbook_generation || 'blueprints/system/lorebook_generator.md'}
-                  onChange={(e) => setLocalConfig((prev) => ({
-                    ...prev,
-                    feature_blueprints: {
-                      ...prev.feature_blueprints,
-                      worldbook_generation: e.target.value || undefined,
-                    },
-                  }))}
+                  value={
+                    localConfig.feature_blueprints?.worldbook_generation || 'blueprints/system/lorebook_generator.md'
+                  }
+                  onChange={(e) =>
+                    setLocalConfig((prev) => ({
+                      ...prev,
+                      feature_blueprints: {
+                        ...prev.feature_blueprints,
+                        worldbook_generation: e.target.value || undefined,
+                      },
+                    }))
+                  }
                   className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <option value="blueprints/system/lorebook_generator.md">Lorebook Generator (Default)</option>
@@ -1155,21 +1252,27 @@ export default function Settings() {
                     ))}
                   <option value="">None (Built-in)</option>
                 </select>
-                <p className="text-xs text-muted-foreground">Blueprint for synthesizing connected lorebook entries from reference drafts.</p>
+                <p className="text-xs text-muted-foreground">
+                  Blueprint for synthesizing connected lorebook entries from reference drafts.
+                </p>
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="blueprint-validation" className="text-sm font-medium">Validation</label>
+                <label htmlFor="blueprint-validation" className="text-sm font-medium">
+                  Validation
+                </label>
                 <select
                   id="blueprint-validation"
                   value={localConfig.feature_blueprints?.validation || ''}
-                  onChange={(e) => setLocalConfig((prev) => ({
-                    ...prev,
-                    feature_blueprints: {
-                      ...prev.feature_blueprints,
-                      validation: e.target.value || undefined,
-                    },
-                  }))}
+                  onChange={(e) =>
+                    setLocalConfig((prev) => ({
+                      ...prev,
+                      feature_blueprints: {
+                        ...prev.feature_blueprints,
+                        validation: e.target.value || undefined,
+                      },
+                    }))
+                  }
                   className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <option value="">Built-in Validation (Default)</option>
@@ -1183,17 +1286,21 @@ export default function Settings() {
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="blueprint-similarity" className="text-sm font-medium">Similarity Analysis</label>
+                <label htmlFor="blueprint-similarity" className="text-sm font-medium">
+                  Similarity Analysis
+                </label>
                 <select
                   id="blueprint-similarity"
                   value={localConfig.feature_blueprints?.similarity || ''}
-                  onChange={(e) => setLocalConfig((prev) => ({
-                    ...prev,
-                    feature_blueprints: {
-                      ...prev.feature_blueprints,
-                      similarity: e.target.value || undefined,
-                    },
-                  }))}
+                  onChange={(e) =>
+                    setLocalConfig((prev) => ({
+                      ...prev,
+                      feature_blueprints: {
+                        ...prev.feature_blueprints,
+                        similarity: e.target.value || undefined,
+                      },
+                    }))
+                  }
                   className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <option value="">Built-in Analysis (Default)</option>
@@ -1209,7 +1316,11 @@ export default function Settings() {
 
             <div className="mt-4 border-t border-border/50 pt-4">
               <p className="text-xs text-muted-foreground">
-                Create custom blueprints in the <Link to="/blueprints" className="text-primary hover:underline">Blueprint Editor</Link> and they will appear here.
+                Create custom blueprints in the{' '}
+                <Link to="/blueprints" className="text-primary hover:underline">
+                  Blueprint Editor
+                </Link>{' '}
+                and they will appear here.
               </p>
             </div>
           </CollapsibleSection>
@@ -1234,7 +1345,8 @@ export default function Settings() {
                 <div>
                   <h3 className="font-medium text-foreground">Hover help popups</h3>
                   <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                    Keep contextual help available behind compact hover popups on high-friction screens like generation, review, export, templates, blueprints, and settings.
+                    Keep contextual help available behind compact hover popups on high-friction screens like generation,
+                    review, export, templates, blueprints, and settings.
                   </p>
                 </div>
                 <label className="flex items-center gap-2 text-sm text-foreground">
@@ -1261,7 +1373,8 @@ export default function Settings() {
               <div className="rounded-xl border border-border/50 bg-background/40 p-4">
                 <h3 className="font-medium text-foreground">Getting Started guide</h3>
                 <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                  Reopen or reset the home-screen starter guide if you want to walk through setup, generation, review, and export again.
+                  Reopen or reset the home-screen starter guide if you want to walk through setup, generation, review,
+                  and export again.
                 </p>
                 <div className="mt-4 flex flex-wrap gap-3">
                   <Link
@@ -1301,18 +1414,20 @@ export default function Settings() {
         </section>
       )}
 
-      {activeSection === 'sync' && !selfContainedDesktop && (
+      {activeSection === 'sync' && (
         <section className="app-panel p-6">
           <div className="mb-4 flex items-center gap-3">
             <div className="rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 p-2">
               <Server className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h2 className="text-xl font-bold">Server Sync</h2>
-              <p className="text-sm text-muted-foreground">Optional cross-device sync.</p>
+              <h2 className="text-xl font-bold">Device Link</h2>
+              <p className="text-sm text-muted-foreground">
+                Move the workspace between this PC runtime and mobile with local bundle transfer.
+              </p>
             </div>
           </div>
-          <ServerSettings />
+          <DeviceLinkSettings />
         </section>
       )}
 

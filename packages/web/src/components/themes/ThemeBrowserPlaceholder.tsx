@@ -10,9 +10,7 @@ export default function ThemeBrowserPlaceholder({ showHeader = true }: ThemeBrow
       {showHeader && (
         <div>
           <h2 className="text-lg font-semibold">Theme Browser</h2>
-          <p className="text-sm text-muted-foreground">
-            Browse and discover themes shared by the community.
-          </p>
+          <p className="text-sm text-muted-foreground">Browse and discover themes shared by the community.</p>
         </div>
       )}
 
@@ -23,8 +21,7 @@ export default function ThemeBrowserPlaceholder({ showHeader = true }: ThemeBrow
         </div>
         <h3 className="text-xl font-semibold mb-2">Community Theme Browser</h3>
         <p className="text-muted-foreground max-w-md mx-auto mb-6">
-          Browse, search, and download themes created by other users.
-          Share your own custom themes with the community.
+          Browse, search, and download themes created by other users. Share your own custom themes with the community.
         </p>
         <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-2 text-sm text-primary">
           <Star className="h-4 w-4" />
@@ -41,9 +38,7 @@ export default function ThemeBrowserPlaceholder({ showHeader = true }: ThemeBrow
             </div>
             <h4 className="font-medium">Search & Filter</h4>
           </div>
-          <p className="text-sm text-muted-foreground">
-            Find themes by name, tags, author, or color palette.
-          </p>
+          <p className="text-sm text-muted-foreground">Find themes by name, tags, author, or color palette.</p>
         </div>
 
         <div className="rounded-xl border border-border bg-card p-4">
@@ -53,9 +48,7 @@ export default function ThemeBrowserPlaceholder({ showHeader = true }: ThemeBrow
             </div>
             <h4 className="font-medium">Trending Themes</h4>
           </div>
-          <p className="text-sm text-muted-foreground">
-            Discover the most popular and highly-rated themes.
-          </p>
+          <p className="text-sm text-muted-foreground">Discover the most popular and highly-rated themes.</p>
         </div>
 
         <div className="rounded-xl border border-border bg-card p-4">
@@ -65,9 +58,7 @@ export default function ThemeBrowserPlaceholder({ showHeader = true }: ThemeBrow
             </div>
             <h4 className="font-medium">Recent Uploads</h4>
           </div>
-          <p className="text-sm text-muted-foreground">
-            See the latest themes added by the community.
-          </p>
+          <p className="text-sm text-muted-foreground">See the latest themes added by the community.</p>
         </div>
 
         <div className="rounded-xl border border-border bg-card p-4">
@@ -77,23 +68,16 @@ export default function ThemeBrowserPlaceholder({ showHeader = true }: ThemeBrow
             </div>
             <h4 className="font-medium">Share Your Themes</h4>
           </div>
-          <p className="text-sm text-muted-foreground">
-            Publish your custom themes for others to use and enjoy.
-          </p>
+          <p className="text-sm text-muted-foreground">Publish your custom themes for others to use and enjoy.</p>
         </div>
       </div>
 
       {/* Mock Theme Grid */}
       <div>
-        <h3 className="text-sm font-medium uppercase tracking-wider text-muted-foreground mb-4">
-          Preview Gallery
-        </h3>
+        <h3 className="text-sm font-medium uppercase tracking-wider text-muted-foreground mb-4">Preview Gallery</h3>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className="rounded-xl border border-border bg-card overflow-hidden opacity-60"
-            >
+            <div key={i} className="rounded-xl border border-border bg-card overflow-hidden opacity-60">
               <div className="h-24 bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-800" />
               <div className="p-4 space-y-2">
                 <div className="h-4 bg-muted/50 rounded w-1/2" />

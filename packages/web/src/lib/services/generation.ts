@@ -15,14 +15,10 @@ import type {
   ChatMessage,
   LLMProvider,
 } from '@char-gen/shared';
-import {
-  detectProviderFromModel,
-  parseBlueprintOutput as parseGeneratedBlueprintOutput,
-} from '@char-gen/shared';
+import { detectProviderFromModel, parseBlueprintOutput as parseGeneratedBlueprintOutput } from '@char-gen/shared';
 import { createEngine } from '../llm/factory.js';
 import { stripReasoningArtifacts, unwrapSingleCodeFence } from '../content-format.js';
 import { configManager } from '../config/manager.js';
-import { queueAutoSync } from '../server/auto-sync.js';
 import { DraftStorage } from '../storage/draft-db.js';
 import {
   buildOrchestratorPrompt,
@@ -39,10 +35,7 @@ import {
   resolveTemplateBlueprintContent,
   resolveTemplateDefinition,
 } from '../templates/browser.js';
-import {
-  parseSeedGenerationResponse,
-  resolveSeedGenerationInput,
-} from '../seed-generator.js';
+import { parseSeedGenerationResponse, resolveSeedGenerationInput } from '../seed-generator.js';
 import { loadReferenceSuites, normalizeConnectedReferenceIds } from '../prompting/reference-context.js';
 
 /**
@@ -118,9 +111,10 @@ export class GenerationService {
   }
 
   private static resolveGenerationMaxTokens(config: Config): number {
-    const configuredMaxTokens = typeof config.max_tokens === 'number' && Number.isFinite(config.max_tokens)
-      ? Math.max(1, Math.round(config.max_tokens))
-      : DEFAULT_GENERATION_MAX_TOKENS;
+    const configuredMaxTokens =
+      typeof config.max_tokens === 'number' && Number.isFinite(config.max_tokens)
+        ? Math.max(1, Math.round(config.max_tokens))
+        : DEFAULT_GENERATION_MAX_TOKENS;
 
     return configuredMaxTokens;
   }
@@ -135,7 +129,7 @@ export class GenerationService {
 
   private static getFallbackApiKey(apiKeys: ApiKeys): string | undefined {
     return Object.values(apiKeys).find(
-      (value): value is string => typeof value === 'string' && value.trim().length > 0
+      (value): value is string => typeof value === 'string' && value.trim().length > 0,
     );
   }
 
@@ -157,8 +151,7 @@ export class GenerationService {
   }
 
   private static sanitizeGeneratedSeed(content: string): string {
-    return unwrapSingleCodeFence(this.sanitizeModelContent(content))
-      .replace(/^['"]|['"]$/g, '');
+    return unwrapSingleCodeFence(this.sanitizeModelContent(content)).replace(/^['"]|['"]$/g, '');
   }
 
   private static getOffspringCarryRules(): string[] {
@@ -174,7 +167,7 @@ export class GenerationService {
    */
   static async *generate(
     request: ExtendedGenerateRequest,
-    options: GenerationRunOptions = {}
+    options: GenerationRunOptions = {},
   ): AsyncIterable<GenerationProgress> {
     const {
       seed,
@@ -196,7 +189,7 @@ export class GenerationService {
     const templateDefinition = template ? resolveTemplateDefinition(template) : undefined;
     const connectedDraftIds = normalizeConnectedReferenceIds(connected_draft_ids);
     const referenceSuites = await loadReferenceSuites(connectedDraftIds, {
-      resolveTemplate: (templateName) => templateName ? resolveTemplateDefinition(templateName) : undefined,
+      resolveTemplate: (templateName) => (templateName ? resolveTemplateDefinition(templateName) : undefined),
     });
 
     yield { type: 'status', stage: 'building_prompt' };
@@ -287,7 +280,6 @@ export class GenerationService {
     };
 
     await DraftStorage.saveDraft(draft);
-    queueAutoSync('drafts');
 
     yield {
       type: 'complete',
@@ -301,7 +293,7 @@ export class GenerationService {
   static async *generateAsset(
     request: AssetGenerationRequest,
     stream: boolean = true,
-    options: GenerationRunOptions = {}
+    options: GenerationRunOptions = {},
   ): AsyncIterable<GenerationProgress> {
     const blueprintContent = resolveTemplateBlueprintContent(request.template, request.asset_name);
     yield* this.generateAssetWithBlueprint(request, blueprintContent, stream, options);
@@ -310,7 +302,7 @@ export class GenerationService {
   static async *previewBlueprint(
     request: AssetGenerationRequest & { blueprint_content: string },
     stream: boolean = true,
-    options: GenerationRunOptions = {}
+    options: GenerationRunOptions = {},
   ): AsyncIterable<GenerationProgress> {
     yield* this.generateAssetWithBlueprint(request, request.blueprint_content, stream, options);
   }
@@ -319,7 +311,7 @@ export class GenerationService {
     request: AssetGenerationRequest,
     blueprintContent: string | undefined,
     stream: boolean,
-    options: GenerationRunOptions = {}
+    options: GenerationRunOptions = {},
   ): AsyncIterable<GenerationProgress> {
     const {
       seed,
@@ -407,7 +399,7 @@ export class GenerationService {
    */
   static async *generateOffspringSeed(
     request: ExtendedOffspringRequest,
-    options: GenerationRunOptions = {}
+    options: GenerationRunOptions = {},
   ): AsyncIterable<GenerationProgress> {
     const { parent1_id, parent2_id, mode = 'Auto', blueprint_override } = request;
 
@@ -439,7 +431,7 @@ export class GenerationService {
       parent1.metadata.template_name ? resolveTemplateDefinition(parent1.metadata.template_name) : undefined,
       parent2.metadata.template_name ? resolveTemplateDefinition(parent2.metadata.template_name) : undefined,
       undefined,
-      blueprint_override
+      blueprint_override,
     );
 
     yield { type: 'status', stage: 'generating' };
@@ -489,7 +481,7 @@ export class GenerationService {
    */
   static async *generateOffspring(
     request: ExtendedOffspringRequest,
-    options: GenerationRunOptions = {}
+    options: GenerationRunOptions = {},
   ): AsyncIterable<GenerationProgress> {
     const { parent1_id, parent2_id, mode = 'Auto', template, blueprint_override } = request;
 
@@ -530,7 +522,7 @@ export class GenerationService {
         blueprint_override,
         additional_instructions: this.getOffspringCarryRules(),
       },
-      options
+      options,
     )) {
       if (progress.type === 'error') {
         yield progress;
@@ -559,7 +551,6 @@ export class GenerationService {
       parent_drafts: [parent1_id, parent2_id],
       offspring_type: 'offspring',
     });
-    queueAutoSync('drafts');
 
     yield {
       type: 'complete',
@@ -569,7 +560,7 @@ export class GenerationService {
 
   static async *generateLorebook(
     request: LorebookGenerationRequest,
-    options: GenerationRunOptions = {}
+    options: GenerationRunOptions = {},
   ): AsyncIterable<GenerationProgress> {
     const draftIds = normalizeConnectedReferenceIds(request.draft_ids);
     if (draftIds.length === 0) {
@@ -588,11 +579,12 @@ export class GenerationService {
         'character_sheet',
         'post_history',
         'intro_scene',
+        'creator_notes',
         'intro_page',
         'system_prompt',
       ],
       includeAssetPrefixes: ['lorebook_'],
-      resolveTemplate: (templateName) => templateName ? resolveTemplateDefinition(templateName) : undefined,
+      resolveTemplate: (templateName) => (templateName ? resolveTemplateDefinition(templateName) : undefined),
     });
 
     if (referenceSuites.length === 0) {
@@ -656,9 +648,8 @@ export class GenerationService {
   static async *generateSeeds(request: SeedGenerationRequest | string): AsyncIterable<GenerationProgress> {
     yield { type: 'status', stage: 'initializing' };
 
-    const resolvedRequest: SeedGenerationRequest & { blueprint_content?: string } = typeof request === 'string'
-      ? { genre_lines: request }
-      : request;
+    const resolvedRequest: SeedGenerationRequest & { blueprint_content?: string } =
+      typeof request === 'string' ? { genre_lines: request } : request;
     const { genreLines } = resolveSeedGenerationInput(resolvedRequest);
 
     // Get API keys and config
@@ -680,10 +671,7 @@ export class GenerationService {
     yield { type: 'status', stage: 'building_prompt' };
 
     // Build seed generation prompt
-    const [systemPrompt, userPrompt] = await buildSeedGenPrompt(
-      genreLines,
-      resolvedRequest.blueprint_content
-    );
+    const [systemPrompt, userPrompt] = await buildSeedGenPrompt(genreLines, resolvedRequest.blueprint_content);
 
     yield { type: 'status', stage: 'generating' };
 
@@ -706,7 +694,7 @@ export class GenerationService {
   static async *chat(
     draftId: string,
     messages: ChatMessage[],
-    contextAsset?: string
+    contextAsset?: string,
   ): AsyncIterable<GenerationProgress> {
     yield { type: 'status', stage: 'initializing' };
     void draftId;
@@ -732,9 +720,7 @@ export class GenerationService {
 
     // Use first message as system if provided, otherwise use default
     const systemPrompt = messages[0]?.role === 'system' ? messages[0].content : undefined;
-    const chatMessages = systemPrompt
-      ? messages.slice(1)
-      : messages;
+    const chatMessages = systemPrompt ? messages.slice(1) : messages;
 
     // Generate response
     let fullContent = '';
@@ -776,10 +762,7 @@ export class GenerationService {
   /**
    * Analyze similarity between two characters
    */
-  static async analyzeSimilarity(
-    draft1Id: string,
-    draft2Id: string
-  ): Promise<unknown> {
+  static async analyzeSimilarity(draft1Id: string, draft2Id: string): Promise<unknown> {
     // Load drafts
     const draft1 = await DraftStorage.getDraft(draft1Id);
     const draft2 = await DraftStorage.getDraft(draft2Id);
@@ -842,6 +825,7 @@ export class GenerationService {
       'post_history',
       'character_sheet',
       'intro_scene',
+      'creator_notes',
       'intro_page',
       'a1111',
       'suno',
@@ -925,8 +909,8 @@ export class GenerationService {
       if (typeof profile[key] === 'string') {
         profile[key] = (profile[key] as string)
           .split(',')
-          .map(s => s.trim())
-          .filter(s => s.length > 0);
+          .map((s) => s.trim())
+          .filter((s) => s.length > 0);
       }
     }
 

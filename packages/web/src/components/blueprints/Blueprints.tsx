@@ -1,7 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { BookOpen, FileJson, Lightbulb, Package, Search, Edit3, RotateCcw, Copy, Trash2, MoreVertical, Plus } from 'lucide-react';
+import {
+  BookOpen,
+  FileJson,
+  Lightbulb,
+  Package,
+  Search,
+  Edit3,
+  RotateCcw,
+  Copy,
+  Trash2,
+  MoreVertical,
+  Plus,
+} from 'lucide-react';
 import type { Blueprint } from '@char-gen/shared';
 import { api } from '@/lib/api';
 import CollapsibleSection from '../common/CollapsibleSection';
@@ -37,16 +49,11 @@ export default function Blueprints() {
   // Track which blueprints have overrides
   const overridePaths = useMemo(() => {
     if (!data) return new Set<string>();
-    const allBlueprints = [
-      ...data.core,
-      ...data.system,
-      ...Object.values(data.templates).flat(),
-      ...data.examples,
-    ];
+    const allBlueprints = [...data.core, ...data.system, ...Object.values(data.templates).flat(), ...data.examples];
     return new Set(
       allBlueprints
         .filter((bp) => api.getOriginalBlueprintContent(bp.path) !== null && api.hasBlueprintOverride(bp.path))
-        .map((bp) => bp.path)
+        .map((bp) => bp.path),
     );
   }, [data]);
 
@@ -138,7 +145,8 @@ export default function Blueprints() {
     .filter((section) => section.blueprints.length > 0);
 
   const allBlueprints = useMemo(() => sections.flatMap((section) => section.blueprints), [sections]);
-  const selectedBlueprint = allBlueprints.find((blueprint) => blueprint.path === selectedBlueprintPath) ?? allBlueprints[0] ?? null;
+  const selectedBlueprint =
+    allBlueprints.find((blueprint) => blueprint.path === selectedBlueprintPath) ?? allBlueprints[0] ?? null;
   const totalBlueprints = sections.reduce((count, section) => count + section.blueprints.length, 0);
   const visibleBlueprints = filteredSections.reduce((count, section) => count + section.blueprints.length, 0);
 
@@ -177,7 +185,7 @@ export default function Blueprints() {
           <div className="space-y-3">
             <p className="app-page-eyebrow">Blueprints</p>
             <h1 className="app-page-title">Manage blueprint files</h1>
-              <p className="app-page-summary">Browse the catalog, then open tools only when you need them.</p>
+            <p className="app-page-summary">Browse the catalog, then open tools only when you need them.</p>
             <div className="flex flex-wrap gap-3">
               <button
                 onClick={() => setCreateDialogOpen(true)}
@@ -245,7 +253,10 @@ export default function Blueprints() {
 
       {activeView === 'catalog' && (
         <>
-          <div data-tour-anchor="blueprints-search" className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div
+            data-tour-anchor="blueprints-search"
+            className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between"
+          >
             <div className="relative w-full max-w-xl">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
@@ -280,8 +291,15 @@ export default function Blueprints() {
                   key={section.title}
                   title={section.title}
                   subtitle={`${section.blueprints.length} blueprint${section.blueprints.length === 1 ? '' : 's'}`}
-                  preview={section.blueprints.slice(0, 2).map((blueprint) => blueprint.name).join(' • ')}
-                  meta={<span className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">{section.blueprints.length}</span>}
+                  preview={section.blueprints
+                    .slice(0, 2)
+                    .map((blueprint) => blueprint.name)
+                    .join(' • ')}
+                  meta={
+                    <span className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                      {section.blueprints.length}
+                    </span>
+                  }
                   defaultExpanded={Boolean(normalizedQuery || section.title === filteredSections[0]?.title)}
                   className="app-panel"
                 >
@@ -299,19 +317,16 @@ export default function Blueprints() {
                           }`}
                         >
                           <div className="flex items-start justify-between gap-3">
-                            <Link
-                              to={editorPath}
-                              className="min-w-0 flex-1"
-                            >
+                            <Link to={editorPath} className="min-w-0 flex-1">
                               <div className="flex flex-wrap items-center gap-2">
                                 <h3 className="break-words font-medium">{blueprint.name}</h3>
                                 {hasOverride && (
-                                  <span className="app-pill app-pill-amber !px-2 !py-1 !text-[11px]">
-                                    Edited
-                                  </span>
+                                  <span className="app-pill app-pill-amber !px-2 !py-1 !text-[11px]">Edited</span>
                                 )}
                               </div>
-                              <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">{blueprint.description || 'No description'}</p>
+                              <p className="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">
+                                {blueprint.description || 'No description'}
+                              </p>
                             </Link>
                             <div className="flex items-center gap-1">
                               <Link
@@ -419,9 +434,7 @@ export default function Blueprints() {
                 Lint and preview one explicitly selected blueprint before wiring it into a template.
               </p>
             </div>
-            <span className="app-pill app-pill-emerald hidden sm:inline-flex">
-              Live
-            </span>
+            <span className="app-pill app-pill-emerald hidden sm:inline-flex">Live</span>
           </div>
 
           <div className="grid gap-4 xl:grid-cols-[minmax(18rem,0.8fr)_minmax(0,1.2fr)]">
@@ -449,9 +462,7 @@ export default function Blueprints() {
                     <div className="text-sm font-semibold text-foreground">{selectedBlueprint.name}</div>
                     <div className="mt-1 text-xs text-muted-foreground">{selectedBlueprint.path}</div>
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    {selectedBlueprint.description || 'No description'}
-                  </p>
+                  <p className="text-sm text-muted-foreground">{selectedBlueprint.description || 'No description'}</p>
                   <div className="flex flex-wrap gap-2">
                     <Link
                       to={`/blueprints/edit/${encodeURIComponent(selectedBlueprint.path)}`}

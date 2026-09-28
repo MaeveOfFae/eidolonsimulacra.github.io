@@ -19,6 +19,7 @@ type CollapsibleTrayProps = {
   preview?: ReactNode;
   children: ReactNode;
   initiallyExpanded?: boolean;
+  expandedSignal?: string | number;
   style?: StyleProp<ViewStyle>;
   contentStyle?: StyleProp<ViewStyle>;
 };
@@ -44,6 +45,7 @@ export default function CollapsibleTray({
   preview,
   children,
   initiallyExpanded = false,
+  expandedSignal,
   style,
   contentStyle,
 }: CollapsibleTrayProps) {
@@ -53,6 +55,15 @@ export default function CollapsibleTray({
     enableLayoutAnimations();
   }, []);
 
+  useEffect(() => {
+    if (expandedSignal === undefined) {
+      return;
+    }
+
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpanded(true);
+  }, [expandedSignal]);
+
   const toggleExpanded = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setExpanded((current) => !current);
@@ -60,7 +71,11 @@ export default function CollapsibleTray({
 
   return (
     <View style={[styles.tray, expanded && styles.trayExpanded, style]}>
-      <TouchableOpacity style={[styles.header, expanded && styles.headerExpanded]} onPress={toggleExpanded} activeOpacity={0.88}>
+      <TouchableOpacity
+        style={[styles.header, expanded && styles.headerExpanded]}
+        onPress={toggleExpanded}
+        activeOpacity={0.88}
+      >
         <View style={styles.headerText}>
           <View style={styles.titleRow}>
             <Text style={styles.title}>{title}</Text>
@@ -78,7 +93,9 @@ export default function CollapsibleTray({
         </View>
       </TouchableOpacity>
 
-      {expanded ? <View style={[styles.content, expanded && styles.contentExpanded, contentStyle]}>{children}</View> : null}
+      {expanded ? (
+        <View style={[styles.content, expanded && styles.contentExpanded, contentStyle]}>{children}</View>
+      ) : null}
     </View>
   );
 }

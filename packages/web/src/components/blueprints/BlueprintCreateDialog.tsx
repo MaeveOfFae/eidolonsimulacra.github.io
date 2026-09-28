@@ -9,30 +9,6 @@ interface BlueprintCreateDialogProps {
   onSuccess?: (path: string) => void;
 }
 
-const DEFAULT_CONTENT = `---
-name: New Blueprint
-description: A custom blueprint for character generation
-invokable: true
-version: 1.0
----
-
-# Blueprint Title
-
-Describe what this blueprint does and how it should be used.
-
-## Instructions
-
-- Add your blueprint instructions here
-- Be specific about the expected output format
-- Include any constraints or requirements
-
-## Output Format
-
-\`\`\`
-Your expected output structure here
-\`\`\`
-`;
-
 export default function BlueprintCreateDialog({ open, onClose, onSuccess }: BlueprintCreateDialogProps) {
   const navigate = useNavigate();
   const [name, setName] = useState('');
@@ -50,7 +26,11 @@ export default function BlueprintCreateDialog({ open, onClose, onSuccess }: Blue
     setError(null);
 
     try {
-      const sanitizedName = name.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+      const sanitizedName = name
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, '_')
+        .replace(/[^a-z0-9_]/g, '');
       const path = `blueprints/custom/${sanitizedName}.md`;
 
       const content = `---
@@ -142,16 +122,15 @@ Expected output structure
           </div>
 
           <p className="text-xs text-muted-foreground">
-            The blueprint will be saved to <code className="bg-muted px-1 rounded">blueprints/custom/{name.trim().toLowerCase().replace(/\s+/g, '_') || 'name'}.md</code>
+            The blueprint will be saved to{' '}
+            <code className="bg-muted px-1 rounded">
+              blueprints/custom/{name.trim().toLowerCase().replace(/\s+/g, '_') || 'name'}.md
+            </code>
           </p>
         </div>
 
         <div className="flex justify-end gap-2 p-4 border-t border-border">
-          <button
-            onClick={onClose}
-            disabled={isCreating}
-            className="app-button app-button-secondary"
-          >
+          <button onClick={onClose} disabled={isCreating} className="app-button app-button-secondary">
             Cancel
           </button>
           <button

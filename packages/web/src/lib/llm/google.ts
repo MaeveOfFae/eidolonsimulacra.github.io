@@ -3,9 +3,7 @@
  * Handles Google's Generative AI API
  */
 
-import {
-  BaseLLMEngine,
-} from './base.js';
+import { BaseLLMEngine } from './base.js';
 import { buildProviderHeaders } from './factory.js';
 import type {
   ChatMessage,
@@ -160,10 +158,7 @@ export class GoogleEngine extends BaseLLMEngine {
     });
   }
 
-  async generate(
-    messages: ChatMessage[],
-    options?: GenerateOptions
-  ): Promise<GenerateResult> {
+  async generate(messages: ChatMessage[], options?: GenerateOptions): Promise<GenerateResult> {
     const opts = this.mergeOptions(options);
 
     const endpoint = `/models/${this.config.model}:generateContent`;
@@ -194,18 +189,17 @@ export class GoogleEngine extends BaseLLMEngine {
     return {
       content,
       finishReason: candidate?.finishReason,
-      usage: data.usageMetadata ? {
-        promptTokens: data.usageMetadata.promptTokenCount || 0,
-        completionTokens: data.usageMetadata.candidatesTokenCount || 0,
-        totalTokens: data.usageMetadata.totalTokenCount || 0,
-      } : undefined,
+      usage: data.usageMetadata
+        ? {
+            promptTokens: data.usageMetadata.promptTokenCount || 0,
+            completionTokens: data.usageMetadata.candidatesTokenCount || 0,
+            totalTokens: data.usageMetadata.totalTokenCount || 0,
+          }
+        : undefined,
     };
   }
 
-  async *generateStream(
-    messages: ChatMessage[],
-    options?: StreamGenerateOptions
-  ): AsyncIterable<StreamChunk> {
+  async *generateStream(messages: ChatMessage[], options?: StreamGenerateOptions): AsyncIterable<StreamChunk> {
     const opts = this.mergeOptions(options);
 
     const endpoint = `/models/${this.config.model}:streamGenerateContent`;
@@ -284,10 +278,12 @@ export class GoogleEngine extends BaseLLMEngine {
     try {
       const endpoint = `/models/${this.config.model}:generateContent`;
       const body = {
-        contents: [{
-          role: 'user',
-          parts: [{ text: 'test' }],
-        }],
+        contents: [
+          {
+            role: 'user',
+            parts: [{ text: 'test' }],
+          },
+        ],
         generationConfig: {
           maxOutputTokens: 1,
         },

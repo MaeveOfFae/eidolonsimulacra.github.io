@@ -10,15 +10,30 @@ export default [
       '**/node_modules/**',
       '**/dist/**',
       '**/coverage/**',
-      'htmlcov/**',
-      'output/**',
-      'drafts/**',
-      'seed-output/**',
-      'packages/desktop/**',
+      // Tauri build output and generated bindings are not lint targets.
+      '**/src-tauri/target/**',
+      '**/src-tauri/gen/**',
     ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
+  {
+    // Underscore-prefixed bindings are the repo convention for deliberately
+    // unused parameters, destructured fields, and catch bindings.
+    files: ['**/*.{ts,tsx}'],
+    rules: {
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          args: 'after-used',
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          caughtErrorsIgnorePattern: '^_',
+          destructuredArrayIgnorePattern: '^_',
+        },
+      ],
+    },
+  },
   {
     files: ['packages/shared/src/**/*.{ts,tsx}'],
     languageOptions: {

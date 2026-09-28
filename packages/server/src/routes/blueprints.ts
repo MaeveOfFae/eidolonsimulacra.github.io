@@ -1,9 +1,9 @@
 // Blueprints CRUD routes
-import { Router, Request, Response } from "express";
-import { z } from "zod";
-import { prisma, Prisma } from "../db.js";
-import { authenticateToken, optionalAuth } from "../middleware/auth.js";
-import { validateBody, validateParams, validateQuery } from "../middleware/validation.js";
+import { Router, Request, Response } from 'express';
+import { z } from 'zod';
+import { prisma, Prisma } from '../db.js';
+import { authenticateToken, optionalAuth } from '../middleware/auth.js';
+import { validateBody, validateParams, validateQuery } from '../middleware/validation.js';
 
 const router: Router = Router();
 
@@ -14,7 +14,7 @@ const createBlueprintSchema = z.object({
   description: z.string().optional(),
   invokable: z.boolean().optional(),
   version: z.string().optional(),
-  category: z.enum(["core", "system", "template", "example", "custom"]).optional(),
+  category: z.enum(['core', 'system', 'template', 'example', 'custom']).optional(),
   content: z.string().min(1),
 });
 
@@ -24,14 +24,14 @@ const blueprintParamsSchema = z.object({ path: z.string() });
 
 const blueprintQuerySchema = z.object({
   search: z.string().optional(),
-  category: z.enum(["core", "system", "template", "example", "custom"]).optional(),
-  includeBuiltin: z.enum(["true", "false"]).optional(),
-  invokable: z.enum(["true", "false"]).optional(),
+  category: z.enum(['core', 'system', 'template', 'example', 'custom']).optional(),
+  includeBuiltin: z.enum(['true', 'false']).optional(),
+  invokable: z.enum(['true', 'false']).optional(),
 });
 
 // GET / - List blueprints
 router.get(
-  "/",
+  '/',
   optionalAuth,
   validateQuery(blueprintQuerySchema),
   async (req: Request, res: Response): Promise<void> => {
@@ -39,19 +39,16 @@ router.get(
     const q = req.query as z.infer<typeof blueprintQuerySchema>;
 
     const where: Prisma.BlueprintWhereInput = {
-      OR: [
-        { isBuiltin: q.includeBuiltin !== "false" },
-        ...(userId ? [{ userId }] : []),
-      ],
+      OR: [{ isBuiltin: q.includeBuiltin !== 'false' }, ...(userId ? [{ userId }] : [])],
     };
 
     if (q.search) {
       where.AND = [
         {
           OR: [
-            { name: { contains: q.search, mode: "insensitive" } },
-            { description: { contains: q.search, mode: "insensitive" } },
-            { path: { contains: q.search, mode: "insensitive" } },
+            { name: { contains: q.search, mode: 'insensitive' } },
+            { description: { contains: q.search, mode: 'insensitive' } },
+            { path: { contains: q.search, mode: 'insensitive' } },
           ],
         },
       ];
@@ -62,16 +59,16 @@ router.get(
     }
 
     if (q.invokable !== undefined) {
-      where.invokable = q.invokable === "true";
+      where.invokable = q.invokable === 'true';
     }
 
     const blueprints = await prisma.blueprint.findMany({
       where,
-      orderBy: [{ isBuiltin: "desc" }, { name: "asc" }],
+      orderBy: [{ isBuiltin: 'desc' }, { name: 'asc' }],
     });
 
     res.json({ blueprints });
-  }
+  },
 );
 
 // =============================================================================
@@ -79,75 +76,67 @@ router.get(
 // =============================================================================
 
 // GET /list - List all blueprints for sync
-router.get(
-  "/list",
-  optionalAuth,
-  async (req: Request, res: Response): Promise<void> => {
-    const userId = req.user?.userId;
+router.get('/list', optionalAuth, async (req: Request, res: Response): Promise<void> => {
+  const userId = req.user?.userId;
 
-    const where: Prisma.BlueprintWhereInput = {
-      OR: [
-        { isBuiltin: true },
-        ...(userId ? [{ userId }] : []),
-      ],
-    };
+  const where: Prisma.BlueprintWhereInput = {
+    OR: [{ isBuiltin: true }, ...(userId ? [{ userId }] : [])],
+  };
 
-    const blueprints = await prisma.blueprint.findMany({
-      where,
-      orderBy: [{ isBuiltin: "desc" }, { name: "asc" }],
-    });
+  const blueprints = await prisma.blueprint.findMany({
+    where,
+    orderBy: [{ isBuiltin: 'desc' }, { name: 'asc' }],
+  });
 
-    res.json({ blueprints });
-  }
-);
+  res.json({ blueprints });
+});
 
 // GET /pull - Pull all blueprints for sync
-router.get(
-  "/pull",
-  authenticateToken,
-  async (req: Request, res: Response): Promise<void> => {
-    const userId = req.user!.userId;
+router.get('/pull', authenticateToken, async (req: Request, res: Response): Promise<void> => {
+  const userId = req.user!.userId;
 
-    const blueprints = await prisma.blueprint.findMany({
-      where: {
-        OR: [
-          { isBuiltin: true },
-          { userId },
-        ],
-      },
-      orderBy: [{ isBuiltin: "desc" }, { name: "asc" }],
-    });
+  const blueprints = await prisma.blueprint.findMany({
+    where: {
+      OR: [{ isBuiltin: true }, { userId }],
+    },
+    orderBy: [{ isBuiltin: 'desc' }, { name: 'asc' }],
+  });
 
-    res.json({ blueprints });
-  }
-);
+  res.json({ blueprints });
+});
 
 // POST /push - Push blueprints to server
 router.post(
-  "/push",
+  '/push',
   authenticateToken,
-  validateBody(z.object({
-    blueprints: z.array(z.object({
-      path: z.string(),
-      name: z.string(),
-      description: z.string().optional(),
-      invokable: z.boolean().optional(),
-      version: z.string().optional(),
-      category: z.enum(["core", "system", "template", "example", "custom"]).optional(),
-      content: z.string(),
-    })),
-  })),
+  validateBody(
+    z.object({
+      blueprints: z.array(
+        z.object({
+          path: z.string(),
+          name: z.string(),
+          description: z.string().optional(),
+          invokable: z.boolean().optional(),
+          version: z.string().optional(),
+          category: z.enum(['core', 'system', 'template', 'example', 'custom']).optional(),
+          content: z.string(),
+        }),
+      ),
+    }),
+  ),
   async (req: Request, res: Response): Promise<void> => {
     const userId = req.user!.userId;
-    const { blueprints } = req.body as { blueprints: Array<{
-      path: string;
-      name: string;
-      description?: string;
-      invokable?: boolean;
-      version?: string;
-      category?: string;
-      content: string;
-    }> };
+    const { blueprints } = req.body as {
+      blueprints: Array<{
+        path: string;
+        name: string;
+        description?: string;
+        invokable?: boolean;
+        version?: string;
+        category?: string;
+        content: string;
+      }>;
+    };
 
     const results: Array<{ path: string; status: string; blueprint?: unknown }> = [];
 
@@ -158,7 +147,7 @@ router.post(
         if (existing) {
           if (existing.isBuiltin) {
             // Create an override as a custom blueprint
-            const overridePath = `blueprints/overrides/${bpData.path.replace(/^blueprints\//, "")}`;
+            const overridePath = `blueprints/overrides/${bpData.path.replace(/^blueprints\//, '')}`;
             const override = await prisma.blueprint.upsert({
               where: { path: overridePath },
               create: {
@@ -166,8 +155,8 @@ router.post(
                 name: bpData.name,
                 description: bpData.description,
                 invokable: bpData.invokable ?? true,
-                version: bpData.version ?? "1.0",
-                category: "custom",
+                version: bpData.version ?? '1.0',
+                category: 'custom',
                 content: bpData.content,
                 userId,
                 isBuiltin: false,
@@ -180,9 +169,9 @@ router.post(
                 content: bpData.content,
               },
             });
-            results.push({ path: bpData.path, status: "override_created", blueprint: override });
+            results.push({ path: bpData.path, status: 'override_created', blueprint: override });
           } else if (existing.userId !== userId) {
-            results.push({ path: bpData.path, status: "skipped_not_owner" });
+            results.push({ path: bpData.path, status: 'skipped_not_owner' });
           } else {
             const updated = await prisma.blueprint.update({
               where: { path: bpData.path },
@@ -195,7 +184,7 @@ router.post(
                 content: bpData.content,
               },
             });
-            results.push({ path: bpData.path, status: "updated", blueprint: updated });
+            results.push({ path: bpData.path, status: 'updated', blueprint: updated });
           }
         } else {
           const created = await prisma.blueprint.create({
@@ -204,23 +193,23 @@ router.post(
               name: bpData.name,
               description: bpData.description,
               invokable: bpData.invokable ?? true,
-              version: bpData.version ?? "1.0",
-              category: bpData.category ?? "custom",
+              version: bpData.version ?? '1.0',
+              category: bpData.category ?? 'custom',
               content: bpData.content,
               userId,
               isBuiltin: false,
             },
           });
-          results.push({ path: bpData.path, status: "created", blueprint: created });
+          results.push({ path: bpData.path, status: 'created', blueprint: created });
         }
       } catch (err) {
         console.error(`Failed to sync blueprint ${bpData.path}:`, err);
-        results.push({ path: bpData.path, status: "error" });
+        results.push({ path: bpData.path, status: 'error' });
       }
     }
 
     res.json({ results });
-  }
+  },
 );
 
 // =============================================================================
@@ -228,24 +217,20 @@ router.post(
 // =============================================================================
 
 // GET /:path - Get blueprint by path
-router.get(
-  "/:path",
-  validateParams(blueprintParamsSchema),
-  async (req: Request, res: Response): Promise<void> => {
-    const params = req.params as z.infer<typeof blueprintParamsSchema>;
-    const path = decodeURIComponent(params.path);
-    const blueprint = await prisma.blueprint.findUnique({ where: { path } });
-    if (!blueprint) {
-      res.status(404).json({ error: "Blueprint not found" });
-      return;
-    }
-    res.json({ blueprint });
+router.get('/:path', validateParams(blueprintParamsSchema), async (req: Request, res: Response): Promise<void> => {
+  const params = req.params as z.infer<typeof blueprintParamsSchema>;
+  const path = decodeURIComponent(params.path);
+  const blueprint = await prisma.blueprint.findUnique({ where: { path } });
+  if (!blueprint) {
+    res.status(404).json({ error: 'Blueprint not found' });
+    return;
   }
-);
+  res.json({ blueprint });
+});
 
 // POST / - Create blueprint
 router.post(
-  "/",
+  '/',
   authenticateToken,
   validateBody(createBlueprintSchema),
   async (req: Request, res: Response): Promise<void> => {
@@ -254,7 +239,7 @@ router.post(
 
     const existing = await prisma.blueprint.findUnique({ where: { path: data.path } });
     if (existing) {
-      res.status(409).json({ error: "Blueprint with this path already exists" });
+      res.status(409).json({ error: 'Blueprint with this path already exists' });
       return;
     }
 
@@ -264,19 +249,19 @@ router.post(
         name: data.name,
         description: data.description,
         invokable: data.invokable ?? true,
-        version: data.version ?? "1.0",
-        category: data.category ?? "custom",
+        version: data.version ?? '1.0',
+        category: data.category ?? 'custom',
         content: data.content,
         userId,
       },
     });
     res.status(201).json({ blueprint });
-  }
+  },
 );
 
 // PUT /:path - Update blueprint
 router.put(
-  "/:path",
+  '/:path',
   authenticateToken,
   validateParams(blueprintParamsSchema),
   validateBody(createBlueprintSchema),
@@ -288,12 +273,12 @@ router.put(
 
     const existing = await prisma.blueprint.findUnique({ where: { path } });
     if (!existing) {
-      res.status(404).json({ error: "Blueprint not found" });
+      res.status(404).json({ error: 'Blueprint not found' });
       return;
     }
 
     if (existing.isBuiltin || existing.userId !== userId) {
-      res.status(403).json({ error: "Cannot modify this blueprint" });
+      res.status(403).json({ error: 'Cannot modify this blueprint' });
       return;
     }
 
@@ -309,12 +294,12 @@ router.put(
       },
     });
     res.json({ blueprint });
-  }
+  },
 );
 
 // PATCH /:path - Partial update blueprint
 router.patch(
-  "/:path",
+  '/:path',
   authenticateToken,
   validateParams(blueprintParamsSchema),
   validateBody(updateBlueprintSchema),
@@ -326,12 +311,12 @@ router.patch(
 
     const existing = await prisma.blueprint.findUnique({ where: { path } });
     if (!existing) {
-      res.status(404).json({ error: "Blueprint not found" });
+      res.status(404).json({ error: 'Blueprint not found' });
       return;
     }
 
     if (existing.isBuiltin || existing.userId !== userId) {
-      res.status(403).json({ error: "Cannot modify this blueprint" });
+      res.status(403).json({ error: 'Cannot modify this blueprint' });
       return;
     }
 
@@ -340,12 +325,12 @@ router.patch(
       data,
     });
     res.json({ blueprint });
-  }
+  },
 );
 
 // DELETE /:path - Delete blueprint
 router.delete(
-  "/:path",
+  '/:path',
   authenticateToken,
   validateParams(blueprintParamsSchema),
   async (req: Request, res: Response): Promise<void> => {
@@ -355,23 +340,23 @@ router.delete(
 
     const existing = await prisma.blueprint.findUnique({ where: { path } });
     if (!existing) {
-      res.status(404).json({ error: "Blueprint not found" });
+      res.status(404).json({ error: 'Blueprint not found' });
       return;
     }
 
     if (existing.isBuiltin || existing.userId !== userId) {
-      res.status(403).json({ error: "Cannot delete this blueprint" });
+      res.status(403).json({ error: 'Cannot delete this blueprint' });
       return;
     }
 
     await prisma.blueprint.delete({ where: { path } });
-    res.json({ message: "Blueprint deleted successfully" });
-  }
+    res.json({ message: 'Blueprint deleted successfully' });
+  },
 );
 
 // POST /:path/duplicate - Duplicate blueprint
 router.post(
-  "/:path/duplicate",
+  '/:path/duplicate',
   authenticateToken,
   validateParams(blueprintParamsSchema),
   validateBody(z.object({ newPath: z.string().optional(), newName: z.string().optional() })),
@@ -383,14 +368,14 @@ router.post(
 
     const existing = await prisma.blueprint.findUnique({ where: { path } });
     if (!existing) {
-      res.status(404).json({ error: "Blueprint not found" });
+      res.status(404).json({ error: 'Blueprint not found' });
       return;
     }
 
     const targetPath = newPath || `blueprints/custom/${existing.name.toLowerCase().replace(/\s+/g, '_')}_copy.md`;
     const conflict = await prisma.blueprint.findUnique({ where: { path: targetPath } });
     if (conflict) {
-      res.status(409).json({ error: "Blueprint with this path already exists" });
+      res.status(409).json({ error: 'Blueprint with this path already exists' });
       return;
     }
 
@@ -400,20 +385,20 @@ router.post(
         name: newName || `${existing.name} Copy`,
         description: existing.description,
         invokable: existing.invokable,
-        version: "1.0",
-        category: "custom",
+        version: '1.0',
+        category: 'custom',
         content: existing.content,
         userId,
         isBuiltin: false,
       },
     });
     res.status(201).json({ blueprint });
-  }
+  },
 );
 
 // POST /:path/reset - Reset blueprint to original (delete override)
 router.post(
-  "/:path/reset",
+  '/:path/reset',
   authenticateToken,
   validateParams(blueprintParamsSchema),
   async (req: Request, res: Response): Promise<void> => {
@@ -423,23 +408,23 @@ router.post(
 
     const existing = await prisma.blueprint.findUnique({ where: { path } });
     if (!existing) {
-      res.status(404).json({ error: "Blueprint not found" });
+      res.status(404).json({ error: 'Blueprint not found' });
       return;
     }
 
     if (existing.isBuiltin) {
-      res.status(400).json({ error: "Cannot reset a built-in blueprint" });
+      res.status(400).json({ error: 'Cannot reset a built-in blueprint' });
       return;
     }
 
     if (existing.userId !== userId) {
-      res.status(403).json({ error: "Cannot reset this blueprint" });
+      res.status(403).json({ error: 'Cannot reset this blueprint' });
       return;
     }
 
     await prisma.blueprint.delete({ where: { path } });
-    res.json({ message: "Blueprint reset successfully" });
-  }
+    res.json({ message: 'Blueprint reset successfully' });
+  },
 );
 
 export default router;

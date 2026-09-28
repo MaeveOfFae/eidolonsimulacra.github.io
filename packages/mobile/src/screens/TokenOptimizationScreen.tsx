@@ -1,19 +1,27 @@
 import { useEffect, useMemo, useState } from 'react';
-import { View, Text, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet, Alert } from 'react-native';
-import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
+import {
+  View,
+  Text,
+  ScrollView,
+  TextInput,
+  TouchableOpacity,
+  ActivityIndicator,
+  StyleSheet,
+  Alert,
+} from 'react-native';
+import { useRoute, type RouteProp } from '@react-navigation/native';
 import { useMutation } from '@tanstack/react-query';
 import * as Clipboard from 'expo-clipboard';
 import { estimateTextStats, type OptimizeTextRequest } from '@char-gen/shared';
 import { api } from '../config/api';
 import CollapsibleTray from '../components/CollapsibleTray';
 import { DocumentTextIcon, SparklesIcon } from '../components/Icons';
-import type { HomeStackNavigationProp, HomeStackParamList } from '../types/navigation';
+import type { HomeStackParamList } from '../types/navigation';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type TokenOptimizationRouteProp = RouteProp<HomeStackParamList, 'TokenOptimization'>;
 
 export default function TokenOptimizationScreen() {
-  const navigation = useNavigation<HomeStackNavigationProp<'TokenOptimization'>>();
   const route = useRoute<TokenOptimizationRouteProp>();
   const insets = useSafeAreaInsets();
   const [input, setInput] = useState('');
@@ -26,29 +34,30 @@ export default function TokenOptimizationScreen() {
   const sourceAssetName = route.params?.assetName;
 
   const optimizeMutation = useMutation({
-    mutationFn: (request: OptimizeTextRequest) => new Promise<string>((resolve, reject) => {
-      const stream = api.optimizeText(request);
-      let fullContent = '';
+    mutationFn: (request: OptimizeTextRequest) =>
+      new Promise<string>((resolve, reject) => {
+        const stream = api.optimizeText(request);
+        let fullContent = '';
 
-      stream.subscribe((event) => {
-        if (event.event === 'chunk' && 'content' in event.data) {
-          const data = event.data as { content: string };
-          fullContent += data.content;
-          setOutput(fullContent);
-        }
+        stream.subscribe((event) => {
+          if (event.event === 'chunk' && 'content' in event.data) {
+            const data = event.data as { content: string };
+            fullContent += data.content;
+            setOutput(fullContent);
+          }
 
-        if (event.event === 'complete' && 'content' in event.data) {
-          const data = event.data as { content: string };
-          const finalContent = data.content || fullContent;
-          setOutput(finalContent);
-          resolve(finalContent);
-        }
-      });
+          if (event.event === 'complete' && 'content' in event.data) {
+            const data = event.data as { content: string };
+            const finalContent = data.content || fullContent;
+            setOutput(finalContent);
+            resolve(finalContent);
+          }
+        });
 
-      stream.onError_((error) => reject(new Error(error)));
+        stream.onError_((error) => reject(new Error(error)));
 
-      void stream.start().catch(reject);
-    }),
+        void stream.start().catch(reject);
+      }),
     onError: (error: unknown) => {
       Alert.alert('Optimization failed', error instanceof Error ? error.message : 'Failed to optimize text');
     },
@@ -81,9 +90,8 @@ export default function TokenOptimizationScreen() {
   const inputStats = useMemo(() => estimateTextStats(input), [input]);
   const outputStats = useMemo(() => estimateTextStats(output), [output]);
   const tokenDelta = Math.max(0, inputStats.estimatedTokens - outputStats.estimatedTokens);
-  const tokenReductionPercent = inputStats.estimatedTokens > 0
-    ? Math.max(0, Math.round((tokenDelta / inputStats.estimatedTokens) * 100))
-    : 0;
+  const tokenReductionPercent =
+    inputStats.estimatedTokens > 0 ? Math.max(0, Math.round((tokenDelta / inputStats.estimatedTokens) * 100)) : 0;
 
   const handleOptimize = () => {
     if (!input.trim() || optimizeMutation.isPending) {
@@ -106,7 +114,7 @@ export default function TokenOptimizationScreen() {
     await Clipboard.setStringAsync(value);
     setCopied(source);
     setTimeout(() => {
-      setCopied((current) => current === source ? null : current);
+      setCopied((current) => (current === source ? null : current));
     }, 1500);
   };
 
@@ -128,7 +136,10 @@ export default function TokenOptimizationScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={[styles.content, { paddingBottom: 16 + insets.bottom + 72 }]}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={[styles.content, { paddingBottom: 16 + insets.bottom + 72 }]}
+    >
       <Text style={styles.title}>Token Optimization</Text>
       <Text style={styles.subtitle}>Shorten text without removing relevant data.</Text>
 
@@ -136,10 +147,16 @@ export default function TokenOptimizationScreen() {
         title="Controls"
         subtitle="Compression target and format handling"
         initiallyExpanded
-        preview={<Text style={styles.trayPreviewText}>{targetReduction}% target • {preserveFormat ? 'preserve format' : 'light reformat'}</Text>}
+        preview={
+          <Text style={styles.trayPreviewText}>
+            {targetReduction}% target • {preserveFormat ? 'preserve format' : 'light reformat'}
+          </Text>
+        }
       >
         <Text style={styles.sectionTitle}>Optimization Controls</Text>
-        <Text style={styles.helperText}>Aim for shorter phrasing, less repetition, and lower token usage without deleting meaningful content.</Text>
+        <Text style={styles.helperText}>
+          Aim for shorter phrasing, less repetition, and lower token usage without deleting meaningful content.
+        </Text>
 
         <Text style={styles.fieldLabel}>Target reduction: {targetReduction}%</Text>
         <View style={styles.rangeRow}>
@@ -150,7 +167,9 @@ export default function TokenOptimizationScreen() {
               onPress={() => setTargetReduction(value)}
               disabled={optimizeMutation.isPending}
             >
-              <Text style={[styles.presetChipText, targetReduction === value && styles.presetChipTextActive]}>{value}%</Text>
+              <Text style={[styles.presetChipText, targetReduction === value && styles.presetChipTextActive]}>
+                {value}%
+              </Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -185,7 +204,9 @@ export default function TokenOptimizationScreen() {
             disabled={!output.trim() || applyMutation.isPending}
           >
             {applyMutation.isPending ? <ActivityIndicator color="#d1d5db" size="small" /> : null}
-            <Text style={styles.secondaryButtonText}>{applyMutation.isPending ? 'Applying...' : `Apply to ${sourceAssetName}`}</Text>
+            <Text style={styles.secondaryButtonText}>
+              {applyMutation.isPending ? 'Applying...' : `Apply to ${sourceAssetName}`}
+            </Text>
           </TouchableOpacity>
         ) : null}
       </CollapsibleTray>
@@ -194,12 +215,20 @@ export default function TokenOptimizationScreen() {
         title="Input"
         subtitle="Paste the source text"
         initiallyExpanded
-        preview={<Text style={styles.trayPreviewText}>{inputStats.characters} chars • ~{inputStats.estimatedTokens} tokens</Text>}
+        preview={
+          <Text style={styles.trayPreviewText}>
+            {inputStats.characters} chars • ~{inputStats.estimatedTokens} tokens
+          </Text>
+        }
       >
         <View style={styles.statsRow}>
-          <Text style={styles.helperText}>{inputStats.characters} chars • {inputStats.words} words • ~{inputStats.estimatedTokens} tokens</Text>
+          <Text style={styles.helperText}>
+            {inputStats.characters} chars • {inputStats.words} words • ~{inputStats.estimatedTokens} tokens
+          </Text>
           <TouchableOpacity onPress={() => void handleCopy(input, 'input')} disabled={!input.trim()}>
-            <Text style={[styles.linkText, !input.trim() && styles.disabledText]}>{copied === 'input' ? 'Copied' : 'Copy'}</Text>
+            <Text style={[styles.linkText, !input.trim() && styles.disabledText]}>
+              {copied === 'input' ? 'Copied' : 'Copy'}
+            </Text>
           </TouchableOpacity>
         </View>
         <TextInput
@@ -218,16 +247,24 @@ export default function TokenOptimizationScreen() {
         title="Optimized output"
         subtitle="Shorter wording with meaning preserved"
         initiallyExpanded={Boolean(output)}
-        preview={<Text style={styles.trayPreviewText}>{outputStats.characters} chars • ~{outputStats.estimatedTokens} tokens</Text>}
+        preview={
+          <Text style={styles.trayPreviewText}>
+            {outputStats.characters} chars • ~{outputStats.estimatedTokens} tokens
+          </Text>
+        }
       >
         <View style={styles.statsRow}>
-          <Text style={styles.helperText}>{outputStats.characters} chars • {outputStats.words} words • ~{outputStats.estimatedTokens} tokens</Text>
+          <Text style={styles.helperText}>
+            {outputStats.characters} chars • {outputStats.words} words • ~{outputStats.estimatedTokens} tokens
+          </Text>
           <View style={styles.inlineActionRow}>
             <TouchableOpacity onPress={handleReplaceInput} disabled={!output.trim()}>
               <Text style={[styles.linkText, !output.trim() && styles.disabledText]}>Replace input</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => void handleCopy(output, 'output')} disabled={!output.trim()}>
-              <Text style={[styles.linkText, !output.trim() && styles.disabledText]}>{copied === 'output' ? 'Copied' : 'Copy'}</Text>
+              <Text style={[styles.linkText, !output.trim() && styles.disabledText]}>
+                {copied === 'output' ? 'Copied' : 'Copy'}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -246,7 +283,11 @@ export default function TokenOptimizationScreen() {
       <CollapsibleTray
         title="Comparison"
         subtitle="Estimated size change"
-        preview={<Text style={styles.trayPreviewText}>{tokenDelta} saved • {output ? `${tokenReductionPercent}%` : '--'}</Text>}
+        preview={
+          <Text style={styles.trayPreviewText}>
+            {tokenDelta} saved • {output ? `${tokenReductionPercent}%` : '--'}
+          </Text>
+        }
       >
         <View style={styles.summaryCard}>
           <View style={styles.summaryMetric}>
@@ -264,7 +305,9 @@ export default function TokenOptimizationScreen() {
             </View>
           </View>
         </View>
-        <Text style={styles.helperText}>This estimate is approximate and intended for before/after comparison, not provider billing accuracy.</Text>
+        <Text style={styles.helperText}>
+          This estimate is approximate and intended for before/after comparison, not provider billing accuracy.
+        </Text>
       </CollapsibleTray>
     </ScrollView>
   );

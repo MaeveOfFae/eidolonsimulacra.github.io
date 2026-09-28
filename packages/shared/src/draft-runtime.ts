@@ -21,29 +21,32 @@ export function buildDraftListResponse(
   metadata: DraftMetadata[],
   total: number,
   statsSource: DraftMetadata[] = metadata,
-  archiveSource: DraftMetadata[] = statsSource
+  archiveSource: DraftMetadata[] = statsSource,
 ): DraftListResponse {
-  const stats = statsSource.reduce<DraftListResponse['stats']>((accumulator, draft) => {
-    accumulator.total_drafts += 1;
-    if (isArchivedDraft(draft)) {
-      accumulator.archived_drafts += 1;
-    }
-    if (draft.favorite) {
-      accumulator.favorites += 1;
-    }
+  const stats = statsSource.reduce<DraftListResponse['stats']>(
+    (accumulator, draft) => {
+      accumulator.total_drafts += 1;
+      if (isArchivedDraft(draft)) {
+        accumulator.archived_drafts += 1;
+      }
+      if (draft.favorite) {
+        accumulator.favorites += 1;
+      }
 
-    const genre = draft.genre || 'unknown';
-    const mode = draft.mode || 'unknown';
-    accumulator.by_genre[genre] = (accumulator.by_genre[genre] || 0) + 1;
-    accumulator.by_mode[mode] = (accumulator.by_mode[mode] || 0) + 1;
-    return accumulator;
-  }, {
-    total_drafts: 0,
-    archived_drafts: archiveSource.filter((draft) => isArchivedDraft(draft)).length,
-    favorites: 0,
-    by_genre: {},
-    by_mode: {},
-  });
+      const genre = draft.genre || 'unknown';
+      const mode = draft.mode || 'unknown';
+      accumulator.by_genre[genre] = (accumulator.by_genre[genre] || 0) + 1;
+      accumulator.by_mode[mode] = (accumulator.by_mode[mode] || 0) + 1;
+      return accumulator;
+    },
+    {
+      total_drafts: 0,
+      archived_drafts: archiveSource.filter((draft) => isArchivedDraft(draft)).length,
+      favorites: 0,
+      by_genre: {},
+      by_mode: {},
+    },
+  );
 
   return {
     drafts: metadata,
@@ -65,9 +68,10 @@ export function applyDraftFilters(metadata: DraftMetadata[], filters?: DraftFilt
 
   if (filters?.search) {
     const query = filters.search.toLowerCase();
-    result = result.filter((draft) => [draft.character_name, draft.seed, draft.genre, draft.notes]
-      .filter(Boolean)
-      .some((value) => String(value).toLowerCase().includes(query))
+    result = result.filter((draft) =>
+      [draft.character_name, draft.seed, draft.genre, draft.notes]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query)),
     );
   }
 
@@ -90,12 +94,14 @@ export function applyDraftFilters(metadata: DraftMetadata[], filters?: DraftFilt
   const sortOrder = filters?.sort_order === 'asc' ? 1 : -1;
   const sortBy = filters?.sort_by ?? 'modified';
   result.sort((left, right) => {
-    const leftValue = sortBy === 'name'
-      ? (left.character_name || left.seed || '')
-      : (sortBy === 'created' ? left.created : left.modified) || '';
-    const rightValue = sortBy === 'name'
-      ? (right.character_name || right.seed || '')
-      : (sortBy === 'created' ? right.created : right.modified) || '';
+    const leftValue =
+      sortBy === 'name'
+        ? left.character_name || left.seed || ''
+        : (sortBy === 'created' ? left.created : left.modified) || '';
+    const rightValue =
+      sortBy === 'name'
+        ? right.character_name || right.seed || ''
+        : (sortBy === 'created' ? right.created : right.modified) || '';
     return leftValue.localeCompare(rightValue) * sortOrder;
   });
 
@@ -115,14 +121,10 @@ export interface ValidateDraftAssetsOptions {
   fallbackTemplate?: Template;
 }
 
-export function validateDraftAssets(
-  draft: Draft,
-  options: ValidateDraftAssetsOptions = {}
-): ValidationResponse {
+export function validateDraftAssets(draft: Draft, options: ValidateDraftAssetsOptions = {}): ValidationResponse {
   const findings: string[] = [];
-  const template = options.resolveTemplate?.(draft.metadata.template_name)
-    || options.fallbackTemplate
-    || OFFICIAL_TEMPLATE;
+  const template =
+    options.resolveTemplate?.(draft.metadata.template_name) || options.fallbackTemplate || OFFICIAL_TEMPLATE;
   const requiredAssets = getOrderedAssets(template).filter((asset) => asset.required);
 
   requiredAssets.forEach((asset) => {
@@ -160,11 +162,12 @@ export function validateDraftAssets(
 }
 
 function tokenizeDraft(draft: Draft): Set<string> {
-  const corpus = `${draft.metadata.character_name || ''}\n${draft.metadata.seed}\n${Object.values(draft.assets).join('\n')}`
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]+/g, ' ')
-    .split(/\s+/)
-    .filter((token) => token.length > 3);
+  const corpus =
+    `${draft.metadata.character_name || ''}\n${draft.metadata.seed}\n${Object.values(draft.assets).join('\n')}`
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]+/g, ' ')
+      .split(/\s+/)
+      .filter((token) => token.length > 3);
   return new Set(corpus);
 }
 
@@ -198,9 +201,10 @@ export function buildSimilarityResult(left: Draft, right: Draft): SimilarityResu
     synergy_potential: synergyPotential,
     commonalities: common.slice(0, 8),
     differences: [...leftOnly.slice(0, 4), ...rightOnly.slice(0, 4)],
-    relationship_suggestions: score >= 0.6
-      ? ['Shared themes suggest an easy alliance arc.', 'Overlapping traits support collaborative scenes.']
-      : ['Use the contrast between their goals for tension.', 'Differences suggest rivalry or uneasy partnership.'],
+    relationship_suggestions:
+      score >= 0.6
+        ? ['Shared themes suggest an easy alliance arc.', 'Overlapping traits support collaborative scenes.']
+        : ['Use the contrast between their goals for tension.', 'Differences suggest rivalry or uneasy partnership.'],
     meta_analysis: {
       archetype_match: score,
       narrative_compatibility: synergyPotential,
@@ -258,7 +262,9 @@ export function buildLineageResponse(metadata: DraftMetadata[]): LineageResponse
       child_ids: childIds,
       parent_names: parentNames,
       child_names: childNames,
-      sibling_names: parentIds.flatMap((parentId) => (childMap.get(parentId) ?? []).filter((id) => id !== draft.review_id)).map((id) => metadataMap.get(id)?.character_name || id),
+      sibling_names: parentIds
+        .flatMap((parentId) => (childMap.get(parentId) ?? []).filter((id) => id !== draft.review_id))
+        .map((id) => metadataMap.get(id)?.character_name || id),
       num_ancestors: parentIds.length,
       num_descendants: childIds.length,
     };

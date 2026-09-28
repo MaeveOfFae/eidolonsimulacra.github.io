@@ -101,7 +101,9 @@ export default function ContextualHelpPanel({ entry, topics, isOpen, onClose }: 
                   <article key={topic.id} className="rounded-lg border border-border/60 bg-background/40 p-3.5">
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">{topic.category}</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">
+                          {topic.category}
+                        </p>
                         <h4 className="mt-1 font-semibold text-foreground">{topic.title}</h4>
                       </div>
                     </div>

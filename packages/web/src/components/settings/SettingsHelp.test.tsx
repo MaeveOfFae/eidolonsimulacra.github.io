@@ -94,10 +94,10 @@ function renderSettings() {
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={['/settings?section=help']}>
         <Settings />
       </MemoryRouter>
-    </QueryClientProvider>
+    </QueryClientProvider>,
   );
 }
 
@@ -122,7 +122,9 @@ describe('Settings help controls', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Reset Help Preferences' }));
 
     await waitFor(() => {
-      expect(screen.getByText('Help preferences were reset. Hover help popups and first-run guidance are enabled again.')).toBeInTheDocument();
+      expect(
+        screen.getByText('Help preferences were reset. Hover help popups and first-run guidance are enabled again.'),
+      ).toBeInTheDocument();
     });
 
     expect(configManager.getHelpState()).toEqual({
@@ -146,7 +148,9 @@ describe('Settings help controls', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Restart Getting Started' }));
 
     await waitFor(() => {
-      expect(screen.getByText('Getting Started has been reset. Return to Home to run through it again.')).toBeInTheDocument();
+      expect(
+        screen.getByText('Getting Started has been reset. Return to Home to run through it again.'),
+      ).toBeInTheDocument();
     });
 
     expect(configManager.getHelpState().first_run_completed).toBe(false);

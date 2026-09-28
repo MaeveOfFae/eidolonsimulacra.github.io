@@ -12,7 +12,7 @@ import type {
   StreamGenerateOptions,
   LLMConnectionTestResult,
   LLMProvider,
-} from "./types";
+} from './types';
 import { ProviderEndpoints } from './types';
 
 interface OpenAICompatErrorResponse {
@@ -67,10 +67,9 @@ function isDisplayContentRecord(record: Record<string, unknown>): boolean {
     return true;
   }
 
-  return partType === 'text'
-    || partType === 'text_delta'
-    || partType === 'output_text'
-    || partType === 'output_text_delta';
+  return (
+    partType === 'text' || partType === 'text_delta' || partType === 'output_text' || partType === 'output_text_delta'
+  );
 }
 
 function extractTextValue(value: unknown): string {
@@ -138,35 +137,32 @@ function extractTextValue(value: unknown): string {
 
 function extractChoiceMessageContent(
   choice?: OpenAICompatChoice,
-  response?: OpenAICompatChatCompletionResponse
+  response?: OpenAICompatChatCompletionResponse,
 ): string {
   return extractTextValue(
-    choice?.message?.content
-    ?? choice?.message?.output_text
-    ?? choice?.message?.parts
-    ?? choice?.text
-    ?? response?.output_text
+    choice?.message?.content ??
+      choice?.message?.output_text ??
+      choice?.message?.parts ??
+      choice?.text ??
+      response?.output_text,
   );
 }
 
 function extractChoiceDeltaContent(choice?: OpenAICompatChoice): string {
-  return extractTextValue(
-    choice?.delta?.content
-    ?? choice?.delta?.output_text
-    ?? choice?.delta?.parts
-    ?? choice?.text
-  );
+  return extractTextValue(choice?.delta?.content ?? choice?.delta?.output_text ?? choice?.delta?.parts ?? choice?.text);
 }
 
-function buildNoContentError(
-  choice?: OpenAICompatChoice,
-  response?: OpenAICompatChatCompletionResponse
-): string {
+function buildNoContentError(choice?: OpenAICompatChoice, response?: OpenAICompatChatCompletionResponse): string {
   const responseError = response?.error;
   if (typeof responseError === 'string' && responseError.trim()) {
     return responseError;
   }
-  if (responseError && typeof responseError === 'object' && typeof responseError.message === 'string' && responseError.message.trim()) {
+  if (
+    responseError &&
+    typeof responseError === 'object' &&
+    typeof responseError.message === 'string' &&
+    responseError.message.trim()
+  ) {
     return responseError.message;
   }
 
@@ -174,7 +170,12 @@ function buildNoContentError(
   if (typeof choiceError === 'string' && choiceError.trim()) {
     return choiceError;
   }
-  if (choiceError && typeof choiceError === 'object' && typeof choiceError.message === 'string' && choiceError.message.trim()) {
+  if (
+    choiceError &&
+    typeof choiceError === 'object' &&
+    typeof choiceError.message === 'string' &&
+    choiceError.message.trim()
+  ) {
     return choiceError.message;
   }
 
@@ -203,14 +204,8 @@ function buildNoContentError(
   }
 }
 
-function normalizeUsage(
-  usage?: OpenAICompatUsage
-): GenerateResult['usage'] {
-  if (
-    usage?.prompt_tokens === undefined ||
-    usage.completion_tokens === undefined ||
-    usage.total_tokens === undefined
-  ) {
+function normalizeUsage(usage?: OpenAICompatUsage): GenerateResult['usage'] {
+  if (usage?.prompt_tokens === undefined || usage.completion_tokens === undefined || usage.total_tokens === undefined) {
     return undefined;
   }
 
@@ -252,11 +247,7 @@ export class OpenAICompatEngine implements LLMEngine {
     return this.config.model;
   }
 
-  private async fetchWithTimeout(
-    url: string,
-    init: RequestInit,
-    signal?: AbortSignal
-  ): Promise<Response> {
+  private async fetchWithTimeout(url: string, init: RequestInit, signal?: AbortSignal): Promise<Response> {
     const controller = new AbortController();
     const timeoutMs = typeof this.config.timeout === 'number' ? this.config.timeout : 120000;
     let didTimeout = false;
@@ -301,25 +292,26 @@ export class OpenAICompatEngine implements LLMEngine {
     }
   }
 
-  async generate(
-    messages: LLMChatMessage[],
-    options?: GenerateOptions
-  ): Promise<GenerateResult> {
+  async generate(messages: LLMChatMessage[], options?: GenerateOptions): Promise<GenerateResult> {
     const temperature = options?.temperature ?? this.config.temperature;
     const maxTokens = options?.maxTokens ?? this.config.maxTokens;
 
-    const response = await this.fetchWithTimeout(this.config.baseUrl + "/chat/completions", {
-      method: "POST",
-      headers: this.buildHeaders(),
-      body: JSON.stringify({
-        model: this.config.model,
-        messages,
-        temperature,
-        max_tokens: maxTokens,
-        stream: false,
-        ...(this.buildExtraParams(options)),
-      }),
-    }, options?.signal);
+    const response = await this.fetchWithTimeout(
+      this.config.baseUrl + '/chat/completions',
+      {
+        method: 'POST',
+        headers: this.buildHeaders(),
+        body: JSON.stringify({
+          model: this.config.model,
+          messages,
+          temperature,
+          max_tokens: maxTokens,
+          stream: false,
+          ...this.buildExtraParams(options),
+        }),
+      },
+      options?.signal,
+    );
 
     if (!response.ok) {
       const error = await this.parseErrorResponse(response);
@@ -341,25 +333,26 @@ export class OpenAICompatEngine implements LLMEngine {
     };
   }
 
-  async *generateStream(
-    messages: LLMChatMessage[],
-    options?: StreamGenerateOptions
-  ): AsyncIterable<StreamChunk> {
+  async *generateStream(messages: LLMChatMessage[], options?: StreamGenerateOptions): AsyncIterable<StreamChunk> {
     const temperature = options?.temperature ?? this.config.temperature;
     const maxTokens = options?.maxTokens ?? this.config.maxTokens;
 
-    const response = await this.fetchWithTimeout(this.config.baseUrl + "/chat/completions", {
-      method: "POST",
-      headers: this.buildHeaders(),
-      body: JSON.stringify({
-        model: this.config.model,
-        messages,
-        temperature,
-        max_tokens: maxTokens,
-        stream: true,
-        ...(this.buildExtraParams(options)),
-      }),
-    }, options?.signal);
+    const response = await this.fetchWithTimeout(
+      this.config.baseUrl + '/chat/completions',
+      {
+        method: 'POST',
+        headers: this.buildHeaders(),
+        body: JSON.stringify({
+          model: this.config.model,
+          messages,
+          temperature,
+          max_tokens: maxTokens,
+          stream: true,
+          ...this.buildExtraParams(options),
+        }),
+      },
+      options?.signal,
+    );
 
     if (!response.ok) {
       const error = await this.parseErrorResponse(response);
@@ -367,12 +360,12 @@ export class OpenAICompatEngine implements LLMEngine {
     }
 
     if (!response.body) {
-      throw new Error("No response body");
+      throw new Error('No response body');
     }
 
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
-    let buffer = "";
+    let buffer = '';
 
     try {
       while (true) {
@@ -380,14 +373,14 @@ export class OpenAICompatEngine implements LLMEngine {
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
 
         for (const line of lines) {
-          if (line.startsWith("data: ")) {
+          if (line.startsWith('data: ')) {
             const dataStr = line.slice(6);
-            if (dataStr.trim() === "[DONE]") {
-              yield { content: "", done: true };
+            if (dataStr.trim() === '[DONE]') {
+              yield { content: '', done: true };
               return;
             }
 
@@ -416,12 +409,12 @@ export class OpenAICompatEngine implements LLMEngine {
     const start = performance.now();
 
     try {
-      const response = await this.fetchWithTimeout(this.config.baseUrl + "/chat/completions", {
-        method: "POST",
+      const response = await this.fetchWithTimeout(this.config.baseUrl + '/chat/completions', {
+        method: 'POST',
         headers: this.buildHeaders(),
         body: JSON.stringify({
           model: this.config.model,
-          messages: [{ role: "user", content: "test" }],
+          messages: [{ role: 'user', content: 'test' }],
           max_tokens: 5,
           stream: false,
         }),
@@ -450,7 +443,7 @@ export class OpenAICompatEngine implements LLMEngine {
     } catch (e) {
       return {
         success: false,
-        error: e instanceof Error ? e.message : "Unknown error",
+        error: e instanceof Error ? e.message : 'Unknown error',
         modelInfo: {
           name: this.config.model,
         },
@@ -460,18 +453,18 @@ export class OpenAICompatEngine implements LLMEngine {
 
   private buildHeaders(): Record<string, string> {
     const headers: Record<string, string> = {
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
     };
     const baseUrl = this.config.baseUrl || ProviderEndpoints[this.config.provider];
 
     if (this.config.apiKey) {
-      headers["Authorization"] = "Bearer " + this.config.apiKey;
+      headers['Authorization'] = 'Bearer ' + this.config.apiKey;
     }
 
     // OpenRouter-specific headers
-    if (baseUrl.includes("openrouter.ai")) {
-      headers["HTTP-Referer"] = "https://github.com/maeveoffae/eidolon-simulacra";
-      headers["X-OpenRouter-Title"] = "Eidolon Simulacra";
+    if (baseUrl.includes('openrouter.ai')) {
+      headers['HTTP-Referer'] = 'https://github.com/maeveoffae/eidolon-simulacra';
+      headers['X-OpenRouter-Title'] = 'Eidolon Simulacra';
     }
 
     return headers;
@@ -489,16 +482,16 @@ export class OpenAICompatEngine implements LLMEngine {
 
   private async parseErrorResponse(response: Response): Promise<string> {
     try {
-      const data = await response.json() as OpenAICompatErrorResponse;
+      const data = (await response.json()) as OpenAICompatErrorResponse;
       if (typeof data.error === 'object' && data.error?.message) {
         return data.error.message;
       }
       if (data.error) {
         return String(data.error);
       }
-      return "HTTP " + response.status;
+      return 'HTTP ' + response.status;
     } catch {
-      return "HTTP " + response.status;
+      return 'HTTP ' + response.status;
     }
   }
 }
@@ -510,17 +503,17 @@ export async function listModels(baseUrl: string, apiKey?: string): Promise<stri
   const headers: Record<string, string> = {};
 
   if (apiKey) {
-    headers["Authorization"] = "Bearer " + apiKey;
+    headers['Authorization'] = 'Bearer ' + apiKey;
   }
 
   // OpenRouter-specific headers
-  if (baseUrl.includes("openrouter.ai")) {
-    headers["HTTP-Referer"] = "https://github.com/maeveoffae/eidolon-simulacra";
-    headers["X-OpenRouter-Title"] = "Eidolon Simulacra";
+  if (baseUrl.includes('openrouter.ai')) {
+    headers['HTTP-Referer'] = 'https://github.com/maeveoffae/eidolon-simulacra';
+    headers['X-OpenRouter-Title'] = 'Eidolon Simulacra';
   }
 
-  const response = await fetch(baseUrl + "/models", {
-    method: "GET",
+  const response = await fetch(baseUrl + '/models', {
+    method: 'GET',
     headers,
   });
 
@@ -529,7 +522,7 @@ export async function listModels(baseUrl: string, apiKey?: string): Promise<stri
   }
 
   if (!response.ok) {
-    throw new Error("Failed to list models: HTTP " + response.status);
+    throw new Error('Failed to list models: HTTP ' + response.status);
   }
 
   const responseJson = await response.json();

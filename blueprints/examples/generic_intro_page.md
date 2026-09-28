@@ -1,15 +1,15 @@
 ---
-name: Generic Intro Page
-description: Starter blueprint for a clean Markdown character intro page.
+name: Generic Creator Notes
+description: Starter blueprint for clean Markdown creator notes.
 invokable: true
 always: false
 version: 1.0
 feature_category: generation
 ---
 
-# Intro Page
+# Creator Notes
 
-Use this blueprint to produce a single Markdown snippet that can serve as a clean, readable character overview.
+Use this blueprint to produce a single Markdown snippet that can serve as clear, readable creator notes for the character.
 
 Hard Rules:
 
@@ -17,7 +17,7 @@ Hard Rules:
 - Keep the writing specific to the generated character; do not reuse stock names or examples.
 - Respect the orchestrator content mode when present (SFW/NSFW/Platform-Safe).
 - Do not narrate {{user}} thoughts, feelings, actions, dialogue, decisions, or consent.
-- Output ONLY the finished intro page inside a single markdown code block.
+- Output ONLY the finished creator notes inside a single markdown code block.
 
 Template:
 
@@ -45,4 +45,4 @@ Template:
 
 Failure Conditions:
 
-If any placeholder remains, sections are omitted, or the page turns into prose without headings, it has failed.
+If any placeholder remains, sections are omitted, or the notes turn into prose without headings, it has failed.

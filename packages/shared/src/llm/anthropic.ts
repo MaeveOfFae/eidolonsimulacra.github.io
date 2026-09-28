@@ -91,10 +91,7 @@ export class AnthropicEngine extends BaseLLMEngine {
       .join('');
   }
 
-  async generate(
-    messages: LLMChatMessage[],
-    options?: GenerateOptions
-  ): Promise<GenerateResult> {
+  async generate(messages: LLMChatMessage[], options?: GenerateOptions): Promise<GenerateResult> {
     const opts = this.mergeOptions(options);
     const system = this.getSystemPrompt(messages);
     const messagesFormatted = this.formatMessages(messages);
@@ -125,7 +122,7 @@ export class AnthropicEngine extends BaseLLMEngine {
       throw new Error(await this.parseError(response));
     }
 
-    const data = await response.json() as AnthropicResponse;
+    const data = (await response.json()) as AnthropicResponse;
     const content = this.extractResponseText(data.content);
     if (!content) {
       throw new Error('No text content in response');
@@ -142,10 +139,7 @@ export class AnthropicEngine extends BaseLLMEngine {
     };
   }
 
-  async *generateStream(
-    messages: LLMChatMessage[],
-    options?: StreamGenerateOptions
-  ): AsyncIterable<StreamChunk> {
+  async *generateStream(messages: LLMChatMessage[], options?: StreamGenerateOptions): AsyncIterable<StreamChunk> {
     const opts = this.mergeOptions(options);
     const system = this.getSystemPrompt(messages);
     const messagesFormatted = this.formatMessages(messages);
@@ -275,7 +269,7 @@ export class AnthropicEngine extends BaseLLMEngine {
 
   private async parseError(response: Response): Promise<string> {
     try {
-      const data = await response.json() as AnthropicErrorResponse;
+      const data = (await response.json()) as AnthropicErrorResponse;
       return data.error?.message || `HTTP ${response.status}`;
     } catch {
       return `HTTP ${response.status}`;

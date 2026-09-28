@@ -22,7 +22,7 @@ describe('loadBlueprint', () => {
       'eidolon.web.blueprints.overrides',
       JSON.stringify({
         'blueprints/system/generator.md': 'custom generator blueprint',
-      })
+      }),
     );
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
 
@@ -32,7 +32,6 @@ describe('loadBlueprint', () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 });
-
 
 describe('parseBlueprintFrontmatter', () => {
   it('reads feature metadata from CRLF frontmatter blocks', () => {

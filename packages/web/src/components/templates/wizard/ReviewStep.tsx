@@ -29,7 +29,7 @@ export default function ReviewStep({ templateData }: ReviewStepProps) {
         lines.push(`blueprint_file = "${asset.blueprint_file}"`);
       }
       if (asset.depends_on && asset.depends_on.length > 0) {
-        lines.push(`depends_on = [${asset.depends_on.map(d => `"${d}"`).join(', ')}]`);
+        lines.push(`depends_on = [${asset.depends_on.map((d) => `"${d}"`).join(', ')}]`);
       }
       lines.push('');
     });
@@ -53,7 +53,7 @@ export default function ReviewStep({ templateData }: ReviewStepProps) {
       warnings.push('No assets defined');
     }
 
-    const requiredCount = templateData.assets.filter(a => a.required).length;
+    const requiredCount = templateData.assets.filter((a) => a.required).length;
     if (requiredCount === 0) {
       warnings.push('No required assets defined');
     }
@@ -72,9 +72,7 @@ export default function ReviewStep({ templateData }: ReviewStepProps) {
         </div>
         <div className="flex-1">
           <h3 className="text-lg font-semibold">Review & Create</h3>
-          <p className="text-sm text-muted-foreground">
-            Review your template configuration before creating
-          </p>
+          <p className="text-sm text-muted-foreground">Review your template configuration before creating</p>
         </div>
         <Eye className="h-5 w-5 text-muted-foreground flex-shrink-0" />
       </div>
@@ -90,7 +88,9 @@ export default function ReviewStep({ templateData }: ReviewStepProps) {
             </div>
             <ul className="text-sm space-y-1">
               {warnings.map((warning, index) => (
-                <li key={index} className="text-yellow-500/80">{warning}</li>
+                <li key={index} className="text-yellow-500/80">
+                  {warning}
+                </li>
               ))}
             </ul>
           </div>
@@ -173,9 +173,7 @@ export default function ReviewStep({ templateData }: ReviewStepProps) {
             </button>
           </div>
           <div className="rounded-lg border border-border bg-muted/30 p-4 max-h-[300px] overflow-y-auto">
-            <pre className="text-xs font-mono whitespace-pre-wrap">
-              {generateTOML()}
-            </pre>
+            <pre className="text-xs font-mono whitespace-pre-wrap">{generateTOML()}</pre>
           </div>
         </div>
 
@@ -186,8 +184,8 @@ export default function ReviewStep({ templateData }: ReviewStepProps) {
             <div>
               <h4 className="font-medium text-sm mb-1">Ready to Create Template</h4>
               <p className="text-xs text-muted-foreground">
-                Click the "Create Template" button below to finalize your template.
-                The template will be saved and available for character generation.
+                Click the "Create Template" button below to finalize your template. The template will be saved and
+                available for character generation.
               </p>
             </div>
           </div>

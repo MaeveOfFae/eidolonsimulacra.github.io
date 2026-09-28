@@ -9,7 +9,9 @@ export interface TemplateComparisonPanelProps {
   rightTemplate?: string;
 }
 
-function assetSignature(template: Template): Map<string, { required: boolean; dependsOn: string[]; blueprintFile?: string }> {
+function assetSignature(
+  template: Template,
+): Map<string, { required: boolean; dependsOn: string[]; blueprintFile?: string }> {
   return new Map(
     template.assets.map((asset) => [
       asset.name,
@@ -18,15 +20,11 @@ function assetSignature(template: Template): Map<string, { required: boolean; de
         dependsOn: asset.depends_on,
         blueprintFile: asset.blueprint_file,
       },
-    ])
+    ]),
   );
 }
 
-export function TemplateComparisonPanel({
-  templates,
-  leftTemplate,
-  rightTemplate,
-}: TemplateComparisonPanelProps) {
+export function TemplateComparisonPanel({ templates, leftTemplate, rightTemplate }: TemplateComparisonPanelProps) {
   const [selectedLeft, setSelectedLeft] = useState(leftTemplate || '');
   const [selectedRight, setSelectedRight] = useState(rightTemplate || '');
 
@@ -38,8 +36,14 @@ export function TemplateComparisonPanel({
     setSelectedRight(rightTemplate || '');
   }, [rightTemplate]);
 
-  const left = useMemo(() => templates.find((template) => template.name === selectedLeft) ?? null, [templates, selectedLeft]);
-  const right = useMemo(() => templates.find((template) => template.name === selectedRight) ?? null, [templates, selectedRight]);
+  const left = useMemo(
+    () => templates.find((template) => template.name === selectedLeft) ?? null,
+    [templates, selectedLeft],
+  );
+  const right = useMemo(
+    () => templates.find((template) => template.name === selectedRight) ?? null,
+    [templates, selectedRight],
+  );
 
   const comparison = useMemo(() => {
     if (!left || !right) {
@@ -81,7 +85,6 @@ export function TemplateComparisonPanel({
       className="text-sm text-muted-foreground"
       bodyClassName="space-y-4"
     >
-
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="space-y-1">
           <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Left template</span>
@@ -92,7 +95,9 @@ export function TemplateComparisonPanel({
           >
             <option value="">Select a template...</option>
             {templates.map((template) => (
-              <option key={template.name} value={template.name}>{template.name}</option>
+              <option key={template.name} value={template.name}>
+                {template.name}
+              </option>
             ))}
           </select>
         </label>
@@ -106,16 +111,16 @@ export function TemplateComparisonPanel({
           >
             <option value="">Select a template...</option>
             {templates.map((template) => (
-              <option key={template.name} value={template.name}>{template.name}</option>
+              <option key={template.name} value={template.name}>
+                {template.name}
+              </option>
             ))}
           </select>
         </label>
       </div>
 
       {!comparison ? (
-        <div className="rounded-md border border-border p-3">
-          Select two templates to compare their structure.
-        </div>
+        <div className="rounded-md border border-border p-3">Select two templates to compare their structure.</div>
       ) : (
         <div className="space-y-3">
           <div className="grid gap-3 grid-cols-2 xl:grid-cols-4 text-xs">
@@ -142,7 +147,9 @@ export function TemplateComparisonPanel({
               <div className="font-medium text-foreground">Generation order</div>
               <ol className="mt-2 space-y-1 text-xs">
                 {comparison.leftOrder.map((assetName, index) => (
-                  <li key={`left-${assetName}`}>{index + 1}. {assetName}</li>
+                  <li key={`left-${assetName}`}>
+                    {index + 1}. {assetName}
+                  </li>
                 ))}
               </ol>
             </div>
@@ -150,7 +157,9 @@ export function TemplateComparisonPanel({
               <div className="font-medium text-foreground">Generation order</div>
               <ol className="mt-2 space-y-1 text-xs">
                 {comparison.rightOrder.map((assetName, index) => (
-                  <li key={`right-${assetName}`}>{index + 1}. {assetName}</li>
+                  <li key={`right-${assetName}`}>
+                    {index + 1}. {assetName}
+                  </li>
                 ))}
               </ol>
             </div>
@@ -187,15 +196,25 @@ export function TemplateComparisonPanel({
                   return (
                     <div key={assetName} className="grid gap-3 lg:grid-cols-2">
                       <div className="rounded-md border border-border bg-background/60 p-3">
-                        <div className="font-medium text-foreground">{assetName} · {left?.name}</div>
+                        <div className="font-medium text-foreground">
+                          {assetName} · {left?.name}
+                        </div>
                         <div className="mt-1">required: {String(leftEntry?.required ?? false)}</div>
-                        <div className="mt-1">depends on: {(leftEntry?.dependsOn.length ?? 0) > 0 ? leftEntry?.dependsOn.join(', ') : 'none'}</div>
+                        <div className="mt-1">
+                          depends on:{' '}
+                          {(leftEntry?.dependsOn.length ?? 0) > 0 ? leftEntry?.dependsOn.join(', ') : 'none'}
+                        </div>
                         <div className="mt-1">blueprint: {leftEntry?.blueprintFile || 'unset'}</div>
                       </div>
                       <div className="rounded-md border border-border bg-background/60 p-3">
-                        <div className="font-medium text-foreground">{assetName} · {right?.name}</div>
+                        <div className="font-medium text-foreground">
+                          {assetName} · {right?.name}
+                        </div>
                         <div className="mt-1">required: {String(rightEntry?.required ?? false)}</div>
-                        <div className="mt-1">depends on: {(rightEntry?.dependsOn.length ?? 0) > 0 ? rightEntry?.dependsOn.join(', ') : 'none'}</div>
+                        <div className="mt-1">
+                          depends on:{' '}
+                          {(rightEntry?.dependsOn.length ?? 0) > 0 ? rightEntry?.dependsOn.join(', ') : 'none'}
+                        </div>
                         <div className="mt-1">blueprint: {rightEntry?.blueprintFile || 'unset'}</div>
                       </div>
                     </div>

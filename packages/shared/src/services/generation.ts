@@ -3,10 +3,7 @@
  * Replaces backend API with direct browser-based generation.
  */
 
-import type {
-  LLMChatMessage,
-  GenerateResult,
-} from '../llm/types';
+import type { LLMChatMessage, GenerateResult } from '../llm/types';
 import type { Template } from '../templates';
 import type { ParseResult } from '../parse/parse-blocks';
 
@@ -81,9 +78,7 @@ export async function generateCharacter(request: GenerationOptions): Promise<Gen
 /**
  * Generate a character with streaming support.
  */
-export async function* generateCharacterStream(
-  request: GenerationOptions
-): AsyncGenerator<GenerateStreamChunk> {
+export async function* generateCharacterStream(request: GenerationOptions): AsyncGenerator<GenerateStreamChunk> {
   const {
     seed,
     template = getOfficialTemplate(),
@@ -212,7 +207,7 @@ export async function generateAsset(
   template?: Template,
   mode: ContentMode = 'NSFW',
   priorAssets: Record<string, string> = {},
-  options: Partial<GenerationOptions> = {}
+  options: Partial<GenerationOptions> = {},
 ): Promise<string> {
   const systemPrompt = buildOrchestrator({ template, mode });
 

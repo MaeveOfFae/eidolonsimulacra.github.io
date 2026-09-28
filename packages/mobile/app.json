@@ -6,17 +6,21 @@
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "scheme": "eidolon-simulacra",
-    "platforms": [
-      "ios",
-      "android"
-    ],
+    "platforms": ["ios", "android"],
     "android": {
       "package": "io.github.maeveoffae.eidolonsimulacra",
-      "versionCode": 1
+      "versionCode": 1,
+      "usesCleartextTraffic": true
     },
     "jsEngine": "hermes",
     "plugins": [
-      "expo-sqlite"
+      "expo-sqlite",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Eidolon Simulacra to scan a desktop pairing QR code."
+        }
+      ]
     ]
   }
 }

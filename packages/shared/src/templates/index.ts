@@ -7,12 +7,121 @@ import type { AssetDefinition as TypesAssetDefinition, Template as TypesTemplate
 // Re-export types from types/index with local type names to avoid conflicts
 export type AssetDefinition = TypesAssetDefinition;
 export type Template = TypesTemplate;
+type TemplateAssetContext = Pick<TypesTemplate, 'name' | 'assets'>;
+
+export const CREATOR_NOTES_ASSET_NAME = 'creator_notes';
+export const LEGACY_CREATOR_NOTES_ASSET_NAME = 'intro_page';
+const OFFICIAL_TEMPLATE_NAME = 'V2/V3 Card';
+
+function templateUsesCreatorNotesAsset(template?: TemplateAssetContext | string): boolean {
+  if (!template) {
+    return false;
+  }
+
+  if (typeof template === 'string') {
+    return template === OFFICIAL_TEMPLATE_NAME;
+  }
+
+  if (template.name === OFFICIAL_TEMPLATE_NAME) {
+    return true;
+  }
+
+  if (template.assets.some((asset) => asset.name === CREATOR_NOTES_ASSET_NAME)) {
+    return true;
+  }
+
+  if (template.assets.some((asset) => asset.name === LEGACY_CREATOR_NOTES_ASSET_NAME)) {
+    return false;
+  }
+
+  return false;
+}
+
+export function canonicalizeLegacyAssetName(assetName: string): string {
+  const trimmed = typeof assetName === 'string' ? assetName.trim() : '';
+  if (!trimmed) {
+    return '';
+  }
+
+  return trimmed === LEGACY_CREATOR_NOTES_ASSET_NAME ? CREATOR_NOTES_ASSET_NAME : trimmed;
+}
+
+export function normalizeAssetName(assetName: string, template?: TemplateAssetContext | string): string {
+  const trimmed = typeof assetName === 'string' ? assetName.trim() : '';
+  if (!trimmed) {
+    return '';
+  }
+
+  if (trimmed === LEGACY_CREATOR_NOTES_ASSET_NAME && templateUsesCreatorNotesAsset(template)) {
+    return CREATOR_NOTES_ASSET_NAME;
+  }
+
+  return trimmed;
+}
+
+export function normalizeAssetNameList(names: readonly string[], template?: TemplateAssetContext | string): string[] {
+  const normalized: string[] = [];
+  const seen = new Set<string>();
+
+  for (const name of names) {
+    const resolvedName = normalizeAssetName(name, template);
+    if (!resolvedName || seen.has(resolvedName)) {
+      continue;
+    }
+
+    seen.add(resolvedName);
+    normalized.push(resolvedName);
+  }
+
+  return normalized;
+}
+
+export function normalizeAssetRecord(
+  assets: Record<string, string>,
+  template?: TemplateAssetContext | string,
+): Record<string, string> {
+  const normalized: Record<string, string> = {};
+  const sourceNames = new Map<string, string>();
+
+  for (const [assetName, value] of Object.entries(assets)) {
+    const resolvedName = normalizeAssetName(assetName, template);
+    if (!resolvedName) {
+      continue;
+    }
+
+    const existingSource = sourceNames.get(resolvedName);
+    if (!existingSource) {
+      normalized[resolvedName] = value;
+      sourceNames.set(resolvedName, assetName);
+      continue;
+    }
+
+    const existingValue = normalized[resolvedName] ?? '';
+    const existingHasContent = existingValue.trim().length > 0;
+    const nextHasContent = value.trim().length > 0;
+
+    if (existingSource !== resolvedName && assetName === resolvedName) {
+      if (nextHasContent || !existingHasContent) {
+        normalized[resolvedName] = value;
+      }
+      sourceNames.set(resolvedName, assetName);
+      continue;
+    }
+
+    if (!existingHasContent && nextHasContent) {
+      normalized[resolvedName] = value;
+      sourceNames.set(resolvedName, assetName);
+    }
+  }
+
+  return normalized;
+}
 
 /**
  * Built-in V2/V3 Card template
  */
 export const OFFICIAL_TEMPLATE: Template = {
-  name: 'V2/V3 Card',
+  name: OFFICIAL_TEMPLATE_NAME,
   version: '3.1',
   description: 'Built-in character card template with 6 standard assets',
   is_official: true,
@@ -46,11 +155,11 @@ export const OFFICIAL_TEMPLATE: Template = {
       blueprint_file: 'blueprints/system/intro_scene.md',
     },
     {
-      name: 'intro_page',
+      name: CREATOR_NOTES_ASSET_NAME,
       required: true,
       depends_on: ['character_sheet'],
-      description: 'Visual character introduction page',
-      blueprint_file: 'blueprints/system/intro_page.md',
+      description: 'Creator notes section',
+      blueprint_file: 'blueprints/system/creator_notes.md',
     },
     {
       name: 'a1111',
@@ -70,7 +179,7 @@ export const DEFAULT_ASSET_ORDER = [
   'post_history',
   'character_sheet',
   'intro_scene',
-  'intro_page',
+  CREATOR_NOTES_ASSET_NAME,
   'a1111',
 ] as const;
 
@@ -79,7 +188,7 @@ export const DEFAULT_ASSET_ORDER = [
  * Ensures assets are processed in the correct order.
  */
 export function topologicalSort(assets: AssetDefinition[]): string[] {
-  const assetNames = assets.map(a => a.name);
+  const assetNames = assets.map((a) => a.name);
   const resolved: string[] = [];
   const resolvedSet = new Set<string>();
   const visiting = new Set<string>();
@@ -93,7 +202,7 @@ export function topologicalSort(assets: AssetDefinition[]): string[] {
 
     visiting.add(assetName);
 
-    const asset = assets.find(a => a.name === assetName);
+    const asset = assets.find((a) => a.name === assetName);
     if (asset) {
       for (const dep of asset.depends_on) {
         visit(dep);
@@ -121,7 +230,7 @@ export function getOrderedAssets(template?: Template): AssetDefinition[] {
   const targetTemplate = template || OFFICIAL_TEMPLATE;
   const orderedNames = topologicalSort(targetTemplate.assets);
   return orderedNames
-    .map(name => targetTemplate.assets.find(a => a.name === name))
+    .map((name) => targetTemplate.assets.find((a) => a.name === name))
     .filter((a): a is AssetDefinition => a !== undefined);
 }
 
@@ -140,7 +249,7 @@ export function validateTemplate(template: Template): { isValid: boolean; errors
   }
 
   // Check for circular dependencies
-  const assetMap = new Map(template.assets.map(a => [a.name, a]));
+  const assetMap = new Map(template.assets.map((a) => [a.name, a]));
   function checkDeps(deps: string[], currentAssetName: string): boolean {
     for (const dep of deps) {
       if (dep === currentAssetName) {

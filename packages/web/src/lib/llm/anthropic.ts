@@ -3,9 +3,7 @@
  * Handles Anthropic's API using their SDK
  */
 
-import {
-  BaseLLMEngine,
-} from './base.js';
+import { BaseLLMEngine } from './base.js';
 import { buildProviderHeaders } from './factory.js';
 import type {
   ChatMessage,
@@ -93,7 +91,7 @@ export class AnthropicEngine extends BaseLLMEngine {
   }
 
   private getSystemPrompt(messages: ChatMessage[]): string | undefined {
-    const systemMsg = messages.find(m => m.role === 'system');
+    const systemMsg = messages.find((m) => m.role === 'system');
     return systemMsg?.content;
   }
 
@@ -104,10 +102,7 @@ export class AnthropicEngine extends BaseLLMEngine {
       .join('');
   }
 
-  async generate(
-    messages: ChatMessage[],
-    options?: GenerateOptions
-  ): Promise<GenerateResult> {
+  async generate(messages: ChatMessage[], options?: GenerateOptions): Promise<GenerateResult> {
     const opts = this.mergeOptions(options);
 
     const system = this.getSystemPrompt(messages);
@@ -158,10 +153,7 @@ export class AnthropicEngine extends BaseLLMEngine {
     };
   }
 
-  async *generateStream(
-    messages: ChatMessage[],
-    options?: StreamGenerateOptions
-  ): AsyncIterable<StreamChunk> {
+  async *generateStream(messages: ChatMessage[], options?: StreamGenerateOptions): AsyncIterable<StreamChunk> {
     const opts = this.mergeOptions(options);
 
     const system = this.getSystemPrompt(messages);

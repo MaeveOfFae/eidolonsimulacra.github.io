@@ -21,7 +21,7 @@ feature_category: orchestration
 
 <template_contract_resolution>
   Primary_Function = "Compile the active template contract"
-  Fallback_Asset_Order = [system_prompt, post_history, character_sheet, intro_scene, intro_page, a1111]
+  Fallback_Asset_Order = [system_prompt, post_history, character_sheet, intro_scene, creator_notes, a1111]
   Override_Rule = "IF (Template_Override OR Active_Template_Contract EXISTS) -> Use_That_Contract INSTEAD_OF(Fallback_Asset_Order)"
   Active_Contract_Constraints = [
     "Generate ONLY the assets named in the active contract",
@@ -122,7 +122,7 @@ feature_category: orchestration
   Authority_Flow = "For the active template, authority follows the declared dependency graph, not a fixed universal asset ladder"
   Upstream_Rule = "Upstream assets define identity, behavioral logic, and facts later assets MUST honor"
   Midstream_Rule = "Midstream assets may refine relationship state, profile structure, opener context, or world logic only within the scope allowed by their dependencies"
-  Downstream_Rule = "Downstream assets translate already-established facts into later views such as scenes, pages, openers, or media prompts"
+  Downstream_Rule = "Downstream assets translate already-established facts into later views such as scenes, creator notes, openers, or media prompts"
   Sibling_Rule = "Assets that share the same dependency tier MUST remain mutually consistent and may not invent facts their siblings would have required upstream"
   Override_Ban = "Lower-tier assets may NOT override higher-tier logic"
 </authority_and_dependency_model>
@@ -227,7 +227,7 @@ feature_category: orchestration
 </genre_adaptation>
 
 <invocation_protocol>
-  Fallback_Built_In_Order = [system_prompt, post_history, character_sheet, intro_scene, intro_page, a1111]
+  Fallback_Built_In_Order = [system_prompt, post_history, character_sheet, intro_scene, creator_notes, a1111]
   Active_Contract_Rule = "IF (Active_Template_Contract EXISTS) -> Use_That_Order AND DO_NOT emit fallback-only assets"
   Label_Ban = "DO NOT print asset labels themselves"
   Delivery_Rule = "Output only the asset codeblocks, plus an Adjustment Note codeblock first when required"

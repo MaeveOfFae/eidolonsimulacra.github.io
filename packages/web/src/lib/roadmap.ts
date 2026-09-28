@@ -1,11 +1,21 @@
-export type RoadmapStatus = 'planned' | 'placeholder' | 'implemented';
+/**
+ * Honest roadmap data for the in-app "Upcoming Updates" surface.
+ *
+ * `status` describes how much of the area is actually delivered today:
+ * - `shipped`  the area is live end to end; `items` is typically empty
+ * - `partial`  core of the area is live, specific work below is still outstanding
+ * - `planned`  nothing in the area has shipped yet
+ *
+ * `items` lists ONLY outstanding work. Shipped capability belongs in README.md.
+ * Keep `ownerFiles` limited to files that exist in the repo.
+ */
+export type RoadmapStatus = 'shipped' | 'partial' | 'planned';
 
 export interface RoadmapGroup {
   id: string;
   title: string;
   status: RoadmapStatus;
   ownerFiles: string[];
-  placeholderFiles: string[];
   items: string[];
 }
 
@@ -13,7 +23,7 @@ export const roadmapGroups: RoadmapGroup[] = [
   {
     id: 'generation-workflow',
     title: 'Generation Workflow',
-    status: 'placeholder',
+    status: 'partial',
     ownerFiles: [
       'packages/web/src/components/generation/Generation.tsx',
       'packages/web/src/components/generation/GenerationProgress.tsx',
@@ -21,50 +31,34 @@ export const roadmapGroups: RoadmapGroup[] = [
       'packages/web/src/components/batch/BatchGenerate.tsx',
       'packages/web/src/lib/services/generation.ts',
     ],
-    placeholderFiles: [
-      'packages/web/src/components/generation/ApprovalWorkflowPlaceholder.tsx',
-      'packages/web/src/components/generation/CheckpointSessionPlaceholder.tsx',
-      'packages/web/src/lib/services/generation-scenarios.ts',
-      'packages/web/src/lib/services/seed-remix.ts',
-    ],
     items: [
       'Asset-by-asset approval workflow before downstream generation continues',
       'Checkpointed generation sessions that let users pause, resume, or restart from any approved asset',
-      'Partial regeneration flow for replacing one asset without discarding the rest of the draft',
       'Multi-model comparison runs for the same seed and template',
-      'Batch generation queue with priorities, retry policies, and run history',
+      'Batch run history with priorities and retry policies',
       'Scenario presets for common generation goals such as fast drafting, high-structure output, or art-focused packs',
       'Constraint builder for generation goals like tone, genre, style, and content level',
       'Seed remix feature that combines multiple saved concepts into one prompt',
       'Seed idea board with saved prompts, themes, and inspiration sets',
       'Assistant suggestions for strengthening weak or underspecified seeds',
       'Offline/local-model optimized workflow presets',
-      'Guided first-run generation flow for helping new users reach a valid draft quickly',
     ],
   },
   {
     id: 'review-and-editing',
     title: 'Review and Editing',
-    status: 'placeholder',
+    status: 'partial',
     ownerFiles: [
       'packages/web/src/components/drafts/Review.tsx',
       'packages/web/src/components/drafts/Drafts.tsx',
-      'packages/web/src/components/common/ChatPanel.tsx',
       'packages/web/src/components/drafts/DraftComparisonPanel.tsx',
       'packages/web/src/components/drafts/ReviewChecklistPanel.tsx',
       'packages/web/src/components/drafts/VersionHistoryPanel.tsx',
     ],
-    placeholderFiles: [],
     items: [
-      'Merge-ready draft comparison workflow for comparing alternate generations and promoting selected assets',
-      'Persistent structured review checklist with asset-level scoring, notes, and export gating',
-      'Asset health scoring based on completeness, consistency, and format compliance',
       'Provenance view showing which upstream assets influenced each generated asset',
-      'Inline review notes attached to individual assets',
-      'Asset-level commenting with a simple resolved/unresolved state',
+      'Asset health scoring based on completeness, consistency, and format compliance',
       'Draft branching system for exploring alternate versions of the same character',
-      'Draft merge tools for selectively combining assets from different branches',
-      'Deeper version history with restore points and revision diffs',
       'Focus mode for reviewing one asset with its immediate dependencies visible',
       'Assistant tools for rewriting a single asset while preserving established canon',
       'Read-only review links for sharing a draft state without enabling edits',
@@ -73,7 +67,7 @@ export const roadmapGroups: RoadmapGroup[] = [
   {
     id: 'templates-and-blueprints',
     title: 'Templates and Blueprints',
-    status: 'placeholder',
+    status: 'partial',
     ownerFiles: [
       'packages/web/src/components/templates/Templates.tsx',
       'packages/web/src/components/templates/TemplateWizard.tsx',
@@ -83,43 +77,27 @@ export const roadmapGroups: RoadmapGroup[] = [
       'packages/web/src/components/blueprints/BlueprintLintPanel.tsx',
       'packages/web/src/components/blueprints/BlueprintSandboxPanel.tsx',
     ],
-    placeholderFiles: [
-      'packages/web/src/components/templates/TemplateMigrationPlaceholder.tsx',
-    ],
     items: [
-      'Guided template creation wizard in the web UI',
       'Template migration assistant for updating older drafts to newer template versions',
-      'Expanded blueprint preview sandbox with prior-asset context sets and reusable test cases',
       'Visual dependency graph for template assets and generation order',
       'Template marketplace or import/export bundle format for sharing templates',
       'Template starter kits for common character-card formats and content styles',
-      'Template cloning flow for using the built-in template as a starting point for a custom one',
-      'Expanded template comparison workflow with cloning and migration-aware diffs',
-      'Expanded blueprint linting dashboard for placeholder usage, dependency clarity, and output expectations',
+      'Expanded blueprint preview sandbox with prior-asset context sets and reusable test cases',
       'Prompt experimentation lab for testing orchestrator and blueprint variants',
       'Shared blueprint snippet library for reusable sections and control blocks',
-      'Template-aware onboarding tutorial for new users',
     ],
   },
   {
     id: 'draft-library-and-organization',
     title: 'Draft Library and Organization',
-    status: 'placeholder',
-    ownerFiles: [
-      'packages/web/src/components/drafts/Drafts.tsx',
-      'packages/web/src/components/Home.tsx',
-    ],
-    placeholderFiles: [
-      'packages/web/src/components/drafts/LibraryCollectionsPlaceholder.tsx',
-    ],
+    status: 'partial',
+    ownerFiles: ['packages/web/src/components/drafts/Drafts.tsx', 'packages/web/src/components/Home.tsx'],
     items: [
-      'Better draft library filters for archetype, tone, mode, template, and tags',
       'Saved searches and smart collections for large draft libraries',
       'Bulk metadata editing across multiple drafts',
       'Favorite and pin system for important drafts, templates, and presets',
       'Semantic search across draft content, not just metadata',
       'Auto-tagging suggestions based on generated content',
-      'Archive and curation workflows for keeping large draft libraries manageable',
       'Custom foldering or collection system beyond timestamp-based draft storage',
       'Recently viewed and recently edited lists for faster navigation',
       'Duplicate-detection suggestions while browsing the library',
@@ -130,66 +108,33 @@ export const roadmapGroups: RoadmapGroup[] = [
   {
     id: 'canon-worldbuilding-and-relationships',
     title: 'Canon, Worldbuilding, and Relationships',
-    status: 'placeholder',
+    status: 'partial',
     ownerFiles: [
       'packages/web/src/components/lineage/Lineage.tsx',
       'packages/web/src/components/similarity/Similarity.tsx',
       'packages/web/src/components/offspring/Offspring.tsx',
       'packages/web/src/components/worlds/Worlds.tsx',
+      'packages/web/src/components/worlds/WorldDetailEditorPanel.tsx',
       'packages/web/src/components/timelines/Timelines.tsx',
-      'packages/web/src/components/worlds/Events.tsx',
-      'packages/web/src/components/timelines/GenerationHistoryPanel.tsx',
-    ],
-    placeholderFiles: [
-      'packages/web/src/components/lineage/TimelinePlaceholder.tsx',
-      'packages/web/src/components/lineage/AncestryVisualizationPlaceholder.tsx',
-      'packages/web/src/components/lineage/LineageExportPlaceholder.tsx',
-      'packages/web/src/components/similarity/ClusteringPlaceholder.tsx',
-      'packages/web/src/components/similarity/RelationshipGraphPlaceholder.tsx',
-      'packages/web/src/components/offspring/TraitInheritancePlaceholder.tsx',
-      'packages/web/src/components/offspring/BreedingHistoryPlaceholder.tsx',
-      'packages/web/src/components/worlds/CanonLibraryPlaceholder.tsx',
-      'packages/web/src/components/worlds/WorldbookPlaceholder.tsx',
-      'packages/web/src/components/worlds/RelationshipMapPlaceholder.tsx',
-      'packages/web/src/components/worlds/FactionManagerPlaceholder.tsx',
-      'packages/web/src/components/worlds/LocationManagerPlaceholder.tsx',
-      'packages/web/src/components/worlds/UniverseNotesPlaceholder.tsx',
-      'packages/web/src/components/worlds/CanonLockPlaceholder.tsx',
-      'packages/web/src/components/timelines/EventTimelinePlaceholder.tsx',
-      'packages/web/src/components/timelines/ContinuityAssistantPlaceholder.tsx',
-      'packages/web/src/components/worlds/EventCalendarPlaceholder.tsx',
-      'packages/web/src/components/worlds/EventEditorPlaceholder.tsx',
-      'packages/web/src/components/worlds/EventCategoriesPlaceholder.tsx',
-      'packages/web/src/lib/services/canon-library.ts',
     ],
     items: [
-      'Reusable canon library for traits, lore, tags, and recurring world details',
-      'Worldbook or setting support that can be attached to multiple related drafts',
-      'Relationship mapping between characters in the same universe',
-      'Lineage timeline view showing how drafts evolved over time',
-      'Similarity clustering to group near-duplicate or closely related drafts',
-      'Shared faction, setting, and location records reusable across drafts',
-      'Universe-level notes that can be referenced during generation and review',
+      'Canon library module for curated, reusable setting material',
+      'Worldbook module for exportable setting entries',
+      'Universe notes module for free-form canon context',
       'Canon lock system for facts that should remain stable across derivative drafts',
+      'Relationship map visualization inside the world detail editor',
       'Family tree and affiliation visualizations for related characters',
       'Cross-draft continuity assistant for keeping related characters aligned',
       'Event calendar with in-world and real-world date tracking',
-      'Expanded generation history timeline with restore points, lineage jumps, and draft-level drilldown',
+      'World event storage, ordering, and editing',
       'Continuity checking for canon conflicts across drafts',
     ],
   },
   {
     id: 'export-and-publishing',
     title: 'Export and Publishing',
-    status: 'placeholder',
-    ownerFiles: [
-      'packages/web/src/components/common/ExportModal.tsx',
-      'packages/shared/src/export/presets.ts',
-    ],
-    placeholderFiles: [
-      'packages/web/src/components/common/ExportPreviewPlaceholder.tsx',
-      'packages/web/src/components/common/PublishingPlaceholder.tsx',
-    ],
+    status: 'partial',
+    ownerFiles: ['packages/web/src/components/common/ExportModal.tsx', 'packages/shared/src/export/presets.ts'],
     items: [
       'Preset preview mode showing exactly which files and names an export will produce',
       'Platform capability matrix for checking which presets work with which templates',
@@ -197,7 +142,6 @@ export const roadmapGroups: RoadmapGroup[] = [
       'Export profiles with saved naming, packaging, and metadata rules',
       'One-click export bundles for common targets and sharing destinations',
       'Shareable web preview page for a generated character pack',
-      'Optional branded export themes for more polished presentation packages',
       'Metadata manifest export for preserving provenance, model info, and template info alongside assets',
       'Export dry-run mode that shows mapped outputs before creating files',
       'Print-friendly or PDF-style presentation export for review and archiving',
@@ -206,15 +150,12 @@ export const roadmapGroups: RoadmapGroup[] = [
   {
     id: 'analysis-and-evaluation',
     title: 'Analysis and Evaluation',
-    status: 'placeholder',
+    status: 'partial',
     ownerFiles: [
       'packages/web/src/components/similarity/Similarity.tsx',
       'packages/web/src/components/validation/Validation.tsx',
       'packages/web/src/components/Home.tsx',
       'packages/web/src/components/drafts/ReviewChecklistPanel.tsx',
-    ],
-    placeholderFiles: [
-      'packages/web/src/components/similarity/ClusteringPlaceholder.tsx',
     ],
     items: [
       'Golden sample packs for template quality benchmarking',
@@ -226,20 +167,17 @@ export const roadmapGroups: RoadmapGroup[] = [
       'Regression benchmark suite for measuring structural compliance over time',
       'Review analytics showing which assets most often need human edits',
       'Generation time breakdown by stage, provider, and asset count',
-      'Template adoption analytics to show which workflows users actually prefer',
+      'Similarity clustering across a draft library rather than two drafts at a time',
     ],
   },
   {
     id: 'collaboration-and-sharing',
     title: 'Collaboration and Sharing',
-    status: 'placeholder',
+    status: 'planned',
     ownerFiles: [
       'packages/web/src/components/drafts/Review.tsx',
       'packages/web/src/components/templates/Templates.tsx',
       'packages/web/src/components/common/ExportModal.tsx',
-    ],
-    placeholderFiles: [
-      'packages/web/src/components/common/PublishingPlaceholder.tsx',
     ],
     items: [
       'Collaboration-friendly review notes attached to individual assets',
@@ -257,16 +195,12 @@ export const roadmapGroups: RoadmapGroup[] = [
   {
     id: 'ux-and-platform-surfaces',
     title: 'UX and Platform Surfaces',
-    status: 'placeholder',
+    status: 'partial',
     ownerFiles: [
       'packages/web/src/App.tsx',
       'packages/web/src/components/Layout.tsx',
       'packages/web/src/components/Home.tsx',
       'packages/mobile/src/screens',
-    ],
-    placeholderFiles: [
-      'packages/web/src/components/common/OnboardingPlaceholder.tsx',
-      'packages/web/src/components/drafts/LibraryCollectionsPlaceholder.tsx',
     ],
     items: [
       'Mobile-first review and approval flow for draft triage on smaller screens',
@@ -275,24 +209,19 @@ export const roadmapGroups: RoadmapGroup[] = [
       'Keyboard-first review workflows across web, mobile, and desktop surfaces',
       'Quick actions palette for jumping to drafts, templates, exports, and tools',
       'Pinned dashboard widgets for recent drafts, saved searches, and active queues',
-      'Guided empty states that teach features instead of just showing blank screens',
-      'In-app documentation panels linked to templates, presets, and validation rules',
-      'Customizable home screen tailored to the user\'s most common workflow',
+      'Customizable home screen tailored to the most common workflow',
       'Workspace mode for switching between solo drafting, review, and bulk operations',
     ],
   },
   {
     id: 'assistant-and-automation',
     title: 'Assistant and Automation',
-    status: 'placeholder',
+    status: 'partial',
     ownerFiles: [
-      'packages/web/src/components/common/GlobalAssistant.tsx',
+      'packages/web/src/components/Layout.tsx',
+      'packages/web/src/components/common/AssistantContext.tsx',
       'packages/web/src/components/common/ChatPanel.tsx',
       'packages/web/src/components/Home.tsx',
-    ],
-    placeholderFiles: [
-      'packages/web/src/components/common/AutomationPlaceholder.tsx',
-      'packages/web/src/components/common/OnboardingPlaceholder.tsx',
     ],
     items: [
       'Assistant tools for proposing alternate tones or styles for a selected asset',
@@ -308,7 +237,3 @@ export const roadmapGroups: RoadmapGroup[] = [
     ],
   },
 ];
-
-export function getRoadmapGroup(id: string): RoadmapGroup | undefined {
-  return roadmapGroups.find((group) => group.id === id);
-}

@@ -1,0 +1,106 @@
+﻿09-20 10:32:45.673 21180  2415 I CameraManagerGlobal: Camera 1 facing CAMERA_FACING_FRONT state now CAMERA_STATE_ACTIVE for client com.samsung.android.smartface API Level 2 User Id 0Device Id 0
+09-20 10:32:45.673 21180  2415 I CameraManagerGlobal: Camera 1 facing CAMERA_FACING_FRONT state now CAMERA_STATE_IDLE for client com.samsung.android.smartface API Level 2 User Id 0Device Id 0
+09-20 10:32:45.673 21180  2415 I CameraManagerGlobal: postSingleUpdate device: camera id 1 status STATUS_PRESENT
+09-20 10:32:45.673 21180  2415 I CameraManagerGlobal: Camera 1 facing CAMERA_FACING_FRONT state now CAMERA_STATE_CLOSED for client com.samsung.android.smartface API Level 2 User Id 0Device Id 0
+09-20 10:32:45.673 21180  2415 I CameraManagerGlobal: Camera 0 facing CAMERA_FACING_BACK state now CAMERA_STATE_OPENING for client io.github.maeveoffae.eidolonsimulacra API Level 2 User Id 0Device Id 0
+09-20 10:32:45.673 21180  2415 I CameraManagerGlobal: postSingleUpdate device: camera id 0 status STATUS_NOT_AVAILABLE
+09-20 10:32:45.673 21180  2415 I CameraManagerGlobal: Camera 0 facing CAMERA_FACING_BACK state now CAMERA_STATE_OPEN for client io.github.maeveoffae.eidolonsimulacra API Level 2 User Id 0Device Id 0
+09-20 10:32:45.673 21180  2415 I CameraManagerGlobal: Camera 0 facing CAMERA_FACING_BACK state now CAMERA_STATE_ACTIVE for client io.github.maeveoffae.eidolonsimulacra API Level 2 User Id 0Device Id 0
+09-20 10:32:45.673 21180  2415 I CameraManagerGlobal: Camera 0 facing CAMERA_FACING_BACK state now CAMERA_STATE_IDLE for client io.github.maeveoffae.eidolonsimulacra API Level 2 User Id 0Device Id 0
+09-20 10:32:45.673 21180 14552 I CameraManagerGlobal: postSingleUpdate device: camera id 0 status STATUS_PRESENT
+09-20 10:32:45.673 21180 14552 I CameraManagerGlobal: Camera 0 facing CAMERA_FACING_BACK state now CAMERA_STATE_CLOSED for client io.github.maeveoffae.eidolonsimulacra API Level 2 User Id 0Device Id 0
+09-20 10:32:45.673 21180 14552 I CameraManagerGlobal: Camera 1 facing CAMERA_FACING_FRONT state now CAMERA_STATE_OPENING for client com.samsung.android.smartface API Level 2 User Id 0Device Id 0
+09-20 10:32:45.673 21180 14552 I CameraManagerGlobal: postSingleUpdate device: camera id 1 status STATUS_NOT_AVAILABLE
+09-20 10:32:45.674 21180 14552 I CameraManagerGlobal: Camera 1 facing CAMERA_FACING_FRONT state now CAMERA_STATE_OPEN for client com.samsung.android.smartface API Level 2 User Id 0Device Id 0
+09-20 10:32:45.674 21180 14552 I CameraManagerGlobal: Camera 1 facing CAMERA_FACING_FRONT state now CAMERA_STATE_ACTIVE for client com.samsung.android.smartface API Level 2 User Id 0Device Id 0
+09-20 10:32:45.674 21180 14552 I CameraManagerGlobal: Camera 1 facing CAMERA_FACING_FRONT state now CAMERA_STATE_IDLE for client com.samsung.android.smartface API Level 2 User Id 0Device Id 0
+09-20 10:32:45.674 21180 14552 I CameraManagerGlobal: postSingleUpdate device: camera id 1 status STATUS_PRESENT
+-----
+09-20 10:32:45.674 21180 21197 I CameraManagerGlobal: Camera 1 facing CAMERA_FACING_FRONT state now CAMERA_STATE_ACTIVE for client com.samsung.android.smartface API Level 2 User Id 0Device Id 0
+09-20 10:32:45.674 21180 21197 I CameraManagerGlobal: Camera 1 facing CAMERA_FACING_FRONT state now CAMERA_STATE_IDLE for client com.samsung.android.smartface API Level 2 User Id 0Device Id 0
+09-20 10:32:45.674 21180 21197 I CameraManagerGlobal: postSingleUpdate device: camera id 1 status STATUS_PRESENT
+09-20 10:32:45.674 21180 21197 I CameraManagerGlobal: Camera 1 facing CAMERA_FACING_FRONT state now CAMERA_STATE_CLOSED for client com.samsung.android.smartface API Level 2 User Id 0Device Id 0
+09-20 10:32:45.674  3187  4806 D ActivityManager: sync unfroze 27786 com.google.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:1 for 6
+09-20 10:32:45.674 21180 13010 I CameraManagerGlobal: Camera 0 facing CAMERA_FACING_BACK state now CAMERA_STATE_OPENING for client io.github.maeveoffae.eidolonsimulacra API Level 2 User Id 0Device Id 0
+09-20 10:32:45.674  3187  4806 I ActivityManager: Changes in 99201 19 to 19, 0 to 384
+09-20 10:32:45.674 21180 13010 I CameraManagerGlobal: postSingleUpdate device: camera id 0 status STATUS_NOT_AVAILABLE
+09-20 10:32:45.674 21180 13010 I CameraManagerGlobal: Camera 0 facing CAMERA_FACING_BACK state now CAMERA_STATE_OPEN for client io.github.maeveoffae.eidolonsimulacra API Level 2 User Id 0Device Id 0
+09-20 10:32:45.674 21180 13010 I CameraManagerGlobal: Camera 0 facing CAMERA_FACING_BACK state now CAMERA_STATE_ACTIVE for client io.github.maeveoffae.eidolonsimulacra API Level 2 User Id 0Device Id 0
+09-20 10:32:45.674 21180 13010 I CameraManagerGlobal: Camera 0 facing CAMERA_FACING_BACK state now CAMERA_STATE_IDLE for client io.github.maeveoffae.eidolonsimulacra API Level 2 User Id 0Device Id 0
+09-20 10:32:45.674 21180 13010 I CameraManagerGlobal: postSingleUpdate device: camera id 0 status STATUS_PRESENT
+09-20 10:32:45.674 21180 13010 I CameraManagerGlobal: Camera 0 facing CAMERA_FACING_BACK state now CAMERA_STATE_CLOSED for client io.github.maeveoffae.eidolonsimulacra API Level 2 User Id 0Device Id 0
+09-20 10:32:45.674 21180 13010 I CameraManagerGlobal: Camera 1 facing CAMERA_FACING_FRONT state now CAMERA_STATE_OPENING for client com.samsung.android.smartface API Level 2 User Id 0Device Id 0
+09-20 10:32:45.674 21180 13010 I CameraManagerGlobal: postSingleUpdate device: camera id 1 status STATUS_NOT_AVAILABLE
+09-20 10:32:45.674 21180 13010 I CameraManagerGlobal: Camera 1 facing CAMERA_FACING_FRONT state now CAMERA_STATE_OPEN for client com.samsung.android.smartface API Level 2 User Id 0Device Id 0
+09-20 10:32:45.674 21180 13010 I CameraManagerGlobal: Camera 1 facing CAMERA_FACING_FRONT state now CAMERA_STATE_ACTIVE for client com.samsung.android.smartface API Level 2 User Id 0Device Id 0
+09-20 10:32:45.674 21180 13010 I CameraManagerGlobal: Camera 1 facing CAMERA_FACING_FRONT state now CAMERA_STATE_IDLE for client com.samsung.android.smartface API Level 2 User Id 0Device Id 0
+09-20 10:32:45.674 21180 13010 I CameraManagerGlobal: postSingleUpdate device: camera id 1 status STATUS_PRESENT
+-----
+09-20 10:32:45.675 21180 13010 I CameraManagerGlobal: Camera 1 facing CAMERA_FACING_FRONT state now CAMERA_STATE_ACTIVE for client com.samsung.android.smartface API Level 2 User Id 0Device Id 0
+09-20 10:32:45.675 21180 21190 I CameraManagerGlobal: Camera 1 facing CAMERA_FACING_FRONT state now CAMERA_STATE_IDLE for client com.samsung.android.smartface API Level 2 User Id 0Device Id 0
+09-20 10:32:45.675 21180 21190 I CameraManagerGlobal: postSingleUpdate device: camera id 1 status STATUS_PRESENT
+09-20 10:32:45.675 21180 21190 I CameraManagerGlobal: Camera 1 facing CAMERA_FACING_FRONT state now CAMERA_STATE_CLOSED for client com.samsung.android.smartface API Level 2 User Id 0Device Id 0
+09-20 10:32:45.675 27786 27786 D ActivityThread: Package [io.github.maeveoffae.eidolonsimulacra] reported as REPLACED, but missing application info. Assuming REMOVED.
+09-20 10:32:45.675 27786 27786 D ActivityThread: Package [io.github.maeveoffae.eidolonsimulacra] reported as REPLACED, but missing application info. Assuming REMOVED.
+09-20 10:32:45.675 27786 27786 D ActivityThread: Package [io.github.maeveoffae.eidolonsimulacra] reported as REPLACED, but missing application info. Assuming REMOVED.
+09-20 10:32:45.676 27786 27786 D ActivityThread: Package [io.github.maeveoffae.eidolonsimulacra] reported as REPLACED, but missing application info. Assuming REMOVED.
+09-20 10:32:45.676 27786 27786 D ActivityThread: Package [io.github.maeveoffae.eidolonsimulacra] reported as REPLACED, but missing application info. Assuming REMOVED.
+09-20 10:32:45.676 27786 27786 D ActivityThread: Package [io.github.maeveoffae.eidolonsimulacra] reported as REPLACED, but missing application info. Assuming REMOVED.
+09-20 10:32:45.676 27786 27786 D ActivityThread: Package [io.github.maeveoffae.eidolonsimulacra] reported as REPLACED, but missing application info. Assuming REMOVED.
+09-20 10:32:45.676 27786 27786 D ActivityThread: Package [io.github.maeveoffae.eidolonsimulacra] reported as REPLACED, but missing application info. Assuming REMOVED.
+09-20 10:32:45.676 21180 21236 D WM-GreedyScheduler: Starting tracking for f0e47e5b-e0cb-4e7d-ac4d-67f7758a27ca
+09-20 10:32:45.676 27786 27786 D ActivityThread: Package [io.github.maeveoffae.eidolonsimulacra] reported as REPLACED, but missing application info. Assuming REMOVED.
+09-20 10:32:45.676 27786 27786 D ActivityThread: Package [io.github.maeveoffae.eidolonsimulacra] reported as REPLACED, but missing application info. Assuming REMOVED.
+09-20 10:32:45.676 27786 27786 D ActivityThread: Package [io.github.maeveoffae.eidolonsimulacra] reported as REPLACED, but missing application info. Assuming REMOVED.
+09-20 10:32:45.676  3187  3825 I am_unfreeze: [27786,com.google.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:1,6]
+09-20 10:32:45.677 27786 27786 D ActivityThread: Package [io.github.maeveoffae.eidolonsimulacra] reported as REPLACED, but missing application info. Assuming REMOVED.
+09-20 10:32:45.677 27786 27786 D ActivityThread: Package [io.github.maeveoffae.eidolonsimulacra] reported as REPLACED, but missing application info. Assuming REMOVED.
+09-20 10:32:45.677 27786 27786 D ActivityThread: Package [io.github.maeveoffae.eidolonsimulacra] reported as REPLACED, but missing application info. Assuming REMOVED.
+09-20 10:32:45.677 27786 27786 D ActivityThread: Package [io.github.maeveoffae.eidolonsimulacra] reported as REPLACED, but missing application info. Assuming REMOVED.
+09-20 10:32:45.677 27786 27786 D ActivityThread: Package [io.github.maeveoffae.eidolonsimulacra] reported as REPLACED, but missing application info. Assuming REMOVED.
+09-20 10:32:45.678 21180 21220 D WM-WorkConstraintsTrack: NetworkRequestConstraintController register shared callback
+09-20 10:32:45.683 27786 27798 W ocessService0:1: Reducing the number of considered missed Gc histogram windows from 115 to 100
+09-20 10:32:45.683 21180 21220 D ConnectivityManager: StackLog: [android.net.ConnectivityManager.sendRequestForNetwork(ConnectivityManager.java:4744)] [android.net.ConnectivityManager.registerDefaultNetworkCallbackForUid(ConnectivityManager.java:5469)] [android.net.ConnectivityManager.registerDefaultNetworkCallback(ConnectivityManager.java:5436)] [android.net.ConnectivityManager.registerDefaultNetworkCallback(ConnectivityManager.java:5410)] [a$$ExternalSyntheticApiModelOutline2.m(D8$$SyntheticClass:72)] [rhj.invokeSuspend(PG:170)] [rhj.invoke(PG:13)] [gwiv.g(PG:3)] [gwir.b(PG:57)] [gwnm.invokeSuspend(PG:20)] [gvtz.resumeWith(PG:11)] [gwea.run(PG:115)] [rlu.run(PG:3)] [dkal.run(PG:5)] [fzga.run(PG:46)] [djzx.run(PG:81)] [java.lang.Thread.run(Thread.java:1572)] [dkbq.run(PG:62)]
+09-20 10:32:45.684  3187  4863 D ConnectivityService: requestNetwork for uid/pid:10273/21180 activeRequest: null callbackRequest: 20141 [NetworkRequest [ REQUEST id=20142, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED&NOT_BANDWIDTH_CONSTRAINED Uid: 10273 RequestorUid: 10273 RequestorPkg: com.google.android.googlequicksearchbox UnderlyingNetworks: Null] ]] callback flags: 0 order: 2147483647 isUidTracked: false declaredMethods: AVAIL|LOST|NC|BLK
+09-20 10:32:45.684  3187  4472 D ConnectivityService:    accepting network in place of null for NetworkRequest [ REQUEST id=20142, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED&NOT_BANDWIDTH_CONSTRAINED Uid: 10273 RequestorUid: 10273 RequestorPkg: com.google.android.googlequicksearchbox UnderlyingNetworks: Null] ]
+09-20 10:32:45.685 21180 13002 D WM-WorkConstraintsTrack: NetworkRequestConstraintController onCapabilitiesChanged callback
+-----
+09-20 10:32:45.686  3187  4453 D MultiInternetWifiNetworkFactory: got request NetworkRequest [ REQUEST id=20142, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED&NOT_BANDWIDTH_CONSTRAINED Uid: 10273 RequestorUid: 10273 RequestorPkg: com.google.android.googlequicksearchbox UnderlyingNetworks: Null] ]
+09-20 10:32:45.686  3187  4472 D ConnectivityService: NetworkReassignment :
+09-20 10:32:45.686  3187  4472 D ConnectivityService:   20142 : null ΓåÆ 111
+09-20 10:32:45.689 21180 21219 D WM-GreedyScheduler: Constraints met: Scheduling work ID WorkGenerationalId(workSpecId=f0e47e5b-e0cb-4e7d-ac4d-67f7758a27ca, generation=0)
+09-20 10:32:45.692 21180 21219 W WM-Processor: Didn't find WorkSpec for id WorkGenerationalId(workSpecId=f0e47e5b-e0cb-4e7d-ac4d-67f7758a27ca, generation=0)
+09-20 10:32:45.702 21180 21180 D ActivityThread: Package [io.github.maeveoffae.eidolonsimulacra] reported as REPLACED, but missing application info. Assuming REMOVED.
+09-20 10:32:45.703 21180 21180 D ActivityThread: Package [io.github.maeveoffae.eidolonsimulacra] reported as REPLACED, but missing application info. Assuming REMOVED.
+09-20 10:32:45.703 21180 21180 D ActivityThread: Package [io.github.maeveoffae.eidolonsimulacra] reported as REPLACED, but missing application info. Assuming REMOVED.
+09-20 10:32:45.703 21180 21180 D ActivityThread: Package [io.github.maeveoffae.eidolonsimulacra] reported as REPLACED, but missing application info. Assuming REMOVED.
+09-20 10:32:45.703 21180 21180 D ActivityThread: Package [io.github.maeveoffae.eidolonsimulacra] reported as REPLACED, but missing application info. Assuming REMOVED.
+09-20 10:32:45.703 21180 21180 D ActivityThread: Package [io.github.maeveoffae.eidolonsimulacra] reported as REPLACED, but missing application info. Assuming REMOVED.
+09-20 10:32:45.703 21180 21180 D ActivityThread: Package [io.github.maeveoffae.eidolonsimulacra] reported as REPLACED, but missing application info. Assuming REMOVED.
+09-20 10:32:45.704 21180 21180 D ActivityThread: Package [io.github.maeveoffae.eidolonsimulacra] reported as REPLACED, but missing application info. Assuming REMOVED.
+09-20 10:32:45.704 21180 21180 D ActivityThread: Package [io.github.maeveoffae.eidolonsimulacra] reported as REPLACED, but missing application info. Assuming REMOVED.
+09-20 10:32:45.704 21180 21180 D ActivityThread: Package [io.github.maeveoffae.eidolonsimulacra] reported as REPLACED, but missing application info. Assuming REMOVED.
+09-20 10:32:45.704 21180 21180 D ActivityThread: Package [io.github.maeveoffae.eidolonsimulacra] reported as REPLACED, but missing application info. Assuming REMOVED.
+09-20 10:32:45.704 21180 21180 D ActivityThread: Package [io.github.maeveoffae.eidolonsimulacra] reported as REPLACED, but missing application info. Assuming REMOVED.
+09-20 10:32:45.704 21180 21180 D ActivityThread: Package [io.github.maeveoffae.eidolonsimulacra] reported as REPLACED, but missing application info. Assuming REMOVED.
+09-20 10:32:45.704 21180 21180 D ActivityThread: Package [io.github.maeveoffae.eidolonsimulacra] reported as REPLACED, but missing application info. Assuming REMOVED.
+09-20 10:32:45.704 21180 21180 D ActivityThread: Package [io.github.maeveoffae.eidolonsimulacra] reported as REPLACED, but missing application info. Assuming REMOVED.
+09-20 10:32:45.704 21180 21180 D ActivityThread: Package [io.github.maeveoffae.eidolonsimulacra] reported as REPLACED, but missing application info. Assuming REMOVED.
+09-20 10:32:45.706 21180 21180 I gceh    : (REDACTED) Created gRPC endpoint for service %s
+09-20 10:32:45.708 21180 21180 D WM-GreedyScheduler: Stopping tracking for WorkGenerationalId(workSpecId=f0e47e5b-e0cb-4e7d-ac4d-67f7758a27ca, generation=0)
+09-20 10:32:45.709 21180 21219 D WM-GreedyScheduler: Cancelling work ID f0e47e5b-e0cb-4e7d-ac4d-67f7758a27ca
+09-20 10:32:45.710 21180 21219 D WM-WorkConstraintsTrack: NetworkRequestConstraintController unregister shared callback
+09-20 10:32:45.711 21180 21219 D ConnectivityManager: StackLog: [android.net.ConnectivityManager.unregisterNetworkCallback(ConnectivityManager.java:5579)] [rhn.invoke(PG:32)] [b.aj(PG:1)] [rhh.invoke(PG:3)] [gwih.a(PG:104)] [gwif.invokeSuspend(PG:11)] [gvtz.resumeWith(PG:11)] [gwea.run(PG:107)] [rlu.run(PG:3)] [dkal.run(PG:5)] [fzga.run(PG:46)] [djzx.run(PG:81)] [java.lang.Thread.run(Thread.java:1572)] [dkbq.run(PG:62)]
+09-20 10:32:45.711  3187  4472 D ConnectivityService:  Removing from current network [111 WIFI], leaving 293 requests.
+-----
+09-20 10:32:46.189  3187 29029 D BSOHChargingDataCollector: performBatteryWork battery com.android.server.bsoh.device.PrimeBattery@78f06cc
+09-20 10:32:46.190  3187 29029 D BSOHChargingDataCollector: primeBatt readVoltage from sysFsBattVolt,  path : /sys/class/power_supply/battery/batt_voltage_now
+09-20 10:32:46.199  3187 29029 D BSOHChargingDataCollector: 0 	 BattData addData data : BattData { voltage:4.312, current:0.392968, soc:0.92, temperature:27.5, status:2, timestamp:1789921966199, voltage_chg:null}
+09-20 10:32:46.199  3187 29029 D BSOHChargingDataCollector: performBatteryWork--
+09-20 10:32:46.711  3187  3732 W ProcessStats: Tracking association SourceState{6a36136 system/1000 BFgs #365175} whose proc state 4 is better than process ProcessState{2fc9a8e com.samsung.android.biometrics.app.setting/1000 pkg=com.samsung.android.biometrics.app.setting} proc state 15 (3 skipped)
+09-20 10:32:46.712 13486 13486 W SmApplication: onTrimMemory : 40
+09-20 10:32:46.713 13486 13486 I DC.AppIconCache: clear icon cache
+09-20 10:32:46.731 16516 16516 I DWBDigitalWellbeingAppl: onTrimMemory(): level = 40
+09-20 10:32:46.732 16516 16791 I DWBLocalPkgRepositoryIm: clearCache
+09-20 10:32:46.732 16516 16791 I DWBCacheFlow: clear : lock before
+09-20 10:32:46.732 16516 16791 I DWBCacheFlow: clear : lock start

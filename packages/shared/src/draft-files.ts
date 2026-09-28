@@ -1,8 +1,22 @@
 import { detectAndParseCharacter } from './import/character-parser';
 import { inferCharacterDisplayNameFromAssets } from './parse/parse-blocks';
 import { buildPngCardBytes, parseEmbeddedPngBytes } from './png-card';
-import { OFFICIAL_TEMPLATE } from './templates';
-import type { CharacterCardMetadata, CharacterImportOptions, Draft, DraftMetadata, ExportFormat, ImportedCharacter } from './types';
+import { normalizeAssetNameList, normalizeAssetRecord, OFFICIAL_TEMPLATE } from './templates';
+import type {
+  CharacterCardMetadata,
+  CharacterImportOptions,
+  Draft,
+  DraftAssetReviewScore,
+  DraftMergeHistoryEvent,
+  DraftMergeProvenance,
+  DraftMergeResolutionDetail,
+  DraftMetadata,
+  DraftReviewAnnotations,
+  DraftRevisionSnapshot,
+  DraftRevisionSnapshotState,
+  ExportFormat,
+  ImportedCharacter,
+} from './types';
 import { MAX_CONNECTED_DRAFT_REFERENCES } from './types';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -98,6 +112,321 @@ function normalizeMetadataNullableString(value: unknown): string | null | undefi
   }
 
   return normalizeMetadataString(value);
+}
+
+function normalizeDraftAssetReviewScore(value: unknown): DraftAssetReviewScore | undefined {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return undefined;
+  }
+
+  const rounded = Math.round(value);
+  if (rounded < 1 || rounded > 5) {
+    return undefined;
+  }
+
+  return rounded as DraftAssetReviewScore;
+}
+
+function normalizeDraftAssetReviewScores(value: unknown): Record<string, DraftAssetReviewScore> | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  const normalized = Object.fromEntries(
+    Object.entries(value)
+      .map(([assetName, score]) => [assetName.trim(), normalizeDraftAssetReviewScore(score)] as const)
+      .filter((entry): entry is [string, DraftAssetReviewScore] => entry[0].length > 0 && entry[1] !== undefined),
+  );
+
+  return Object.keys(normalized).length > 0 ? normalized : undefined;
+}
+
+function normalizeDraftAssetReviewNotes(value: unknown): Record<string, string> | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  const normalized = Object.fromEntries(
+    Object.entries(value)
+      .map(([assetName, note]) => [assetName.trim(), normalizeMetadataString(note)] as const)
+      .filter((entry): entry is [string, string] => entry[0].length > 0 && entry[1] !== undefined),
+  );
+
+  return Object.keys(normalized).length > 0 ? normalized : undefined;
+}
+
+function createDraftSnapshotId(): string {
+  return `snapshot-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function normalizeDraftRevisionSnapshotState(
+  value: unknown,
+  fallbackSeed: string,
+): DraftRevisionSnapshotState | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  const seed = normalizeMetadataString(value.seed) ?? fallbackSeed;
+  const templateName = normalizeMetadataString(value.template_name) ?? normalizeMetadataString(value.templateName);
+  const assetsSource = isRecord(value.assets) ? value.assets : {};
+  const assets = normalizeAssetRecord(
+    Object.fromEntries(
+      Object.entries(assetsSource).filter((entry): entry is [string, string] => typeof entry[1] === 'string'),
+    ),
+    templateName,
+  );
+  const state: DraftRevisionSnapshotState = {
+    seed,
+    favorite: Boolean(value.favorite),
+    assets,
+  };
+
+  state.mode = coerceContentMode(value.mode);
+  if (typeof value.model === 'string') state.model = value.model;
+  const tags = coerceStringArray(value.tags);
+  if (tags) state.tags = tags;
+  if (typeof value.genre === 'string') state.genre = value.genre;
+  if (typeof value.notes === 'string') state.notes = value.notes;
+  if (typeof value.character_name === 'string') state.character_name = value.character_name;
+  else if (typeof value.characterName === 'string') state.character_name = value.characterName;
+  if (templateName) state.template_name = templateName;
+  const parentDrafts = coerceStringArray(value.parent_drafts) ?? coerceStringArray(value.parentDrafts);
+  if (parentDrafts) state.parent_drafts = parentDrafts;
+  const connectedDrafts = normalizeConnectedDraftIds('__snapshot__', value.connected_drafts ?? value.connectedDrafts);
+  if (connectedDrafts) state.connected_drafts = connectedDrafts;
+  if (typeof value.offspring_type === 'string') state.offspring_type = value.offspring_type;
+  else if (typeof value.offspringType === 'string') state.offspring_type = value.offspringType;
+  if (typeof value.custom_instructions === 'string') state.custom_instructions = value.custom_instructions;
+  else if (typeof value.customInstructions === 'string') state.custom_instructions = value.customInstructions;
+  const componentSendOrder =
+    coerceStringArray(value.component_send_order) ?? coerceStringArray(value.componentSendOrder);
+  if (componentSendOrder) {
+    const normalizedComponentSendOrder = normalizeAssetNameList(componentSendOrder, templateName);
+    if (normalizedComponentSendOrder.length > 0) {
+      state.component_send_order = normalizedComponentSendOrder;
+    }
+  }
+  const cardMetadata = normalizeCardMetadata(value.card_metadata ?? value.cardMetadata);
+  if (cardMetadata) {
+    state.card_metadata = cardMetadata;
+  }
+  const reviewAnnotations = normalizeDraftReviewAnnotations(value.review_annotations ?? value.reviewAnnotations);
+  if (reviewAnnotations) {
+    state.review_annotations = reviewAnnotations;
+  }
+  const mergeProvenance = normalizeDraftMergeProvenance(value.merge_provenance ?? value.mergeProvenance);
+  if (mergeProvenance) {
+    state.merge_provenance = mergeProvenance;
+  }
+  const mergeHistory = normalizeDraftMergeHistory(value.merge_history ?? value.mergeHistory);
+  if (mergeHistory) {
+    state.merge_history = mergeHistory;
+  }
+
+  return state;
+}
+
+function normalizeDraftRevisionSnapshots(value: unknown, fallbackSeed: string): DraftRevisionSnapshot[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+
+  const snapshots = value
+    .filter((entry): entry is Record<string, unknown> => isRecord(entry))
+    .map((entry) => {
+      const state = normalizeDraftRevisionSnapshotState(entry.state, fallbackSeed);
+      if (!state) {
+        return null;
+      }
+
+      const id = normalizeMetadataString(entry.id) ?? createDraftSnapshotId();
+      const createdAt =
+        normalizeMetadataString(entry.created_at) ??
+        normalizeMetadataString(entry.createdAt) ??
+        new Date().toISOString();
+      const label = normalizeMetadataString(entry.label);
+      const reason = normalizeMetadataString(entry.reason);
+
+      return {
+        id,
+        created_at: createdAt,
+        ...(label ? { label } : {}),
+        ...(reason ? { reason } : {}),
+        state,
+      } satisfies DraftRevisionSnapshot;
+    })
+    .filter((entry): entry is DraftRevisionSnapshot => entry !== null);
+
+  return snapshots.length > 0 ? snapshots : undefined;
+}
+
+function normalizeDraftReviewAnnotations(value: unknown): DraftReviewAnnotations | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  const annotations: DraftReviewAnnotations = {};
+  const notes = normalizeMetadataString(value.notes);
+  if (notes) {
+    annotations.notes = notes;
+  }
+
+  const assetScores = normalizeDraftAssetReviewScores(value.asset_scores ?? value.assetScores);
+  if (assetScores) {
+    annotations.asset_scores = assetScores;
+  }
+
+  const assetNotes = normalizeDraftAssetReviewNotes(value.asset_notes ?? value.assetNotes);
+  if (assetNotes) {
+    annotations.asset_notes = assetNotes;
+  }
+
+  const updatedAt = normalizeMetadataString(value.updated_at) ?? normalizeMetadataString(value.updatedAt);
+  if (updatedAt) {
+    annotations.updated_at = updatedAt;
+  }
+
+  return Object.keys(annotations).length > 0 ? annotations : undefined;
+}
+
+function normalizeDraftMergeProvenance(value: unknown): DraftMergeProvenance | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  const strategy = value.strategy === 'single-asset' || value.strategy === 'staged-merge' ? value.strategy : undefined;
+  const sourceDraftId = normalizeMetadataString(value.source_draft_id) ?? normalizeMetadataString(value.sourceDraftId);
+  const sourceSide =
+    value.source_side === 'left' || value.source_side === 'right'
+      ? value.source_side
+      : value.sourceSide === 'left' || value.sourceSide === 'right'
+        ? value.sourceSide
+        : undefined;
+  const sourceSnapshotId =
+    normalizeMetadataString(value.source_snapshot_id) ?? normalizeMetadataString(value.sourceSnapshotId);
+  const baseDraftId = normalizeMetadataString(value.base_draft_id) ?? normalizeMetadataString(value.baseDraftId);
+  const baseSide =
+    value.base_side === 'left' || value.base_side === 'right'
+      ? value.base_side
+      : value.baseSide === 'left' || value.baseSide === 'right'
+        ? value.baseSide
+        : undefined;
+  const baseSnapshotId =
+    normalizeMetadataString(value.base_snapshot_id) ?? normalizeMetadataString(value.baseSnapshotId);
+  const assetNames = normalizeMetadataStringArray(value.asset_names ?? value.assetNames);
+  const createdAt = normalizeMetadataString(value.created_at) ?? normalizeMetadataString(value.createdAt);
+
+  if (
+    !strategy ||
+    !sourceDraftId ||
+    !sourceSide ||
+    !baseDraftId ||
+    !baseSide ||
+    !assetNames ||
+    assetNames.length === 0 ||
+    !createdAt
+  ) {
+    return undefined;
+  }
+
+  return {
+    strategy,
+    source_draft_id: sourceDraftId,
+    source_side: sourceSide,
+    ...(sourceSnapshotId ? { source_snapshot_id: sourceSnapshotId } : {}),
+    base_draft_id: baseDraftId,
+    base_side: baseSide,
+    ...(baseSnapshotId ? { base_snapshot_id: baseSnapshotId } : {}),
+    asset_names: assetNames,
+    created_at: createdAt,
+  };
+}
+
+function normalizeDraftMergeHistoryEntry(value: unknown): DraftMergeHistoryEvent | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  const provenance = normalizeDraftMergeProvenance(value);
+  const id = normalizeMetadataString(value.id) ?? createDraftSnapshotId();
+  const undoSnapshotId =
+    normalizeMetadataString(value.undo_snapshot_id) ?? normalizeMetadataString(value.undoSnapshotId);
+
+  if (!provenance) {
+    return undefined;
+  }
+
+  return {
+    id,
+    ...provenance,
+    ...(undoSnapshotId ? { undo_snapshot_id: undoSnapshotId } : {}),
+    ...(normalizeDraftMergeResolutionDetails(value.asset_resolutions ?? value.assetResolutions)
+      ? { asset_resolutions: normalizeDraftMergeResolutionDetails(value.asset_resolutions ?? value.assetResolutions) }
+      : {}),
+  };
+}
+
+function normalizeDraftMergeResolutionDetail(value: unknown): DraftMergeResolutionDetail | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  const assetName = normalizeMetadataString(value.asset_name) ?? normalizeMetadataString(value.assetName);
+  const reason =
+    value.reason === 'content-drift' ||
+    value.reason === 'review-drift' ||
+    value.reason === 'left-only' ||
+    value.reason === 'right-only'
+      ? value.reason
+      : undefined;
+  const targetPreviouslyHadAsset =
+    typeof value.target_previously_had_asset === 'boolean'
+      ? value.target_previously_had_asset
+      : typeof value.targetPreviouslyHadAsset === 'boolean'
+        ? value.targetPreviouslyHadAsset
+        : undefined;
+  const reviewContextApplied =
+    typeof value.review_context_applied === 'boolean'
+      ? value.review_context_applied
+      : typeof value.reviewContextApplied === 'boolean'
+        ? value.reviewContextApplied
+        : undefined;
+
+  if (!assetName || !reason || targetPreviouslyHadAsset === undefined || reviewContextApplied === undefined) {
+    return undefined;
+  }
+
+  return {
+    asset_name: assetName,
+    reason,
+    target_previously_had_asset: targetPreviouslyHadAsset,
+    review_context_applied: reviewContextApplied,
+  };
+}
+
+function normalizeDraftMergeResolutionDetails(value: unknown): DraftMergeResolutionDetail[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+
+  const entries = value
+    .map((entry) => normalizeDraftMergeResolutionDetail(entry))
+    .filter((entry): entry is DraftMergeResolutionDetail => entry !== undefined);
+
+  return entries.length > 0 ? entries : undefined;
+}
+
+function normalizeDraftMergeHistory(value: unknown): DraftMergeHistoryEvent[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+
+  const entries = value
+    .map((entry) => normalizeDraftMergeHistoryEntry(entry))
+    .filter((entry): entry is DraftMergeHistoryEvent => entry !== undefined);
+
+  return entries.length > 0 ? entries : undefined;
 }
 
 function normalizeCardMetadata(value: unknown): CharacterCardMetadata | undefined {
@@ -212,7 +541,7 @@ function normalizeCardMetadata(value: unknown): CharacterCardMetadata | undefine
 
 function mergeCardMetadata(
   base: CharacterCardMetadata | undefined,
-  override: CharacterCardMetadata | undefined
+  override: CharacterCardMetadata | undefined,
 ): CharacterCardMetadata | undefined {
   if (!base && !override) {
     return undefined;
@@ -255,11 +584,13 @@ function mergeCardMetadata(
 }
 
 function slugifyCardPathSegment(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '') || 'character';
+  return (
+    value
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'character'
+  );
 }
 
 export function createImportedReviewId(): string {
@@ -276,18 +607,15 @@ export function getUniqueImportedReviewId(usedIds: Set<string>): string {
 
 export function coerceDraftMetadata(raw: unknown, fallbackSeed: string): DraftMetadata {
   const source = isRecord(raw) ? raw : {};
-  const reviewIdValue = typeof source.review_id === 'string'
-    ? source.review_id
-    : typeof source.reviewId === 'string'
-      ? source.reviewId
-      : '';
-  const review_id = reviewIdValue.trim().length > 0
-    ? reviewIdValue
-    : createImportedReviewId();
+  const reviewIdValue =
+    typeof source.review_id === 'string'
+      ? source.review_id
+      : typeof source.reviewId === 'string'
+        ? source.reviewId
+        : '';
+  const review_id = reviewIdValue.trim().length > 0 ? reviewIdValue : createImportedReviewId();
   const seedValue = typeof source.seed === 'string' ? source.seed : '';
-  const seed = seedValue.trim().length > 0
-    ? seedValue
-    : fallbackSeed;
+  const seed = seedValue.trim().length > 0 ? seedValue : fallbackSeed;
 
   const metadata: DraftMetadata = {
     review_id,
@@ -306,8 +634,8 @@ export function coerceDraftMetadata(raw: unknown, fallbackSeed: string): DraftMe
   if (typeof source.notes === 'string') metadata.notes = source.notes;
   if (typeof source.custom_instructions === 'string') metadata.custom_instructions = source.custom_instructions;
   else if (typeof source.customInstructions === 'string') metadata.custom_instructions = source.customInstructions;
-  const componentSendOrder = coerceStringArray(source.component_send_order)
-    ?? coerceStringArray(source.componentSendOrder);
+  const componentSendOrder =
+    coerceStringArray(source.component_send_order) ?? coerceStringArray(source.componentSendOrder);
   if (componentSendOrder) {
     metadata.component_send_order = componentSendOrder;
   }
@@ -338,6 +666,25 @@ export function coerceDraftMetadata(raw: unknown, fallbackSeed: string): DraftMe
   if (cardMetadata) {
     metadata.card_metadata = cardMetadata;
   }
+  const reviewAnnotations = normalizeDraftReviewAnnotations(source.review_annotations ?? source.reviewAnnotations);
+  if (reviewAnnotations) {
+    metadata.review_annotations = reviewAnnotations;
+  }
+  const mergeProvenance = normalizeDraftMergeProvenance(source.merge_provenance ?? source.mergeProvenance);
+  if (mergeProvenance) {
+    metadata.merge_provenance = mergeProvenance;
+  }
+  const mergeHistory = normalizeDraftMergeHistory(source.merge_history ?? source.mergeHistory);
+  if (mergeHistory) {
+    metadata.merge_history = mergeHistory;
+  }
+  const revisionSnapshots = normalizeDraftRevisionSnapshots(
+    source.revision_snapshots ?? source.revisionSnapshots,
+    seed,
+  );
+  if (revisionSnapshots) {
+    metadata.revision_snapshots = revisionSnapshots;
+  }
 
   return metadata;
 }
@@ -359,13 +706,25 @@ export function coerceDraft(value: unknown, fallbackSeed = 'Imported draft'): Dr
   }
 
   const metadata = coerceDraftMetadata(isRecord(value.metadata) ? value.metadata : value, fallbackSeed);
-  const path = typeof value.path === 'string' && value.path.trim().length > 0
-    ? value.path
-    : typeof value.reviewId === 'string' && value.reviewId.trim().length > 0
-      ? value.reviewId
-      : metadata.review_id;
+  const normalizedAssets = normalizeAssetRecord(assets, metadata.template_name);
+  const normalizedComponentSendOrder = metadata.component_send_order
+    ? normalizeAssetNameList(metadata.component_send_order, metadata.template_name)
+    : undefined;
 
-  return { metadata, assets, path };
+  if (normalizedComponentSendOrder && normalizedComponentSendOrder.length > 0) {
+    metadata.component_send_order = normalizedComponentSendOrder;
+  } else {
+    delete metadata.component_send_order;
+  }
+
+  const path =
+    typeof value.path === 'string' && value.path.trim().length > 0
+      ? value.path
+      : typeof value.reviewId === 'string' && value.reviewId.trim().length > 0
+        ? value.reviewId
+        : metadata.review_id;
+
+  return { metadata, assets: normalizedAssets, path };
 }
 
 function parseJsonDraftPayload(data: unknown): Draft[] {
@@ -407,12 +766,14 @@ function isRecognizedDraftJsonPayload(data: unknown): boolean {
     return false;
   }
 
-  return Array.isArray(data.drafts)
-    || isRecord(data.draft)
-    || isRecord(data.assets)
-    || isRecord(data.metadata)
-    || typeof data.reviewId === 'string'
-    || typeof data.review_id === 'string';
+  return (
+    Array.isArray(data.drafts) ||
+    isRecord(data.draft) ||
+    isRecord(data.assets) ||
+    isRecord(data.metadata) ||
+    typeof data.reviewId === 'string' ||
+    typeof data.review_id === 'string'
+  );
 }
 
 function normalizeAssetHeading(heading: string): string {
@@ -468,11 +829,13 @@ function parseMarkdownDraftPayload(markdown: string): Draft[] {
   }
 
   const metadata = coerceDraftMetadata(metadataSource, fallbackSeed);
-  return [{
-    path: metadata.review_id,
-    metadata,
-    assets,
-  }];
+  return [
+    {
+      path: metadata.review_id,
+      metadata,
+      assets,
+    },
+  ];
 }
 
 function buildImportedDraftFromCharacter(
@@ -485,9 +848,10 @@ function buildImportedDraftFromCharacter(
   const seed = sourceName ? `Imported from ${sourceName}` : `Imported draft: ${characterName}`;
   const sourceLabel = character.sourcePreset || character.sourceFormat;
   const unmappedCount = Object.keys(character.unmappedFields || {}).length;
-  const notes = unmappedCount > 0
-    ? `Imported from ${sourceLabel}. Preserved ${unmappedCount} unmapped field${unmappedCount === 1 ? '' : 's'} in the upload preview.`
-    : `Imported from ${sourceLabel}.`;
+  const notes =
+    unmappedCount > 0
+      ? `Imported from ${sourceLabel}. Preserved ${unmappedCount} unmapped field${unmappedCount === 1 ? '' : 's'} in the upload preview.`
+      : `Imported from ${sourceLabel}.`;
   const importedMetadata = character.metadata ?? {};
 
   const metadata: DraftMetadata = {
@@ -571,7 +935,11 @@ export interface DraftImportParseResult {
   explicitEmptyPayload: boolean;
 }
 
-export function parseDraftImportText(raw: string, sourceName?: string, options?: CharacterImportOptions): DraftImportParseResult {
+export function parseDraftImportText(
+  raw: string,
+  sourceName?: string,
+  options?: CharacterImportOptions,
+): DraftImportParseResult {
   const trimmed = raw.trim();
   if (!trimmed) {
     throw new Error('Import file is empty');
@@ -679,15 +1047,16 @@ function tryParseStringArray(raw: string | undefined): string[] {
 }
 
 function getPortableDraftAssets(draft: Draft): Record<string, string> {
+  const normalizedAssets = normalizeAssetRecord(draft.assets, draft.metadata.template_name);
+
   return Object.fromEntries(
-    Object.entries(draft.assets).filter(([assetName, value]) => assetName !== 'card_image' && value.trim().length > 0)
+    Object.entries(normalizedAssets).filter(
+      ([assetName, value]) => assetName !== 'card_image' && value.trim().length > 0,
+    ),
   );
 }
 
-function resolveDraftCardImageBytes(
-  draft: Draft,
-  cardMetadata: CharacterCardMetadata | undefined,
-): Uint8Array | null {
+function resolveDraftCardImageBytes(draft: Draft, cardMetadata: CharacterCardMetadata | undefined): Uint8Array | null {
   const candidates = [
     trimDraftText(draft.assets.card_image),
     trimDraftText(cardMetadata?.avatar),
@@ -745,67 +1114,81 @@ function parseLorebookEntrySections(content: string): {
     });
   }
 
-  const description = sections.length > 0
-    ? remaining.slice(0, sections[0].start).trim() || undefined
-    : undefined;
+  const description = sections.length > 0 ? remaining.slice(0, sections[0].start).trim() || undefined : undefined;
 
   if (sections.length === 0) {
     return {
       bookName,
       description,
-      entries: [{
-        name: bookName || 'Entry 1',
-        keys: [],
-        secondary_keys: [],
-        content: remaining,
+      entries: [
+        {
+          name: bookName || 'Entry 1',
+          keys: [],
+          secondary_keys: [],
+          content: remaining,
+          enabled: true,
+          insertion_order: 10,
+          case_sensitive: false,
+          priority: 10,
+          id: 1,
+          comment: '',
+          selective: false,
+          constant: false,
+          position: '',
+          extensions: {},
+          probability: 100,
+          selectiveLogic: 0,
+        },
+      ],
+    };
+  }
+
+  const entries = sections
+    .map((section, index) => {
+      const next = sections[index + 1];
+      const rawBody = remaining.slice(section.bodyStart, next ? next.start : remaining.length).trim();
+      const bodyLines = rawBody.split('\n');
+      const keysLine = bodyLines.find((line) => line.startsWith('Keys: '));
+      const secondaryKeysLine = bodyLines.find((line) => line.startsWith('Secondary Keys: '));
+      const commentLine = bodyLines.find((line) => line.startsWith('Comment: '));
+      const contentLines = bodyLines.filter((line) => !/^Keys: |^Secondary Keys: |^Comment: /i.test(line));
+      const entryContent = contentLines.join('\n').trim();
+      const keys = keysLine
+        ? keysLine
+            .slice('Keys: '.length)
+            .split(',')
+            .map((entry) => entry.trim())
+            .filter(Boolean)
+        : [];
+      const secondaryKeys = secondaryKeysLine
+        ? secondaryKeysLine
+            .slice('Secondary Keys: '.length)
+            .split(',')
+            .map((entry) => entry.trim())
+            .filter(Boolean)
+        : [];
+      const comment = commentLine ? commentLine.slice('Comment: '.length).trim() : '';
+
+      return {
+        name: section.title || `Entry ${index + 1}`,
+        keys,
+        secondary_keys: secondaryKeys,
+        content: entryContent,
         enabled: true,
-        insertion_order: 10,
+        insertion_order: (index + 1) * 10,
         case_sensitive: false,
         priority: 10,
-        id: 1,
-        comment: '',
+        id: index + 1,
+        comment,
         selective: false,
         constant: false,
         position: '',
         extensions: {},
         probability: 100,
         selectiveLogic: 0,
-      }],
-    };
-  }
-
-  const entries = sections.map((section, index) => {
-    const next = sections[index + 1];
-    const rawBody = remaining.slice(section.bodyStart, next ? next.start : remaining.length).trim();
-    const bodyLines = rawBody.split('\n');
-    const keysLine = bodyLines.find((line) => line.startsWith('Keys: '));
-    const secondaryKeysLine = bodyLines.find((line) => line.startsWith('Secondary Keys: '));
-    const commentLine = bodyLines.find((line) => line.startsWith('Comment: '));
-    const contentLines = bodyLines.filter((line) => !/^Keys: |^Secondary Keys: |^Comment: /i.test(line));
-    const entryContent = contentLines.join('\n').trim();
-    const keys = keysLine ? keysLine.slice('Keys: '.length).split(',').map((entry) => entry.trim()).filter(Boolean) : [];
-    const secondaryKeys = secondaryKeysLine ? secondaryKeysLine.slice('Secondary Keys: '.length).split(',').map((entry) => entry.trim()).filter(Boolean) : [];
-    const comment = commentLine ? commentLine.slice('Comment: '.length).trim() : '';
-
-    return {
-      name: section.title || `Entry ${index + 1}`,
-      keys,
-      secondary_keys: secondaryKeys,
-      content: entryContent,
-      enabled: true,
-      insertion_order: (index + 1) * 10,
-      case_sensitive: false,
-      priority: 10,
-      id: index + 1,
-      comment,
-      selective: false,
-      constant: false,
-      position: '',
-      extensions: {},
-      probability: 100,
-      selectiveLogic: 0,
-    };
-  }).filter((entry) => typeof entry.content === 'string' && entry.content.trim().length > 0);
+      };
+    })
+    .filter((entry) => typeof entry.content === 'string' && entry.content.trim().length > 0);
 
   return { bookName, description, entries };
 }
@@ -871,15 +1254,23 @@ function buildChubCompatibleCardExport(draft: Draft, includeMetadata: boolean): 
   const cardMetadata = mergeCardMetadata(assetCardMetadata, normalizeCardMetadata(draft.metadata.card_metadata));
   const embeddedCardImage = trimDraftText(draft.assets.card_image);
   const portableAssets = getPortableDraftAssets(draft);
-  const name = trimDraftText(draft.metadata.character_name)
-    ?? inferCharacterDisplayNameFromAssets(draft.assets)
-    ?? trimDraftText(draft.metadata.seed)
-    ?? draft.metadata.review_id;
+  const name =
+    trimDraftText(draft.metadata.character_name) ??
+    inferCharacterDisplayNameFromAssets(draft.assets) ??
+    trimDraftText(draft.metadata.seed) ??
+    draft.metadata.review_id;
   const alternateGreetings = tryParseStringArray(draft.assets.alternate_greetings);
   const characterBook = buildCharacterBook(draft, name);
   const creator = cardMetadata?.creator ?? trimDraftText(draft.assets.creator) ?? 'Eidolon Simulacra';
-  const characterVersion = cardMetadata?.character_version ?? trimDraftText(draft.assets.character_version) ?? trimDraftText(draft.metadata.modified) ?? trimDraftText(draft.metadata.created) ?? '1.0';
-  const depthPrompt = cardMetadata?.depth_prompt ?? parseJsonObjectAsset(draft.assets.depth_prompt) ?? { depth: 0, prompt: '' };
+  const characterVersion =
+    cardMetadata?.character_version ??
+    trimDraftText(draft.assets.character_version) ??
+    trimDraftText(draft.metadata.modified) ??
+    trimDraftText(draft.metadata.created) ??
+    '1.0';
+  const depthPrompt = cardMetadata?.depth_prompt ??
+    parseJsonObjectAsset(draft.assets.depth_prompt) ?? { depth: 0, prompt: '' };
+  const normalizedAssets = normalizeAssetRecord(draft.assets, draft.metadata.template_name);
   const relatedLorebooks = characterBook
     ? [{ id: -1, book: null, path: 'embedded', version: characterVersion, commit_ref: characterVersion }]
     : [];
@@ -914,9 +1305,9 @@ function buildChubCompatibleCardExport(draft: Draft, includeMetadata: boolean): 
     first_mes: trimDraftText(draft.assets.intro_scene) ?? '',
     avatar: cardMetadata?.avatar ?? embeddedCardImage ?? trimDraftText(draft.assets.avatar) ?? '',
     mes_example: buildMesExample(draft.assets.mes_example) ?? '',
-    creator_notes: trimDraftText(draft.assets.creator_notes)
-      ?? trimDraftText(draft.assets.intro_page)
-      ?? (includeMetadata ? trimDraftText(draft.metadata.notes) ?? '' : ''),
+    creator_notes:
+      trimDraftText(normalizedAssets.creator_notes) ??
+      (includeMetadata ? (trimDraftText(draft.metadata.notes) ?? '') : ''),
     system_prompt: withOriginalPrefix(draft.assets.system_prompt),
     post_history_instructions: withOriginalPrefix(draft.assets.post_history),
     alternate_greetings: alternateGreetings,
@@ -944,7 +1335,7 @@ function buildChubCompatibleCardExport(draft: Draft, includeMetadata: boolean): 
 export function buildDraftExportArtifact(
   draft: Draft,
   format: ExportFormat,
-  includeMetadata = true
+  includeMetadata = true,
 ): DraftExportArtifact {
   if (format === 'text') {
     const content = Object.entries(draft.assets)
@@ -961,7 +1352,9 @@ export function buildDraftExportArtifact(
     const sections = [
       `# ${draft.metadata.character_name || draft.metadata.seed}`,
       includeMetadata ? `## Metadata\n\n${JSON.stringify(draft.metadata, null, 2)}` : '',
-      ...Object.entries(draft.assets).map(([assetName, value]) => `## ${assetName}\n\n${escapeAssetContentForMarkdownBundle(value)}`),
+      ...Object.entries(draft.assets).map(
+        ([assetName, value]) => `## ${assetName}\n\n${escapeAssetContentForMarkdownBundle(value)}`,
+      ),
     ].filter(Boolean);
 
     return {
@@ -1001,9 +1394,13 @@ export function buildDraftExportArtifact(
 }
 
 export function buildDraftLibraryExport(drafts: Draft[]): string {
-  return JSON.stringify({
-    version: '1.0',
-    exportedAt: new Date().toISOString(),
-    drafts,
-  }, null, 2);
+  return JSON.stringify(
+    {
+      version: '1.0',
+      exportedAt: new Date().toISOString(),
+      drafts,
+    },
+    null,
+    2,
+  );
 }

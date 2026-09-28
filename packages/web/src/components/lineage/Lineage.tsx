@@ -14,7 +14,8 @@ const PLANNED_LINEAGE_MODULES = [
   },
   {
     name: 'Ancestry visualization',
-    description: 'Large graph visualization is not live yet and does not need to compete with the current tree inspector.',
+    description:
+      'Large graph visualization is not live yet and does not need to compete with the current tree inspector.',
   },
   {
     name: 'Lineage export',
@@ -48,9 +49,7 @@ function NodeCard({
             {node.mode ? ` • ${node.mode}` : ''}
           </div>
         </div>
-        <span className="app-pill app-pill-muted !px-2 !py-1 !text-[11px]">
-          {node.child_ids.length} children
-        </span>
+        <span className="app-pill app-pill-muted !px-2 !py-1 !text-[11px]">{node.child_ids.length} children</span>
       </div>
     </button>
   );
@@ -70,7 +69,7 @@ export default function Lineage() {
 
   const nodeMap = useMemo(() => new Map((data?.nodes ?? []).map((node) => [node.id, node])), [data?.nodes]);
 
-  const selectedNode = selectedId ? nodeMap.get(selectedId) ?? null : data?.nodes[0] ?? null;
+  const selectedNode = selectedId ? (nodeMap.get(selectedId) ?? null) : (data?.nodes[0] ?? null);
 
   const flatFilteredNodes = useMemo(() => {
     const nodes = data?.nodes ?? [];
@@ -152,11 +151,10 @@ export default function Lineage() {
           <div className="space-y-4">
             <p className="app-page-eyebrow">Family graph</p>
             <h1 className="app-page-title">Trace offspring branches back through reviewed draft history.</h1>
-            <p className="app-page-summary">Inspect ancestry before jumping back into review, offspring, or comparison work.</p>
-            <button
-              onClick={() => void refetch()}
-              className="app-button app-button-secondary"
-            >
+            <p className="app-page-summary">
+              Inspect ancestry before jumping back into review, offspring, or comparison work.
+            </p>
+            <button onClick={() => void refetch()} className="app-button app-button-secondary">
               <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
               Refresh
             </button>
@@ -187,24 +185,24 @@ export default function Lineage() {
         subtitle="Current lineage coverage"
         preview={`${data?.stats.total_characters ?? 0} characters • ${data?.stats.generations ?? 0} generations`}
       >
-      <div className="grid gap-4 sm:grid-cols-4">
-        <div className="app-panel p-4">
-          <div className="text-2xl font-bold">{data?.stats.total_characters ?? 0}</div>
-          <div className="text-sm text-muted-foreground">Characters</div>
+        <div className="grid gap-4 sm:grid-cols-4">
+          <div className="app-panel p-4">
+            <div className="text-2xl font-bold">{data?.stats.total_characters ?? 0}</div>
+            <div className="text-sm text-muted-foreground">Characters</div>
+          </div>
+          <div className="app-panel p-4">
+            <div className="text-2xl font-bold">{data?.stats.root_characters ?? 0}</div>
+            <div className="text-sm text-muted-foreground">Roots</div>
+          </div>
+          <div className="app-panel p-4">
+            <div className="text-2xl font-bold">{data?.stats.leaf_characters ?? 0}</div>
+            <div className="text-sm text-muted-foreground">Leaves</div>
+          </div>
+          <div className="app-panel p-4">
+            <div className="text-2xl font-bold">{data?.stats.generations ?? 0}</div>
+            <div className="text-sm text-muted-foreground">Generations</div>
+          </div>
         </div>
-        <div className="app-panel p-4">
-          <div className="text-2xl font-bold">{data?.stats.root_characters ?? 0}</div>
-          <div className="text-sm text-muted-foreground">Roots</div>
-        </div>
-        <div className="app-panel p-4">
-          <div className="text-2xl font-bold">{data?.stats.leaf_characters ?? 0}</div>
-          <div className="text-sm text-muted-foreground">Leaves</div>
-        </div>
-        <div className="app-panel p-4">
-          <div className="text-2xl font-bold">{data?.stats.generations ?? 0}</div>
-          <div className="text-sm text-muted-foreground">Generations</div>
-        </div>
-      </div>
       </CollapsibleSection>
 
       <CollapsibleSection
@@ -213,64 +211,68 @@ export default function Lineage() {
         preview={`${generationFilter === 'all' ? 'all generations' : `generation ${generationFilter}`} • depth ${maxDepth}${rootsOnly ? ' • roots only' : ''}${leavesOnly ? ' • leaves only' : ''}`}
         defaultExpanded
       >
-      <div className="app-panel p-4">
-        <div className="grid gap-4 md:grid-cols-[1fr_auto_auto_auto] md:items-end">
-          <div>
-            <label htmlFor="generation-filter" className="text-sm font-medium">Generation</label>
-            <select
-              id="generation-filter"
-              value={generationFilter}
-              onChange={(event) => setGenerationFilter(event.target.value)}
-              className="mt-1.5 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            >
-              <option value="all">All generations</option>
-              {Array.from({ length: (data?.max_generation ?? 0) + 1 }, (_, index) => (
-                <option key={index} value={String(index)}>
-                  Generation {index}
-                </option>
-              ))}
-            </select>
+        <div className="app-panel p-4">
+          <div className="grid gap-4 md:grid-cols-[1fr_auto_auto_auto] md:items-end">
+            <div>
+              <label htmlFor="generation-filter" className="text-sm font-medium">
+                Generation
+              </label>
+              <select
+                id="generation-filter"
+                value={generationFilter}
+                onChange={(event) => setGenerationFilter(event.target.value)}
+                className="mt-1.5 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
+                <option value="all">All generations</option>
+                {Array.from({ length: (data?.max_generation ?? 0) + 1 }, (_, index) => (
+                  <option key={index} value={String(index)}>
+                    Generation {index}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="max-depth-input" className="text-sm font-medium">
+                Max Depth
+              </label>
+              <input
+                id="max-depth-input"
+                type="number"
+                min={1}
+                max={10}
+                value={maxDepth}
+                onChange={(event) => setMaxDepth(Number(event.target.value))}
+                className="mt-1.5 w-28 rounded-md border border-input bg-background px-3 py-2 text-sm"
+              />
+            </div>
+            <label className="inline-flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={rootsOnly}
+                onChange={(event) => {
+                  setRootsOnly(event.target.checked);
+                  if (event.target.checked) {
+                    setLeavesOnly(false);
+                  }
+                }}
+              />
+              Roots only
+            </label>
+            <label className="inline-flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={leavesOnly}
+                onChange={(event) => {
+                  setLeavesOnly(event.target.checked);
+                  if (event.target.checked) {
+                    setRootsOnly(false);
+                  }
+                }}
+              />
+              Leaves only
+            </label>
           </div>
-          <div>
-            <label htmlFor="max-depth-input" className="text-sm font-medium">Max Depth</label>
-            <input
-              id="max-depth-input"
-              type="number"
-              min={1}
-              max={10}
-              value={maxDepth}
-              onChange={(event) => setMaxDepth(Number(event.target.value))}
-              className="mt-1.5 w-28 rounded-md border border-input bg-background px-3 py-2 text-sm"
-            />
-          </div>
-          <label className="inline-flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={rootsOnly}
-              onChange={(event) => {
-                setRootsOnly(event.target.checked);
-                if (event.target.checked) {
-                  setLeavesOnly(false);
-                }
-              }}
-            />
-            Roots only
-          </label>
-          <label className="inline-flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={leavesOnly}
-              onChange={(event) => {
-                setLeavesOnly(event.target.checked);
-                if (event.target.checked) {
-                  setRootsOnly(false);
-                }
-              }}
-            />
-            Leaves only
-          </label>
         </div>
-      </div>
       </CollapsibleSection>
 
       <div className="grid gap-6 xl:grid-cols-[1.3fr_0.9fr]">
@@ -307,7 +309,11 @@ export default function Lineage() {
         <CollapsibleSection
           title="Character details"
           subtitle={selectedNode?.character_name || 'Select a character'}
-          preview={selectedNode ? `Generation ${selectedNode.generation}${selectedNode.mode ? ` • ${selectedNode.mode}` : ''}` : 'No character selected'}
+          preview={
+            selectedNode
+              ? `Generation ${selectedNode.generation}${selectedNode.mode ? ` • ${selectedNode.mode}` : ''}`
+              : 'No character selected'
+          }
           defaultExpanded={false}
         >
           <div className="mb-4 flex items-center gap-2">
@@ -342,15 +348,21 @@ export default function Lineage() {
               <div className="space-y-3">
                 <div>
                   <div className="font-medium">Parents</div>
-                  <div className="mt-1 text-muted-foreground">{selectedNode.parent_names.length > 0 ? selectedNode.parent_names.join(', ') : 'None'}</div>
+                  <div className="mt-1 text-muted-foreground">
+                    {selectedNode.parent_names.length > 0 ? selectedNode.parent_names.join(', ') : 'None'}
+                  </div>
                 </div>
                 <div>
                   <div className="font-medium">Children</div>
-                  <div className="mt-1 text-muted-foreground">{selectedNode.child_names.length > 0 ? selectedNode.child_names.join(', ') : 'None'}</div>
+                  <div className="mt-1 text-muted-foreground">
+                    {selectedNode.child_names.length > 0 ? selectedNode.child_names.join(', ') : 'None'}
+                  </div>
                 </div>
                 <div>
                   <div className="font-medium">Siblings</div>
-                  <div className="mt-1 text-muted-foreground">{selectedNode.sibling_names.length > 0 ? selectedNode.sibling_names.join(', ') : 'None'}</div>
+                  <div className="mt-1 text-muted-foreground">
+                    {selectedNode.sibling_names.length > 0 ? selectedNode.sibling_names.join(', ') : 'None'}
+                  </div>
                 </div>
               </div>
 
@@ -370,10 +382,7 @@ export default function Lineage() {
                     Compare Parents
                   </Link>
                 )}
-                <Link
-                  to="/offspring"
-                  className="app-button app-button-secondary"
-                >
+                <Link to="/offspring" className="app-button app-button-secondary">
                   Generate More Offspring
                 </Link>
               </div>
@@ -392,7 +401,8 @@ export default function Lineage() {
           <div>
             <h2 className="text-lg font-semibold">Staged lineage modules</h2>
             <p className="text-sm text-muted-foreground">
-              The live lineage inspector is already useful on its own. Additional visualization and export features stay staged here until they have real behavior.
+              The live lineage inspector is already useful on its own. Additional visualization and export features stay
+              staged here until they have real behavior.
             </p>
           </div>
           <span className="app-pill app-pill-muted">Not live</span>

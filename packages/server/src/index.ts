@@ -1,25 +1,25 @@
 // Eidolon Character Generator Server
 // Main entry point
-import express, { Express } from "express";
-import cors from "cors";
-import helmet from "helmet";
-import cookieParser from "cookie-parser";
-import rateLimit from "express-rate-limit";
-import { env } from "./env.js";
-import { prisma } from "./db.js";
+import express, { Express } from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
+import rateLimit from 'express-rate-limit';
+import { env } from './env.js';
+import { prisma } from './db.js';
 
 // Routes
-import authRoutes from "./routes/auth.js";
-import oauthRoutes from "./routes/oauth.js";
-import draftsRoutes from "./routes/drafts.js";
-import themesRoutes from "./routes/themes.js";
-import templatesRoutes from "./routes/templates.js";
-import seedsRoutes from "./routes/seeds.js";
-import seedRunsRoutes from "./routes/seed-runs.js";
-import configRoutes from "./routes/config.js";
-import blueprintsRoutes from "./routes/blueprints.js";
-import worldsRoutes from "./routes/worlds.js";
-import timelinesRoutes from "./routes/timelines.js";
+import authRoutes from './routes/auth.js';
+import oauthRoutes from './routes/oauth.js';
+import draftsRoutes from './routes/drafts.js';
+import themesRoutes from './routes/themes.js';
+import templatesRoutes from './routes/templates.js';
+import seedsRoutes from './routes/seeds.js';
+import seedRunsRoutes from './routes/seed-runs.js';
+import configRoutes from './routes/config.js';
+import blueprintsRoutes from './routes/blueprints.js';
+import worldsRoutes from './routes/worlds.js';
+import timelinesRoutes from './routes/timelines.js';
 
 // =============================================================================
 // Express App Setup
@@ -28,52 +28,69 @@ import timelinesRoutes from "./routes/timelines.js";
 const app: Express = express();
 
 // Trust proxy (for accurate client IP detection behind reverse proxies)
-app.set("trust proxy", env.TRUST_PROXY);
+app.set('trust proxy', env.TRUST_PROXY);
 
 // Security middleware
-app.use(helmet({
-  contentSecurityPolicy: env.NODE_ENV === "production",
-  crossOriginEmbedderPolicy: false,
-}));
+app.use(
+  helmet({
+    contentSecurityPolicy: env.NODE_ENV === 'production',
+    crossOriginEmbedderPolicy: false,
+  }),
+);
 
 // CORS configuration
-app.use(cors({
-  origin: env.CORS_ORIGIN.split(",").map((o) => o.trim()),
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-}));
+const corsOrigins = env.CORS_ORIGIN.split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+const allowAnyOrigin = corsOrigins.includes('*');
+
+if (allowAnyOrigin && env.NODE_ENV === 'production') {
+  console.warn(
+    "CORS_ORIGIN is set to '*' while credentialed requests are enabled. Set an explicit origin list in production.",
+  );
+}
+
+app.use(
+  cors({
+    // A wildcard cannot be combined with credentialed requests (browsers reject it),
+    // so reflect the caller origin when the operator opted into "any origin".
+    origin: allowAnyOrigin ? true : corsOrigins,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  }),
+);
 
 // Rate limiting (configurable via environment)
 if (env.RATE_LIMIT_ENABLED) {
   const limiter = rateLimit({
     windowMs: env.RATE_LIMIT_WINDOW_MS,
-    max: env.NODE_ENV === "production" ? env.RATE_LIMIT_MAX : Math.max(env.RATE_LIMIT_MAX, 1000),
-    message: { error: "Too many requests, please try again later" },
+    max: env.NODE_ENV === 'production' ? env.RATE_LIMIT_MAX : Math.max(env.RATE_LIMIT_MAX, 1000),
+    message: { error: 'Too many requests, please try again later' },
     standardHeaders: true,
     legacyHeaders: false,
     // Keep health/status checks out of global throttling to reduce false positives.
-    skip: (req) => req.path === "/api/health",
+    skip: (req) => req.path === '/api/health',
   });
-  app.use("/api/", limiter);
+  app.use('/api/', limiter);
 }
 
 // Stricter rate limit for auth endpoints
 if (env.RATE_LIMIT_AUTH_ENABLED) {
   const authLimiter = rateLimit({
     windowMs: env.RATE_LIMIT_WINDOW_MS,
-    max: env.NODE_ENV === "production" ? env.RATE_LIMIT_AUTH_MAX : Math.max(env.RATE_LIMIT_AUTH_MAX, 100),
-    message: { error: "Too many authentication attempts, please try again later" },
+    max: env.NODE_ENV === 'production' ? env.RATE_LIMIT_AUTH_MAX : Math.max(env.RATE_LIMIT_AUTH_MAX, 100),
+    message: { error: 'Too many authentication attempts, please try again later' },
     standardHeaders: true,
     legacyHeaders: false,
   });
-  app.use("/api/auth/login", authLimiter);
-  app.use("/api/auth/register", authLimiter);
+  app.use('/api/auth/login', authLimiter);
+  app.use('/api/auth/register', authLimiter);
 }
 
 // Body parsing
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
 // =============================================================================
@@ -81,24 +98,24 @@ app.use(cookieParser());
 // =============================================================================
 
 // Health check
-app.get("/api/health", (_req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
+app.get('/api/health', (_req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 // Authentication routes
-app.use("/api/auth", authRoutes);
-app.use("/api/auth/oauth", oauthRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/auth/oauth', oauthRoutes);
 
 // Data sync routes (all require authentication)
-app.use("/api/sync/drafts", draftsRoutes);
-app.use("/api/sync/themes", themesRoutes);
-app.use("/api/sync/templates", templatesRoutes);
-app.use("/api/sync/seeds", seedsRoutes);
-app.use("/api/sync/seed-runs", seedRunsRoutes);
-app.use("/api/sync/config", configRoutes);
-app.use("/api/sync/blueprints", blueprintsRoutes);
-app.use("/api/sync/worlds", worldsRoutes);
-app.use("/api/sync/timelines", timelinesRoutes);
+app.use('/api/sync/drafts', draftsRoutes);
+app.use('/api/sync/themes', themesRoutes);
+app.use('/api/sync/templates', templatesRoutes);
+app.use('/api/sync/seeds', seedsRoutes);
+app.use('/api/sync/seed-runs', seedRunsRoutes);
+app.use('/api/sync/config', configRoutes);
+app.use('/api/sync/blueprints', blueprintsRoutes);
+app.use('/api/sync/worlds', worldsRoutes);
+app.use('/api/sync/timelines', timelinesRoutes);
 
 // =============================================================================
 // Error Handling
@@ -106,31 +123,30 @@ app.use("/api/sync/timelines", timelinesRoutes);
 
 // 404 handler
 app.use((_req, res) => {
-  res.status(404).json({ error: "Not found" });
+  res.status(404).json({ error: 'Not found' });
 });
 
 // Error handler
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error("Unhandled error:", err);
-  if (err.message.includes("Prisma")) {
-    res.status(500).json({ error: "Database error" });
+  console.error('Unhandled error:', err);
+  if (err.message.includes('Prisma')) {
+    res.status(500).json({ error: 'Database error' });
     return;
   }
 
   // Validation errors
-  if (err.name === "ZodError") {
-    res.status(400).json({ error: "Validation error", details: err.message });
+  if (err.name === 'ZodError') {
+    res.status(400).json({ error: 'Validation error', details: err.message });
     return;
   }
 
   // JWT errors
-  if (err.name === "JsonWebTokenError") {
-    res.status(401).json({ error: "Invalid token" });
+  if (err.name === 'JsonWebTokenError') {
+    res.status(401).json({ error: 'Invalid token' });
     return;
   }
 
-  res.status(500).json({ error: "Internal server error" });
+  res.status(500).json({ error: 'Internal server error' });
 });
 
 // =============================================================================
@@ -141,7 +157,7 @@ async function startServer() {
   try {
     // Test database connection
     await prisma.$connect();
-    console.log("Database connected successfully");
+    console.log('Database connected successfully');
 
     // Start server
     app.listen(env.PORT, () => {
@@ -150,20 +166,20 @@ async function startServer() {
       console.log(`Health check: http://localhost:${env.PORT}/api/health`);
     });
   } catch (error) {
-    console.error("Failed to start server:", error);
+    console.error('Failed to start server:', error);
     process.exit(1);
   }
 }
 
 // Graceful shutdown
-process.on("SIGINT", async () => {
-  console.log("Shutting down gracefully...");
+process.on('SIGINT', async () => {
+  console.log('Shutting down gracefully...');
   await prisma.$disconnect();
   process.exit(0);
 });
 
-process.on("SIGTERM", async () => {
-  console.log("Shutting down gracefully...");
+process.on('SIGTERM', async () => {
+  console.log('Shutting down gracefully...');
   await prisma.$disconnect();
   process.exit(0);
 });

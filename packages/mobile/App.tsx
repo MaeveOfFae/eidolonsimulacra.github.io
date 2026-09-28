@@ -1,18 +1,13 @@
 import 'react-native-gesture-handler';
 
-import { StatusBar, View } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { Linking, StatusBar, View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { DarkTheme, NavigationContainer, type Theme } from '@react-navigation/native';
+import { DarkTheme, NavigationContainer, createNavigationContainerRef, type Theme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
-import {
-  Cog6ToothIcon,
-  DocumentTextIcon,
-  FolderIcon,
-  HomeIcon,
-  SparklesIcon,
-} from './src/components/Icons';
+import { Cog6ToothIcon, DocumentTextIcon, FolderIcon, HomeIcon, SparklesIcon } from './src/components/Icons';
 import BlueprintsScreen from './src/screens/BlueprintsScreen';
 import BlueprintEditorScreen from './src/screens/BlueprintEditorScreen';
 import BatchGenerateScreen from './src/screens/BatchGenerateScreen';
@@ -28,16 +23,14 @@ import SimilarityScreen from './src/screens/SimilarityScreen';
 import TemplatesScreen from './src/screens/TemplatesScreen';
 import TokenOptimizationScreen from './src/screens/TokenOptimizationScreen';
 import ValidationScreen from './src/screens/ValidationScreen';
-import type {
-  DraftsStackParamList,
-  HomeStackParamList,
-  RootTabParamList,
-} from './src/types/navigation';
+import { parseDesktopCompanionPairingLink } from '@char-gen/shared';
+import type { DraftsStackParamList, HomeStackParamList, RootTabParamList } from './src/types/navigation';
 
 const queryClient = new QueryClient();
 const Tab = createBottomTabNavigator<RootTabParamList>();
 const HomeStack = createNativeStackNavigator<HomeStackParamList>();
 const DraftsStack = createNativeStackNavigator<DraftsStackParamList>();
+const navigationRef = createNavigationContainerRef<RootTabParamList>();
 
 const navigationTheme = {
   ...DarkTheme,
@@ -69,15 +62,47 @@ function HomeStackNavigator() {
   return (
     <HomeStack.Navigator screenOptions={stackScreenOptions}>
       <HomeStack.Screen name="HomeRoot" component={HomeScreen} options={{ title: 'Home', headerShown: false }} />
-      <HomeStack.Screen name="SeedGenerator" component={SeedGeneratorScreen} options={{ title: 'Seed Generator', headerShown: false }} />
-      <HomeStack.Screen name="Validation" component={ValidationScreen} options={{ title: 'Validation', headerShown: false }} />
-      <HomeStack.Screen name="TokenOptimization" component={TokenOptimizationScreen} options={{ title: 'Token Optimization', headerShown: false }} />
+      <HomeStack.Screen
+        name="SeedGenerator"
+        component={SeedGeneratorScreen}
+        options={{ title: 'Seed Generator', headerShown: false }}
+      />
+      <HomeStack.Screen
+        name="Validation"
+        component={ValidationScreen}
+        options={{ title: 'Validation', headerShown: false }}
+      />
+      <HomeStack.Screen
+        name="TokenOptimization"
+        component={TokenOptimizationScreen}
+        options={{ title: 'Token Optimization', headerShown: false }}
+      />
       <HomeStack.Screen name="Lineage" component={LineageScreen} options={{ title: 'Lineage', headerShown: false }} />
-      <HomeStack.Screen name="Blueprints" component={BlueprintsScreen} options={{ title: 'Blueprints', headerShown: false }} />
-      <HomeStack.Screen name="BlueprintEditor" component={BlueprintEditorScreen} options={{ title: 'Blueprint Editor' }} />
-      <HomeStack.Screen name="BatchGenerate" component={BatchGenerateScreen} options={{ title: 'Batch Generate', headerShown: false }} />
-      <HomeStack.Screen name="Compare" component={SimilarityScreen} options={{ title: 'Compare Characters', headerShown: false }} />
-      <HomeStack.Screen name="Offspring" component={OffspringScreen} options={{ title: 'Generate Offspring', headerShown: false }} />
+      <HomeStack.Screen
+        name="Blueprints"
+        component={BlueprintsScreen}
+        options={{ title: 'Blueprints', headerShown: false }}
+      />
+      <HomeStack.Screen
+        name="BlueprintEditor"
+        component={BlueprintEditorScreen}
+        options={{ title: 'Blueprint Editor' }}
+      />
+      <HomeStack.Screen
+        name="BatchGenerate"
+        component={BatchGenerateScreen}
+        options={{ title: 'Batch Generate', headerShown: false }}
+      />
+      <HomeStack.Screen
+        name="Compare"
+        component={SimilarityScreen}
+        options={{ title: 'Compare Characters', headerShown: false }}
+      />
+      <HomeStack.Screen
+        name="Offspring"
+        component={OffspringScreen}
+        options={{ title: 'Generate Offspring', headerShown: false }}
+      />
     </HomeStack.Navigator>
   );
 }
@@ -85,8 +110,16 @@ function HomeStackNavigator() {
 function DraftsStackNavigator() {
   return (
     <DraftsStack.Navigator screenOptions={stackScreenOptions}>
-      <DraftsStack.Screen name="DraftsList" component={DraftsScreen} options={{ title: 'Drafts', headerShown: false }} />
-      <DraftsStack.Screen name="DraftDetail" component={DraftDetailScreen} options={{ title: 'Character Details', headerShown: false }} />
+      <DraftsStack.Screen
+        name="DraftsList"
+        component={DraftsScreen}
+        options={{ title: 'Drafts', headerShown: false }}
+      />
+      <DraftsStack.Screen
+        name="DraftDetail"
+        component={DraftDetailScreen}
+        options={{ title: 'Character Details', headerShown: false }}
+      />
     </DraftsStack.Navigator>
   );
 }
@@ -108,9 +141,70 @@ function renderTabIcon(routeName: keyof RootTabParamList, color: string, size: n
 
 function RootNavigation() {
   const insets = useSafeAreaInsets();
+  const pendingSettingsLinkRef = useRef<{ pairingLink: string; pairingNonce: string } | null>(null);
+  const lastHandledUrlRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const focusSettingsTab = (pairingLink?: string) => {
+      const params = pairingLink ? { pairingLink, pairingNonce: `${Date.now()}` } : undefined;
+
+      if (navigationRef.isReady()) {
+        navigationRef.navigate('Settings', params);
+        pendingSettingsLinkRef.current = null;
+        return;
+      }
+
+      pendingSettingsLinkRef.current = params ?? null;
+    };
+
+    const handlePairingUrl = (url: string) => {
+      if (!url || lastHandledUrlRef.current === url) {
+        return;
+      }
+
+      try {
+        if (!parseDesktopCompanionPairingLink(url)) {
+          return;
+        }
+
+        lastHandledUrlRef.current = url;
+        focusSettingsTab(url);
+      } catch (error) {
+        console.error('Failed to apply desktop companion pairing URL', error);
+        return;
+      }
+    };
+
+    void Linking.getInitialURL()
+      .then((url) => {
+        if (url) {
+          handlePairingUrl(url);
+        }
+      })
+      .catch((error) => {
+        console.error('Failed to read initial URL', error);
+      });
+
+    const subscription = Linking.addEventListener('url', ({ url }) => {
+      handlePairingUrl(url);
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
 
   return (
-    <NavigationContainer theme={navigationTheme}>
+    <NavigationContainer
+      ref={navigationRef}
+      theme={navigationTheme}
+      onReady={() => {
+        if (pendingSettingsLinkRef.current) {
+          navigationRef.navigate('Settings', pendingSettingsLinkRef.current);
+          pendingSettingsLinkRef.current = null;
+        }
+      }}
+    >
       <View style={{ flex: 1, backgroundColor: '#0f0f0f' }}>
         <Tab.Navigator
           initialRouteName="Home"

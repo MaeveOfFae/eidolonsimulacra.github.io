@@ -19,7 +19,7 @@ Goal: compile one seed into a complete template-specific asset suite using the b
    - it should imply a power dynamic, emotional temperature, tension axis, and why `{{user}}` matters as an anchor rather than an authored actor
 
 4) Compile assets in the template's declared dependency order.
-   - For `V2/V3 Card`, that is `system_prompt -> post_history -> character_sheet -> intro_scene -> intro_page -> a1111`
+   - For `V2/V3 Card`, that is `system_prompt -> post_history -> character_sheet -> intro_scene -> creator_notes -> a1111`
    - For Aksho reference material, that is `system_prompt -> char_basic_info -> char_physical -> char_clothing -> char_personality -> char_background -> post_history -> initial_message`
    - Do not hardcode `suno` into the default flow.
    - Output only the asset codeblocks plus an `Adjustment Note` block if the orchestrator requires it.

@@ -1,18 +1,59 @@
-import { useEffect, useState, useMemo } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl, TextInput, ScrollView, ActivityIndicator, Alert, Modal, KeyboardAvoidingView, Platform } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useCallback, useEffect, useState, useMemo } from 'react';
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  StyleSheet,
+  RefreshControl,
+  TextInput,
+  ScrollView,
+  ActivityIndicator,
+  Alert,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { type DraftMetadata, type ContentMode, type Template } from '@char-gen/shared';
+import {
+  buildDraftLibraryBadges,
+  getLatestDraftSnapshotSummary,
+  type DraftMetadata,
+  type ContentMode,
+  type Template,
+} from '@char-gen/shared';
 import { api } from '../config/api';
 import CollapsibleTray from '../components/CollapsibleTray';
 import { exportAllDrafts, importDrafts } from '../local/draft-store';
-import { StarIcon, FolderIcon, MagnifyingGlassIcon, PlusIcon } from '../components/Icons';
+import { StarIcon, FolderIcon, MagnifyingGlassIcon, PlusIcon, UsersIcon } from '../components/Icons';
+import {
+  getMobileCompareSelection,
+  setMobileCompareSelection,
+  type MobileCompareSelection,
+} from '../lib/compare-selection';
 import type { DraftsStackNavigationProp } from '../types/navigation';
 import { getErrorMessage } from '../utils/errors';
 import { pickTextFile, saveTextFile } from '../utils/file-transfer';
 
 type SortOption = 'created' | 'modified' | 'name';
 type FilterMode = 'all' | 'favorites';
+
+function formatTimestamp(value?: string): string {
+  if (!value) {
+    return 'Unknown';
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return 'Unknown';
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(date);
+}
 
 export default function DraftsScreen() {
   const navigation = useNavigation<DraftsStackNavigationProp<'DraftsList'>>();
@@ -30,6 +71,9 @@ export default function DraftsScreen() {
   const [createNotes, setCreateNotes] = useState('');
   const [createMode, setCreateMode] = useState<ContentMode | 'Auto'>('Auto');
   const [createTemplateName, setCreateTemplateName] = useState('');
+  const [pendingCompareSelection, setPendingCompareSelection] = useState<MobileCompareSelection | null>(() =>
+    getMobileCompareSelection(),
+  );
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['drafts'],
@@ -43,7 +87,7 @@ export default function DraftsScreen() {
 
   const selectedImportTemplate = useMemo(
     () => templates.find((candidate: Template) => candidate.name === importTemplateName),
-    [importTemplateName, templates]
+    [importTemplateName, templates],
   );
 
   useEffect(() => {
@@ -57,6 +101,12 @@ export default function DraftsScreen() {
       setCreateTemplateName(templates[0].name);
     }
   }, [createTemplateName, templates]);
+
+  useFocusEffect(
+    useCallback(() => {
+      setPendingCompareSelection(getMobileCompareSelection());
+    }, []),
+  );
 
   const createDraftMutation = useMutation({
     mutationFn: (request: {
@@ -87,22 +137,23 @@ export default function DraftsScreen() {
     // Filter by search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
-      drafts = drafts.filter(draft =>
-        draft.character_name?.toLowerCase().includes(query) ||
-        draft.seed.toLowerCase().includes(query) ||
-        draft.tags?.some(tag => tag.toLowerCase().includes(query)) ||
-        draft.genre?.toLowerCase().includes(query)
+      drafts = drafts.filter(
+        (draft) =>
+          draft.character_name?.toLowerCase().includes(query) ||
+          draft.seed.toLowerCase().includes(query) ||
+          draft.tags?.some((tag) => tag.toLowerCase().includes(query)) ||
+          draft.genre?.toLowerCase().includes(query),
       );
     }
 
     // Filter by favorites
     if (filterMode === 'favorites') {
-      drafts = drafts.filter(draft => draft.favorite);
+      drafts = drafts.filter((draft) => draft.favorite);
     }
 
     // Filter by content mode
     if (filterContentMode !== 'all') {
-      drafts = drafts.filter(draft => draft.mode === filterContentMode);
+      drafts = drafts.filter((draft) => draft.mode === filterContentMode);
     }
 
     // Sort
@@ -131,7 +182,10 @@ export default function DraftsScreen() {
         return;
       }
 
-      Alert.alert('Drafts exported', 'A draft backup file was prepared and opened in the system share sheet. Save it to Files, Downloads, or another destination there.');
+      Alert.alert(
+        'Drafts exported',
+        'A draft backup file was prepared and opened in the system share sheet. Save it to Files, Downloads, or another destination there.',
+      );
     } catch (error) {
       Alert.alert('Error', getErrorMessage(error, 'Failed to export drafts'));
     }
@@ -147,10 +201,14 @@ export default function DraftsScreen() {
       const result = await importDrafts(file.contents, { sourceName: file.name, template: selectedImportTemplate });
       await queryClient.invalidateQueries({ queryKey: ['drafts'] });
 
-      const remapMessage = result.remapped > 0
-        ? `\n\n${result.remapped} draft IDs were remapped to avoid overwriting existing characters.`
-        : '';
-      Alert.alert('Import complete', `Imported ${result.imported} draft${result.imported === 1 ? '' : 's'} from ${file.name}.${remapMessage}`);
+      const remapMessage =
+        result.remapped > 0
+          ? `\n\n${result.remapped} draft IDs were remapped to avoid overwriting existing characters.`
+          : '';
+      Alert.alert(
+        'Import complete',
+        `Imported ${result.imported} draft${result.imported === 1 ? '' : 's'} from ${file.name}.${remapMessage}`,
+      );
     } catch (error) {
       Alert.alert('Error', getErrorMessage(error, 'Failed to import drafts'));
     }
@@ -198,27 +256,125 @@ export default function DraftsScreen() {
     });
   };
 
-  const renderDraft = ({ item }: { item: DraftMetadata }) => (
-    <TouchableOpacity
-      style={styles.draftItem}
-      onPress={() => navigation.navigate('DraftDetail', { draftId: item.review_id })}
-    >
-      <View style={styles.draftInfo}>
-        <View style={styles.draftHeader}>
-          <Text style={styles.draftName} numberOfLines={1}>{item.character_name || item.seed}</Text>
-          {item.favorite && <StarIcon color="#eab308" size={18} />}
+  const renderDraft = ({ item }: { item: DraftMetadata }) => {
+    const latestSnapshot = getLatestDraftSnapshotSummary(item);
+    const readinessBadges = buildDraftLibraryBadges(item).slice(0, 4);
+    const canCompleteCompare = Boolean(
+      pendingCompareSelection?.character1Id && pendingCompareSelection.character1Id !== item.review_id,
+    );
+
+    const handleCompareDraft = () => {
+      const currentSelection = getMobileCompareSelection();
+
+      if (currentSelection?.character1Id && currentSelection.character1Id !== item.review_id) {
+        navigation.navigate('Home', {
+          screen: 'Compare',
+          params: {
+            character1: currentSelection.character1Id,
+            character2: item.review_id,
+          },
+        });
+        return;
+      }
+
+      const nextSelection = {
+        character1Id: item.review_id,
+        character1Name: item.character_name || item.seed,
+      } satisfies MobileCompareSelection;
+
+      setMobileCompareSelection(nextSelection);
+      setPendingCompareSelection(nextSelection);
+      navigation.navigate('Home', {
+        screen: 'Compare',
+        params: { character1: item.review_id },
+      });
+    };
+
+    return (
+      <View style={styles.draftItem}>
+        <TouchableOpacity
+          style={styles.draftInfo}
+          onPress={() => navigation.navigate('DraftDetail', { draftId: item.review_id })}
+        >
+          <View style={styles.draftHeader}>
+            <Text style={styles.draftName} numberOfLines={1}>
+              {item.character_name || item.seed}
+            </Text>
+            {item.favorite && <StarIcon color="#eab308" size={18} />}
+          </View>
+          <View style={styles.draftMeta}>
+            {item.mode && <Text style={styles.draftTag}>{item.mode}</Text>}
+            {item.genre && <Text style={styles.draftTag}>{item.genre}</Text>}
+            {item.template_name && <Text style={styles.draftTag}>{item.template_name}</Text>}
+          </View>
+          {readinessBadges.length > 0 ? (
+            <View style={styles.readinessBadgeRow}>
+              {readinessBadges.map((badge) => (
+                <View
+                  key={`${item.review_id}-${badge.label}`}
+                  style={[
+                    styles.readinessBadge,
+                    badge.tone === 'warning'
+                      ? styles.readinessBadgeWarning
+                      : badge.tone === 'success'
+                        ? styles.readinessBadgeSuccess
+                        : styles.readinessBadgeMuted,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.readinessBadgeText,
+                      badge.tone === 'warning'
+                        ? styles.readinessBadgeTextWarning
+                        : badge.tone === 'success'
+                          ? styles.readinessBadgeTextSuccess
+                          : styles.readinessBadgeTextMuted,
+                    ]}
+                  >
+                    {badge.label}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
+          {item.created && <Text style={styles.draftDate}>{new Date(item.created).toLocaleDateString()}</Text>}
+          {latestSnapshot && (
+            <View style={styles.snapshotSummaryCard}>
+              <Text style={styles.snapshotSummaryTitle} numberOfLines={1}>
+                {latestSnapshot.label}
+              </Text>
+              <Text style={styles.snapshotSummaryMeta} numberOfLines={2}>
+                {formatTimestamp(latestSnapshot.createdAt)}
+                {latestSnapshot.reason ? ` • ${latestSnapshot.reason}` : ''}
+              </Text>
+            </View>
+          )}
+        </TouchableOpacity>
+
+        <View style={styles.draftActions}>
+          {latestSnapshot ? (
+            <TouchableOpacity
+              style={[styles.draftActionButton, styles.draftActionButtonAccent]}
+              onPress={() =>
+                navigation.navigate('DraftDetail', {
+                  draftId: item.review_id,
+                  historySnapshotId: latestSnapshot.id,
+                })
+              }
+            >
+              <Text style={[styles.draftActionButtonText, styles.draftActionButtonTextAccent]}>
+                Latest restore point
+              </Text>
+            </TouchableOpacity>
+          ) : null}
+          <TouchableOpacity style={styles.draftActionButton} onPress={handleCompareDraft}>
+            <UsersIcon color="#9ca3af" size={14} />
+            <Text style={styles.draftActionButtonText}>{canCompleteCompare ? 'Complete Compare' : 'Compare'}</Text>
+          </TouchableOpacity>
         </View>
-        <View style={styles.draftMeta}>
-          {item.mode && <Text style={styles.draftTag}>{item.mode}</Text>}
-          {item.genre && <Text style={styles.draftTag}>{item.genre}</Text>}
-          {item.template_name && <Text style={styles.draftTag}>{item.template_name}</Text>}
-        </View>
-        {item.created && (
-          <Text style={styles.draftDate}>{new Date(item.created).toLocaleDateString()}</Text>
-        )}
       </View>
-    </TouchableOpacity>
-  );
+    );
+  };
 
   if (isLoading) {
     return (
@@ -241,7 +397,8 @@ export default function DraftsScreen() {
   }
 
   const contentModes: ContentMode[] = ['SFW', 'NSFW', 'Platform-Safe', 'Auto'];
-  const hasActiveFilters = filterMode !== 'all' || filterContentMode !== 'all' || sortOption !== 'created' || sortOrder !== 'desc';
+  const hasActiveFilters =
+    filterMode !== 'all' || filterContentMode !== 'all' || sortOption !== 'created' || sortOrder !== 'desc';
 
   return (
     <View style={styles.container}>
@@ -255,7 +412,10 @@ export default function DraftsScreen() {
           <PlusIcon color="#ffffff" size={16} />
           <Text style={styles.toolbarButtonText}>Create draft</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.toolbarButton, styles.toolbarButtonSecondary]} onPress={() => void handleImportFile()}>
+        <TouchableOpacity
+          style={[styles.toolbarButton, styles.toolbarButtonSecondary]}
+          onPress={() => void handleImportFile()}
+        >
           <Text style={styles.toolbarButtonSecondaryText}>Import file</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.toolbarButton} onPress={() => void handleExportAll()}>
@@ -289,7 +449,9 @@ export default function DraftsScreen() {
           initiallyExpanded={hasActiveFilters}
           preview={
             <Text style={styles.filterSummaryText} numberOfLines={1}>
-              {selectedImportTemplate?.name || 'No import template'} • {filterMode === 'favorites' ? 'favorites' : 'all drafts'} • {filterContentMode === 'all' ? 'all modes' : filterContentMode}
+              {selectedImportTemplate?.name || 'No import template'} •{' '}
+              {filterMode === 'favorites' ? 'favorites' : 'all drafts'} •{' '}
+              {filterContentMode === 'all' ? 'all modes' : filterContentMode}
             </Text>
           }
         >
@@ -307,7 +469,9 @@ export default function DraftsScreen() {
                         style={[styles.filterChip, selected && styles.filterChipActive]}
                         onPress={() => setImportTemplateName(candidate.name)}
                       >
-                        <Text style={[styles.filterChipText, selected && styles.filterChipTextActive]}>{candidate.name}</Text>
+                        <Text style={[styles.filterChipText, selected && styles.filterChipTextActive]}>
+                          {candidate.name}
+                        </Text>
                       </TouchableOpacity>
                     );
                   })}
@@ -331,7 +495,9 @@ export default function DraftsScreen() {
                   onPress={() => setFilterMode('favorites')}
                 >
                   <StarIcon color={filterMode === 'favorites' ? '#fff' : '#9ca3af'} size={14} />
-                  <Text style={[styles.filterChipText, filterMode === 'favorites' && styles.filterChipTextActive]}>Favorites</Text>
+                  <Text style={[styles.filterChipText, filterMode === 'favorites' && styles.filterChipTextActive]}>
+                    Favorites
+                  </Text>
                 </TouchableOpacity>
               </View>
             </ScrollView>
@@ -345,7 +511,9 @@ export default function DraftsScreen() {
                   style={[styles.filterChip, filterContentMode === 'all' && styles.filterChipActive]}
                   onPress={() => setFilterContentMode('all')}
                 >
-                  <Text style={[styles.filterChipText, filterContentMode === 'all' && styles.filterChipTextActive]}>All</Text>
+                  <Text style={[styles.filterChipText, filterContentMode === 'all' && styles.filterChipTextActive]}>
+                    All
+                  </Text>
                 </TouchableOpacity>
                 {contentModes.map((mode) => (
                   <TouchableOpacity
@@ -353,7 +521,9 @@ export default function DraftsScreen() {
                     style={[styles.filterChip, filterContentMode === mode && styles.filterChipActive]}
                     onPress={() => setFilterContentMode(mode)}
                   >
-                    <Text style={[styles.filterChipText, filterContentMode === mode && styles.filterChipTextActive]}>{mode}</Text>
+                    <Text style={[styles.filterChipText, filterContentMode === mode && styles.filterChipTextActive]}>
+                      {mode}
+                    </Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -435,10 +605,7 @@ export default function DraftsScreen() {
         presentationStyle="pageSheet"
         onRequestClose={closeCreateModal}
       >
-        <KeyboardAvoidingView
-          style={styles.modalContainer}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
+        <KeyboardAvoidingView style={styles.modalContainer} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={closeCreateModal} disabled={createDraftMutation.isPending}>
               <Text style={styles.modalCancelText}>Cancel</Text>
@@ -480,7 +647,9 @@ export default function DraftsScreen() {
                         style={[styles.filterChip, selected && styles.filterChipActive]}
                         onPress={() => setCreateTemplateName(candidate.name)}
                       >
-                        <Text style={[styles.filterChipText, selected && styles.filterChipTextActive]}>{candidate.name}</Text>
+                        <Text style={[styles.filterChipText, selected && styles.filterChipTextActive]}>
+                          {candidate.name}
+                        </Text>
                       </TouchableOpacity>
                     );
                   })}
@@ -739,9 +908,95 @@ const styles = StyleSheet.create({
     color: '#9ca3af',
     fontSize: 12,
   },
+  readinessBadgeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 6,
+  },
+  readinessBadge: {
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  readinessBadgeMuted: {
+    borderColor: '#2f2f2f',
+    backgroundColor: '#161616',
+  },
+  readinessBadgeWarning: {
+    borderColor: '#7c3aed55',
+    backgroundColor: '#3b1f42',
+  },
+  readinessBadgeSuccess: {
+    borderColor: '#065f4688',
+    backgroundColor: '#0f2d24',
+  },
+  readinessBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  readinessBadgeTextMuted: {
+    color: '#d1d5db',
+  },
+  readinessBadgeTextWarning: {
+    color: '#f5d0fe',
+  },
+  readinessBadgeTextSuccess: {
+    color: '#a7f3d0',
+  },
   draftDate: {
     color: '#6b7280',
     fontSize: 12,
+  },
+  snapshotSummaryCard: {
+    marginTop: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#2f2f2f',
+    backgroundColor: '#161616',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 4,
+  },
+  snapshotSummaryTitle: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  snapshotSummaryMeta: {
+    color: '#9ca3af',
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  draftActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 12,
+  },
+  draftActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#2f2f2f',
+    backgroundColor: '#161616',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  draftActionButtonAccent: {
+    borderColor: '#4c1d95',
+    backgroundColor: '#201235',
+  },
+  draftActionButtonText: {
+    color: '#d1d5db',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  draftActionButtonTextAccent: {
+    color: '#c4b5fd',
   },
   empty: {
     alignItems: 'center',

@@ -1,8 +1,8 @@
 // JWT Authentication middleware
-import { NextFunction, Request, Response } from "express";
-import jwt from "jsonwebtoken";
-import { env } from "../env.js";
-import { prisma } from "../db.js";
+import { NextFunction, Request, Response } from 'express';
+import jwt from 'jsonwebtoken';
+import { env } from '../env.js';
+import { prisma } from '../db.js';
 
 export interface JwtPayload {
   userId: string;
@@ -22,16 +22,12 @@ declare global {
 /**
  * Verify JWT access token
  */
-export function authenticateToken(
-  req: Request,
-  res: Response,
-  next: NextFunction
-): void {
+export function authenticateToken(req: Request, res: Response, next: NextFunction): void {
   const authHeader = req.headers.authorization;
-  const token = authHeader?.split(" ")[1]; // Bearer <token>
+  const token = authHeader?.split(' ')[1]; // Bearer <token>
 
   if (!token) {
-    res.status(401).json({ error: "Access token required" });
+    res.status(401).json({ error: 'Access token required' });
     return;
   }
 
@@ -40,20 +36,16 @@ export function authenticateToken(
     req.user = payload;
     next();
   } catch {
-    res.status(401).json({ error: "Invalid or expired token" });
+    res.status(401).json({ error: 'Invalid or expired token' });
   }
 }
 
 /**
  * Optional authentication - doesn't fail if no token
  */
-export function optionalAuth(
-  req: Request,
-  _res: Response,
-  next: NextFunction
-): void {
+export function optionalAuth(req: Request, _res: Response, next: NextFunction): void {
   const authHeader = req.headers.authorization;
-  const token = authHeader?.split(" ")[1];
+  const token = authHeader?.split(' ')[1];
 
   if (token) {
     try {
@@ -71,14 +63,14 @@ export function optionalAuth(
  * Generate access token (6 hours)
  */
 export function generateAccessToken(payload: JwtPayload): string {
-  return jwt.sign(payload, env.JWT_SECRET, { expiresIn: "6h" });
+  return jwt.sign(payload, env.JWT_SECRET, { expiresIn: '6h' });
 }
 
 /**
  * Generate refresh token (30 day expiry)
  */
 export function generateRefreshToken(payload: JwtPayload): string {
-  return jwt.sign(payload, env.JWT_REFRESH_SECRET, { expiresIn: "30d" });
+  return jwt.sign(payload, env.JWT_REFRESH_SECRET, { expiresIn: '30d' });
 }
 
 /**
@@ -95,18 +87,16 @@ export function verifyRefreshToken(token: string): JwtPayload | null {
 /**
  * Hash refresh token for storage
  */
-import { createHash } from "crypto";
+import { createHash } from 'crypto';
 
 export function hashRefreshToken(token: string): string {
-  return createHash("sha256").update(token).digest("hex");
+  return createHash('sha256').update(token).digest('hex');
 }
 
 /**
  * Validate session and get user
  */
-export async function validateSession(
-  refreshToken: string
-): Promise<JwtPayload | null> {
+export async function validateSession(refreshToken: string): Promise<JwtPayload | null> {
   const payload = verifyRefreshToken(refreshToken);
   if (!payload) return null;
 

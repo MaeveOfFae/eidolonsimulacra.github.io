@@ -59,9 +59,11 @@ import {
   type UpdateTemplateRequest,
   type ValidatePathRequest,
   type ValidationResponse,
+  type WorldCharacterDraftLinkRecord,
   type WorldCharacterRecord,
   type WorldFactionRecord,
   type WorldLocationRecord,
+  type WorldRelationshipRecord,
   type WorldRecord,
 } from '@char-gen/shared';
 import { MODEL_SUGGESTIONS, createEngine, getDefaultBaseUrl } from './llm/factory.js';
@@ -73,6 +75,7 @@ import {
   addLocalWorldCharacter,
   addLocalWorldFaction,
   addLocalWorldLocation,
+  addLocalWorldRelationship,
   createLocalTimeline,
   createLocalWorld,
   deleteLocalTimeline,
@@ -81,6 +84,9 @@ import {
   deleteLocalWorldCharacter,
   deleteLocalWorldFaction,
   deleteLocalWorldLocation,
+  deleteLocalWorldRelationship,
+  getLocalWorldCharacterDraftLinks,
+  getLocalWorldRelationshipAuditIssues,
   getLocalTimeline,
   getLocalWorld,
   getLocalWorlds,
@@ -90,9 +96,11 @@ import {
   updateLocalWorldCharacter,
   updateLocalWorldFaction,
   updateLocalWorldLocation,
+  updateLocalWorldRelationship,
 } from './storage/desktop-lore-db.js';
 import { DraftStorage, type AssetWriteOptions } from './storage/draft-db.js';
 import { GenerationService } from './services/generation.js';
+import { appendDraftRevisionSnapshot, buildDraftRevisionSnapshot } from './drafts/revision-snapshots.js';
 import {
   buildUniqueCustomBlueprintPath,
   type StoredTemplateRecord,
@@ -111,8 +119,6 @@ import {
   saveBlueprintOverrides,
   saveStoredTemplates,
 } from './templates/browser.js';
-import { serverClient } from './server/client.js';
-import { queueAutoSync } from './server/auto-sync.js';
 import { buildOptimizeTextMessages } from '@char-gen/shared';
 
 export interface DownloadResponse {
@@ -132,6 +138,11 @@ export interface CreateDraftRequest {
   customInstructions?: string;
   componentSendOrder?: string[];
   connectedDraftIds?: string[];
+  parentDraftIds?: string[];
+  cardMetadata?: DraftMetadata['card_metadata'];
+  reviewAnnotations?: DraftMetadata['review_annotations'];
+  mergeProvenance?: DraftMetadata['merge_provenance'];
+  mergeHistory?: DraftMetadata['merge_history'];
   assets?: Record<string, string>;
 }
 
@@ -165,7 +176,7 @@ type StreamEvent = {
   [EventType in StreamEventType]: {
     event: EventType;
     data: StreamEventMap[EventType];
-  }
+  };
 }[StreamEventType];
 
 type StreamReader = (event: StreamEvent) => void;
@@ -182,8 +193,13 @@ type BlueprintPreviewResponse = GenerateAssetResponse & {
 const CUSTOM_THEMES_STORAGE_KEY = 'eidolon.web.themes.custom';
 export const THEMES_SYNCED_EVENT = 'eidolon:themes-synced';
 export const DRAFTS_SYNCED_EVENT = 'eidolon:drafts-synced';
+const DESKTOP_WORLDS_ONLY_MESSAGE =
+  'Persisted worlds, factions, locations, and timelines are currently only available in the desktop app.';
 
-function parseBlueprintMetadata(path: string, content: string): {
+function parseBlueprintMetadata(
+  path: string,
+  content: string,
+): {
   name: string;
   description: string;
   version: string;
@@ -221,72 +237,11 @@ function parseBlueprintMetadata(path: string, content: string): {
   return { name, description, version, invokable };
 }
 
-type RemoteTemplateSyncRecord = {
-  name?: unknown;
-  version?: unknown;
-  description?: unknown;
-  isOfficial?: unknown;
-  is_official?: unknown;
-  isDefault?: unknown;
-  is_default?: unknown;
-  assets?: unknown;
-  blueprintContent?: unknown;
-  blueprint_contents?: unknown;
-};
-
-type RemoteBlueprintSyncRecord = {
-  path?: unknown;
-  name?: unknown;
-  description?: unknown;
-  invokable?: unknown;
-  version?: unknown;
-  content?: unknown;
-  category?: unknown;
-  isBuiltin?: unknown;
-  is_builtin?: unknown;
-};
-
-function toStringRecord(value: unknown): Record<string, string> {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return {};
-  }
-
-  return Object.fromEntries(
-    Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === 'string')
-  );
-}
-
-function normalizeRemoteTemplateRecord(record: RemoteTemplateSyncRecord): StoredTemplateRecord | null {
-  if (typeof record.name !== 'string' || record.name.trim().length === 0 || !Array.isArray(record.assets)) {
-    return null;
-  }
-
-  return {
-    template: {
-      name: record.name,
-      version: typeof record.version === 'string' && record.version.trim().length > 0 ? record.version : '1.0.0',
-      description: typeof record.description === 'string' ? record.description : '',
-      is_official: Boolean(record.isOfficial ?? record.is_official),
-      is_default: Boolean(record.isDefault ?? record.is_default),
-      assets: record.assets as Template['assets'],
-    },
-    blueprint_contents: toStringRecord(record.blueprintContent ?? record.blueprint_contents),
-  };
-}
-
-function normalizeRemoteBlueprintPath(path: string): string {
-  if (!path.startsWith('blueprints/overrides/')) {
-    return path;
-  }
-
-  return `blueprints/${path.replace(/^blueprints\/overrides\//, '')}`;
-}
-
 function getUniqueTemplateName(requestedName: string, excludeName?: string): string {
   const existingNames = new Set(
     getAllTemplateRecords()
       .map((record) => record.template.name)
-      .filter((name) => name !== excludeName)
+      .filter((name) => name !== excludeName),
   );
 
   if (!existingNames.has(requestedName)) {
@@ -1256,7 +1211,7 @@ class BrowserStream {
     private readonly executor: (helpers: {
       emit: <EventType extends StreamEventType>(event: EventType, data: StreamEventMap[EventType]) => void;
       signal: AbortSignal;
-    }) => Promise<void>
+    }) => Promise<void>,
   ) {}
 
   subscribe(callback: StreamReader): this {
@@ -1307,7 +1262,10 @@ class BrowserStream {
 }
 
 export class APIError extends Error {
-  constructor(public status: number, message: string) {
+  constructor(
+    public status: number,
+    message: string,
+  ) {
     super(message);
     this.name = 'APIError';
   }
@@ -1322,7 +1280,10 @@ function writeStorage<T>(key: string, legacyKeys: readonly string[], value: T): 
 }
 
 function slugifyFileName(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
 }
 
 function getBrowserConfig(): Config {
@@ -1341,9 +1302,7 @@ function resolveConfiguredProvider(config: Config): LLMProvider | undefined {
 }
 
 function getFallbackApiKey(apiKeys: ApiKeys): string | undefined {
-  return Object.values(apiKeys).find(
-    (value): value is string => typeof value === 'string' && value.trim().length > 0
-  );
+  return Object.values(apiKeys).find((value): value is string => typeof value === 'string' && value.trim().length > 0);
 }
 
 function resolveProviderApiKey(provider: string, apiKeys: ApiKeys): string | undefined {
@@ -1367,23 +1326,22 @@ function getAllThemes(): ThemePreset[] {
   return [...builtinThemes, ...getCustomThemes()];
 }
 
-function dispatchBrowserSyncEvent(eventName: string): void {
-  if (typeof window === 'undefined') {
-    return;
-  }
-
-  window.dispatchEvent(new CustomEvent(eventName));
-}
-
 function createDownload(content: string | Uint8Array, filename: string, type: string): DownloadResponse {
+  // TypeScript's DOM types reject `Uint8Array<ArrayBufferLike>` as a `BlobPart`
+  // because `ArrayBufferLike` also covers `SharedArrayBuffer`. Copying through a
+  // fresh view guarantees an `ArrayBuffer`-backed part without a cast.
+  const parts: BlobPart[] = typeof content === 'string' ? [content] : [new Uint8Array(content)];
+
   return {
-    blob: new Blob([content], { type }),
+    blob: new Blob(parts, { type }),
     filename,
     contentType: type,
   };
 }
 
-async function generateWithCurrentConfig(messages: ChatMessage[]): Promise<AsyncIterable<{ content?: string; done?: boolean }>> {
+async function generateWithCurrentConfig(
+  messages: ChatMessage[],
+): Promise<AsyncIterable<{ content?: string; done?: boolean }>> {
   const config = configManager.getConfig();
   const apiKeys = configManager.getApiKeys();
   const provider = resolveConfiguredProvider(config);
@@ -1400,12 +1358,6 @@ async function generateWithCurrentConfig(messages: ChatMessage[]): Promise<Async
 }
 
 export class EidolonBrowserAPI {
-  private themesSyncPromise: Promise<boolean> | null = null;
-
-  private draftsSyncPromise: Promise<boolean> | null = null;
-
-  private configSyncPromise: Promise<boolean> | null = null;
-
   private async loadProviderModels(provider: string, refresh: boolean = false): Promise<ModelsResponse> {
     const apiKeys = configManager.getApiKeys();
     const config = configManager.getConfig();
@@ -1449,7 +1401,9 @@ export class EidolonBrowserAPI {
       const isNetworkError = error instanceof TypeError && error.message === 'Failed to fetch';
       const message = isNetworkError
         ? 'Network request blocked. This may be due to browser privacy settings (common in EU), ad blockers, or firewall restrictions. Try disabling tracking protection for this site or using a different network.'
-        : (error instanceof Error ? error.message : 'Failed to load models');
+        : error instanceof Error
+          ? error.message
+          : 'Failed to load models';
       const response = {
         provider,
         models: fallbackModels,
@@ -1477,45 +1431,7 @@ export class EidolonBrowserAPI {
   }
 
   async syncConfigFromServer(): Promise<boolean> {
-    if (!serverClient.isEnabled() || !serverClient.hasAccessToken()) {
-      return false;
-    }
-
-    if (this.configSyncPromise) {
-      return this.configSyncPromise;
-    }
-
-    this.configSyncPromise = (async () => {
-      try {
-        const [configResult, apiKeysResult] = await Promise.all([
-          serverClient.pullConfig(),
-          serverClient.pullApiKeys(),
-        ]);
-
-        const currentConfig = configManager.getConfig();
-        const currentApiKeys = configManager.getApiKeys();
-        const remoteConfig = (configResult.config || {}) as Partial<Config>;
-        const remoteApiKeys = apiKeysResult.apiKeys || {};
-
-        const configChanged = JSON.stringify(currentConfig) !== JSON.stringify({ ...currentConfig, ...remoteConfig });
-        const apiKeysChanged = JSON.stringify(currentApiKeys) !== JSON.stringify(remoteApiKeys);
-
-        if (!configChanged && !apiKeysChanged) {
-          return false;
-        }
-
-        configManager.updateConfig(remoteConfig);
-        configManager.replaceApiKeys(remoteApiKeys);
-        return true;
-      } catch (error) {
-        console.warn('Failed to sync config from server:', error);
-        return false;
-      } finally {
-        this.configSyncPromise = null;
-      }
-    })();
-
-    return this.configSyncPromise;
+    return false;
   }
 
   async updateConfig(config: Partial<Config>): Promise<Config> {
@@ -1525,7 +1441,6 @@ export class EidolonBrowserAPI {
       delete nextConfig.api_keys;
     }
     configManager.updateConfig(nextConfig);
-    queueAutoSync('config');
     return this.getConfig();
   }
 
@@ -1535,7 +1450,10 @@ export class EidolonBrowserAPI {
       return { success: false, error: `No API key configured for ${request.provider}` };
     }
 
-    const model = request.model || MODEL_SUGGESTIONS[request.provider as keyof typeof MODEL_SUGGESTIONS]?.[0] || getBrowserConfig().model;
+    const model =
+      request.model ||
+      MODEL_SUGGESTIONS[request.provider as keyof typeof MODEL_SUGGESTIONS]?.[0] ||
+      getBrowserConfig().model;
     const engine = createEngine({
       model,
       apiKey,
@@ -1547,192 +1465,7 @@ export class EidolonBrowserAPI {
     return engine.testConnection();
   }
 
-  private async syncThemesFromServer(): Promise<boolean> {
-    if (this.themesSyncPromise) {
-      return this.themesSyncPromise;
-    }
-
-    this.themesSyncPromise = (async () => {
-      if (!serverClient.isEnabled() || !serverClient.hasAccessToken()) {
-        return false;
-      }
-
-      try {
-        const { themes: serverThemes } = await serverClient.syncThemes('pull') as { themes: Array<{
-          name: string;
-          displayName?: string;
-          description?: string;
-          author?: string;
-          tags: string[];
-          basedOn?: string;
-          isBuiltin: boolean;
-          colors: ThemePreset['colors'];
-        }> };
-
-        const localThemes = getCustomThemes();
-        let didChange = false;
-
-        for (const serverTheme of serverThemes) {
-          if (serverTheme.isBuiltin) {
-            continue;
-          }
-
-          const theme: ThemePreset = {
-            name: serverTheme.name,
-            display_name: serverTheme.displayName || serverTheme.name,
-            description: serverTheme.description || '',
-            author: serverTheme.author || '',
-            tags: serverTheme.tags,
-            based_on: serverTheme.basedOn || '',
-            is_builtin: false,
-            colors: serverTheme.colors,
-          };
-
-          const existingIndex = localThemes.findIndex((candidate) => candidate.name === serverTheme.name);
-          if (existingIndex >= 0) {
-            if (JSON.stringify(localThemes[existingIndex]) !== JSON.stringify(theme)) {
-              localThemes[existingIndex] = theme;
-              didChange = true;
-            }
-          } else {
-            localThemes.push(theme);
-            didChange = true;
-          }
-        }
-
-        if (didChange) {
-          saveCustomThemes(localThemes);
-          dispatchBrowserSyncEvent(THEMES_SYNCED_EVENT);
-        }
-
-        return didChange;
-      } catch (error) {
-        console.warn('Failed to sync themes from server:', error);
-        return false;
-      } finally {
-        this.themesSyncPromise = null;
-      }
-    })();
-
-    return this.themesSyncPromise;
-  }
-
-  private async syncDraftsFromServer(): Promise<boolean> {
-    if (this.draftsSyncPromise) {
-      return this.draftsSyncPromise;
-    }
-
-    this.draftsSyncPromise = (async () => {
-      if (!serverClient.isEnabled() || !serverClient.hasAccessToken()) {
-        return false;
-      }
-
-      try {
-        const { drafts: serverDrafts } = await serverClient.syncDrafts('pull') as { drafts: Array<{
-          id: string;
-          reviewId: string;
-          seed: string;
-          mode: string;
-          model?: string;
-          archivedAt?: string;
-          characterName?: string;
-          templateName?: string;
-          genre?: string;
-          notes?: string;
-          favorite: boolean;
-          tags: string[];
-          offspringType?: string;
-          customInstructions?: string;
-          componentSendOrder?: string[];
-          connectedDraftIds?: string[];
-          cardMetadata?: DraftMetadata['card_metadata'];
-          assets: Record<string, string>;
-          createdAt: string;
-          updatedAt: string;
-        }> };
-
-        let didChange = false;
-
-        for (const serverDraft of serverDrafts) {
-          const local = await DraftStorage.getDraft(serverDraft.reviewId);
-          if (!local) {
-            await DraftStorage.saveDraft({
-              path: serverDraft.reviewId,
-              metadata: {
-                review_id: serverDraft.reviewId,
-                seed: serverDraft.seed,
-                mode: serverDraft.mode as 'SFW' | 'NSFW' | 'Platform-Safe' | 'Auto',
-                model: serverDraft.model,
-                created: serverDraft.createdAt,
-                modified: serverDraft.updatedAt,
-                archived_at: serverDraft.archivedAt,
-                character_name: serverDraft.characterName,
-                template_name: serverDraft.templateName,
-                genre: serverDraft.genre,
-                notes: serverDraft.notes,
-                favorite: serverDraft.favorite,
-                tags: serverDraft.tags,
-                offspring_type: serverDraft.offspringType,
-                custom_instructions: serverDraft.customInstructions,
-                component_send_order: serverDraft.componentSendOrder,
-                connected_drafts: serverDraft.connectedDraftIds,
-                card_metadata: serverDraft.cardMetadata,
-              },
-              assets: serverDraft.assets,
-            });
-            didChange = true;
-            continue;
-          }
-
-          const localTime = new Date(local.metadata.modified || 0).getTime();
-          const serverTime = new Date(serverDraft.updatedAt).getTime();
-          if (serverTime > localTime) {
-            await DraftStorage.saveDraft({
-              path: local.path,
-              metadata: {
-                ...local.metadata,
-                seed: serverDraft.seed,
-                mode: serverDraft.mode as 'SFW' | 'NSFW' | 'Platform-Safe' | 'Auto',
-                model: serverDraft.model,
-                created: serverDraft.createdAt,
-                modified: serverDraft.updatedAt,
-                archived_at: serverDraft.archivedAt,
-                character_name: serverDraft.characterName,
-                template_name: serverDraft.templateName,
-                genre: serverDraft.genre,
-                notes: serverDraft.notes,
-                favorite: serverDraft.favorite,
-                tags: serverDraft.tags,
-                offspring_type: serverDraft.offspringType,
-                custom_instructions: serverDraft.customInstructions,
-                component_send_order: serverDraft.componentSendOrder,
-                connected_drafts: serverDraft.connectedDraftIds,
-                card_metadata: serverDraft.cardMetadata,
-              },
-              assets: serverDraft.assets,
-            });
-            didChange = true;
-          }
-        }
-
-        if (didChange) {
-          dispatchBrowserSyncEvent(DRAFTS_SYNCED_EVENT);
-        }
-
-        return didChange;
-      } catch (error) {
-        console.warn('Failed to sync drafts from server:', error);
-        return false;
-      } finally {
-        this.draftsSyncPromise = null;
-      }
-    })();
-
-    return this.draftsSyncPromise;
-  }
-
   async getThemes(): Promise<ThemePreset[]> {
-    void this.syncThemesFromServer();
     return this.getThemesSnapshot();
   }
 
@@ -1752,7 +1485,6 @@ export class EidolonBrowserAPI {
     };
     themes.push(created);
     saveCustomThemes(themes);
-    queueAutoSync('themes');
 
     return created;
   }
@@ -1788,7 +1520,6 @@ export class EidolonBrowserAPI {
     }
 
     saveCustomThemes(themes);
-    queueAutoSync('themes');
     return incoming;
   }
 
@@ -1800,7 +1531,6 @@ export class EidolonBrowserAPI {
     }
     themes[index] = { ...themes[index], ...theme };
     saveCustomThemes(themes);
-    queueAutoSync('themes');
 
     return themes[index];
   }
@@ -1833,7 +1563,6 @@ export class EidolonBrowserAPI {
       }
       themes[index] = { ...theme, name: request.new_name };
       saveCustomThemes(themes);
-      queueAutoSync('themes');
       return themes[index];
     });
   }
@@ -1842,7 +1571,6 @@ export class EidolonBrowserAPI {
     // Delete locally first
     const themes = getCustomThemes().filter((theme) => theme.name !== name);
     saveCustomThemes(themes);
-    queueAutoSync('themes');
 
     return { status: 'deleted', name };
   }
@@ -1861,7 +1589,12 @@ export class EidolonBrowserAPI {
 
     for await (const progress of GenerationService.generateSeeds(request)) {
       if (progress.type === 'complete' && progress.content) {
-        seeds.push(...progress.content.split('\n').map((seed) => seed.trim()).filter(Boolean));
+        seeds.push(
+          ...progress.content
+            .split('\n')
+            .map((seed) => seed.trim())
+            .filter(Boolean),
+        );
       }
     }
 
@@ -1869,29 +1602,6 @@ export class EidolonBrowserAPI {
   }
 
   async getTemplates(): Promise<Template[]> {
-    // Try to sync from server first if authenticated
-    if (serverClient.isEnabled() && serverClient.hasAccessToken()) {
-      try {
-        const { templates: serverTemplates = [] } = await serverClient.syncTemplates('pull') as {
-          templates?: RemoteTemplateSyncRecord[];
-        };
-
-        // Merge server templates with local storage
-        const localRecords = getStoredTemplates();
-        for (const serverT of serverTemplates) {
-          const normalizedRecord = normalizeRemoteTemplateRecord(serverT);
-          if (!normalizedRecord || getStoredTemplateRecord(normalizedRecord.template.name)) {
-            continue;
-          }
-
-          localRecords.push(normalizedRecord);
-        }
-        saveStoredTemplates(localRecords);
-      } catch (e) {
-        console.warn('Failed to sync templates from server:', e);
-      }
-    }
-
     return getAllTemplateRecords().map((record) => record.template);
   }
 
@@ -1923,7 +1633,6 @@ export class EidolonBrowserAPI {
     const record = buildStoredTemplateRecord<StoredTemplateRecord>(template);
     records.push(record);
     saveStoredTemplates(records);
-    queueAutoSync('templates');
 
     return record.template;
   }
@@ -1955,7 +1664,6 @@ export class EidolonBrowserAPI {
       templateRoot: records[index].template_root,
     });
     saveStoredTemplates(records);
-    queueAutoSync('templates');
 
     return records[index].template;
   }
@@ -1963,7 +1671,6 @@ export class EidolonBrowserAPI {
   async deleteTemplate(name: string): Promise<{ status: string; name: string }> {
     const records = getStoredTemplates().filter((record) => record.template.name !== name);
     saveStoredTemplates(records);
-    queueAutoSync('templates');
 
     return { status: 'deleted', name };
   }
@@ -1990,7 +1697,7 @@ export class EidolonBrowserAPI {
     const validation = validateTemplateDefinition(record.template);
     const warnings = buildMissingTemplateBlueprintWarnings(
       record.template,
-      (assetName) => resolveTemplateBlueprintContent(record.template.name, assetName) ?? null
+      (assetName) => resolveTemplateBlueprintContent(record.template.name, assetName) ?? null,
     );
     return { errors: validation.errors, warnings };
   }
@@ -2026,7 +1733,6 @@ export class EidolonBrowserAPI {
 
   async getDrafts(filters?: DraftFilters): Promise<DraftListResponse> {
     const allMetadata = await DraftStorage.getAllMetadata({ includeArchived: true });
-    void this.syncDraftsFromServer();
     const filtered = applyDraftFilters(allMetadata, filters);
     return buildDraftListResponse(filtered, filtered.length, filtered, allMetadata);
   }
@@ -2075,29 +1781,101 @@ export class EidolonBrowserAPI {
         custom_instructions: request.customInstructions?.trim() || undefined,
         component_send_order: request.componentSendOrder,
         connected_drafts: (request.connectedDraftIds ?? []).map((draftId) => draftId.trim()).filter(Boolean),
+        parent_drafts: (request.parentDraftIds ?? []).map((draftId) => draftId.trim()).filter(Boolean),
+        card_metadata: request.cardMetadata ? JSON.parse(JSON.stringify(request.cardMetadata)) : undefined,
+        review_annotations: request.reviewAnnotations
+          ? JSON.parse(JSON.stringify(request.reviewAnnotations))
+          : undefined,
+        merge_provenance: request.mergeProvenance ? JSON.parse(JSON.stringify(request.mergeProvenance)) : undefined,
+        merge_history: request.mergeHistory ? JSON.parse(JSON.stringify(request.mergeHistory)) : undefined,
       },
       assets: request.assets ?? {},
     };
 
     await DraftStorage.saveDraft(draft);
-    queueAutoSync('drafts');
 
     return draft;
   }
 
-  async updateMetadata(reviewId: string, updates: Partial<DraftMetadata>): Promise<{ status: string; draft_id: string }> {
+  async updateMetadata(
+    reviewId: string,
+    updates: Partial<DraftMetadata>,
+  ): Promise<{ status: string; draft_id: string }> {
     // Update locally first
     await DraftStorage.updateMetadata(reviewId, updates);
-    queueAutoSync('drafts');
 
     return { status: 'updated', draft_id: reviewId };
+  }
+
+  async createDraftSnapshot(
+    reviewId: string,
+    options: { label?: string; reason?: string } = {},
+  ): Promise<{ status: 'created'; draft_id: string; snapshot_id: string }> {
+    const draft = await this.getDraft(reviewId);
+    const snapshot = buildDraftRevisionSnapshot(draft, {
+      label: options.label ?? `${draft.metadata.character_name || draft.metadata.seed} restore point`,
+      reason: options.reason,
+    });
+
+    await DraftStorage.updateMetadata(reviewId, {
+      revision_snapshots: appendDraftRevisionSnapshot(draft.metadata.revision_snapshots, snapshot),
+    });
+
+    return { status: 'created', draft_id: reviewId, snapshot_id: snapshot.id };
+  }
+
+  async restoreDraftSnapshot(
+    reviewId: string,
+    snapshotId: string,
+  ): Promise<{ status: 'restored'; draft_id: string; snapshot_id: string }> {
+    const draft = await this.getDraft(reviewId);
+    const snapshot = draft.metadata.revision_snapshots?.find((entry) => entry.id === snapshotId);
+    if (!snapshot) {
+      throw new APIError(404, `Snapshot ${snapshotId} not found for draft ${reviewId}`);
+    }
+
+    const safeguardSnapshot = buildDraftRevisionSnapshot(draft, {
+      label: `Before restore ${new Date().toLocaleString()}`,
+      reason: `pre-restore:${snapshotId}`,
+    });
+    const nextSnapshots = appendDraftRevisionSnapshot(draft.metadata.revision_snapshots, safeguardSnapshot);
+    const state = snapshot.state;
+
+    await DraftStorage.saveDraft({
+      path: draft.path,
+      metadata: {
+        ...draft.metadata,
+        seed: state.seed,
+        mode: state.mode,
+        model: state.model,
+        tags: state.tags,
+        genre: state.genre,
+        notes: state.notes,
+        favorite: state.favorite,
+        character_name: state.character_name,
+        template_name: state.template_name,
+        parent_drafts: state.parent_drafts,
+        connected_drafts: state.connected_drafts,
+        offspring_type: state.offspring_type,
+        custom_instructions: state.custom_instructions,
+        component_send_order: state.component_send_order,
+        card_metadata: state.card_metadata ? JSON.parse(JSON.stringify(state.card_metadata)) : undefined,
+        review_annotations: state.review_annotations ? JSON.parse(JSON.stringify(state.review_annotations)) : undefined,
+        merge_provenance: state.merge_provenance ? JSON.parse(JSON.stringify(state.merge_provenance)) : undefined,
+        merge_history: state.merge_history ? JSON.parse(JSON.stringify(state.merge_history)) : undefined,
+        revision_snapshots: nextSnapshots,
+        modified: new Date().toISOString(),
+      },
+      assets: JSON.parse(JSON.stringify(state.assets)) as Draft['assets'],
+    });
+
+    return { status: 'restored', draft_id: reviewId, snapshot_id: snapshotId };
   }
 
   async archiveDraft(reviewId: string): Promise<{ status: string; draft_id: string }> {
     await DraftStorage.updateMetadata(reviewId, {
       archived_at: new Date().toISOString(),
     });
-    queueAutoSync('drafts');
 
     return { status: 'archived', draft_id: reviewId };
   }
@@ -2106,7 +1884,6 @@ export class EidolonBrowserAPI {
     await DraftStorage.updateMetadata(reviewId, {
       archived_at: undefined,
     });
-    queueAutoSync('drafts');
 
     return { status: 'restored', draft_id: reviewId };
   }
@@ -2114,7 +1891,6 @@ export class EidolonBrowserAPI {
   async deleteDraft(reviewId: string): Promise<{ status: string; draft_id: string }> {
     // Delete locally first
     await DraftStorage.deleteDraft(reviewId);
-    queueAutoSync('drafts');
 
     return { status: 'deleted', draft_id: reviewId };
   }
@@ -2123,11 +1899,10 @@ export class EidolonBrowserAPI {
     reviewId: string,
     assetName: string,
     content: string,
-    options: AssetWriteOptions = {}
+    options: AssetWriteOptions = {},
   ): Promise<{ status: 'created' | 'updated'; draft_id: string; asset_name: string }> {
     // Update locally first
     const status = await DraftStorage.updateAsset(reviewId, assetName, content, options);
-    queueAutoSync('drafts');
 
     return { status, draft_id: reviewId, asset_name: assetName };
   }
@@ -2243,7 +2018,6 @@ export class EidolonBrowserAPI {
       assets: request.assets,
     };
     await DraftStorage.saveDraft(draft);
-    queueAutoSync('drafts');
     return {
       draft_path: reviewId,
       draft_id: reviewId,
@@ -2258,13 +2032,16 @@ export class EidolonBrowserAPI {
         emit('batch_start', { index, seed });
         try {
           let draftId = '';
-          for await (const progress of GenerationService.generate({
-            seed,
-            mode: request.mode,
-            template: request.template,
-            selected_assets: request.selected_assets,
-            connected_draft_ids: request.connected_draft_ids,
-          }, { signal })) {
+          for await (const progress of GenerationService.generate(
+            {
+              seed,
+              mode: request.mode,
+              template: request.template,
+              selected_assets: request.selected_assets,
+              connected_draft_ids: request.connected_draft_ids,
+            },
+            { signal },
+          )) {
             if (signal.aborted) {
               return;
             }
@@ -2274,23 +2051,29 @@ export class EidolonBrowserAPI {
           }
           emit('batch_complete', { index, seed, draft_path: draftId });
         } catch (error) {
-          emit('batch_error', { index, seed, error: error instanceof Error ? error.message : 'Batch generation failed' });
+          emit('batch_error', {
+            index,
+            seed,
+            error: error instanceof Error ? error.message : 'Batch generation failed',
+          });
         }
       };
 
       if (request.parallel) {
         let nextIndex = 0;
         const workerCount = Math.min(Math.max(request.max_concurrent ?? 3, 1), seeds.length || 1);
-        await Promise.all(Array.from({ length: workerCount }, async () => {
-          while (!signal.aborted) {
-            const index = nextIndex;
-            nextIndex += 1;
-            if (index >= seeds.length) {
-              return;
+        await Promise.all(
+          Array.from({ length: workerCount }, async () => {
+            while (!signal.aborted) {
+              const index = nextIndex;
+              nextIndex += 1;
+              if (index >= seeds.length) {
+                return;
+              }
+              await runSeed(seeds[index], index);
             }
-            await runSeed(seeds[index], index);
-          }
-        }));
+          }),
+        );
       } else {
         for (let index = 0; index < seeds.length; index += 1) {
           if (signal.aborted) {
@@ -2323,7 +2106,7 @@ export class EidolonBrowserAPI {
     }
 
     try {
-      const analysis = await GenerationService.analyzeSimilarity(request.draft1_id, request.draft2_id) as {
+      const analysis = (await GenerationService.analyzeSimilarity(request.draft1_id, request.draft2_id)) as {
         narrative_dynamics?: unknown;
         relationship_arc?: unknown;
         story_opportunities?: unknown;
@@ -2337,9 +2120,10 @@ export class EidolonBrowserAPI {
       const sceneSuggestions = Array.isArray(analysis.scene_suggestions)
         ? analysis.scene_suggestions.map((item) => String(item)).slice(0, 3)
         : baseResult.relationship_suggestions;
-      const relationshipPotential = [analysis.narrative_dynamics, analysis.relationship_arc]
-        .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
-        .join('\n\n') || (typeof analysis.raw === 'string' ? analysis.raw : 'LLM analysis unavailable.');
+      const relationshipPotential =
+        [analysis.narrative_dynamics, analysis.relationship_arc]
+          .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+          .join('\n\n') || (typeof analysis.raw === 'string' ? analysis.raw : 'LLM analysis unavailable.');
 
       return {
         ...baseResult,
@@ -2445,7 +2229,8 @@ export class EidolonBrowserAPI {
 
   async exportDraft(request: ExportRequest): Promise<DownloadResponse> {
     const draft = await this.getDraft(request.draft_id);
-    const preset = request.preset === 'text' || request.preset === 'combined' || request.preset === 'png' ? request.preset : 'json';
+    const preset =
+      request.preset === 'text' || request.preset === 'combined' || request.preset === 'png' ? request.preset : 'json';
     const includeMetadata = request.include_metadata !== false;
     const fileBase = slugifyFileName(draft.metadata.character_name || draft.metadata.seed || draft.metadata.review_id);
     const artifact = buildDraftExportArtifact(draft, preset, includeMetadata);
@@ -2454,58 +2239,51 @@ export class EidolonBrowserAPI {
   }
 
   async getBlueprints(): Promise<BlueprintList> {
-    // Try to sync from server first if authenticated
-    if (serverClient.isEnabled() && serverClient.hasAccessToken()) {
-      try {
-        const { blueprints = [] } = await serverClient.syncBlueprints('list') as {
-          blueprints?: RemoteBlueprintSyncRecord[];
-        };
-
-        const overrides = getBlueprintOverrides();
-        let nextOverrides = overrides;
-        for (const serverBp of blueprints) {
-          if (serverBp.isBuiltin === true || serverBp.is_builtin === true) {
-            continue;
-          }
-
-          if (typeof serverBp.path !== 'string' || typeof serverBp.content !== 'string') {
-            continue;
-          }
-
-          const localPath = normalizeRemoteBlueprintPath(serverBp.path);
-          if (Object.prototype.hasOwnProperty.call(overrides, localPath)) {
-            continue;
-          }
-
-          if (nextOverrides === overrides) {
-            nextOverrides = { ...overrides };
-          }
-
-          nextOverrides[localPath] = serverBp.content;
-        }
-
-        if (nextOverrides !== overrides) {
-          saveBlueprintOverrides(nextOverrides);
-        }
-      } catch (e) {
-        console.warn('Failed to sync blueprints from server:', e);
-      }
-    }
-
     const values = [...getBlueprintCatalog().values()];
     return buildBlueprintList(values);
   }
 
-  async getWorlds(params?: { search?: string; genre?: string; includePublic?: boolean }): Promise<{ worlds: WorldRecord[] }> {
+  async getWorlds(params?: {
+    search?: string;
+    genre?: string;
+    includePublic?: boolean;
+  }): Promise<{ worlds: WorldRecord[] }> {
     if (isSelfContainedDesktopRuntime()) {
       return getLocalWorlds(params);
     }
 
-    if (!serverClient.isEnabled() || !serverClient.hasAccessToken()) {
-      return { worlds: [] };
+    return { worlds: [] };
+  }
+
+  async getWorldCharacterDraftLinks(params?: {
+    draftIds?: string[];
+  }): Promise<{ links: WorldCharacterDraftLinkRecord[] }> {
+    if (isSelfContainedDesktopRuntime()) {
+      return getLocalWorldCharacterDraftLinks(params);
     }
 
-    return serverClient.getWorlds(params);
+    return { links: [] };
+  }
+
+  async getWorldRelationshipAuditIssues(): Promise<{
+    issues: Array<{
+      worldId: string;
+      worldName: string;
+      relationshipId: string;
+      label: string;
+      sourceCharacterId: string;
+      sourceCharacterName?: string;
+      targetCharacterId: string;
+      targetCharacterName?: string;
+      updatedAt: string;
+      kind: 'missing-source-character' | 'missing-target-character' | 'missing-both-characters';
+    }>;
+  }> {
+    if (isSelfContainedDesktopRuntime()) {
+      return getLocalWorldRelationshipAuditIssues();
+    }
+
+    return { issues: [] };
   }
 
   async getWorld(id: string): Promise<{ world: WorldRecord }> {
@@ -2513,15 +2291,23 @@ export class EidolonBrowserAPI {
       return getLocalWorld(id);
     }
 
-    return serverClient.getWorld(id);
+    throw new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE);
   }
 
-  async createWorld(data: { name: string; description?: string; genre?: string; setting?: string; notes?: string; tags?: string[]; isPublic?: boolean }): Promise<{ world: WorldRecord }> {
+  async createWorld(data: {
+    name: string;
+    description?: string;
+    genre?: string;
+    setting?: string;
+    notes?: string;
+    tags?: string[];
+    isPublic?: boolean;
+  }): Promise<{ world: WorldRecord }> {
     if (isSelfContainedDesktopRuntime()) {
       return createLocalWorld(data);
     }
 
-    return serverClient.createWorld(data);
+    throw new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE);
   }
 
   async updateWorld(id: string, data: Record<string, unknown>): Promise<{ world: WorldRecord }> {
@@ -2529,7 +2315,7 @@ export class EidolonBrowserAPI {
       return updateLocalWorld(id, data);
     }
 
-    return serverClient.updateWorld(id, data);
+    throw new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE);
   }
 
   async deleteWorld(id: string): Promise<{ message: string }> {
@@ -2537,23 +2323,30 @@ export class EidolonBrowserAPI {
       return deleteLocalWorld(id);
     }
 
-    return serverClient.deleteWorld(id);
+    throw new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE);
   }
 
-  async addWorldCharacter(worldId: string, data: { draftId?: string; characterName: string; role?: string; notes?: string }): Promise<{ character: WorldCharacterRecord }> {
+  async addWorldCharacter(
+    worldId: string,
+    data: { draftId?: string; characterName: string; role?: string; notes?: string },
+  ): Promise<{ character: WorldCharacterRecord }> {
     if (isSelfContainedDesktopRuntime()) {
       return addLocalWorldCharacter(worldId, data);
     }
 
-    return serverClient.addWorldCharacter(worldId, data);
+    throw new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE);
   }
 
-  async updateWorldCharacter(worldId: string, characterId: string, data: Record<string, unknown>): Promise<{ character: WorldCharacterRecord }> {
+  async updateWorldCharacter(
+    worldId: string,
+    characterId: string,
+    data: Record<string, unknown>,
+  ): Promise<{ character: WorldCharacterRecord }> {
     if (isSelfContainedDesktopRuntime()) {
       return updateLocalWorldCharacter(worldId, characterId, data);
     }
 
-    return serverClient.updateWorldCharacter(worldId, characterId, data);
+    throw new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE);
   }
 
   async deleteWorldCharacter(worldId: string, characterId: string): Promise<{ message: string }> {
@@ -2561,23 +2354,30 @@ export class EidolonBrowserAPI {
       return deleteLocalWorldCharacter(worldId, characterId);
     }
 
-    return serverClient.deleteWorldCharacter(worldId, characterId);
+    throw new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE);
   }
 
-  async addWorldFaction(worldId: string, data: { name: string; description?: string; role?: string; notes?: string; tags?: string[] }): Promise<{ faction: WorldFactionRecord }> {
+  async addWorldFaction(
+    worldId: string,
+    data: { name: string; description?: string; role?: string; notes?: string; tags?: string[]; draftIds?: string[] },
+  ): Promise<{ faction: WorldFactionRecord }> {
     if (isSelfContainedDesktopRuntime()) {
       return addLocalWorldFaction(worldId, data);
     }
 
-    return serverClient.addWorldFaction(worldId, data);
+    throw new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE);
   }
 
-  async updateWorldFaction(worldId: string, factionId: string, data: Record<string, unknown>): Promise<{ faction: WorldFactionRecord }> {
+  async updateWorldFaction(
+    worldId: string,
+    factionId: string,
+    data: Record<string, unknown>,
+  ): Promise<{ faction: WorldFactionRecord }> {
     if (isSelfContainedDesktopRuntime()) {
       return updateLocalWorldFaction(worldId, factionId, data);
     }
 
-    return serverClient.updateWorldFaction(worldId, factionId, data);
+    throw new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE);
   }
 
   async deleteWorldFaction(worldId: string, factionId: string): Promise<{ message: string }> {
@@ -2585,23 +2385,37 @@ export class EidolonBrowserAPI {
       return deleteLocalWorldFaction(worldId, factionId);
     }
 
-    return serverClient.deleteWorldFaction(worldId, factionId);
+    throw new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE);
   }
 
-  async addWorldLocation(worldId: string, data: { name: string; description?: string; category?: string; notes?: string; tags?: string[] }): Promise<{ location: WorldLocationRecord }> {
+  async addWorldLocation(
+    worldId: string,
+    data: {
+      name: string;
+      description?: string;
+      category?: string;
+      notes?: string;
+      tags?: string[];
+      draftIds?: string[];
+    },
+  ): Promise<{ location: WorldLocationRecord }> {
     if (isSelfContainedDesktopRuntime()) {
       return addLocalWorldLocation(worldId, data);
     }
 
-    return serverClient.addWorldLocation(worldId, data);
+    throw new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE);
   }
 
-  async updateWorldLocation(worldId: string, locationId: string, data: Record<string, unknown>): Promise<{ location: WorldLocationRecord }> {
+  async updateWorldLocation(
+    worldId: string,
+    locationId: string,
+    data: Record<string, unknown>,
+  ): Promise<{ location: WorldLocationRecord }> {
     if (isSelfContainedDesktopRuntime()) {
       return updateLocalWorldLocation(worldId, locationId, data);
     }
 
-    return serverClient.updateWorldLocation(worldId, locationId, data);
+    throw new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE);
   }
 
   async deleteWorldLocation(worldId: string, locationId: string): Promise<{ message: string }> {
@@ -2609,7 +2423,38 @@ export class EidolonBrowserAPI {
       return deleteLocalWorldLocation(worldId, locationId);
     }
 
-    return serverClient.deleteWorldLocation(worldId, locationId);
+    throw new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE);
+  }
+
+  async addWorldRelationship(
+    worldId: string,
+    data: { sourceCharacterId: string; targetCharacterId: string; label: string; notes?: string },
+  ): Promise<{ relationship: WorldRelationshipRecord }> {
+    if (isSelfContainedDesktopRuntime()) {
+      return addLocalWorldRelationship(worldId, data);
+    }
+
+    throw new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE);
+  }
+
+  async updateWorldRelationship(
+    worldId: string,
+    relationshipId: string,
+    data: Record<string, unknown>,
+  ): Promise<{ relationship: WorldRelationshipRecord }> {
+    if (isSelfContainedDesktopRuntime()) {
+      return updateLocalWorldRelationship(worldId, relationshipId, data);
+    }
+
+    throw new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE);
+  }
+
+  async deleteWorldRelationship(worldId: string, relationshipId: string): Promise<{ message: string }> {
+    if (isSelfContainedDesktopRuntime()) {
+      return deleteLocalWorldRelationship(worldId, relationshipId);
+    }
+
+    throw new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE);
   }
 
   async getTimeline(id: string): Promise<{ timeline: TimelineRecord }> {
@@ -2617,15 +2462,22 @@ export class EidolonBrowserAPI {
       return getLocalTimeline(id);
     }
 
-    return serverClient.getTimeline(id);
+    throw new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE);
   }
 
-  async createTimeline(data: { worldId: string; name: string; description?: string; startDate?: string; endDate?: string; tags?: string[] }): Promise<{ timeline: TimelineRecord }> {
+  async createTimeline(data: {
+    worldId: string;
+    name: string;
+    description?: string;
+    startDate?: string;
+    endDate?: string;
+    tags?: string[];
+  }): Promise<{ timeline: TimelineRecord }> {
     if (isSelfContainedDesktopRuntime()) {
       return createLocalTimeline(data);
     }
 
-    return serverClient.createTimeline(data);
+    throw new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE);
   }
 
   async updateTimeline(id: string, data: Record<string, unknown>): Promise<{ timeline: TimelineRecord }> {
@@ -2633,7 +2485,7 @@ export class EidolonBrowserAPI {
       return updateLocalTimeline(id, data);
     }
 
-    return serverClient.updateTimeline(id, data);
+    throw new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE);
   }
 
   async deleteTimeline(id: string): Promise<{ message: string }> {
@@ -2641,23 +2493,37 @@ export class EidolonBrowserAPI {
       return deleteLocalTimeline(id);
     }
 
-    return serverClient.deleteTimeline(id);
+    throw new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE);
   }
 
-  async addTimelineEvent(timelineId: string, data: { title: string; description?: string; eventDate?: string; sortOrder?: number; tags?: string[]; metadata?: Record<string, unknown> }): Promise<{ event: TimelineEventRecord }> {
+  async addTimelineEvent(
+    timelineId: string,
+    data: {
+      title: string;
+      description?: string;
+      eventDate?: string;
+      sortOrder?: number;
+      tags?: string[];
+      metadata?: Record<string, unknown>;
+    },
+  ): Promise<{ event: TimelineEventRecord }> {
     if (isSelfContainedDesktopRuntime()) {
       return addLocalTimelineEvent(timelineId, data);
     }
 
-    return serverClient.addTimelineEvent(timelineId, data);
+    throw new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE);
   }
 
-  async updateTimelineEvent(timelineId: string, eventId: string, data: Record<string, unknown>): Promise<{ event: TimelineEventRecord }> {
+  async updateTimelineEvent(
+    timelineId: string,
+    eventId: string,
+    data: Record<string, unknown>,
+  ): Promise<{ event: TimelineEventRecord }> {
     if (isSelfContainedDesktopRuntime()) {
       return updateLocalTimelineEvent(timelineId, eventId, data);
     }
 
-    return serverClient.updateTimelineEvent(timelineId, eventId, data);
+    throw new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE);
   }
 
   async deleteTimelineEvent(timelineId: string, eventId: string): Promise<{ message: string }> {
@@ -2665,7 +2531,7 @@ export class EidolonBrowserAPI {
       return deleteLocalTimelineEvent(timelineId, eventId);
     }
 
-    return serverClient.deleteTimelineEvent(timelineId, eventId);
+    throw new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE);
   }
 
   async getBlueprint(path: string): Promise<Blueprint> {
@@ -2688,7 +2554,6 @@ export class EidolonBrowserAPI {
     const overrides = getBlueprintOverrides();
     overrides[path] = content;
     saveBlueprintOverrides(overrides);
-    queueAutoSync('blueprints');
 
     return this.getBlueprint(path);
   }
@@ -2701,7 +2566,6 @@ export class EidolonBrowserAPI {
     const overrides = getBlueprintOverrides();
     delete overrides[path];
     saveBlueprintOverrides(overrides);
-    queueAutoSync('blueprints');
 
     return { status: 'deleted', path };
   }
@@ -2711,7 +2575,6 @@ export class EidolonBrowserAPI {
     const overrides = getBlueprintOverrides();
     delete overrides[path];
     saveBlueprintOverrides(overrides);
-    queueAutoSync('blueprints');
 
     const blueprint = this.getBlueprint(path);
     if (!blueprint) {
@@ -2730,7 +2593,6 @@ export class EidolonBrowserAPI {
     const overrides = getBlueprintOverrides();
     overrides[path] = content;
     saveBlueprintOverrides(overrides);
-    queueAutoSync('blueprints');
 
     return this.getBlueprint(path);
   }
@@ -2749,7 +2611,6 @@ export class EidolonBrowserAPI {
     const overrides = getBlueprintOverrides();
     overrides[targetPath] = source.content;
     saveBlueprintOverrides(overrides);
-    queueAutoSync('blueprints');
 
     return this.getBlueprint(targetPath);
   }
@@ -2767,14 +2628,17 @@ export class EidolonBrowserAPI {
       const draft = request.draft_id ? await DraftStorage.getDraft(request.draft_id) : null;
       const contextParts = [
         draft ? `Current draft metadata: ${JSON.stringify(draft.metadata)}` : '',
-        request.context_asset && draft?.assets[request.context_asset] ? `Focused asset (${request.context_asset}):\n${draft.assets[request.context_asset]}` : '',
+        request.context_asset && draft?.assets[request.context_asset]
+          ? `Focused asset (${request.context_asset}):\n${draft.assets[request.context_asset]}`
+          : '',
         request.screen_context ? `Screen context: ${JSON.stringify(request.screen_context)}` : '',
       ].filter(Boolean);
 
       const messages: ChatMessage[] = [
         {
           role: 'system',
-          content: 'You are the in-app assistant for Eidolon Simulacra, a browser-only blueprint compiler. Be concise and practical. Use provided draft or screen context when relevant.',
+          content:
+            'You are the in-app assistant for Eidolon Simulacra, a browser-only blueprint compiler. Be concise and practical. Use provided draft or screen context when relevant.',
         },
         ...(contextParts.length > 0 ? [{ role: 'system' as const, content: contextParts.join('\n\n') }] : []),
         ...request.messages,
@@ -2809,7 +2673,8 @@ export class EidolonBrowserAPI {
       const messages: ChatMessage[] = [
         {
           role: 'system',
-          content: 'Rewrite the provided asset according to the user request. Return only the revised asset content with no extra commentary.',
+          content:
+            'Rewrite the provided asset according to the user request. Return only the revised asset content with no extra commentary.',
         },
         {
           role: 'user',

@@ -71,13 +71,14 @@ export const TOKENIZER_THEME_FIELDS: ThemeFieldDefinition[] = [
 
 export const EDITABLE_THEME_SECTIONS = [
   { title: 'App Colors', description: 'Web and app-facing surfaces.', fields: APP_THEME_FIELDS },
-  { title: 'Tokenizer Colors', description: 'Syntax highlighting tokens used in review surfaces.', fields: TOKENIZER_THEME_FIELDS },
+  {
+    title: 'Tokenizer Colors',
+    description: 'Syntax highlighting tokens used in review surfaces.',
+    fields: TOKENIZER_THEME_FIELDS,
+  },
 ] as const;
 
-export function resolveThemeColors(
-  preset: ThemePreset | undefined,
-  overrides?: ThemeOverride
-): ThemeColors | null {
+export function resolveThemeColors(preset: ThemePreset | undefined, overrides?: ThemeOverride): ThemeColors | null {
   if (!preset) {
     return null;
   }
@@ -113,9 +114,13 @@ export function resolveThemeColors(
 
 function hexToHsl(hex: string): string {
   const normalized = hex.replace('#', '').trim();
-  const expanded = normalized.length === 3
-    ? normalized.split('').map((value) => value + value).join('')
-    : normalized;
+  const expanded =
+    normalized.length === 3
+      ? normalized
+          .split('')
+          .map((value) => value + value)
+          .join('')
+      : normalized;
 
   if (!/^[0-9a-fA-F]{6}$/.test(expanded)) {
     return '0 0% 0%';

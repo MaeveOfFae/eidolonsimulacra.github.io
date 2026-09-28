@@ -3,12 +3,18 @@ import {
   getUniqueImportedReviewId,
   inferCharacterDisplayNameFromAssets,
   MAX_CONNECTED_DRAFT_REFERENCES,
+  normalizeAssetNameList,
+  normalizeAssetRecord,
   parseDraftImportText,
   type CharacterCardMetadata,
   type CharacterImportOptions,
   type ContentMode,
   type Draft,
+  type DraftMergeHistoryEvent,
+  type DraftMergeProvenance,
   type DraftMetadata,
+  type DraftReviewAnnotations,
+  type DraftRevisionSnapshot,
 } from '@char-gen/shared';
 import { openDatabaseAsync, type SQLiteDatabase } from 'expo-sqlite';
 import { resolveTemplateDefinition } from './content-store';
@@ -34,6 +40,10 @@ interface DraftRecordRow {
   templateName?: string | null;
   offspringType?: string | null;
   cardMetadataJson?: string | null;
+  reviewAnnotationsJson?: string | null;
+  mergeProvenanceJson?: string | null;
+  mergeHistoryJson?: string | null;
+  revisionSnapshotsJson?: string | null;
   archivedAt?: string | null;
   createdAt: number;
   updatedAt: number;
@@ -68,7 +78,23 @@ function getStorage(): StorageLike | null {
 }
 
 function cloneCardMetadata(cardMetadata?: CharacterCardMetadata): CharacterCardMetadata | undefined {
-  return cardMetadata ? JSON.parse(JSON.stringify(cardMetadata)) as CharacterCardMetadata : undefined;
+  return cardMetadata ? (JSON.parse(JSON.stringify(cardMetadata)) as CharacterCardMetadata) : undefined;
+}
+
+function cloneReviewAnnotations(reviewAnnotations?: DraftReviewAnnotations): DraftReviewAnnotations | undefined {
+  return reviewAnnotations ? (JSON.parse(JSON.stringify(reviewAnnotations)) as DraftReviewAnnotations) : undefined;
+}
+
+function cloneMergeProvenance(mergeProvenance?: DraftMergeProvenance): DraftMergeProvenance | undefined {
+  return mergeProvenance ? (JSON.parse(JSON.stringify(mergeProvenance)) as DraftMergeProvenance) : undefined;
+}
+
+function cloneMergeHistory(mergeHistory?: DraftMergeHistoryEvent[]): DraftMergeHistoryEvent[] | undefined {
+  return mergeHistory ? (JSON.parse(JSON.stringify(mergeHistory)) as DraftMergeHistoryEvent[]) : undefined;
+}
+
+function cloneRevisionSnapshots(revisionSnapshots?: DraftRevisionSnapshot[]): DraftRevisionSnapshot[] | undefined {
+  return revisionSnapshots ? (JSON.parse(JSON.stringify(revisionSnapshots)) as DraftRevisionSnapshot[]) : undefined;
 }
 
 function parseCardMetadataJson(value?: string | null): CharacterCardMetadata | undefined {
@@ -79,8 +105,64 @@ function parseCardMetadataJson(value?: string | null): CharacterCardMetadata | u
   try {
     const parsed = JSON.parse(value) as unknown;
     return typeof parsed === 'object' && parsed !== null
-      ? JSON.parse(JSON.stringify(parsed)) as CharacterCardMetadata
+      ? (JSON.parse(JSON.stringify(parsed)) as CharacterCardMetadata)
       : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function parseReviewAnnotationsJson(value?: string | null): DraftReviewAnnotations | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return typeof parsed === 'object' && parsed !== null
+      ? (JSON.parse(JSON.stringify(parsed)) as DraftReviewAnnotations)
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function parseMergeProvenanceJson(value?: string | null): DraftMergeProvenance | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return typeof parsed === 'object' && parsed !== null
+      ? (JSON.parse(JSON.stringify(parsed)) as DraftMergeProvenance)
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function parseMergeHistoryJson(value?: string | null): DraftMergeHistoryEvent[] | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return Array.isArray(parsed) ? (JSON.parse(JSON.stringify(parsed)) as DraftMergeHistoryEvent[]) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function parseRevisionSnapshotsJson(value?: string | null): DraftRevisionSnapshot[] | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return Array.isArray(parsed) ? (JSON.parse(JSON.stringify(parsed)) as DraftRevisionSnapshot[]) : undefined;
   } catch {
     return undefined;
   }
@@ -94,6 +176,10 @@ function cloneMetadata(metadata: DraftMetadata): DraftMetadata {
     connected_drafts: metadata.connected_drafts ? [...metadata.connected_drafts] : undefined,
     component_send_order: metadata.component_send_order ? [...metadata.component_send_order] : undefined,
     card_metadata: cloneCardMetadata(metadata.card_metadata),
+    review_annotations: cloneReviewAnnotations(metadata.review_annotations),
+    merge_provenance: cloneMergeProvenance(metadata.merge_provenance),
+    merge_history: cloneMergeHistory(metadata.merge_history),
+    revision_snapshots: cloneRevisionSnapshots(metadata.revision_snapshots),
   };
 }
 
@@ -170,8 +256,13 @@ function toTimestamp(value: string | undefined): number {
 
 function normalizeDraft(draft: Draft): Draft {
   const nowIso = new Date().toISOString();
-  const normalizedAssets = { ...draft.assets };
-  const characterName = draft.metadata.character_name || inferCharacterDisplayNameFromAssets(normalizedAssets) || undefined;
+  const templateHint = resolveTemplateDefinition(draft.metadata.template_name) ?? draft.metadata.template_name;
+  const normalizedAssets = normalizeAssetRecord(draft.assets, templateHint);
+  const componentSendOrder = draft.metadata.component_send_order
+    ? normalizeAssetNameList(draft.metadata.component_send_order, templateHint)
+    : undefined;
+  const characterName =
+    draft.metadata.character_name || inferCharacterDisplayNameFromAssets(normalizedAssets) || undefined;
 
   return cloneDraft({
     path: draft.path || draft.metadata.review_id,
@@ -186,21 +277,26 @@ function normalizeDraft(draft: Draft): Draft {
       tags: normalizeStringList(draft.metadata.tags),
       parent_drafts: normalizeStringList(draft.metadata.parent_drafts),
       connected_drafts: normalizeConnectedDraftIds(draft.metadata.review_id, draft.metadata.connected_drafts),
-      component_send_order: normalizeStringList(draft.metadata.component_send_order),
+      component_send_order: componentSendOrder,
       card_metadata: cloneCardMetadata(draft.metadata.card_metadata),
+      review_annotations: cloneReviewAnnotations(draft.metadata.review_annotations),
+      merge_provenance: cloneMergeProvenance(draft.metadata.merge_provenance),
+      revision_snapshots: cloneRevisionSnapshots(draft.metadata.revision_snapshots),
     },
     assets: normalizedAssets,
   });
 }
 
 function isDraftLike(value: unknown): value is Draft {
-  return typeof value === 'object'
-    && value !== null
-    && 'metadata' in value
-    && 'assets' in value
-    && typeof (value as Draft).metadata?.review_id === 'string'
-    && typeof (value as Draft).assets === 'object'
-    && (value as Draft).assets !== null;
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'metadata' in value &&
+    'assets' in value &&
+    typeof (value as Draft).metadata?.review_id === 'string' &&
+    typeof (value as Draft).assets === 'object' &&
+    (value as Draft).assets !== null
+  );
 }
 
 function coerceLegacyDrafts(raw: string): Draft[] {
@@ -210,15 +306,17 @@ function coerceLegacyDrafts(raw: string): Draft[] {
       return [];
     }
 
-    return parsed
-      .filter((entry): entry is Draft => isDraftLike(entry))
-      .map((entry) => normalizeDraft(entry));
+    return parsed.filter((entry): entry is Draft => isDraftLike(entry)).map((entry) => normalizeDraft(entry));
   } catch {
     return [];
   }
 }
 
-function metadataToRow(metadata: DraftMetadata, createdAt: number, updatedAt: number): Record<string, string | number | null> {
+function metadataToRow(
+  metadata: DraftMetadata,
+  createdAt: number,
+  updatedAt: number,
+): Record<string, string | number | null> {
   return {
     $reviewId: metadata.review_id,
     $seed: metadata.seed,
@@ -234,6 +332,10 @@ function metadataToRow(metadata: DraftMetadata, createdAt: number, updatedAt: nu
     $templateName: metadata.template_name || null,
     $offspringType: metadata.offspring_type || null,
     $cardMetadataJson: metadata.card_metadata ? JSON.stringify(metadata.card_metadata) : null,
+    $reviewAnnotationsJson: metadata.review_annotations ? JSON.stringify(metadata.review_annotations) : null,
+    $mergeProvenanceJson: metadata.merge_provenance ? JSON.stringify(metadata.merge_provenance) : null,
+    $mergeHistoryJson: metadata.merge_history ? JSON.stringify(metadata.merge_history) : null,
+    $revisionSnapshotsJson: metadata.revision_snapshots ? JSON.stringify(metadata.revision_snapshots) : null,
     $archivedAt: metadata.archived_at || null,
     $createdAt: createdAt,
     $updatedAt: updatedAt,
@@ -258,6 +360,10 @@ async function ensureSchema(database: SQLiteDatabase): Promise<void> {
       template_name TEXT,
       offspring_type TEXT,
       card_metadata_json TEXT,
+      review_annotations_json TEXT,
+      merge_provenance_json TEXT,
+      merge_history_json TEXT,
+      revision_snapshots_json TEXT,
       archived_at TEXT,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
@@ -308,6 +414,18 @@ async function ensureSchema(database: SQLiteDatabase): Promise<void> {
   if (!columns.some((column) => column.name === 'card_metadata_json')) {
     await database.execAsync('ALTER TABLE draft_records ADD COLUMN card_metadata_json TEXT;');
   }
+  if (!columns.some((column) => column.name === 'review_annotations_json')) {
+    await database.execAsync('ALTER TABLE draft_records ADD COLUMN review_annotations_json TEXT;');
+  }
+  if (!columns.some((column) => column.name === 'merge_provenance_json')) {
+    await database.execAsync('ALTER TABLE draft_records ADD COLUMN merge_provenance_json TEXT;');
+  }
+  if (!columns.some((column) => column.name === 'merge_history_json')) {
+    await database.execAsync('ALTER TABLE draft_records ADD COLUMN merge_history_json TEXT;');
+  }
+  if (!columns.some((column) => column.name === 'revision_snapshots_json')) {
+    await database.execAsync('ALTER TABLE draft_records ADD COLUMN revision_snapshots_json TEXT;');
+  }
 }
 
 async function writeDraft(database: SQLiteDatabase, draft: Draft): Promise<Draft> {
@@ -319,10 +437,10 @@ async function writeDraft(database: SQLiteDatabase, draft: Draft): Promise<Draft
     await database.runAsync(
       `INSERT INTO draft_records (
         review_id, seed, favorite, mode, model, created_iso, modified_iso, genre, notes,
-        custom_instructions, character_name, template_name, offspring_type, card_metadata_json, archived_at, created_at, updated_at
+        custom_instructions, character_name, template_name, offspring_type, card_metadata_json, review_annotations_json, merge_provenance_json, merge_history_json, revision_snapshots_json, archived_at, created_at, updated_at
       ) VALUES (
         $reviewId, $seed, $favorite, $mode, $model, $createdIso, $modifiedIso, $genre, $notes,
-        $customInstructions, $characterName, $templateName, $offspringType, $cardMetadataJson, $archivedAt, $createdAt, $updatedAt
+        $customInstructions, $characterName, $templateName, $offspringType, $cardMetadataJson, $reviewAnnotationsJson, $mergeProvenanceJson, $mergeHistoryJson, $revisionSnapshotsJson, $archivedAt, $createdAt, $updatedAt
       )
       ON CONFLICT(review_id) DO UPDATE SET
         seed = excluded.seed,
@@ -338,17 +456,31 @@ async function writeDraft(database: SQLiteDatabase, draft: Draft): Promise<Draft
         template_name = excluded.template_name,
         offspring_type = excluded.offspring_type,
         card_metadata_json = excluded.card_metadata_json,
+        review_annotations_json = excluded.review_annotations_json,
+        merge_provenance_json = excluded.merge_provenance_json,
+        merge_history_json = excluded.merge_history_json,
+        revision_snapshots_json = excluded.revision_snapshots_json,
         archived_at = excluded.archived_at,
         created_at = excluded.created_at,
         updated_at = excluded.updated_at`,
-      metadataToRow(normalized.metadata, createdAt, updatedAt)
+      metadataToRow(normalized.metadata, createdAt, updatedAt),
     );
 
-    await database.runAsync('DELETE FROM draft_assets WHERE review_id = $reviewId', { $reviewId: normalized.metadata.review_id });
-    await database.runAsync('DELETE FROM draft_tags WHERE review_id = $reviewId', { $reviewId: normalized.metadata.review_id });
-    await database.runAsync('DELETE FROM draft_component_send_order WHERE review_id = $reviewId', { $reviewId: normalized.metadata.review_id });
-    await database.runAsync('DELETE FROM draft_parent_links WHERE review_id = $reviewId', { $reviewId: normalized.metadata.review_id });
-    await database.runAsync('DELETE FROM draft_connected_links WHERE review_id = $reviewId', { $reviewId: normalized.metadata.review_id });
+    await database.runAsync('DELETE FROM draft_assets WHERE review_id = $reviewId', {
+      $reviewId: normalized.metadata.review_id,
+    });
+    await database.runAsync('DELETE FROM draft_tags WHERE review_id = $reviewId', {
+      $reviewId: normalized.metadata.review_id,
+    });
+    await database.runAsync('DELETE FROM draft_component_send_order WHERE review_id = $reviewId', {
+      $reviewId: normalized.metadata.review_id,
+    });
+    await database.runAsync('DELETE FROM draft_parent_links WHERE review_id = $reviewId', {
+      $reviewId: normalized.metadata.review_id,
+    });
+    await database.runAsync('DELETE FROM draft_connected_links WHERE review_id = $reviewId', {
+      $reviewId: normalized.metadata.review_id,
+    });
 
     for (const [assetName, content] of Object.entries(normalized.assets)) {
       await database.runAsync(
@@ -358,7 +490,7 @@ async function writeDraft(database: SQLiteDatabase, draft: Draft): Promise<Draft
           $assetName: assetName,
           $content: content,
           $updatedAt: updatedAt,
-        }
+        },
       );
     }
 
@@ -369,7 +501,7 @@ async function writeDraft(database: SQLiteDatabase, draft: Draft): Promise<Draft
           $reviewId: normalized.metadata.review_id,
           $tag: tag,
           $sortOrder: index,
-        }
+        },
       );
     }
 
@@ -380,7 +512,7 @@ async function writeDraft(database: SQLiteDatabase, draft: Draft): Promise<Draft
           $reviewId: normalized.metadata.review_id,
           $assetName: assetName,
           $sortOrder: index,
-        }
+        },
       );
     }
 
@@ -391,7 +523,7 @@ async function writeDraft(database: SQLiteDatabase, draft: Draft): Promise<Draft
           $reviewId: normalized.metadata.review_id,
           $parentReviewId: parentReviewId,
           $sortOrder: index,
-        }
+        },
       );
     }
 
@@ -402,7 +534,7 @@ async function writeDraft(database: SQLiteDatabase, draft: Draft): Promise<Draft
           $reviewId: normalized.metadata.review_id,
           $connectedReviewId: connectedReviewId,
           $sortOrder: index,
-        }
+        },
       );
     }
   });
@@ -413,7 +545,7 @@ async function writeDraft(database: SQLiteDatabase, draft: Draft): Promise<Draft
 async function maybeMigrateLegacyDrafts(database: SQLiteDatabase): Promise<void> {
   const migrationRow = await database.getFirstAsync<{ value: string }>(
     'SELECT value FROM app_meta WHERE key = $key LIMIT 1',
-    { $key: APP_META_MIGRATION_KEY }
+    { $key: APP_META_MIGRATION_KEY },
   );
 
   if (migrationRow?.value === 'true') {
@@ -422,7 +554,9 @@ async function maybeMigrateLegacyDrafts(database: SQLiteDatabase): Promise<void>
 
   const storage = getStorage();
   const raw = storage?.getItem(LEGACY_DRAFTS_STORAGE_KEY) ?? null;
-  const existingCountRow = await database.getFirstAsync<{ count: number }>('SELECT COUNT(*) AS count FROM draft_records');
+  const existingCountRow = await database.getFirstAsync<{ count: number }>(
+    'SELECT COUNT(*) AS count FROM draft_records',
+  );
   const existingCount = existingCountRow?.count ?? 0;
 
   if (raw && existingCount === 0) {
@@ -434,7 +568,7 @@ async function maybeMigrateLegacyDrafts(database: SQLiteDatabase): Promise<void>
 
   await database.runAsync(
     'INSERT INTO app_meta (key, value) VALUES ($key, $value) ON CONFLICT(key) DO UPDATE SET value = excluded.value',
-    { $key: APP_META_MIGRATION_KEY, $value: 'true' }
+    { $key: APP_META_MIGRATION_KEY, $value: 'true' },
   );
   storage?.removeItem(LEGACY_DRAFTS_STORAGE_KEY);
 }
@@ -457,7 +591,7 @@ function rowToMetadata(
   tags: string[],
   componentSendOrder: string[],
   parentDrafts: string[],
-  connectedDrafts: string[]
+  connectedDrafts: string[],
 ): DraftMetadata {
   const metadata: DraftMetadata = {
     review_id: row.reviewId,
@@ -477,6 +611,14 @@ function rowToMetadata(
   if (row.offspringType) metadata.offspring_type = row.offspringType;
   const cardMetadata = parseCardMetadataJson(row.cardMetadataJson);
   if (cardMetadata) metadata.card_metadata = cardMetadata;
+  const reviewAnnotations = parseReviewAnnotationsJson(row.reviewAnnotationsJson);
+  if (reviewAnnotations) metadata.review_annotations = reviewAnnotations;
+  const mergeProvenance = parseMergeProvenanceJson(row.mergeProvenanceJson);
+  if (mergeProvenance) metadata.merge_provenance = mergeProvenance;
+  const mergeHistory = parseMergeHistoryJson(row.mergeHistoryJson);
+  if (mergeHistory) metadata.merge_history = mergeHistory;
+  const revisionSnapshots = parseRevisionSnapshotsJson(row.revisionSnapshotsJson);
+  if (revisionSnapshots) metadata.revision_snapshots = revisionSnapshots;
   if (row.archivedAt) metadata.archived_at = row.archivedAt;
   if (tags.length > 0) metadata.tags = tags;
   if (componentSendOrder.length > 0) metadata.component_send_order = componentSendOrder;
@@ -499,22 +641,22 @@ async function loadDraftMaps(database: SQLiteDatabase, reviewId?: string) {
   };
 
   const draftRows = await getAll<DraftRecordRow>(
-    `SELECT review_id AS reviewId, seed, favorite, mode, model, created_iso AS createdIso, modified_iso AS modifiedIso, genre, notes, custom_instructions AS customInstructions, character_name AS characterName, template_name AS templateName, offspring_type AS offspringType, card_metadata_json AS cardMetadataJson, archived_at AS archivedAt, created_at AS createdAt, updated_at AS updatedAt FROM draft_records${where} ORDER BY updated_at DESC`
+    `SELECT review_id AS reviewId, seed, favorite, mode, model, created_iso AS createdIso, modified_iso AS modifiedIso, genre, notes, custom_instructions AS customInstructions, character_name AS characterName, template_name AS templateName, offspring_type AS offspringType, card_metadata_json AS cardMetadataJson, review_annotations_json AS reviewAnnotationsJson, merge_provenance_json AS mergeProvenanceJson, merge_history_json AS mergeHistoryJson, revision_snapshots_json AS revisionSnapshotsJson, archived_at AS archivedAt, created_at AS createdAt, updated_at AS updatedAt FROM draft_records${where} ORDER BY updated_at DESC`,
   );
   const assetRows = await getAll<DraftAssetRow>(
-    `SELECT review_id AS reviewId, asset_name AS assetName, content FROM draft_assets${where}`
+    `SELECT review_id AS reviewId, asset_name AS assetName, content FROM draft_assets${where}`,
   );
   const tagRows = await getAll<DraftTagRow>(
-    `SELECT review_id AS reviewId, tag FROM draft_tags${where} ORDER BY review_id ASC, sort_order ASC`
+    `SELECT review_id AS reviewId, tag FROM draft_tags${where} ORDER BY review_id ASC, sort_order ASC`,
   );
   const componentRows = await getAll<DraftOrderedAssetRow>(
-    `SELECT review_id AS reviewId, asset_name AS assetName FROM draft_component_send_order${where} ORDER BY review_id ASC, sort_order ASC`
+    `SELECT review_id AS reviewId, asset_name AS assetName FROM draft_component_send_order${where} ORDER BY review_id ASC, sort_order ASC`,
   );
   const parentRows = await getAll<DraftRelationRow>(
-    `SELECT review_id AS reviewId, parent_review_id AS relatedReviewId FROM draft_parent_links${where} ORDER BY review_id ASC, sort_order ASC`
+    `SELECT review_id AS reviewId, parent_review_id AS relatedReviewId FROM draft_parent_links${where} ORDER BY review_id ASC, sort_order ASC`,
   );
   const connectedRows = await getAll<DraftRelationRow>(
-    `SELECT review_id AS reviewId, connected_review_id AS relatedReviewId FROM draft_connected_links${where} ORDER BY review_id ASC, sort_order ASC`
+    `SELECT review_id AS reviewId, connected_review_id AS relatedReviewId FROM draft_connected_links${where} ORDER BY review_id ASC, sort_order ASC`,
   );
 
   const assetsByDraft = new Map<string, Record<string, string>>();
@@ -568,27 +710,29 @@ function draftFromRow(
   tags: string[],
   componentSendOrder: string[],
   parentDrafts: string[],
-  connectedDrafts: string[]
+  connectedDrafts: string[],
 ): Draft {
-  return {
+  return normalizeDraft({
     path: row.reviewId,
     metadata: rowToMetadata(row, tags, componentSendOrder, parentDrafts, connectedDrafts),
     assets,
-  };
+  });
 }
 
 export async function getAllDrafts(): Promise<Draft[]> {
   const database = await getDatabase();
   const maps = await loadDraftMaps(database);
 
-  return maps.draftRows.map((row) => draftFromRow(
-    row,
-    maps.assetsByDraft.get(row.reviewId) ?? {},
-    maps.tagsByDraft.get(row.reviewId) ?? [],
-    maps.componentOrderByDraft.get(row.reviewId) ?? [],
-    maps.parentDraftsByDraft.get(row.reviewId) ?? [],
-    maps.connectedDraftsByDraft.get(row.reviewId) ?? [],
-  ));
+  return maps.draftRows.map((row) =>
+    draftFromRow(
+      row,
+      maps.assetsByDraft.get(row.reviewId) ?? {},
+      maps.tagsByDraft.get(row.reviewId) ?? [],
+      maps.componentOrderByDraft.get(row.reviewId) ?? [],
+      maps.parentDraftsByDraft.get(row.reviewId) ?? [],
+      maps.connectedDraftsByDraft.get(row.reviewId) ?? [],
+    ),
+  );
 }
 
 export async function getAllMetadata(): Promise<DraftMetadata[]> {
@@ -636,7 +780,11 @@ export async function updateMetadata(reviewId: string, updates: Partial<DraftMet
   });
 }
 
-export async function updateAsset(reviewId: string, assetName: string, content: string): Promise<'created' | 'updated'> {
+export async function updateAsset(
+  reviewId: string,
+  assetName: string,
+  content: string,
+): Promise<'created' | 'updated'> {
   const draft = await getDraft(reviewId);
   if (!draft) {
     throw new Error(`Draft ${reviewId} not found`);
@@ -668,7 +816,9 @@ export async function deleteDraft(reviewId: string): Promise<void> {
     await database.runAsync('DELETE FROM draft_records WHERE review_id = $reviewId', { $reviewId: reviewId });
     await database.runAsync('DELETE FROM draft_assets WHERE review_id = $reviewId', { $reviewId: reviewId });
     await database.runAsync('DELETE FROM draft_tags WHERE review_id = $reviewId', { $reviewId: reviewId });
-    await database.runAsync('DELETE FROM draft_component_send_order WHERE review_id = $reviewId', { $reviewId: reviewId });
+    await database.runAsync('DELETE FROM draft_component_send_order WHERE review_id = $reviewId', {
+      $reviewId: reviewId,
+    });
     await database.runAsync('DELETE FROM draft_parent_links WHERE review_id = $reviewId', { $reviewId: reviewId });
     await database.runAsync('DELETE FROM draft_connected_links WHERE review_id = $reviewId', { $reviewId: reviewId });
   });
@@ -681,20 +831,24 @@ export async function exportAllDrafts(): Promise<string> {
 
 export async function importDrafts(
   raw: string,
-  options: { conflictStrategy?: 'remap' | 'merge'; sourceName?: string; template?: CharacterImportOptions['template'] } = {}
+  options: {
+    conflictStrategy?: 'remap' | 'merge';
+    sourceName?: string;
+    template?: CharacterImportOptions['template'];
+  } = {},
 ): Promise<{ imported: number; remapped: number }> {
-  const { drafts, recognizedJsonPayload, explicitEmptyPayload } = parseDraftImportText(
-    raw,
-    options.sourceName,
-    { template: options.template ?? resolveTemplateDefinition() }
-  );
+  const { drafts, recognizedJsonPayload, explicitEmptyPayload } = parseDraftImportText(raw, options.sourceName, {
+    template: options.template ?? resolveTemplateDefinition(),
+  });
 
   if (drafts.length === 0) {
     if (recognizedJsonPayload || explicitEmptyPayload) {
       return { imported: 0, remapped: 0 };
     }
 
-    throw new Error('Invalid draft import format. Supported: exported drafts JSON, combined markdown draft files, or raw text/JSON uploads.');
+    throw new Error(
+      'Invalid draft import format. Supported: exported drafts JSON, combined markdown draft files, or raw text/JSON uploads.',
+    );
   }
 
   const conflictStrategy = options.conflictStrategy ?? 'remap';

@@ -71,9 +71,7 @@ export default function ValidationScreen() {
           onPress={() => validatePathMutation.mutate()}
           disabled={!path.trim() || isPending}
         >
-          {validatePathMutation.isPending ? (
-            <ActivityIndicator color="#fff" size="small" />
-          ) : null}
+          {validatePathMutation.isPending ? <ActivityIndicator color="#fff" size="small" /> : null}
           <Text style={styles.primaryButtonText}>Validate Path</Text>
         </TouchableOpacity>
       </CollapsibleTray>
@@ -101,9 +99,7 @@ export default function ValidationScreen() {
           onPress={() => validateDraftMutation.mutate(selectedDraftId)}
           disabled={!selectedDraftId || isPending}
         >
-          {validateDraftMutation.isPending ? (
-            <ActivityIndicator color="#d1d5db" size="small" />
-          ) : null}
+          {validateDraftMutation.isPending ? <ActivityIndicator color="#d1d5db" size="small" /> : null}
           <Text style={styles.secondaryButtonText}>Validate Draft</Text>
         </TouchableOpacity>
       </CollapsibleTray>
@@ -121,7 +117,11 @@ export default function ValidationScreen() {
           title="Results"
           subtitle={result.path}
           initiallyExpanded
-          preview={<Text style={styles.trayPreviewText}>{result.success ? 'Passed' : 'Failed'} • {findings.length} line{findings.length === 1 ? '' : 's'}</Text>}
+          preview={
+            <Text style={styles.trayPreviewText}>
+              {result.success ? 'Passed' : 'Failed'} • {findings.length} line{findings.length === 1 ? '' : 's'}
+            </Text>
+          }
         >
           <View style={styles.resultHeader}>
             <View style={styles.resultHeaderText}>

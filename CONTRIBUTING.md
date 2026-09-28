@@ -1,13 +1,13 @@
 # Contributing to Eidolon Simulacra
 
-Eidolon Simulacra currently ships as a TypeScript monorepo with a browser-first web app, an Expo mobile app, and shared generation utilities. Keep changes narrow, verifiable, and aligned with the current repo shape rather than older Python or desktop workflows.
+Eidolon Simulacra currently ships as a TypeScript monorepo with a browser-first web app (plus its Tauri desktop build), an Expo mobile app, an optional Express + Prisma sync API, and shared generation utilities. Keep changes narrow, verifiable, and aligned with the current repo shape rather than older Python or desktop workflows.
 
 ## Setup
 
 Requirements:
 
 - Node.js 20+
-- pnpm 9+
+- pnpm 10+ (the repo pins `pnpm@10.33.0`)
 
 Install dependencies:
 
@@ -49,7 +49,7 @@ pnpm lint:mobile
 pnpm format
 ```
 
-There is no checked-in Python backend, Tauri desktop shell, or Textual launcher in the current workspace. Do not add doc references to those paths unless they actually land in the repo.
+There is no checked-in Python backend or Textual launcher in the current workspace. The Tauri desktop shell does live in `packages/web/src-tauri`, and `packages/server` holds the optional Express + Prisma API, so docs should describe those where relevant instead of denying their existence.
 
 ## Validation
 
@@ -63,16 +63,26 @@ pnpm --filter @char-gen/web build
 pnpm --filter @char-gen/mobile typecheck
 pnpm --filter @char-gen/mobile lint
 pnpm typecheck:web
+pnpm typecheck:server
 pnpm test:web
+pnpm test:shared
+pnpm test:mobile
+pnpm test:server
+pnpm check:placeholders
 pnpm lint
 ```
 
 Notes:
 
-- CI currently covers release-notes parity, lint, web typechecking, web tests, and the shared/web build path plus a preview smoke test.
+- CI covers release-notes parity, the placeholder-wiring check, formatting, lint, web/mobile/server typechecking, tests for shared/web/mobile/server, the shared/web build path, and a preview smoke test.
 - `@char-gen/shared` publishes from `dist/`, so rebuild it before validating web changes that depend on updated shared exports.
-- The root Turbo pipeline includes a `test` task, and `@char-gen/web` now contributes the Vitest help-system suite through `pnpm test:web`.
-- `packages/mobile` now has dedicated Expo and validation commands, but should not be assumed to participate in native release CI unless you wire that up explicitly.
+- The root Turbo pipeline includes `test` and `lint` tasks; `lint` already covers `shared`, `web`, `mobile`, and `server`.
+- Each package owns its own suite: `pnpm test:web`, `pnpm test:shared`, `pnpm test:mobile` (logic only, no native modules), and `pnpm test:server`.
+- `packages/mobile` has dedicated Expo and validation commands, but native release builds and store distribution stay outside CI. Type and lint coverage comes from `pnpm typecheck:mobile` and `pnpm lint:mobile`.
+- `packages/server` typechecks and lints in CI, but it has no build or test job and no client in this repo calls it. Validate changes with `pnpm typecheck:server` and `pnpm --filter @char-gen/server lint`.
+- Lint uses shared ignore rules at the repo root: Tauri build output (`src-tauri/target`, `src-tauri/gen`) is excluded, and `_`-prefixed bindings are treated as intentionally unused.
+- Formatting is enforced in CI via `pnpm format:check`, with build output and generated native projects excluded through `.prettierignore`. `.prettierrc.json` defines the project style; prefer `pnpm exec prettier --write <paths>` over the repo-wide `pnpm format`.
+- `pnpm check:placeholders` fails CI when a `*Placeholder` component is not imported anywhere. Wire it into a screen or delete it; only add to the allowlist in `tools/generation/check-placeholders.mjs` when the staging is deliberate.
 
 ## Change Guidelines
 

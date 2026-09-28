@@ -1,5 +1,4 @@
 import type { SeedGenerationRequest } from '@char-gen/shared';
-import { serverClient, type SyncedSeedRecord } from './server/client.js';
 import { readPersistedJson, writePersistedJson } from './persistence/storage.js';
 
 import seedGenerationPrompt from '../../../../blueprints/system/seed_generator.md?raw';
@@ -80,9 +79,11 @@ function emitFavoriteSeedsChanged(favorites: FavoriteSeedRecord[]): void {
     return;
   }
 
-  window.dispatchEvent(new CustomEvent(SEED_FAVORITES_CHANGED_EVENT, {
-    detail: { count: favorites.length },
-  }));
+  window.dispatchEvent(
+    new CustomEvent(SEED_FAVORITES_CHANGED_EVENT, {
+      detail: { count: favorites.length },
+    }),
+  );
 }
 
 function emitSeedHistoryChanged(history: SeedRunRecord[]): void {
@@ -90,9 +91,11 @@ function emitSeedHistoryChanged(history: SeedRunRecord[]): void {
     return;
   }
 
-  window.dispatchEvent(new CustomEvent(SEED_HISTORY_CHANGED_EVENT, {
-    detail: { count: history.filter((entry) => !entry.archivedAt).length },
-  }));
+  window.dispatchEvent(
+    new CustomEvent(SEED_HISTORY_CHANGED_EVENT, {
+      detail: { count: history.filter((entry) => !entry.archivedAt).length },
+    }),
+  );
 }
 
 function toIsoString(value: unknown): string | undefined {
@@ -180,23 +183,25 @@ function writeArchivedSeedRunSyncState(state: FavoriteSeedSyncState): void {
 }
 
 export function getAllFavoriteSeeds(): FavoriteSeedRecord[] {
-  const stored = readStorage<FavoriteSeedRecord[]>([SEED_FAVORITES_STORAGE_KEY, ...LEGACY_SEED_FAVORITES_STORAGE_KEYS], []);
+  const stored = readStorage<FavoriteSeedRecord[]>(
+    [SEED_FAVORITES_STORAGE_KEY, ...LEGACY_SEED_FAVORITES_STORAGE_KEYS],
+    [],
+  );
   return normalizeFavoriteSeeds(stored);
 }
 
 function getActiveFavoriteSeeds(records: readonly FavoriteSeedRecord[]): FavoriteSeedRecord[] {
-  return [...records]
-    .filter((entry) => !entry.archivedAt)
-    .sort(compareFavoriteSeedActivity);
+  return [...records].filter((entry) => !entry.archivedAt).sort(compareFavoriteSeedActivity);
 }
 
 function getArchivedFavoriteSeedRecords(records: readonly FavoriteSeedRecord[]): FavoriteSeedRecord[] {
-  return [...records]
-    .filter((entry) => Boolean(entry.archivedAt))
-    .sort(compareArchivedFavoriteSeeds);
+  return [...records].filter((entry) => Boolean(entry.archivedAt)).sort(compareArchivedFavoriteSeeds);
 }
 
-function writeFavoriteSeeds(favorites: FavoriteSeedRecord[], options: WriteFavoriteSeedsOptions = {}): FavoriteSeedRecord[] {
+function writeFavoriteSeeds(
+  favorites: FavoriteSeedRecord[],
+  options: WriteFavoriteSeedsOptions = {},
+): FavoriteSeedRecord[] {
   const { markChanged = true, markSynced = false, timestamp = new Date().toISOString() } = options;
   const normalized = normalizeFavoriteSeeds(favorites);
   writeStorage(SEED_FAVORITES_STORAGE_KEY, LEGACY_SEED_FAVORITES_STORAGE_KEYS, normalized);
@@ -228,7 +233,8 @@ const SURPRISE_PRESETS: SeedSuggestionPreset[] = [
   {
     id: 'low-magic',
     label: 'Low Magic',
-    genreLines: 'fantasy:low-magic, domestic, obligation, village politics\nromance:restraint, longing, practical intimacy',
+    genreLines:
+      'fantasy:low-magic, domestic, obligation, village politics\nromance:restraint, longing, practical intimacy',
   },
   {
     id: 'urban-horror',
@@ -238,7 +244,8 @@ const SURPRISE_PRESETS: SeedSuggestionPreset[] = [
   {
     id: 'moreau',
     label: 'Moreau',
-    genreLines: 'romance:moreau, realism, stigma, protective tension\nurban fantasy:morphosis, nightlife, consent ethic, social friction',
+    genreLines:
+      'romance:moreau, realism, stigma, protective tension\nurban fantasy:morphosis, nightlife, consent ethic, social friction',
   },
 ];
 
@@ -266,10 +273,7 @@ export function sanitizeSeedCount(value: number): number {
   return Math.min(30, Math.max(5, Math.round(value || DEFAULT_SEED_COUNT)));
 }
 
-export function buildSeedGenerationLines(
-  genreLines: string,
-  controls: SeedGeneratorControls
-): string {
+export function buildSeedGenerationLines(genreLines: string, controls: SeedGeneratorControls): string {
   const cleaned = genreLines
     .split('\n')
     .map((line) => line.trim())
@@ -325,9 +329,8 @@ function normalizeSeedRunRecord(value: unknown): SeedRunRecord | null {
   const id = typeof record.id === 'string' && record.id.trim().length > 0 ? record.id : crypto.randomUUID();
   const createdAt = toIsoString(record.createdAt) ?? new Date().toISOString();
   const archivedAt = toIsoString(record.archivedAt);
-  const request = typeof record.request === 'object' && record.request !== null
-    ? record.request as Record<string, unknown>
-    : null;
+  const request =
+    typeof record.request === 'object' && record.request !== null ? (record.request as Record<string, unknown>) : null;
   const seeds = Array.isArray(record.seeds)
     ? record.seeds.filter((seed): seed is string => typeof seed === 'string' && seed.trim().length > 0)
     : [];
@@ -337,9 +340,10 @@ function normalizeSeedRunRecord(value: unknown): SeedRunRecord | null {
   }
 
   const coverageMode = DEFAULT_SEED_COVERAGE_MODE;
-  const count = typeof request.count === 'number' && Number.isFinite(request.count)
-    ? Math.max(1, Math.round(request.count))
-    : seeds.length;
+  const count =
+    typeof request.count === 'number' && Number.isFinite(request.count)
+      ? Math.max(1, Math.round(request.count))
+      : seeds.length;
 
   const normalized: SeedRunRecord = {
     id,
@@ -437,11 +441,14 @@ export function archiveSeedRun(id: string): SeedRunRecord[] {
     return active;
   }
 
-  writeSeedRunHistory([
-    ...active.filter((candidate) => candidate.id !== id),
-    { ...entry, archivedAt: now },
-    ...archived.filter((candidate) => candidate.id !== id),
-  ], { markArchivedChanged: true, timestamp: now });
+  writeSeedRunHistory(
+    [
+      ...active.filter((candidate) => candidate.id !== id),
+      { ...entry, archivedAt: now },
+      ...archived.filter((candidate) => candidate.id !== id),
+    ],
+    { markArchivedChanged: true, timestamp: now },
+  );
 
   return getSeedRunHistory();
 }
@@ -453,15 +460,11 @@ export function restoreSeedRun(id: string): SeedRunRecord[] {
     return getSeedRunHistory();
   }
 
-  const nextActive = [
-    { ...entry, archivedAt: undefined },
-    ...getSeedRunHistory(),
-  ].slice(0, MAX_SEED_HISTORY);
+  const nextActive = [{ ...entry, archivedAt: undefined }, ...getSeedRunHistory()].slice(0, MAX_SEED_HISTORY);
 
-  writeSeedRunHistory([
-    ...nextActive,
-    ...archived.filter((candidate) => candidate.id !== id),
-  ], { markArchivedChanged: true });
+  writeSeedRunHistory([...nextActive, ...archived.filter((candidate) => candidate.id !== id)], {
+    markArchivedChanged: true,
+  });
 
   return nextActive;
 }
@@ -469,7 +472,7 @@ export function restoreSeedRun(id: string): SeedRunRecord[] {
 export function deleteArchivedSeedRun(id: string): SeedRunRecord[] {
   writeSeedRunHistory(
     getAllSeedRuns().filter((candidate) => candidate.id !== id),
-    { markArchivedChanged: true }
+    { markArchivedChanged: true },
   );
   return getArchivedSeedRuns();
 }
@@ -493,10 +496,7 @@ export function parseArchivedSeedRunsPayload(data: unknown): SeedRunRecord[] | n
 
 export function replaceArchivedSeedRunsFromServer(runs: readonly SeedRunRecord[]): SeedRunRecord[] {
   const archivedRuns = getArchivedSeedRunRecords(normalizeSeedRunRecords(runs));
-  writeSeedRunHistory([
-    ...getSeedRunHistory(),
-    ...archivedRuns,
-  ], {
+  writeSeedRunHistory([...getSeedRunHistory(), ...archivedRuns], {
     markArchivedChanged: false,
     markSynced: true,
   });
@@ -523,24 +523,7 @@ export function archivedSeedRunsNeedSync(): boolean {
 }
 
 export async function hydrateArchivedSeedRunsFromServer(): Promise<SeedRunRecord[] | null> {
-  if (!serverClient.isEnabled() || !serverClient.hasAccessToken()) {
-    return null;
-  }
-
-  if (archivedSeedRunsNeedSync()) {
-    const runs = getArchivedSeedRuns();
-    await serverClient.syncArchivedSeedRuns('push', { runs });
-    markArchivedSeedRunsSynced();
-    return runs;
-  }
-
-  const payload = await serverClient.syncArchivedSeedRuns('pull') as { runs?: SeedRunRecord[] };
-  const runs = parseArchivedSeedRunsPayload(payload);
-  if (!runs) {
-    return null;
-  }
-
-  return replaceArchivedSeedRunsFromServer(runs);
+  return getArchivedSeedRuns();
 }
 
 export function getFavoriteSeeds(): FavoriteSeedRecord[] {
@@ -560,7 +543,7 @@ export function parseFavoriteSeedsPayload(data: unknown): FavoriteSeedRecord[] |
     return null;
   }
 
-  const record = data as { seeds?: SyncedSeedRecord[] };
+  const record = data as { seeds?: FavoriteSeedRecord[] };
   if (!Array.isArray(record.seeds)) {
     return null;
   }
@@ -601,24 +584,7 @@ export function favoriteSeedsNeedSync(): boolean {
 }
 
 export async function hydrateFavoriteSeedsFromServer(): Promise<FavoriteSeedRecord[] | null> {
-  if (!serverClient.isEnabled() || !serverClient.hasAccessToken()) {
-    return null;
-  }
-
-  if (favoriteSeedsNeedSync()) {
-    const favorites = getAllFavoriteSeeds();
-    await serverClient.syncSeeds('push', { seeds: favorites });
-    markFavoriteSeedsSynced();
-    return getFavoriteSeeds();
-  }
-
-  const payload = await serverClient.syncSeeds('pull') as { seeds?: SyncedSeedRecord[] };
-  const favorites = parseFavoriteSeedsPayload(payload);
-  if (!favorites) {
-    return null;
-  }
-
-  return replaceFavoriteSeedsFromServer(favorites);
+  return getFavoriteSeeds();
 }
 
 export function isFavoriteSeed(seed: string): boolean {
@@ -627,17 +593,17 @@ export function isFavoriteSeed(seed: string): boolean {
 
 export function archiveFavoriteSeed(seed: string): FavoriteSeedRecord[] {
   const now = new Date().toISOString();
-  const nextFavorites = getAllFavoriteSeeds().map((entry) => (
-    entry.seed === seed ? { ...entry, archivedAt: now } : entry
-  ));
+  const nextFavorites = getAllFavoriteSeeds().map((entry) =>
+    entry.seed === seed ? { ...entry, archivedAt: now } : entry,
+  );
   writeFavoriteSeeds(nextFavorites, { timestamp: now });
   return getFavoriteSeeds();
 }
 
 export function restoreFavoriteSeed(seed: string): FavoriteSeedRecord[] {
-  const nextFavorites = getAllFavoriteSeeds().map((entry) => (
-    entry.seed === seed ? { ...entry, archivedAt: undefined } : entry
-  ));
+  const nextFavorites = getAllFavoriteSeeds().map((entry) =>
+    entry.seed === seed ? { ...entry, archivedAt: undefined } : entry,
+  );
   writeFavoriteSeeds(nextFavorites);
   return getFavoriteSeeds();
 }
@@ -672,9 +638,7 @@ export function toggleFavoriteSeed(seed: string): FavoriteSeedRecord[] {
 export function markSeedUsed(seed: string): FavoriteSeedRecord[] {
   const now = new Date().toISOString();
   const favorites = getAllFavoriteSeeds();
-  const nextFavorites = favorites.map((entry) => (
-    entry.seed === seed ? { ...entry, lastUsedAt: now } : entry
-  ));
+  const nextFavorites = favorites.map((entry) => (entry.seed === seed ? { ...entry, lastUsedAt: now } : entry));
   writeFavoriteSeeds(nextFavorites, { timestamp: now });
   return getFavoriteSeeds();
 }

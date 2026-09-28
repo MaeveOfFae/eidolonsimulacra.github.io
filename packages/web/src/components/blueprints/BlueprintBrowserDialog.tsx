@@ -1,6 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronRight, ChevronDown, FileText, Search, X, FolderOpen, FileJson, BookOpen, Lightbulb, Package, Check } from 'lucide-react';
+import {
+  ChevronRight,
+  ChevronDown,
+  FileText,
+  Search,
+  X,
+  FolderOpen,
+  FileJson,
+  BookOpen,
+  Lightbulb,
+  Package,
+  Check,
+} from 'lucide-react';
 import type { Blueprint } from '@char-gen/shared';
 import { api } from '@/lib/api';
 import ReactMarkdown from 'react-markdown';
@@ -59,7 +71,7 @@ export default function BlueprintBrowserDialog({
       { id: 'example', name: '💡 Example Blueprints', blueprints: blueprints.examples || [] },
     ];
 
-    const nodes: TreeNode[] = categories.map(cat => ({
+    const nodes: TreeNode[] = categories.map((cat) => ({
       id: cat.id,
       name: cat.name,
       type: 'category',
@@ -75,7 +87,7 @@ export default function BlueprintBrowserDialog({
   }, [blueprints]);
 
   const toggleExpand = (nodeId: string) => {
-    setExpandedNodes(prev => {
+    setExpandedNodes((prev) => {
       const next = new Set(prev);
       if (next.has(nodeId)) {
         next.delete(nodeId);
@@ -100,7 +112,7 @@ export default function BlueprintBrowserDialog({
   };
 
   const isExistingAsset = (blueprint: Blueprint) => {
-    return existingAssets.some(assetName => assetName === blueprint.name);
+    return existingAssets.some((assetName) => assetName === blueprint.name);
   };
 
   const filterTree = (nodes: TreeNode[]): TreeNode[] => {
@@ -109,8 +121,7 @@ export default function BlueprintBrowserDialog({
     const query = searchQuery.toLowerCase();
     return nodes.reduce((acc: TreeNode[], node) => {
       if (node.type === 'blueprint' && node.blueprint) {
-        if (node.name.toLowerCase().includes(query) ||
-            node.blueprint.description.toLowerCase().includes(query)) {
+        if (node.name.toLowerCase().includes(query) || node.blueprint.description.toLowerCase().includes(query)) {
           acc.push(node);
         }
       } else if (node.type === 'category' && node.children) {
@@ -146,7 +157,7 @@ export default function BlueprintBrowserDialog({
           className={cn(
             'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent/50',
             isSelected && 'bg-primary/20 text-primary',
-            isExisting && 'cursor-not-allowed opacity-50'
+            isExisting && 'cursor-not-allowed opacity-50',
           )}
           style={{ paddingLeft: `${(depth + 1) * 1.15}rem` }}
           title={isExisting ? 'This blueprint is already in use' : node.blueprint.description}
@@ -179,9 +190,7 @@ export default function BlueprintBrowserDialog({
           {categoryIcons[node.id as keyof typeof categoryIcons]}
           <span>{node.name}</span>
         </button>
-        {isExpanded && node.children && (
-          <div>{node.children.map(child => renderNode(child, depth + 1))}</div>
-        )}
+        {isExpanded && node.children && <div>{node.children.map((child) => renderNode(child, depth + 1))}</div>}
       </div>
     );
   };
@@ -206,7 +215,12 @@ export default function BlueprintBrowserDialog({
               Search, preview, and double-click to apply without leaving the dialog.
             </p>
           </div>
-          <button type="button" onClick={onClose} className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground" aria-label="Close">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            aria-label="Close"
+          >
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -235,21 +249,19 @@ export default function BlueprintBrowserDialog({
               </p>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-4">
-            {isLoading ? (
-              <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">
-                Loading blueprints...
-              </div>
-            ) : filteredTree.length === 0 ? (
-              <div className="flex h-32 flex-col items-center justify-center text-sm text-muted-foreground">
-                <Search className="mb-2 h-8 w-8" />
-                <p>No blueprints found</p>
-              </div>
-            ) : (
-              <div className="space-y-1">
-                {filteredTree.map(node => renderNode(node))}
-              </div>
-            )}
-          </div>
+              {isLoading ? (
+                <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">
+                  Loading blueprints...
+                </div>
+              ) : filteredTree.length === 0 ? (
+                <div className="flex h-32 flex-col items-center justify-center text-sm text-muted-foreground">
+                  <Search className="mb-2 h-8 w-8" />
+                  <p>No blueprints found</p>
+                </div>
+              ) : (
+                <div className="space-y-1">{filteredTree.map((node) => renderNode(node))}</div>
+              )}
+            </div>
           </div>
 
           {/* Preview */}
@@ -269,9 +281,7 @@ export default function BlueprintBrowserDialog({
                         v{selectedBlueprint.version}
                       </span>
                       {selectedBlueprint.invokable && (
-                        <span className="app-pill app-pill-emerald !px-2 !py-1 !text-[11px]">
-                          Invokable
-                        </span>
+                        <span className="app-pill app-pill-emerald !px-2 !py-1 !text-[11px]">Invokable</span>
                       )}
                     </div>
                   </div>
@@ -280,17 +290,23 @@ export default function BlueprintBrowserDialog({
                 <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
                   <div className="space-y-4">
                     <div>
-                      <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Description</label>
+                      <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                        Description
+                      </label>
                       <p className="text-sm leading-6 text-muted-foreground">
                         {selectedBlueprint.description || 'No description'}
                       </p>
                     </div>
 
                     <div>
-                      <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Preview</label>
+                      <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                        Preview
+                      </label>
                       <div className="rounded-lg border border-border bg-card/80 p-4">
                         <div className="prose prose-sm dark:prose-invert max-w-none">
-                          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{selectedBlueprint.content || '*No content*'}</ReactMarkdown>
+                          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                            {selectedBlueprint.content || '*No content*'}
+                          </ReactMarkdown>
                         </div>
                       </div>
                     </div>
@@ -314,14 +330,9 @@ export default function BlueprintBrowserDialog({
 
         {/* Footer */}
         <div className="flex items-center justify-between gap-3 border-t border-border/70 px-4 py-3 sm:px-5">
-          <p className="text-xs text-muted-foreground">
-            Double-click to select quickly
-          </p>
+          <p className="text-xs text-muted-foreground">Double-click to select quickly</p>
           <div className="flex gap-2">
-            <button
-              onClick={onClose}
-              className="app-button app-button-secondary"
-            >
+            <button onClick={onClose} className="app-button app-button-secondary">
               Cancel
             </button>
             <button

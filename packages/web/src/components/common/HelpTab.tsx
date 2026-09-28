@@ -1,13 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import {
-  ArrowRight,
-  BookOpen,
-  TriangleAlert,
-  Loader2,
-  MessageCircle,
-  Send,
-} from 'lucide-react';
+import { ArrowRight, BookOpen, TriangleAlert, Loader2, MessageCircle, Send } from 'lucide-react';
 import type { ChatMessage } from '@char-gen/shared';
 import { api } from '@/lib/api';
 import type { HelpTopic, PageHelpEntry } from '@/lib/help';
@@ -48,9 +41,10 @@ export default function HelpTab({ pageHelp, relatedTopics }: HelpTabProps) {
     : undefined;
 
   const screenContext = useMemo(() => {
-    const matchedPath = Object.keys(screenTitles)
-      .filter((path) => location.pathname === path || location.pathname.startsWith(`${path}/`))
-      .sort((left, right) => right.length - left.length)[0] || location.pathname;
+    const matchedPath =
+      Object.keys(screenTitles)
+        .filter((path) => location.pathname === path || location.pathname.startsWith(`${path}/`))
+        .sort((left, right) => right.length - left.length)[0] || location.pathname;
 
     return {
       screen_name: matchedPath.replace(/^\//, '') || 'home',
@@ -100,7 +94,10 @@ export default function HelpTab({ pageHelp, relatedTopics }: HelpTabProps) {
       await stream.start();
     } catch (error) {
       setIsStreaming(false);
-      setMessages((previous) => [...previous, { role: 'assistant', content: `Error: ${error instanceof Error ? error.message : 'Unknown error'}` }]);
+      setMessages((previous) => [
+        ...previous,
+        { role: 'assistant', content: `Error: ${error instanceof Error ? error.message : 'Unknown error'}` },
+      ]);
     }
   };
 
@@ -204,13 +201,8 @@ export default function HelpTab({ pageHelp, relatedTopics }: HelpTabProps) {
         ) : (
           <div className="px-1">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Help</p>
-            <p className="mt-2 text-sm text-muted-foreground">
-              No contextual help available for this page.
-            </p>
-            <Link
-              to="/help"
-              className="mt-3 inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
-            >
+            <p className="mt-2 text-sm text-muted-foreground">No contextual help available for this page.</p>
+            <Link to="/help" className="mt-3 inline-flex items-center gap-1.5 text-xs text-primary hover:underline">
               Open Help Center
               <ArrowRight className="h-3 w-3" />
             </Link>
@@ -238,8 +230,13 @@ export default function HelpTab({ pageHelp, relatedTopics }: HelpTabProps) {
             {/* Messages */}
             <div className="max-h-48 space-y-2 overflow-y-auto px-2 pb-2">
               {messages.map((message, index) => (
-                <div key={`${message.role}-${index}`} className={`text-xs ${message.role === 'user' ? 'text-right' : ''}`}>
-                  <div className={`inline-block max-w-[85%] rounded-lg px-2 py-1.5 ${message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                <div
+                  key={`${message.role}-${index}`}
+                  className={`text-xs ${message.role === 'user' ? 'text-right' : ''}`}
+                >
+                  <div
+                    className={`inline-block max-w-[85%] rounded-lg px-2 py-1.5 ${message.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}
+                  >
                     {message.content}
                   </div>
                 </div>
@@ -276,9 +273,7 @@ export default function HelpTab({ pageHelp, relatedTopics }: HelpTabProps) {
                   {isStreaming ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
                 </button>
               </div>
-              {draftId && (
-                <p className="mt-1 text-[10px] text-muted-foreground">Using draft context</p>
-              )}
+              {draftId && <p className="mt-1 text-[10px] text-muted-foreground">Using draft context</p>}
             </div>
           </div>
         ) : (

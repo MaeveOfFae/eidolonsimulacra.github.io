@@ -3,11 +3,7 @@
  * Handles provider detection and API key resolution.
  */
 
-import type {
-  LLMConfig,
-  LLMEngine,
-  LLMProvider,
-} from './types';
+import type { LLMConfig, LLMEngine, LLMProvider } from './types';
 import { detectProviderFromModel } from './types';
 import { listModels as listModelsFromProvider, OpenAICompatEngine } from './openai-compat';
 import { GoogleEngine } from './google';
@@ -46,11 +42,9 @@ function isInvalidApiKeyValue(value: string): boolean {
     return true;
   }
 
-  return [
-    /^window\.fetch:/i,
-    /cannot convert value in record<bytestring/i,
-    /^bearer\s+window\.fetch:/i,
-  ].some((pattern) => pattern.test(value));
+  return [/^window\.fetch:/i, /cannot convert value in record<bytestring/i, /^bearer\s+window\.fetch:/i].some(
+    (pattern) => pattern.test(value),
+  );
 }
 
 /**
@@ -70,7 +64,7 @@ function normalizeOpenAICompatModel(model: string, baseUrl: string): string {
  */
 function getApiKey(
   provider: LLMProvider,
-  options: Omit<CreateEngineOptions, 'provider' | 'model'>
+  options: Omit<CreateEngineOptions, 'provider' | 'model'>,
 ): string | undefined {
   if (provider === 'ollama') {
     return undefined;
@@ -96,7 +90,7 @@ export function getProviderAuthType(provider: LLMProvider): 'bearer' | 'raw' {
 export function buildProviderHeaders(
   provider: LLMProvider,
   apiKey?: string,
-  options: ProviderHeaderOptions = {}
+  options: ProviderHeaderOptions = {},
 ): Record<string, string> {
   const headers: Record<string, string> = {};
 
@@ -218,11 +212,7 @@ export function getEngineType(model: string, provider?: LLMProvider): string {
 /**
  * List available models from a provider.
  */
-export async function listModels(
-  provider: LLMProvider,
-  apiKey?: string,
-  baseUrl?: string
-): Promise<string[]> {
+export async function listModels(provider: LLMProvider, apiKey?: string, baseUrl?: string): Promise<string[]> {
   const resolvedBaseUrl = baseUrl || getDefaultBaseUrl(provider);
   return listModelsFromProvider(resolvedBaseUrl, apiKey);
 }
@@ -230,7 +220,12 @@ export async function listModels(
 export const MODEL_SUGGESTIONS: Record<LLMProvider, string[]> = {
   openai: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo', 'o1-preview'],
   google: ['gemini-2.0-flash-exp', 'gemini-2.0-flash-thinking-exp', 'gemini-1.5-pro', 'gemini-1.5-flash'],
-  openrouter: ['anthropic/claude-3.5-sonnet', 'anthropic/claude-3.5-haiku', 'google/gemini-pro-1.5', 'openai/gpt-4o-mini'],
+  openrouter: [
+    'anthropic/claude-3.5-sonnet',
+    'anthropic/claude-3.5-haiku',
+    'google/gemini-pro-1.5',
+    'openai/gpt-4o-mini',
+  ],
   anthropic: ['claude-3.5-sonnet', 'claude-3.5-haiku', 'claude-3-opus'],
   deepseek: ['deepseek-chat', 'deepseek-coder'],
   zai: ['glm-4', 'glm-4-flash'],
@@ -246,7 +241,7 @@ export async function testConnection(
   model: string,
   apiKey?: string,
   baseUrl?: string,
-  options?: Partial<Omit<CreateEngineOptions, 'provider' | 'model' | 'apiKey' | 'baseUrl'>>
+  options?: Partial<Omit<CreateEngineOptions, 'provider' | 'model' | 'apiKey' | 'baseUrl'>>,
 ): Promise<{ success: boolean; latencyMs?: number; error?: string }> {
   try {
     const engine = createEngine({

@@ -3,10 +3,8 @@
  * Extracts and validates assets from LLM-generated content.
  */
 
-import type {
-  AssetDefinition as TypesAssetDefinition,
-  Template as TypesTemplate,
-} from '../types';
+import type { AssetDefinition as TypesAssetDefinition, Template as TypesTemplate } from '../types';
+import { canonicalizeLegacyAssetName } from '../templates';
 
 // Re-export types from types/index with local type names to avoid conflicts
 export type AssetDefinition = TypesAssetDefinition;
@@ -18,6 +16,7 @@ export type AssetName =
   | 'post_history'
   | 'character_sheet'
   | 'intro_scene'
+  | 'creator_notes'
   | 'intro_page'
   | 'a1111'
   | 'suno';
@@ -28,7 +27,7 @@ export const ASSET_ORDER: ReadonlyArray<AssetName> = [
   'post_history',
   'character_sheet',
   'intro_scene',
-  'intro_page',
+  'creator_notes',
   'a1111',
   'suno',
 ] as const;
@@ -51,7 +50,7 @@ const DEFAULT_ASSET_ORDER: AssetName[] = [
   'post_history',
   'character_sheet',
   'intro_scene',
-  'intro_page',
+  'creator_notes',
   'a1111',
 ];
 
@@ -61,6 +60,7 @@ export const DEFAULT_ASSET_FILENAMES: Record<AssetName, string> = {
   post_history: 'post_history.txt',
   character_sheet: 'character_sheet.txt',
   intro_scene: 'intro_scene.txt',
+  creator_notes: 'creator_notes.md',
   intro_page: 'intro_page.md',
   a1111: 'a1111_prompt.txt',
   suno: 'suno_prompt.txt',
@@ -75,7 +75,7 @@ export function extractCodeblocks(text: string): string[] {
   const pattern = /```(?:[a-z]*\n)?(.*?)```/gs;
   const matches = text.match(pattern);
   if (!matches) return [];
-  return matches.map(m => m.trim());
+  return matches.map((m) => m.trim());
 }
 
 /**
@@ -106,7 +106,7 @@ export function parseBlueprintOutput(text: string, template?: TypesTemplate): Pa
   // Determine expected asset order from template or use default
   let expectedAssets: AssetName[] = [];
   if (template && template.assets.length > 0) {
-    expectedAssets = template.assets.map(a => a.name as AssetName);
+    expectedAssets = template.assets.map((a) => a.name as AssetName);
   } else {
     expectedAssets = [...DEFAULT_ASSET_ORDER];
   }
@@ -209,7 +209,7 @@ export function sanitizeCharacterName(name: string): string {
  */
 export function inferCharacterDisplayNameFromAssets(
   assets: Record<string, string>,
-  preferredAssets: Iterable<string> = ['character_sheet']
+  preferredAssets: Iterable<string> = ['character_sheet'],
 ): string | null {
   const orderedAssetNames: AssetName[] = [];
   const seen = new Set<AssetName>();
@@ -241,7 +241,7 @@ export function inferCharacterDisplayNameFromAssets(
  */
 export function inferCharacterNameFromAssets(
   assets: Record<string, string>,
-  preferredAssets?: Iterable<string>
+  preferredAssets?: Iterable<string>,
 ): string | null {
   const displayName = inferCharacterDisplayNameFromAssets(assets, preferredAssets);
   if (!displayName) return null;
@@ -256,19 +256,10 @@ const PLACEHOLDER_PATTERNS: ReadonlyArray<[string, RegExp]> = [
   ['{PLACEHOLDER}', /\{PLACEHOLDER\}/g],
   ['Generic {...} placeholder', /(?<!\{)\{(?!\{)[^{}\n]*[A-Za-z][^{}\n]*\}(?!\})/g],
   ['Suno {TITLE}', /\{TITLE\}/g],
-  [
-    'Suno other {..}',
-    /\{GENRE\}|\{STYLE\}|\{MOOD\}|\{ENERGY\}|\{TEMPO\}|\{BPM\}|\{TEXTURE\}|\{Remaster Style\}/g,
-  ],
+  ['Suno other {..}', /\{GENRE\}|\{STYLE\}|\{MOOD\}|\{ENERGY\}|\{TEMPO\}|\{BPM\}|\{TEXTURE\}|\{Remaster Style\}/g],
   ['A1111 slot ((...))', /\(\(\.\.\)\)/g],
-  [
-    'A1111 any slot ((...something...)) left',
-    /\(\([^)]*\.\.\.[^)]*\)/g,
-  ],
-  [
-    'Character sheet bracket placeholders',
-    /\[[A-Za-z][^\]\n]*\]/g,
-  ],
+  ['A1111 any slot ((...something...)) left', /\(\([^)]*\.\.\.[^)]*\)/g],
+  ['Character sheet bracket placeholders', /\[[A-Za-z][^\]\n]*\]/g],
 ] as const;
 
 const USER_AUTHORITY_PATTERNS: ReadonlyArray<[string, RegExp]> = [
@@ -282,7 +273,8 @@ const USER_AUTHORITY_PATTERNS: ReadonlyArray<[string, RegExp]> = [
   ],
 ] as const;
 
-const INSTRUCTIONAL_USER_REFERENCE_PATTERN = /(?:never|do not|don't|avoid|without)\s+(?:narrat(?:e|ing)|describ(?:e|ing)|assign(?:ing)?)\s*$/gi;
+const INSTRUCTIONAL_USER_REFERENCE_PATTERN =
+  /(?:never|do not|don't|avoid|without)\s+(?:narrat(?:e|ing)|describ(?:e|ing)|assign(?:ing)?)\s*$/gi;
 
 const CHARACTER_SHEET_FILENAME = 'character_sheet.txt';
 
@@ -327,9 +319,10 @@ function detectUserAuthorityIssues(text: string): string[] {
  * Validate a generated asset's content and return issue labels.
  */
 export function validateAssetContent(assetName: AssetName, content: string): string[] {
-  let filename = `${assetName}.txt`;
-  if (assetName === 'intro_page') filename = 'intro_page.md';
-  if (assetName === 'character_sheet') filename = CHARACTER_SHEET_FILENAME;
+  const normalizedAssetName = canonicalizeLegacyAssetName(assetName);
+  let filename = `${normalizedAssetName}.txt`;
+  if (normalizedAssetName === 'creator_notes') filename = 'creator_notes.md';
+  if (normalizedAssetName === 'character_sheet') filename = CHARACTER_SHEET_FILENAME;
 
   const issues = detectPlaceholderIssues(content, filename);
   issues.push(...detectUserAuthorityIssues(content));

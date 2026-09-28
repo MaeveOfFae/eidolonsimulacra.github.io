@@ -1,6 +1,19 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { AlertTriangle, ArrowLeft, CheckCircle2, Eye, Edit3, FileWarning, GitCompare, Loader2, RotateCcw, Save, Copy, X } from 'lucide-react';
+import {
+  AlertTriangle,
+  ArrowLeft,
+  CheckCircle2,
+  Eye,
+  Edit3,
+  FileWarning,
+  GitCompare,
+  Loader2,
+  RotateCcw,
+  Save,
+  Copy,
+  X,
+} from 'lucide-react';
 import type { Blueprint } from '@char-gen/shared';
 import { api } from '@/lib/api';
 import ReactMarkdown from 'react-markdown';
@@ -69,7 +82,6 @@ function highlightBlueprintSource(source: string): string {
   }
 
   const [, openingFence, frontmatterBody, closingFence, markdownBody] = match;
-  const highlightedFence = Prism.util.encode(`${openingFence}${closingFence.trimEnd()}`);
   const highlightedFrontmatter = Prism.highlight(frontmatterBody, Prism.languages.yaml, 'yaml');
   const highlightedBody = Prism.highlight(markdownBody, Prism.languages.markdown, 'markdown');
 
@@ -304,9 +316,7 @@ export default function BlueprintEditor() {
       setOriginalContent(api.getOriginalBlueprintContent(updated.path));
       setModified(false);
       setNotice(
-        updated.path !== blueprint.path
-          ? `Created personal copy at ${updated.path}.`
-          : `Saved ${updated.path}.`
+        updated.path !== blueprint.path ? `Created personal copy at ${updated.path}.` : `Saved ${updated.path}.`,
       );
       if (updated.path !== blueprint.path) {
         navigate(`/blueprints/edit/${encodeURIComponent(updated.path)}`, { replace: true });
@@ -364,11 +374,20 @@ export default function BlueprintEditor() {
   };
 
   const parsedDocument = parseBlueprintDocument(rawContent);
-  const lintIssues = useMemo(() => lintBlueprintContent(rawContent, blueprint ? {
-    category: blueprint.category,
-    path: blueprint.path,
-    featureCategory: blueprint.feature_category,
-  } : undefined), [rawContent, blueprint]);
+  const lintIssues = useMemo(
+    () =>
+      lintBlueprintContent(
+        rawContent,
+        blueprint
+          ? {
+              category: blueprint.category,
+              path: blueprint.path,
+              featureCategory: blueprint.feature_category,
+            }
+          : undefined,
+      ),
+    [rawContent, blueprint],
+  );
   const lintErrorCount = lintIssues.filter((issue) => issue.severity === 'error').length;
   const lintWarningCount = lintIssues.filter((issue) => issue.severity === 'warning').length;
   const displayName = parsedDocument.metadata.name || blueprint?.name || 'Blueprint';
@@ -378,7 +397,8 @@ export default function BlueprintEditor() {
   const displayFeatureCategory = parsedDocument.metadata.featureCategory || blueprint?.feature_category || 'none';
 
   const hasOverride = originalContent !== null && blueprint?.content !== originalContent;
-  const saveCreatesCopy = originalContent !== null && Boolean(blueprint && !blueprint.path.startsWith('blueprints/custom/'));
+  const saveCreatesCopy =
+    originalContent !== null && Boolean(blueprint && !blueprint.path.startsWith('blueprints/custom/'));
 
   if (error) {
     return (
@@ -427,18 +447,10 @@ export default function BlueprintEditor() {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-bold">{displayName}</h1>
-              {hasOverride && (
-                <span className="app-pill app-pill-amber !px-2 !py-1 !text-[11px]">
-                  Edited
-                </span>
-              )}
+              {hasOverride && <span className="app-pill app-pill-amber !px-2 !py-1 !text-[11px]">Edited</span>}
             </div>
-            <p className="text-sm text-muted-foreground">
-              {blueprint.category}
-            </p>
-            <p className="text-sm text-muted-foreground">
-              {blueprint.path}
-            </p>
+            <p className="text-sm text-muted-foreground">{blueprint.category}</p>
+            <p className="text-sm text-muted-foreground">{blueprint.path}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -452,10 +464,7 @@ export default function BlueprintEditor() {
               Diff
             </button>
           )}
-          <button
-            onClick={() => setShowPreview(!showPreview)}
-            className="app-button app-button-secondary"
-          >
+          <button onClick={() => setShowPreview(!showPreview)} className="app-button app-button-secondary">
             {showPreview ? <Edit3 className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             {showPreview ? 'Hide Preview' : 'Show Preview'}
           </button>
@@ -476,11 +485,7 @@ export default function BlueprintEditor() {
               <RotateCcw className="h-4 w-4" />
             </button>
           )}
-          <button
-            onClick={handleSave}
-            disabled={!modified || isSaving}
-            className="app-button app-button-primary"
-          >
+          <button onClick={handleSave} disabled={!modified || isSaving} className="app-button app-button-primary">
             <Save className="h-4 w-4" />
             {isSaving ? 'Saving...' : saveCreatesCopy ? 'Save Copy' : 'Save'}
           </button>
@@ -502,7 +507,8 @@ export default function BlueprintEditor() {
 
       {saveCreatesCopy && (
         <div className="rounded-lg border border-blue-500/40 bg-blue-500/10 px-4 py-3 text-sm text-blue-700 dark:text-blue-300">
-          This is a built-in blueprint. Saving will create a custom copy in local storage or your synced account instead of overwriting the default.
+          This is a built-in blueprint. Saving will create a custom copy in local storage or your synced account instead
+          of overwriting the default.
         </div>
       )}
 
@@ -537,7 +543,8 @@ export default function BlueprintEditor() {
             <div>
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Editing mode</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                This editor works on the full blueprint source, including YAML frontmatter. Treat it like a markdown contract surface, not a structured form.
+                This editor works on the full blueprint source, including YAML frontmatter. Treat it like a markdown
+                contract surface, not a structured form.
               </p>
             </div>
           </div>
@@ -546,7 +553,9 @@ export default function BlueprintEditor() {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 className="font-semibold text-foreground">Live Lint</h3>
-                <p className="mt-2">Runs the same lightweight blueprint checks against the content currently in the editor.</p>
+                <p className="mt-2">
+                  Runs the same lightweight blueprint checks against the content currently in the editor.
+                </p>
               </div>
               {lintIssues.length === 0 ? (
                 <CheckCircle2 className="h-5 w-5 text-green-500" />
@@ -606,12 +615,17 @@ export default function BlueprintEditor() {
             </div>
 
             {showPreview ? (
-              <div ref={previewContainerRef} className="max-h-[70vh] overflow-y-auto rounded-lg border border-border bg-card p-4">
+              <div
+                ref={previewContainerRef}
+                className="max-h-[70vh] overflow-y-auto rounded-lg border border-border bg-card p-4"
+              >
                 <div className="mb-4 rounded-md bg-muted p-3 text-xs font-mono overflow-x-auto whitespace-pre-wrap">
                   {rawContent.replace(/\r\n?/g, '\n').match(/^---\n[\s\S]*?\n---/)?.[0] || 'No frontmatter detected'}
                 </div>
                 <div className="prose prose-sm dark:prose-invert max-w-none">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{parsedDocument.body || '*No markdown body yet*'}</ReactMarkdown>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                    {parsedDocument.body || '*No markdown body yet*'}
+                  </ReactMarkdown>
                 </div>
               </div>
             ) : null}
@@ -626,7 +640,12 @@ export default function BlueprintEditor() {
           <div className="relative bg-card border border-border rounded-lg shadow-xl w-full max-w-6xl mx-4 max-h-[85vh] flex flex-col">
             <div className="flex items-center justify-between p-4 border-b border-border">
               <h2 className="text-lg font-semibold">Compare: Original vs Current</h2>
-              <button type="button" onClick={() => setShowDiff(false)} className="text-muted-foreground hover:text-foreground" title="Close">
+              <button
+                type="button"
+                onClick={() => setShowDiff(false)}
+                className="text-muted-foreground hover:text-foreground"
+                title="Close"
+              >
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -647,10 +666,7 @@ export default function BlueprintEditor() {
               </div>
             </div>
             <div className="flex justify-end gap-2 p-4 border-t border-border">
-              <button
-                onClick={() => setShowDiff(false)}
-                className="app-button app-button-secondary"
-              >
+              <button onClick={() => setShowDiff(false)} className="app-button app-button-secondary">
                 Close
               </button>
               <button

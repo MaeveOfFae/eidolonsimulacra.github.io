@@ -3,29 +3,17 @@
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "lib": [
-      "ES2022",
-      "DOM",
-      "DOM.Iterable"
-    ],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "jsx": "react-jsx",
     "strict": true,
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "noEmit": true,
-    "types": [
-      "react",
-      "react-native"
-    ],
+    "types": ["react", "react-native"],
     "resolveJsonModule": true
   },
-  "include": [
-    "App.tsx",
-    "src/**/*"
-  ],
-  "exclude": [
-    "node_modules"
-  ],
+  "include": ["App.tsx", "src/**/*"],
+  "exclude": ["node_modules"],
   "extends": "expo/tsconfig.base"
 }

@@ -1,12 +1,7 @@
 import type { Blueprint, BlueprintList, FeatureCategory } from '@char-gen/shared';
 
 function flattenBlueprintList(list: BlueprintList): Blueprint[] {
-  return [
-    ...list.system,
-    ...list.core,
-    ...list.examples,
-    ...Object.values(list.templates).flat(),
-  ];
+  return [...list.system, ...list.core, ...list.examples, ...Object.values(list.templates).flat()];
 }
 
 function categoryRank(category: Blueprint['category']): number {
@@ -40,7 +35,7 @@ export function getBlueprintsForFeature(list: BlueprintList, featureCategory: Fe
 export function resolveBlueprintForFeature(
   list: BlueprintList,
   featureCategory: FeatureCategory,
-  preferredPath?: string
+  preferredPath?: string,
 ): Blueprint | null {
   const matching = getBlueprintsForFeature(list, featureCategory);
 

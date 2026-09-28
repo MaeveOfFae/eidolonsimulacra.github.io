@@ -14,11 +14,12 @@ function formatReleaseDate(value: string) {
 
 export default function WhatsNewPage() {
   const upcomingUpdates = roadmapGroups
-    .filter((group) => group.status !== 'implemented')
+    .filter((group) => group.items.length > 0)
     .slice(0, 6)
     .map((group) => ({
       id: group.id,
       title: group.title,
+      status: group.status,
       summary: group.items[0],
       link: group.ownerFiles[0],
     }));
@@ -33,9 +34,7 @@ export default function WhatsNewPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-xl font-semibold text-foreground">Current Release Line</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              The app is currently shipping on v{__APP_VERSION__}.
-            </p>
+            <p className="mt-1 text-sm text-muted-foreground">The app is currently shipping on v{__APP_VERSION__}.</p>
           </div>
           <div className="rounded-2xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm font-medium text-primary">
             Browser workspace • v{__APP_VERSION__}
@@ -45,10 +44,7 @@ export default function WhatsNewPage() {
 
       <section className="space-y-4">
         {releaseNotes.map((entry) => (
-          <article
-            key={entry.version}
-            className="rounded-3xl border border-border/60 bg-card/70 p-6 backdrop-blur-sm"
-          >
+          <article key={entry.version} className="rounded-3xl border border-border/60 bg-card/70 p-6 backdrop-blur-sm">
             <div className="flex flex-wrap items-center gap-2">
               <span className="rounded-full bg-primary/15 px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
                 {entry.badge}
@@ -69,7 +65,10 @@ export default function WhatsNewPage() {
 
             <div className="mt-5 grid gap-3 md:grid-cols-3">
               {entry.highlights.map((highlight) => (
-                <div key={highlight} className="rounded-2xl border border-border/50 bg-background/40 p-4 text-sm leading-6 text-muted-foreground">
+                <div
+                  key={highlight}
+                  className="rounded-2xl border border-border/50 bg-background/40 p-4 text-sm leading-6 text-muted-foreground"
+                >
                   {highlight}
                 </div>
               ))}
@@ -96,12 +95,11 @@ export default function WhatsNewPage() {
           <div>
             <h2 className="text-xl font-semibold text-foreground">Upcoming Updates</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              These are the next visible feature areas already staged in the active roadmap.
+              These are the next visible feature areas already staged in the active roadmap. Nothing listed here is
+              shipped yet.
             </p>
           </div>
-          <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-            Planned
-          </span>
+          <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">Planned</span>
         </div>
 
         <div className="mt-5 grid gap-4 md:grid-cols-2">
@@ -110,7 +108,7 @@ export default function WhatsNewPage() {
               <h3 className="font-semibold text-foreground">{update.title}</h3>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">{update.summary}</p>
               <p className="mt-3 text-xs uppercase tracking-[0.14em] text-muted-foreground">
-                Owner surface: {update.link.split('/').slice(-1)[0]}
+                {update.status} · {update.link.split('/').slice(-1)[0]}
               </p>
             </div>
           ))}

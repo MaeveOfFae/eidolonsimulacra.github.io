@@ -27,7 +27,12 @@ export default function InlineHelpTip({
   }
 
   return (
-    <div className={cn('inline-flex items-center gap-2 rounded-xl border border-border/60 bg-background/50 px-3 py-2', className)}>
+    <div
+      className={cn(
+        'inline-flex items-center gap-2 rounded-xl border border-border/60 bg-background/50 px-3 py-2',
+        className,
+      )}
+    >
       <HoverHelpPopover
         title={title}
         summary={description}

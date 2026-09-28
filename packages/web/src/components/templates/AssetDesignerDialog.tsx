@@ -16,35 +16,15 @@ interface AssetDesignerDialogProps {
 const IMPORT_ALIAS_GROUPS = [
   {
     title: 'Core card fields',
-    aliases: [
-      'description',
-      'first_mes',
-      'mes_example',
-      'system_prompt',
-      'personality',
-      'scenario',
-      'creator_notes',
-    ],
+    aliases: ['description', 'first_mes', 'mes_example', 'system_prompt', 'personality', 'scenario', 'creator_notes'],
   },
   {
     title: 'Card metadata',
-    aliases: [
-      'avatar',
-      'creator',
-      'character_version',
-      'alternate_greetings',
-      'character_book',
-    ],
+    aliases: ['avatar', 'creator', 'character_version', 'alternate_greetings', 'character_book'],
   },
   {
     title: 'Nested extension paths',
-    aliases: [
-      'extensions.chub',
-      'extensions.chub.full_path',
-      'extensions.depth_prompt',
-      'lorebook',
-      'world_info',
-    ],
+    aliases: ['extensions.chub', 'extensions.chub.full_path', 'extensions.depth_prompt', 'lorebook', 'world_info'],
   },
 ] as const;
 
@@ -168,11 +148,7 @@ export default function AssetDesignerDialog({
   };
 
   const toggleDependency = (dep: string) => {
-    setDependsOn(prev =>
-      prev.includes(dep)
-        ? prev.filter(d => d !== dep)
-        : [...prev, dep]
-    );
+    setDependsOn((prev) => (prev.includes(dep) ? prev.filter((d) => d !== dep) : [...prev, dep]));
   };
 
   const currentImportAliases = parseImportAliases(importAliases);
@@ -205,10 +181,13 @@ export default function AssetDesignerDialog({
         <div className="relative bg-card border border-border rounded-lg shadow-lg w-full max-w-lg mx-4 max-h-[90vh] overflow-hidden flex flex-col">
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-border">
-            <h2 className="text-lg font-semibold">
-              {asset ? 'Edit Asset' : 'Add Asset'}
-            </h2>
-            <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground" aria-label="Close">
+            <h2 className="text-lg font-semibold">{asset ? 'Edit Asset' : 'Add Asset'}</h2>
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-muted-foreground hover:text-foreground"
+              aria-label="Close"
+            >
               <X className="h-5 w-5" />
             </button>
           </div>
@@ -224,9 +203,7 @@ export default function AssetDesignerDialog({
 
             {/* Asset Name */}
             <div>
-              <label className="block text-sm font-medium mb-1.5">
-                Asset Name *
-              </label>
+              <label className="block text-sm font-medium mb-1.5">Asset Name *</label>
               <input
                 type="text"
                 value={name}
@@ -237,16 +214,12 @@ export default function AssetDesignerDialog({
                 placeholder="e.g., character_background"
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
-              <p className="text-xs text-muted-foreground mt-1">
-                Use lowercase with underscores (snake_case)
-              </p>
+              <p className="text-xs text-muted-foreground mt-1">Use lowercase with underscores (snake_case)</p>
             </div>
 
             {/* Description */}
             <div>
-              <label className="block text-sm font-medium mb-1.5">
-                Description
-              </label>
+              <label className="block text-sm font-medium mb-1.5">Description</label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -269,9 +242,7 @@ export default function AssetDesignerDialog({
 
             {/* Blueprint Source */}
             <div>
-              <label className="block text-sm font-medium mb-2">
-                Blueprint Source
-              </label>
+              <label className="block text-sm font-medium mb-2">Blueprint Source</label>
               <div className="space-y-2">
                 {/* Browse Option */}
                 <button
@@ -281,9 +252,7 @@ export default function AssetDesignerDialog({
                   }}
                   className={cn(
                     'w-full flex items-center gap-3 p-3 rounded-lg border transition-colors text-left',
-                    blueprintSource === 'browse'
-                      ? 'border-primary bg-primary/10'
-                      : 'border-border hover:bg-accent'
+                    blueprintSource === 'browse' ? 'border-primary bg-primary/10' : 'border-border hover:bg-accent',
                   )}
                 >
                   <FolderOpen className="h-5 w-5" />
@@ -293,9 +262,7 @@ export default function AssetDesignerDialog({
                       {selectedBlueprint ? `Selected: ${selectedBlueprint.name}` : 'Select from available blueprints'}
                     </div>
                   </div>
-                  <span className="app-button app-button-secondary !px-3 !py-1.5 !text-xs">
-                    Browse
-                  </span>
+                  <span className="app-button app-button-secondary !px-3 !py-1.5 !text-xs">Browse</span>
                 </button>
 
                 {/* Custom Option */}
@@ -303,17 +270,13 @@ export default function AssetDesignerDialog({
                   onClick={() => setBlueprintSource('custom')}
                   className={cn(
                     'w-full flex items-center gap-3 p-3 rounded-lg border transition-colors text-left',
-                    blueprintSource === 'custom'
-                      ? 'border-primary bg-primary/10'
-                      : 'border-border hover:bg-accent'
+                    blueprintSource === 'custom' ? 'border-primary bg-primary/10' : 'border-border hover:bg-accent',
                   )}
                 >
                   <Edit3 className="h-5 w-5" />
                   <div className="flex-1">
                     <div className="font-medium">Custom Blueprint</div>
-                    <div className="text-xs text-muted-foreground">
-                      Enter blueprint filename manually
-                    </div>
+                    <div className="text-xs text-muted-foreground">Enter blueprint filename manually</div>
                   </div>
                 </button>
 
@@ -332,9 +295,7 @@ export default function AssetDesignerDialog({
                   onClick={() => setBlueprintSource('new')}
                   className={cn(
                     'w-full flex items-center gap-3 p-3 rounded-lg border transition-colors text-left opacity-75',
-                    blueprintSource === 'new'
-                      ? 'border-primary bg-primary/10'
-                      : 'border-border hover:bg-accent'
+                    blueprintSource === 'new' ? 'border-primary bg-primary/10' : 'border-border hover:bg-accent',
                   )}
                 >
                   <Plus className="h-5 w-5" />
@@ -356,7 +317,7 @@ export default function AssetDesignerDialog({
                 </label>
                 <div className="space-y-1">
                   {existingAssets
-                    .filter(a => a !== asset?.name && a !== name)
+                    .filter((a) => a !== asset?.name && a !== name)
                     .map((assetName) => (
                       <label key={assetName} className="flex items-center gap-2 text-sm">
                         <input
@@ -373,9 +334,7 @@ export default function AssetDesignerDialog({
             )}
 
             <div>
-              <label className="block text-sm font-medium mb-1.5">
-                Import Aliases
-              </label>
+              <label className="block text-sm font-medium mb-1.5">Import Aliases</label>
               <input
                 type="text"
                 value={importAliases}
@@ -393,7 +352,8 @@ export default function AssetDesignerDialog({
                     Common Import Fields
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Click a field to add it. Aliases are matched in order, and dot paths let you target nested Chub metadata.
+                    Click a field to add it. Aliases are matched in order, and dot paths let you target nested Chub
+                    metadata.
                   </p>
                 </div>
 
@@ -414,7 +374,7 @@ export default function AssetDesignerDialog({
                               'rounded-full border px-2.5 py-1 text-[11px] font-mono transition-colors',
                               selected
                                 ? 'border-primary/40 bg-primary/10 text-primary'
-                                : 'border-border bg-background text-muted-foreground hover:border-primary/35 hover:text-foreground'
+                                : 'border-border bg-background text-muted-foreground hover:border-primary/35 hover:text-foreground',
                             )}
                             title={selected ? 'Already added' : `Add ${alias}`}
                           >
@@ -429,9 +389,7 @@ export default function AssetDesignerDialog({
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1.5">
-                Blueprint Content
-              </label>
+              <label className="block text-sm font-medium mb-1.5">Blueprint Content</label>
               <textarea
                 value={blueprintContentValue}
                 onChange={(e) => setBlueprintContentValue(e.target.value)}
@@ -447,17 +405,10 @@ export default function AssetDesignerDialog({
 
           {/* Footer */}
           <div className="flex justify-end gap-2 p-4 border-t border-border">
-            <button
-              onClick={onClose}
-              className="app-button app-button-secondary"
-            >
+            <button onClick={onClose} className="app-button app-button-secondary">
               Cancel
             </button>
-            <button
-              onClick={handleSave}
-              disabled={!name.trim()}
-              className="app-button app-button-primary"
-            >
+            <button onClick={handleSave} disabled={!name.trim()} className="app-button app-button-primary">
               <Check className="h-4 w-4" />
               {asset ? 'Update' : 'Add'} Asset
             </button>

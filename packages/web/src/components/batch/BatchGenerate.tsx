@@ -15,7 +15,8 @@ import { normalizeConnectedReferenceIds } from '@/lib/prompting/reference-contex
 const PLANNED_BATCH_MODULES = [
   {
     name: 'Scheduling',
-    description: 'Timed and recurring batch execution remains staged until the queue model supports real scheduling state.',
+    description:
+      'Timed and recurring batch execution remains staged until the queue model supports real scheduling state.',
   },
   {
     name: 'Template batch presets',
@@ -30,7 +31,9 @@ interface BatchJob {
   error?: string;
 }
 
-function getDefaultSelectedTemplateAssets(templateDefinition?: { assets: Array<{ name: string; required: boolean }> }): string[] {
+function getDefaultSelectedTemplateAssets(templateDefinition?: {
+  assets: Array<{ name: string; required: boolean }>;
+}): string[] {
   if (!templateDefinition) {
     return [];
   }
@@ -52,16 +55,14 @@ function getDefaultSelectedTemplateAssets(templateDefinition?: { assets: Array<{
 
 function normalizeAssetSelection(
   selection: readonly string[],
-  templateDefinition?: { assets: Array<{ name: string; required: boolean }> }
+  templateDefinition?: { assets: Array<{ name: string; required: boolean }> },
 ): string[] {
   if (!templateDefinition) {
     return [];
   }
 
   const templateAssetNames = new Set(templateDefinition.assets.map((asset) => asset.name));
-  const requiredNames = new Set(
-    templateDefinition.assets.filter((asset) => asset.required).map((asset) => asset.name)
-  );
+  const requiredNames = new Set(templateDefinition.assets.filter((asset) => asset.required).map((asset) => asset.name));
   const selected = new Set<string>();
 
   selection.forEach((assetName) => {
@@ -72,9 +73,7 @@ function normalizeAssetSelection(
 
   requiredNames.forEach((assetName) => selected.add(assetName));
 
-  return templateDefinition.assets
-    .map((asset) => asset.name)
-    .filter((assetName) => selected.has(assetName));
+  return templateDefinition.assets.map((asset) => asset.name).filter((assetName) => selected.has(assetName));
 }
 
 export default function BatchGenerate() {
@@ -105,16 +104,19 @@ export default function BatchGenerate() {
   });
 
   const connectedDraftLookup = new Map((draftsData?.drafts ?? []).map((draft) => [draft.review_id, draft] as const));
-  const availableConnectedDrafts = (draftsData?.drafts ?? []).filter((draft) => !selectedConnectedDraftIds.includes(draft.review_id));
+  const availableConnectedDrafts = (draftsData?.drafts ?? []).filter(
+    (draft) => !selectedConnectedDraftIds.includes(draft.review_id),
+  );
   const selectedTemplate = useMemo(
-    () => templates?.find((candidate) => candidate.name === template)
-      ?? templates?.find((candidate) => candidate.is_default)
-      ?? templates?.[0],
-    [template, templates]
+    () =>
+      templates?.find((candidate) => candidate.name === template) ??
+      templates?.find((candidate) => candidate.is_default) ??
+      templates?.[0],
+    [template, templates],
   );
   const optionalTemplateAssets = useMemo(
     () => selectedTemplate?.assets.filter((asset) => !asset.required) ?? [],
-    [selectedTemplate]
+    [selectedTemplate],
   );
 
   useEffect(() => {
@@ -135,7 +137,9 @@ export default function BatchGenerate() {
     setCurrentSeed(session.currentSeed);
 
     if (session.status === 'running') {
-      setResumeNotice('Batch generation was interrupted. Restored the queue snapshot; start again to continue remaining work.');
+      setResumeNotice(
+        'Batch generation was interrupted. Restored the queue snapshot; start again to continue remaining work.',
+      );
     } else if (session.jobs.length > 0) {
       setResumeNotice('Restored batch queue and progress snapshot.');
     } else {
@@ -163,17 +167,17 @@ export default function BatchGenerate() {
   const handleAddSeeds = () => {
     const newSeeds = inputText
       .split('\n')
-      .map(s => s.trim())
-      .filter(s => s.length > 0 && !seeds.includes(s));
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0 && !seeds.includes(s));
     if (newSeeds.length > 0) {
-      setSeeds(prev => [...prev, ...newSeeds]);
+      setSeeds((prev) => [...prev, ...newSeeds]);
       setInputText('');
       setResumeNotice(null);
     }
   };
 
   const handleRemoveSeed = (seed: string) => {
-    setSeeds(prev => prev.filter(s => s !== seed));
+    setSeeds((prev) => prev.filter((s) => s !== seed));
     setResumeNotice(null);
   };
 
@@ -212,7 +216,7 @@ export default function BatchGenerate() {
 
     setIsRunning(true);
     setResumeNotice(null);
-    setJobs(seeds.map(seed => ({ seed, status: 'pending' as const })));
+    setJobs(seeds.map((seed) => ({ seed, status: 'pending' as const })));
 
     try {
       const stream = api.generateBatch(seeds, {
@@ -230,21 +234,19 @@ export default function BatchGenerate() {
         if (event.event === 'batch_start') {
           const data = event.data as unknown as { index: number; seed: string };
           setCurrentSeed(data.seed);
-          setJobs(prev => prev.map((job, i) =>
-            i === data.index ? { ...job, status: 'generating' } : job
-          ));
+          setJobs((prev) => prev.map((job, i) => (i === data.index ? { ...job, status: 'generating' } : job)));
         }
         if (event.event === 'batch_complete') {
           const data = event.data as unknown as { index: number; seed: string; draft_path: string };
-          setJobs(prev => prev.map((job, i) =>
-            i === data.index ? { ...job, status: 'complete', draftPath: data.draft_path } : job
-          ));
+          setJobs((prev) =>
+            prev.map((job, i) => (i === data.index ? { ...job, status: 'complete', draftPath: data.draft_path } : job)),
+          );
         }
         if (event.event === 'batch_error') {
           const data = event.data as unknown as { index: number; seed: string; error: string };
-          setJobs(prev => prev.map((job, i) =>
-            i === data.index ? { ...job, status: 'error', error: data.error } : job
-          ));
+          setJobs((prev) =>
+            prev.map((job, i) => (i === data.index ? { ...job, status: 'error', error: data.error } : job)),
+          );
         }
       });
 
@@ -302,15 +304,15 @@ export default function BatchGenerate() {
 
   useEffect(() => {
     const hasState = Boolean(
-      seeds.length > 0
-      || inputText.trim()
-      || jobs.length > 0
-      || template
-      || selectedTemplateAssets.length > 0
-      || selectedConnectedDraftIds.length > 0
-      || mode !== 'SFW'
-      || !parallel
-      || maxConcurrent !== 3
+      seeds.length > 0 ||
+      inputText.trim() ||
+      jobs.length > 0 ||
+      template ||
+      selectedTemplateAssets.length > 0 ||
+      selectedConnectedDraftIds.length > 0 ||
+      mode !== 'SFW' ||
+      !parallel ||
+      maxConcurrent !== 3,
     );
 
     if (!hasState) {
@@ -333,7 +335,19 @@ export default function BatchGenerate() {
       status: isRunning ? 'running' : jobs.length > 0 ? 'ready' : 'configuring',
       updatedAt: Date.now(),
     });
-  }, [currentSeed, inputText, isRunning, jobs, maxConcurrent, mode, parallel, seeds, selectedConnectedDraftIds, selectedTemplateAssets, template]);
+  }, [
+    currentSeed,
+    inputText,
+    isRunning,
+    jobs,
+    maxConcurrent,
+    mode,
+    parallel,
+    seeds,
+    selectedConnectedDraftIds,
+    selectedTemplateAssets,
+    template,
+  ]);
 
   useEffect(() => {
     if (!isRunning && seeds.length === 0 && !inputText.trim() && jobs.length === 0) {
@@ -351,8 +365,8 @@ export default function BatchGenerate() {
 
   const modes: ContentMode[] = ['SFW', 'NSFW', 'Platform-Safe', 'Auto'];
 
-  const completedCount = jobs.filter(j => j.status === 'complete').length;
-  const errorCount = jobs.filter(j => j.status === 'error').length;
+  const completedCount = jobs.filter((j) => j.status === 'complete').length;
+  const errorCount = jobs.filter((j) => j.status === 'error').length;
   const progress = jobs.length > 0 ? ((completedCount + errorCount) / jobs.length) * 100 : 0;
 
   useAssistantScreenContext({
@@ -486,9 +500,7 @@ export default function BatchGenerate() {
                   onClick={() => setMode(m)}
                   disabled={isRunning}
                   className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    mode === m
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted hover:bg-muted/80'
+                    mode === m ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80'
                   } disabled:opacity-50`}
                 >
                   {m}
@@ -499,7 +511,9 @@ export default function BatchGenerate() {
 
           {/* Template */}
           <div className="space-y-2">
-            <label htmlFor="batch-template" className="text-sm font-medium">Template</label>
+            <label htmlFor="batch-template" className="text-sm font-medium">
+              Template
+            </label>
             <select
               id="batch-template"
               value={template}
@@ -557,14 +571,19 @@ export default function BatchGenerate() {
           <div>
             <label className="text-sm font-medium">Connected character references</label>
             <p className="mt-1 text-xs text-muted-foreground">
-              Attach up to {MAX_CONNECTED_DRAFT_REFERENCES} saved drafts as continuity anchors for every seed in this batch.
+              Attach up to {MAX_CONNECTED_DRAFT_REFERENCES} saved drafts as continuity anchors for every seed in this
+              batch.
             </p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
             <select
               value={pendingConnectedDraftId}
               onChange={(e) => setPendingConnectedDraftId(e.target.value)}
-              disabled={isRunning || availableConnectedDrafts.length === 0 || selectedConnectedDraftIds.length >= MAX_CONNECTED_DRAFT_REFERENCES}
+              disabled={
+                isRunning ||
+                availableConnectedDrafts.length === 0 ||
+                selectedConnectedDraftIds.length >= MAX_CONNECTED_DRAFT_REFERENCES
+              }
               aria-label="Batch connected draft reference"
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
             >
@@ -578,7 +597,11 @@ export default function BatchGenerate() {
             <button
               type="button"
               onClick={handleAddConnectedDraft}
-              disabled={!pendingConnectedDraftId || isRunning || selectedConnectedDraftIds.length >= MAX_CONNECTED_DRAFT_REFERENCES}
+              disabled={
+                !pendingConnectedDraftId ||
+                isRunning ||
+                selectedConnectedDraftIds.length >= MAX_CONNECTED_DRAFT_REFERENCES
+              }
               className="inline-flex items-center justify-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm hover:bg-accent disabled:opacity-50"
             >
               <Plus className="h-4 w-4" />
@@ -589,17 +612,21 @@ export default function BatchGenerate() {
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm font-medium text-foreground">
                 <Users className="h-4 w-4 text-primary" />
-                {selectedConnectedDraftIds.length} connected reference{selectedConnectedDraftIds.length === 1 ? '' : 's'} selected
+                {selectedConnectedDraftIds.length} connected reference
+                {selectedConnectedDraftIds.length === 1 ? '' : 's'} selected
               </div>
               <div className="flex flex-wrap gap-2">
                 {selectedConnectedDraftIds.map((draftId) => (
-                  <span key={draftId} className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-foreground">
+                  <span
+                    key={draftId}
+                    className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-foreground"
+                  >
                     {connectedDraftLookup.get(draftId)?.character_name || draftId}
                     <button
                       type="button"
                       onClick={() => handleRemoveConnectedDraft(draftId)}
                       disabled={isRunning}
-                      aria-label={`Remove ${(connectedDraftLookup.get(draftId)?.character_name || draftId)}`}
+                      aria-label={`Remove ${connectedDraftLookup.get(draftId)?.character_name || draftId}`}
                       className="text-muted-foreground hover:text-foreground disabled:opacity-50"
                     >
                       <X className="h-3.5 w-3.5" />
@@ -628,7 +655,9 @@ export default function BatchGenerate() {
 
           {parallel && (
             <div className="flex items-center gap-2">
-              <label htmlFor="batch-max-concurrent" className="text-sm text-muted-foreground">Max concurrent:</label>
+              <label htmlFor="batch-max-concurrent" className="text-sm text-muted-foreground">
+                Max concurrent:
+              </label>
               <input
                 id="batch-max-concurrent"
                 type="number"
@@ -661,10 +690,7 @@ export default function BatchGenerate() {
 
           {/* Progress Bar */}
           <div className="h-2 bg-muted rounded-full overflow-hidden">
-            <div
-              className="h-full bg-primary transition-all duration-300"
-              style={{ width: `${progress}%` }}
-            />
+            <div className="h-full bg-primary transition-all duration-300" style={{ width: `${progress}%` }} />
           </div>
 
           {/* Current Seed */}
@@ -682,9 +708,7 @@ export default function BatchGenerate() {
                 <div key={index} className="flex min-w-0 items-center justify-between gap-3 px-3 py-2 text-sm">
                   <span className="truncate break-all flex-1">{job.seed}</span>
                   <div className="flex shrink-0 items-center gap-2">
-                    {job.status === 'pending' && (
-                      <span className="text-muted-foreground">Pending</span>
-                    )}
+                    {job.status === 'pending' && <span className="text-muted-foreground">Pending</span>}
                     {job.status === 'generating' && (
                       <span className="flex items-center gap-1 text-primary">
                         <Loader2 className="h-3 w-3 animate-spin" />
@@ -745,7 +769,8 @@ export default function BatchGenerate() {
           <div>
             <h2 className="text-lg font-semibold">Staged batch modules</h2>
             <p className="text-sm text-muted-foreground">
-              The live batch flow stays focused on queueing and run progress. Scheduling and reusable template packs remain staged until the queue model supports them properly.
+              The live batch flow stays focused on queueing and run progress. Scheduling and reusable template packs
+              remain staged until the queue model supports them properly.
             </p>
           </div>
           <span className="app-pill app-pill-muted">Not live</span>

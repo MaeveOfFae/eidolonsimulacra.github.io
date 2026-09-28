@@ -18,7 +18,7 @@ export type HomeStackParamList = {
 
 export type DraftsStackParamList = {
   DraftsList: undefined;
-  DraftDetail: { draftId: string };
+  DraftDetail: { draftId: string; historySnapshotId?: string };
   Chat: { draftId: string; asset?: string };
 };
 
@@ -27,7 +27,7 @@ export type RootTabParamList = {
   Generate: { seed?: string } | undefined;
   Drafts: NavigatorScreenParams<DraftsStackParamList> | undefined;
   Templates: undefined;
-  Settings: undefined;
+  Settings: { pairingLink?: string; pairingNonce?: string; focusSection?: 'pc-link'; focusNonce?: string } | undefined;
 };
 
 export type HomeScreenNavigationProp = CompositeNavigationProp<
@@ -40,16 +40,18 @@ export type HomeStackNavigationProp<RouteName extends keyof HomeStackParamList> 
   BottomTabNavigationProp<RootTabParamList>
 >;
 
-export type DraftsStackNavigationProp<RouteName extends keyof DraftsStackParamList> =
-  CompositeNavigationProp<
-    NativeStackNavigationProp<DraftsStackParamList, RouteName>,
-    BottomTabNavigationProp<RootTabParamList>
-  >;
+export type DraftsStackNavigationProp<RouteName extends keyof DraftsStackParamList> = CompositeNavigationProp<
+  NativeStackNavigationProp<DraftsStackParamList, RouteName>,
+  BottomTabNavigationProp<RootTabParamList>
+>;
 
-export type RootTabNavigationProp<RouteName extends keyof RootTabParamList> =
-  BottomTabNavigationProp<RootTabParamList, RouteName>;
+export type RootTabNavigationProp<RouteName extends keyof RootTabParamList> = BottomTabNavigationProp<
+  RootTabParamList,
+  RouteName
+>;
 
 export type GenerateRouteProp = RouteProp<RootTabParamList, 'Generate'>;
+export type SettingsRouteProp = RouteProp<RootTabParamList, 'Settings'>;
 export type CompareRouteProp = RouteProp<HomeStackParamList, 'Compare'>;
 export type OffspringRouteProp = RouteProp<HomeStackParamList, 'Offspring'>;
 export type DraftDetailRouteProp = RouteProp<DraftsStackParamList, 'DraftDetail'>;

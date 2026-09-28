@@ -47,14 +47,13 @@ function parseDesktopSnapshot(raw: string): Record<string, string> {
       return {};
     }
 
-    const candidateValues = 'values' in parsed && parsed.values && typeof parsed.values === 'object'
-      ? parsed.values
-      : parsed;
+    const candidateValues =
+      'values' in parsed && parsed.values && typeof parsed.values === 'object' ? parsed.values : parsed;
 
     return Object.fromEntries(
       Object.entries(candidateValues as Record<string, unknown>).filter(
-        (entry): entry is [string, string] => typeof entry[1] === 'string'
-      )
+        (entry): entry is [string, string] => typeof entry[1] === 'string',
+      ),
     );
   } catch {
     return {};

@@ -48,16 +48,19 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     };
   }, [queryClient]);
 
-  const value = useMemo<ThemeContextValue>(() => ({
-    themes,
-    isLoading,
-    previewTheme: (themeName: string, overrides?: ThemeOverride) => {
-      setPreview({ themeName, overrides });
-    },
-    clearPreview: () => {
-      setPreview(null);
-    },
-  }), [themes, isLoading]);
+  const value = useMemo<ThemeContextValue>(
+    () => ({
+      themes,
+      isLoading,
+      previewTheme: (themeName: string, overrides?: ThemeOverride) => {
+        setPreview({ themeName, overrides });
+      },
+      clearPreview: () => {
+        setPreview(null);
+      },
+    }),
+    [themes, isLoading],
+  );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }

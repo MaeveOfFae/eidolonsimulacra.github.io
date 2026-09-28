@@ -10,23 +10,23 @@ interface DependenciesStepProps {
 export default function DependenciesStep({ assets, onChange }: DependenciesStepProps) {
   const handleToggleDependency = (assetName: string, depName: string) => {
     onChange(
-      assets.map(asset => {
+      assets.map((asset) => {
         if (asset.name === assetName) {
           const currentDeps = asset.depends_on || [];
           const newDeps = currentDeps.includes(depName)
-            ? currentDeps.filter(d => d !== depName)
+            ? currentDeps.filter((d) => d !== depName)
             : [...currentDeps, depName];
 
           return { ...asset, depends_on: newDeps };
         }
         return asset;
-      })
+      }),
     );
   };
 
   const validateDependencies = (): Record<string, string> => {
     const errorMap: Record<string, string> = {};
-    const assetSet = new Set(assets.map(a => a.name));
+    const assetSet = new Set(assets.map((a) => a.name));
 
     for (const asset of assets) {
       const deps = asset.depends_on || [];
@@ -45,7 +45,7 @@ export default function DependenciesStep({ assets, onChange }: DependenciesStepP
 
       // Check for circular dependencies (transitive)
       for (const dep of deps) {
-        const depAsset = assets.find(a => a.name === dep);
+        const depAsset = assets.find((a) => a.name === dep);
         if (depAsset && depAsset.depends_on?.includes(asset.name)) {
           errorMap[asset.name] = 'Circular dependency detected';
         }
@@ -97,12 +97,10 @@ export default function DependenciesStep({ assets, onChange }: DependenciesStepP
           </div>
         ) : (
           <div className="space-y-3">
-            <p className="text-sm font-medium">
-              Select dependencies for each asset (optional):
-            </p>
+            <p className="text-sm font-medium">Select dependencies for each asset (optional):</p>
 
             {assets.map((asset) => {
-              const availableDeps = assets.filter(a => a.name !== asset.name);
+              const availableDeps = assets.filter((a) => a.name !== asset.name);
               const assetDeps = asset.depends_on || [];
               const hasError = depErrors[asset.name];
 
@@ -111,25 +109,19 @@ export default function DependenciesStep({ assets, onChange }: DependenciesStepP
                   key={asset.name}
                   className={cn(
                     'rounded-lg border p-4',
-                    hasError ? 'border-destructive bg-destructive/5' : 'border-border bg-card'
+                    hasError ? 'border-destructive bg-destructive/5' : 'border-border bg-card',
                   )}
                 >
                   <div className="flex items-center gap-2 mb-3">
                     <GitBranch className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium capitalize">
-                      {asset.name.replace(/_/g, ' ')}
-                    </span>
+                    <span className="font-medium capitalize">{asset.name.replace(/_/g, ' ')}</span>
                     {asset.required && (
-                      <span className="text-xs px-2 py-0.5 rounded bg-primary/20 text-primary">
-                        Required
-                      </span>
+                      <span className="text-xs px-2 py-0.5 rounded bg-primary/20 text-primary">Required</span>
                     )}
                   </div>
 
                   {availableDeps.length === 0 ? (
-                    <p className="text-xs text-muted-foreground italic">
-                      No other assets available as dependencies
-                    </p>
+                    <p className="text-xs text-muted-foreground italic">No other assets available as dependencies</p>
                   ) : (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                       {availableDeps.map((dep) => (
@@ -170,11 +162,7 @@ export default function DependenciesStep({ assets, onChange }: DependenciesStepP
                     </div>
                   )}
 
-                  {hasError && (
-                    <p className="text-xs text-destructive mt-2">
-                      {depErrors[asset.name]}
-                    </p>
-                  )}
+                  {hasError && <p className="text-xs text-destructive mt-2">{depErrors[asset.name]}</p>}
                 </div>
               );
             })}

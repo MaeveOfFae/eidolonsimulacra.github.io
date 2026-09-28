@@ -19,7 +19,9 @@ vi.mock('../common/ExportModal', () => ({
   default: ({ onClose }: { onClose: () => void }) => (
     <div data-testid="export-modal">
       <span>Export Modal</span>
-      <button type="button" onClick={onClose}>Close Export Modal</button>
+      <button type="button" onClick={onClose}>
+        Close Export Modal
+      </button>
     </div>
   ),
 }));
@@ -86,7 +88,7 @@ function renderReview() {
       <Routes>
         <Route path="/drafts/:id" element={<Review />} />
       </Routes>
-    </MemoryRouter>
+    </MemoryRouter>,
   );
 }
 
@@ -119,6 +121,22 @@ describe('Review export modal behavior', () => {
         };
       }
 
+      if (key === 'worlds-list') {
+        return {
+          data: { worlds: [] },
+          isLoading: false,
+          error: null,
+        };
+      }
+
+      if (key === 'world-character-draft-links') {
+        return {
+          data: { links: [] },
+          isLoading: false,
+          error: null,
+        };
+      }
+
       return {
         data: draftResponse,
         isLoading: false,
@@ -138,7 +156,7 @@ describe('Review export modal behavior', () => {
 
   it('closes the export modal when leaving a tour-managed export step', async () => {
     const exportPresetStepIndex = getGuidedTour(REVIEW_EXPORT_TOUR_ID)?.steps.findIndex(
-      (step) => step.targetId === 'export-preset-selection'
+      (step) => step.targetId === 'export-preset-selection',
     );
 
     if (exportPresetStepIndex === undefined || exportPresetStepIndex < 0) {
@@ -170,7 +188,7 @@ describe('Review export modal behavior', () => {
         <Routes>
           <Route path="/drafts/:id" element={<Review />} />
         </Routes>
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     await waitFor(() => {
@@ -197,7 +215,7 @@ describe('Review export modal behavior', () => {
         <Routes>
           <Route path="/drafts/:id" element={<Review />} />
         </Routes>
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     expect(screen.getByTestId('export-modal')).toBeInTheDocument();
@@ -215,6 +233,9 @@ describe('Review export modal behavior', () => {
     });
 
     renderReview();
+
+    // The compact review layout renders each asset card collapsed.
+    fireEvent.click(screen.getByRole('button', { name: /^system prompt/ }));
 
     fireEvent.click(screen.getByRole('button', { name: 'Copy' }));
 
@@ -236,11 +257,22 @@ describe('Review export modal behavior', () => {
 
     renderReview();
 
-    expect(await screen.findByText('This draft is missing 1 template asset. Create it with AI from the existing draft context or add it manually before export.')).toBeInTheDocument();
+    // Overview and the asset cards start collapsed in the compact review layout.
+    fireEvent.click(screen.getByRole('button', { name: /^Overview/ }));
+    fireEvent.click(screen.getByRole('button', { name: /^post history/ }));
+
+    expect(
+      await screen.findByText(
+        'This draft is missing 1 template asset. Create it with AI from the existing draft context or add it manually before export.',
+      ),
+    ).toBeInTheDocument();
     expect(screen.getAllByText('post history').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Missing').length).toBeGreaterThan(0);
-    expect(screen.getByRole('link', { name: 'Create with AI' })).toHaveAttribute('href', '/drafts/review-1/assets/post_history/regenerate');
-    expect(screen.getByRole('button', { name: 'Add Manually' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Create with AI' })).toHaveAttribute(
+      'href',
+      '/drafts/review-1/assets/post_history/regenerate',
+    );
+    expect(screen.getByRole('button', { name: 'Add manually' })).toBeInTheDocument();
   });
 
   it('saves outbound send settings and shows dependency warnings for custom order', async () => {
@@ -254,6 +286,9 @@ describe('Review export modal behavior', () => {
 
     renderReview();
 
+    // The outbound send panel is collapsed until it is opened.
+    fireEvent.click(screen.getByRole('button', { name: /^Outbound Send Settings/ }));
+
     fireEvent.change(screen.getByLabelText('Saved draft instructions'), {
       target: { value: 'Keep the relationship colder.' },
     });
@@ -265,10 +300,18 @@ describe('Review export modal behavior', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save outbound settings' }));
 
     await waitFor(() => {
-      expect(mutationResults[3]?.mutateAsync).toHaveBeenCalledWith({
-        custom_instructions: 'Keep the relationship colder.',
-        component_send_order: ['post_history', 'system_prompt'],
-      });
+      const savedSendConfig = mutationResults
+        .flatMap((result) => result.mutateAsync.mock.calls.map(([payload]) => payload))
+        .find(
+          (payload) =>
+            (payload as { metadata?: { custom_instructions?: string } })?.metadata?.custom_instructions ===
+            'Keep the relationship colder.',
+        );
+
+      expect(savedSendConfig).toBeDefined();
+      expect(
+        (savedSendConfig as { metadata?: { component_send_order?: string[] } })?.metadata?.component_send_order,
+      ).toEqual(['post_history', 'system_prompt']);
     });
   });
 });

@@ -45,11 +45,19 @@ export default function OffspringScreen() {
       return;
     }
 
-    if (params.parent1 && draftsData.drafts.some((draft) => draft.review_id === params.parent1) && params.parent1 !== parent1) {
+    if (
+      params.parent1 &&
+      draftsData.drafts.some((draft) => draft.review_id === params.parent1) &&
+      params.parent1 !== parent1
+    ) {
       setParent1(params.parent1);
     }
 
-    if (params.parent2 && draftsData.drafts.some((draft) => draft.review_id === params.parent2) && params.parent2 !== parent2) {
+    if (
+      params.parent2 &&
+      draftsData.drafts.some((draft) => draft.review_id === params.parent2) &&
+      params.parent2 !== parent2
+    ) {
       setParent2(params.parent2);
     }
   }, [draftsData?.drafts, parent1, parent2, route.params]);
@@ -137,7 +145,11 @@ export default function OffspringScreen() {
         title="Parents"
         subtitle="Choose two source drafts"
         initiallyExpanded
-        preview={<Text style={styles.trayPreviewText}>{parent1 ? getParentName(parent1) : 'Parent 1'} • {parent2 ? getParentName(parent2) : 'Parent 2'}</Text>}
+        preview={
+          <Text style={styles.trayPreviewText}>
+            {parent1 ? getParentName(parent1) : 'Parent 1'} • {parent2 ? getParentName(parent2) : 'Parent 2'}
+          </Text>
+        }
       >
         <View style={styles.selectionContainer}>
           <View style={styles.parentCard}>
@@ -147,17 +159,22 @@ export default function OffspringScreen() {
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={styles.chipContainer}>
-                {drafts.filter((draft) => draft.review_id !== parent2).map((draft) => (
-                  <TouchableOpacity
-                    key={draft.review_id}
-                    onPress={() => setParent1(draft.review_id)}
-                    style={[styles.chip, parent1 === draft.review_id && styles.chipActive]}
-                  >
-                    <Text style={[styles.chipText, parent1 === draft.review_id && styles.chipTextActive]} numberOfLines={1}>
-                      {draft.character_name || draft.review_id}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                {drafts
+                  .filter((draft) => draft.review_id !== parent2)
+                  .map((draft) => (
+                    <TouchableOpacity
+                      key={draft.review_id}
+                      onPress={() => setParent1(draft.review_id)}
+                      style={[styles.chip, parent1 === draft.review_id && styles.chipActive]}
+                    >
+                      <Text
+                        style={[styles.chipText, parent1 === draft.review_id && styles.chipTextActive]}
+                        numberOfLines={1}
+                      >
+                        {draft.character_name || draft.review_id}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
               </View>
             </ScrollView>
             {parent1 ? <Text style={styles.selectedText}>Selected: {getParentName(parent1)}</Text> : null}
@@ -176,17 +193,22 @@ export default function OffspringScreen() {
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={styles.chipContainer}>
-                {drafts.filter((draft) => draft.review_id !== parent1).map((draft) => (
-                  <TouchableOpacity
-                    key={draft.review_id}
-                    onPress={() => setParent2(draft.review_id)}
-                    style={[styles.chip, parent2 === draft.review_id && styles.chipActive]}
-                  >
-                    <Text style={[styles.chipText, parent2 === draft.review_id && styles.chipTextActive]} numberOfLines={1}>
-                      {draft.character_name || draft.review_id}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                {drafts
+                  .filter((draft) => draft.review_id !== parent1)
+                  .map((draft) => (
+                    <TouchableOpacity
+                      key={draft.review_id}
+                      onPress={() => setParent2(draft.review_id)}
+                      style={[styles.chip, parent2 === draft.review_id && styles.chipActive]}
+                    >
+                      <Text
+                        style={[styles.chipText, parent2 === draft.review_id && styles.chipTextActive]}
+                        numberOfLines={1}
+                      >
+                        {draft.character_name || draft.review_id}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
               </View>
             </ScrollView>
             {parent2 ? <Text style={styles.selectedText}>Selected: {getParentName(parent2)}</Text> : null}
@@ -240,7 +262,11 @@ export default function OffspringScreen() {
           title="Result"
           subtitle={result.characterName}
           initiallyExpanded
-          preview={<Text style={styles.trayPreviewText}>{getParentName(parent1)} + {getParentName(parent2)}</Text>}
+          preview={
+            <Text style={styles.trayPreviewText}>
+              {getParentName(parent1)} + {getParentName(parent2)}
+            </Text>
+          }
         >
           <View style={styles.resultInfo}>
             <Text style={styles.resultLabel}>Character</Text>
@@ -248,7 +274,9 @@ export default function OffspringScreen() {
           </View>
           <View style={styles.resultInfo}>
             <Text style={styles.resultLabel}>Parents</Text>
-            <Text style={styles.resultValue}>{getParentName(parent1)} + {getParentName(parent2)}</Text>
+            <Text style={styles.resultValue}>
+              {getParentName(parent1)} + {getParentName(parent2)}
+            </Text>
           </View>
           <TouchableOpacity
             style={styles.viewButton}
@@ -256,7 +284,7 @@ export default function OffspringScreen() {
               if (result?.draftId) {
                 navigation.navigate('Drafts', {
                   screen: 'DraftDetail',
-                  params: { draftId: result.draftId }
+                  params: { draftId: result.draftId },
                 });
               } else {
                 navigation.navigate('Drafts');

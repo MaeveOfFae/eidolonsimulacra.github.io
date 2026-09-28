@@ -3,9 +3,25 @@
  * Handles loading TOML presets and applying them to character assets.
  */
 
-import type {
-  ExportPreset as TypesExportPreset,
-} from '../types';
+import type { ExportPreset as TypesExportPreset } from '../types';
+import { canonicalizeLegacyAssetName } from '../templates';
+
+function resolvePresetAssetContent(assets: Record<string, string>, assetName: string): string | undefined {
+  if (assetName in assets) {
+    return assets[assetName];
+  }
+
+  const canonicalAssetName = canonicalizeLegacyAssetName(assetName);
+  if (canonicalAssetName in assets) {
+    return assets[canonicalAssetName];
+  }
+
+  if (assetName === canonicalAssetName) {
+    return undefined;
+  }
+
+  return assets.intro_page;
+}
 
 /**
  * Apply an export preset to a set of assets.
@@ -13,7 +29,7 @@ import type {
 export function applyPreset(
   assets: Record<string, string>,
   preset: TypesExportPreset,
-  characterName: string = ''
+  characterName: string = '',
 ): Record<string, unknown> {
   const result: Record<string, unknown> = {};
 
@@ -33,9 +49,9 @@ export function applyPreset(
 
   // Apply field mappings
   for (const mapping of preset.fields) {
-    if (!(mapping.asset in assets)) continue;
+    let content = resolvePresetAssetContent(assets, mapping.asset);
 
-    let content = assets[mapping.asset];
+    if (content === undefined) continue;
 
     // Skip if optional and missing
     if (!content && mapping.optional) continue;
@@ -66,7 +82,7 @@ export function formatExport(
   data: Record<string, unknown>,
   preset: TypesExportPreset,
   characterName: string = '',
-  model: string = ''
+  model: string = '',
 ): { filename: string; content: string } | { directory: string; files: Array<{ filename: string; content: string }> } {
   // Apply template variables to output pattern
   let outputName = preset.output_pattern
@@ -83,10 +99,11 @@ export function formatExport(
 
     for (const [key, value] of Object.entries(data)) {
       let filename = key;
+      const canonicalKey = canonicalizeLegacyAssetName(key);
       // Determine file extension
       if (key.includes('.')) {
         filename = key;
-      } else if (key === 'intro_page' || key.includes('page')) {
+      } else if (canonicalKey === 'creator_notes' || key.includes('page')) {
         filename = `${key}.md`;
       } else {
         filename = `${key}.txt`;
@@ -141,8 +158,14 @@ export function validatePreset(preset: TypesExportPreset): { isValid: boolean; e
   }
 
   const validAssets = new Set([
-    'system_prompt', 'post_history', 'character_sheet',
-    'intro_scene', 'intro_page', 'a1111', 'suno',
+    'system_prompt',
+    'post_history',
+    'character_sheet',
+    'intro_scene',
+    'creator_notes',
+    'intro_page',
+    'a1111',
+    'suno',
   ]);
 
   for (const mapping of preset.fields) {

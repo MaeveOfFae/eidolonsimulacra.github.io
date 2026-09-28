@@ -1,8 +1,8 @@
-import { Router, Request, Response } from "express";
-import { z } from "zod";
-import { prisma, Prisma } from "../db.js";
-import { authenticateToken } from "../middleware/auth.js";
-import { validateBody } from "../middleware/validation.js";
+import { Router, Request, Response } from 'express';
+import { z } from 'zod';
+import { prisma, Prisma } from '../db.js';
+import { authenticateToken } from '../middleware/auth.js';
+import { validateBody } from '../middleware/validation.js';
 
 const router: Router = Router();
 router.use(authenticateToken);
@@ -14,7 +14,7 @@ const archivedSeedRunSchema = z.object({
   request: z.object({
     genreLines: z.string(),
     count: z.number().int().positive(),
-    coverageMode: z.enum(["per-genre", "blended"]),
+    coverageMode: z.enum(['per-genre', 'blended']),
     surpriseMode: z.boolean(),
     presetId: z.string().optional(),
   }),
@@ -25,35 +25,33 @@ async function listRuns(req: Request, res: Response): Promise<void> {
   const userId = req.user!.userId;
   const runs = await prisma.archivedSeedRun.findMany({
     where: { userId },
-    orderBy: { archivedAt: "desc" },
+    orderBy: { archivedAt: 'desc' },
   });
 
   res.json({
-    runs: runs.map((run: {
-      id: string;
-      createdAt: Date;
-      archivedAt: Date;
-      request: Prisma.JsonValue;
-      seeds: string[];
-    }) => ({
-      id: run.id,
-      createdAt: run.createdAt,
-      archivedAt: run.archivedAt,
-      request: run.request,
-      seeds: run.seeds,
-    })),
+    runs: runs.map(
+      (run: { id: string; createdAt: Date; archivedAt: Date; request: Prisma.JsonValue; seeds: string[] }) => ({
+        id: run.id,
+        createdAt: run.createdAt,
+        archivedAt: run.archivedAt,
+        request: run.request,
+        seeds: run.seeds,
+      }),
+    ),
   });
 }
 
-router.get("/", listRuns);
-router.get("/list", listRuns);
-router.get("/pull", listRuns);
+router.get('/', listRuns);
+router.get('/list', listRuns);
+router.get('/pull', listRuns);
 
 router.post(
-  "/push",
-  validateBody(z.object({
-    runs: z.array(archivedSeedRunSchema),
-  })),
+  '/push',
+  validateBody(
+    z.object({
+      runs: z.array(archivedSeedRunSchema),
+    }),
+  ),
   async (req: Request, res: Response): Promise<void> => {
     const userId = req.user!.userId;
     const { runs } = req.body as { runs: Array<z.infer<typeof archivedSeedRunSchema>> };
@@ -82,10 +80,10 @@ router.post(
     res.json({
       results: runs.map((run) => ({
         id: run.id,
-        status: "saved",
+        status: 'saved',
       })),
     });
-  }
+  },
 );
 
 export default router;

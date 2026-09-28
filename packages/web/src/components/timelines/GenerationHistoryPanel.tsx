@@ -45,13 +45,9 @@ export function GenerationHistoryPanel({ drafts = [] }: GenerationHistoryPanelPr
             <History className="h-4 w-4 text-primary" />
             Generation History
           </h3>
-          <p className="mt-2">
-            Local chronology view for draft creation, recent edits, and parent-linked branches.
-          </p>
+          <p className="mt-2">Local chronology view for draft creation, recent edits, and parent-linked branches.</p>
         </div>
-        <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-          Live
-        </span>
+        <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">Live</span>
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-3 text-xs">
@@ -108,16 +104,17 @@ export function GenerationHistoryPanel({ drafts = [] }: GenerationHistoryPanelPr
         ) : (
           <div className="mt-2 space-y-2 text-xs">
             {sortedByModified.slice(0, 5).map((draft) => (
-              <div key={draft.review_id} className="flex items-start justify-between gap-3 rounded-md border border-border bg-background/60 p-3">
+              <div
+                key={draft.review_id}
+                className="flex items-start justify-between gap-3 rounded-md border border-border bg-background/60 p-3"
+              >
                 <div>
                   <div className="font-medium text-foreground">{draft.character_name || draft.seed}</div>
                   <div className="mt-1 text-muted-foreground">
                     {draft.template_name || 'Unknown template'} · {draft.mode || 'Unknown mode'}
                   </div>
                 </div>
-                <div className="shrink-0 text-muted-foreground">
-                  {formatTimestamp(draft.modified || draft.created)}
-                </div>
+                <div className="shrink-0 text-muted-foreground">{formatTimestamp(draft.modified || draft.created)}</div>
               </div>
             ))}
           </div>

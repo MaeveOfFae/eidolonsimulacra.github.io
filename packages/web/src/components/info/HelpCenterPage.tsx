@@ -39,7 +39,8 @@ export default function HelpCenterPage() {
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Tours</p>
             <p className="mt-2 text-3xl font-bold text-foreground">{completedTourCount}</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Completed guided tours. {remainingTourCount > 0 ? `${remainingTourCount} still available.` : 'All current tours are complete.'}
+              Completed guided tours.{' '}
+              {remainingTourCount > 0 ? `${remainingTourCount} still available.` : 'All current tours are complete.'}
             </p>
           </div>
           <div className="rounded-2xl border border-border/50 bg-background/40 p-5">
@@ -55,7 +56,8 @@ export default function HelpCenterPage() {
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Tips</p>
             <p className="mt-2 text-3xl font-bold text-foreground">{helpState.dismissed_tips.length}</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Dismissed help popups. {helpState.show_inline_tips ? 'Help popups are currently enabled.' : 'Help popups are currently hidden.'}
+              Dismissed help popups.{' '}
+              {helpState.show_inline_tips ? 'Help popups are currently enabled.' : 'Help popups are currently hidden.'}
             </p>
           </div>
         </div>
@@ -78,7 +80,8 @@ export default function HelpCenterPage() {
           <div>
             <h2 className="text-xl font-semibold text-foreground">Guided Tours</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              These tours move you page by page through the browser workflow instead of leaving you to guess the next step.
+              These tours move you page by page through the browser workflow instead of leaving you to guess the next
+              step.
             </p>
           </div>
         </div>

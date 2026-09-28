@@ -1,35 +1,52 @@
 # Eidolon Simulacra
 
-Eidolon Simulacra is a pnpm monorepo for template-aware character generation. The current product surfaces are a React web app and an Expo-based mobile app backed by shared TypeScript generation, parsing, export, and template utilities.
+Eidolon Simulacra is a pnpm monorepo for template-aware character generation. The current product surfaces are a React web app, a Tauri desktop build of that app, an Expo-based mobile app, and an optional Express/Prisma sync API. Generation, parsing, export, and template utilities are shared through one TypeScript package.
 
 The repo is centered on a strict blueprint contract: start from one seed, generate assets in dependency order, keep asset formats module-specific, and do not leak downstream facts upstream.
 
 ## Current State
 
-- The web app remains the most complete day-to-day workflow. Drafts, templates, blueprint edits, and theme choices stay in browser storage unless you opt into the sync API.
+- The web app remains the most complete day-to-day workflow. Drafts, templates, blueprint edits, and theme choices stay in local browser or desktop storage, and cross-device transfer centers on workspace bundle export/import plus the local PC companion link instead of hosted sync.
+- The desktop build (`packages/web/src-tauri`) runs the same web app offline with local SQLite-backed draft and lore storage, and can host a LAN companion endpoint for paired mobile devices.
 - The mobile app now ships as an Expo workspace package with native navigation for generation, drafts, templates, settings, lineage, validation, blueprint browsing, comparison, and offspring flows.
+- Cross-device movement between mobile and PC uses the paired desktop companion link or local workspace bundles exported from the PC app or web workspace and imported on mobile.
 - Direct LLM provider integration from the client via the shared engine layer.
+- `packages/server` provides an optional Express + Prisma (PostgreSQL) API for hosted account/sync work. It is not required for normal web, desktop, or mobile usage, and no client in this repo calls it. Its lint and typecheck do run in CI; it has no dedicated CI build or test job.
 - One built-in runtime template is currently loaded from `blueprints/templates/`:
-  - `V2/V3 Card` with `system_prompt`, `post_history`, `character_sheet`, `intro_scene`, `intro_page`, and `a1111`
-- Aksho reference material is checked in under `dev/official_aksho/`, but it is not currently loaded as a built-in browser template manifest.
+  - `V2/V3 Card` with `system_prompt`, `post_history`, `character_sheet`, `intro_scene`, `creator_notes`, and `a1111`
+- Aksho reference material is checked in under `dev/official_aksho/`, but it is not currently loaded as a built-in browser template manifest. (`dev/` is git-ignored, so it only exists in checkouts that have it locally.)
 - Shared parser and validator utilities for fenced-codeblock generation output.
 - Export helpers and preset definitions for raw asset packs and platform-specific formats.
 - Rule and workflow documentation under `rules/` for generation constraints, content modes, and blueprint hygiene.
+
+### Staged and unfinished areas
+
+Roadmap areas are tracked in [`docs/ROADMAP.md`](docs/ROADMAP.md) and surfaced in-app on the What's New page. Nothing there is presented as shipped. The following areas are explicitly staged in the product UI today rather than live:
+
+- The Events screen (event tracking is staged, not live)
+- World canon, worldbook, universe-notes, and canon-lock modules
+- Timeline event editing and the continuity assistant/checker
+- Batch scheduling and reusable batch presets
+- Export preview and publishing flows (shown as "Planned Export Extras")
+
+Unwired `*Placeholder` components are not allowed: `pnpm check:placeholders` fails CI if a placeholder exists without an import.
 
 ## Workspace Layout
 
 ```text
 eidolon-simulacra/
 ├── blueprints/          # System blueprints, template manifests, and examples
-├── dev/                 # Reference and in-progress template material
+├── docker/              # Container images for the optional server stack
+├── docs/                # Static project home page and roadmap served from the repo
 ├── packages/
 │   ├── shared/          # Shared TS types, generation, parsing, export, template utilities
-│   ├── web/             # React 19 + Vite browser app
-│   └── mobile/          # Expo + React Native app shell using the shared package
+│   ├── web/             # React 19 + Vite browser app (includes the Tauri desktop shell)
+│   ├── mobile/          # Expo + React Native app shell using the shared package
+│   └── server/          # Optional Express + Prisma sync API
 ├── presets/             # Export preset definitions
 ├── resources/           # Theme/resource files tracked in the repo
 ├── rules/               # Generation contract, content rules, and workflow docs
-└── tools/               # Supporting docs and generation notes
+└── tools/               # Supporting docs, generation, deploy, and mobile build notes
 ```
 
 ## Web App
@@ -47,7 +64,7 @@ The home screen also calls out the current browser-first operating mode explicit
 
 ## Mobile App
 
-The mobile app lives in `packages/mobile` and runs through Expo. It reuses the shared API client and expects a reachable sync API for network-backed flows.
+The mobile app lives in `packages/mobile` and runs through Expo. It is local-first and uses the same shared generation, draft, import/export, and template utilities as the PC workspace.
 
 Start it with:
 
@@ -66,37 +83,51 @@ pnpm lint:mobile
 
 Notes:
 
-- In development, the mobile client defaults to `http://<dev-host>:3001/api`.
-- Set `EXPO_PUBLIC_API_BASE_URL` if the API is hosted elsewhere.
-- Most mobile flows assume the checked-in Node sync API is running and reachable from the device or emulator.
+- The current mobile flow stores drafts, templates, blueprint overrides, settings, and keys locally on-device.
+- Use the mobile Settings screen to import a workspace bundle exported from the PC app or browser workspace when you want to mirror data across devices, or pair with the desktop companion for LAN transfer.
+- Generation talks directly to the configured provider from the device; mobile does not require the optional API server.
 
-## Optional Docker API Stack
+## Desktop App
 
-If you want the sync API on Windows 11 with Docker Desktop, the default Compose stack now runs:
-
-- `eidolon`: the Node API server and PostgreSQL in the same container
-- `caddy`: reverse proxy and TLS termination in its own container
-
-Quick start:
+The desktop build wraps the web app with Tauri:
 
 ```bash
-Copy-Item .env.docker.example .env
-docker compose --env-file .env up -d --build
+pnpm dev:desktop
+pnpm build:desktop
 ```
+
+Requirements: Rust toolchain and the platform WebView prerequisites for [Tauri v2](https://v2.tauri.app/start/prerequisites/).
 
 Notes:
 
-- Set `DB_PASSWORD`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, and `ENCRYPTION_KEY` before first boot.
-- Set `CORS_ORIGIN` to your web app origin and `EIDOLON_DOMAIN` to the API hostname Caddy should serve.
-- The API is still reachable directly on `http://localhost:3001`, while Caddy serves it on ports `80` and `443`.
-- PostgreSQL data persists in the named Docker volume `postgres_data`.
+- Desktop drafts and lore are stored in the app data directory through the Tauri SQL/FS plugins.
+- The desktop app can start a LAN companion endpoint (`packages/web/src-tauri/src/companion.rs`) that paired mobile devices use for direct workspace transfer.
+
+## Optional API Server
+
+`packages/server` is an Express + Prisma service for hosted accounts and sync. Web, desktop, and mobile usage does not depend on it.
+
+```bash
+cp packages/server/.env.example packages/server/.env
+pnpm --filter @char-gen/server db:migrate
+pnpm --filter @char-gen/server dev
+```
+
+Container deployment:
+
+```bash
+cp .env.docker.example .env
+docker compose --env-file .env up -d --build
+```
+
+Rate limiting is enabled by default (`RATE_LIMIT_ENABLED` / `RATE_LIMIT_AUTH_ENABLED`) so a public deployment is not left unprotected; set an explicit `CORS_ORIGIN` list in production rather than `*`.
 
 ## Quick Start
 
 Requirements:
 
 - Node.js 20+
-- pnpm 9+
+- pnpm 10+ (the repo pins `pnpm@10.33.0`)
 
 Install and run the web app:
 
@@ -161,6 +192,9 @@ pnpm typecheck:mobile
 # Run the web test suite
 pnpm test:web
 
+# Check the shared package test suite
+pnpm --filter @char-gen/shared test
+
 # Build the current workspace graph
 pnpm build
 
@@ -170,15 +204,21 @@ pnpm lint
 # Lint the mobile package directly
 pnpm lint:mobile
 
-# Format tracked source/docs globs
+# Format tracked source/docs globs (repo-wide rewrite)
 pnpm format
+
+# Verify formatting without writing (uses .prettierrc.json)
+pnpm format:check
 ```
 
 Notes:
 
-- The current CI path runs release-notes parity, lint, web typechecking, web tests, the shared/web build, and a web preview smoke test.
-- The mobile package now has dedicated Expo, lint, and typecheck entry points, but native store/distribution builds are still outside the default CI path.
-- The web package now includes a Vitest harness that covers the in-app help and guide system; run it with `pnpm test:web`.
+- The current CI path runs release-notes parity, placeholder-wiring checks, formatting checks, lint, web/mobile/server typechecking, tests for all four packages, the shared/web build, and a web preview smoke test.
+- Mobile native store/distribution builds and the server's own build stay outside the default CI path; mobile typecheck/lint and server lint/typecheck/test do run.
+- Every package has a Vitest suite: `pnpm test:web` (components, prompting, config, templates, character import, help and tours), `pnpm test:shared`, `pnpm test:mobile` (logic only), and `pnpm test:server` (API-key encryption, request validation).
+- Formatting is enforced in CI via `pnpm format:check`, and `.prettierignore` excludes build output plus generated native projects. `pnpm format` rewrites every matching file in `packages/`, so prefer scoping it to the files you touched (`pnpm exec prettier --write <paths>`).
+- `pnpm check:placeholders` fails when a `*Placeholder` component exists without being imported anywhere. Deliberate staging must be added to the allowlist in `tools/generation/check-placeholders.mjs`.
+- Lint runs through Turbo across `shared`, `web`, `mobile`, and `server` with shared ignore rules: Tauri build output (`src-tauri/target`, `src-tauri/gen`) is excluded, and `_`-prefixed bindings are treated as intentionally unused.
 
 ## Generation Model
 
@@ -195,8 +235,9 @@ If you are editing blueprints, start with `rules/60_blueprint_hard_rules.md` and
 ## Exports, Presets, and Themes
 
 - The browser app currently exposes built-in export modes for JSON, plain text, and combined markdown bundles.
-- The `presets/` directory stores TOML preset definitions for raw packs and platform-oriented exports such as Chub AI, RisuAI, and TavernAI.
+- The `presets/` directory stores TOML preset definitions for raw packs and platform-oriented exports (`raw.toml`, `chubai.toml`, `risuai.toml`, `tavernai.toml`, `openrouter.toml`).
 - Theme and resource files tracked in `resources/` are repository assets; the current browser runtime uses built-in theme presets defined in code plus browser-stored customizations.
+- `docs/index.html` is the static project home page kept in the repo for hosting the project overview. It is not built or published by CI, so it only appears wherever that directory is served from.
 
 ## Contributing
 

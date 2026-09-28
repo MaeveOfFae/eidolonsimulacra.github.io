@@ -279,16 +279,11 @@ export function buildPngCardBytes(baseImageBytes: Uint8Array, cardJsonText: stri
   const normalizedBase = stripExistingCharaTextChunks(baseImageBytes);
 
   const encodedJson = encodeBytesToBase64(encodeUtf8(cardJsonText));
-  const textChunk = createChunk('tEXt', concatUint8Arrays([
-    encodeUtf8('chara'),
-    new Uint8Array([0]),
-    encodeUtf8(encodedJson),
-  ]));
+  const textChunk = createChunk(
+    'tEXt',
+    concatUint8Arrays([encodeUtf8('chara'), new Uint8Array([0]), encodeUtf8(encodedJson)]),
+  );
 
   const iendOffset = findIendOffset(normalizedBase);
-  return concatUint8Arrays([
-    normalizedBase.slice(0, iendOffset),
-    textChunk,
-    normalizedBase.slice(iendOffset),
-  ]);
+  return concatUint8Arrays([normalizedBase.slice(0, iendOffset), textChunk, normalizedBase.slice(iendOffset)]);
 }

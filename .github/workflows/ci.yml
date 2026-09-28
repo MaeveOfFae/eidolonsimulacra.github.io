@@ -40,14 +40,35 @@ jobs:
       - name: Check release notes version parity
         run: pnpm release:notes:check
 
+      - name: Check placeholder wiring
+        run: pnpm check:placeholders
+
+      - name: Check formatting
+        run: pnpm format:check
+
       - name: Lint
         run: pnpm lint
 
       - name: Typecheck web
         run: pnpm typecheck:web
 
+      - name: Typecheck mobile
+        run: pnpm typecheck:mobile
+
+      - name: Typecheck server
+        run: pnpm typecheck:server
+
       - name: Test web
         run: pnpm test:web
+
+      - name: Test shared
+        run: pnpm test:shared
+
+      - name: Test mobile
+        run: pnpm test:mobile
+
+      - name: Test server
+        run: pnpm test:server
 
   build-web:
     runs-on: ubuntu-latest

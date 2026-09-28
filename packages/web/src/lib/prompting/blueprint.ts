@@ -3,10 +3,7 @@
  * Client-side blueprint loading from static resources
  */
 
-import type {
-  FeatureCategory,
-  Template,
-} from '@char-gen/shared';
+import type { FeatureCategory, Template } from '@char-gen/shared';
 import { configManager } from '../config/manager';
 import { readPersistedJson } from '../persistence/storage.js';
 
@@ -40,7 +37,8 @@ const BLUEPRINT_PATH_ALIASES: Record<string, string> = {
   post_history: 'system/post_history.md',
   character_sheet: 'system/character_sheet.md',
   intro_scene: 'system/intro_scene.md',
-  intro_page: 'system/intro_page.md',
+  creator_notes: 'system/creator_notes.md',
+  intro_page: 'system/creator_notes.md',
   a1111: 'system/a1111.md',
 };
 
@@ -57,7 +55,7 @@ function resolveBlueprintPath(nameOrPath: string): string {
 function getStoredBlueprintOverride(path: string): string | undefined {
   const overrides = readPersistedJson<Record<string, string>>(
     [BLUEPRINT_OVERRIDES_STORAGE_KEY, ...LEGACY_BLUEPRINT_OVERRIDES_STORAGE_KEYS],
-    {}
+    {},
   );
   const override = overrides[path];
   if (typeof override === 'string' && override.trim().length > 0) {
@@ -125,7 +123,7 @@ const DEFAULT_FEATURE_BLUEPRINTS: Partial<Record<FeatureCategory, string>> = {
 export async function resolveFeatureBlueprint(
   feature: FeatureCategory,
   overridePath?: string,
-  baseUrl: string = BLUEPRINT_REPO_URL
+  baseUrl: string = BLUEPRINT_REPO_URL,
 ): Promise<string> {
   const config = configManager.getConfig();
   const settingsDefault = config.feature_blueprints?.[feature];
@@ -204,11 +202,7 @@ export function parseBlueprintFrontmatter(content: string): {
  * Get all available blueprints
  */
 export async function listBlueprints(baseUrl: string = BLUEPRINT_REPO_URL): Promise<Blueprint[]> {
-  const systemBlueprints = [
-    'generator',
-    'offspring_generator',
-    'lorebook_generator',
-  ];
+  const systemBlueprints = ['generator', 'offspring_generator', 'lorebook_generator'];
 
   const blueprints: Blueprint[] = [];
 
@@ -247,7 +241,7 @@ export interface TemplateAsset {
  * Convert Template object to asset list
  */
 export function templateToAssets(template: Template): TemplateAsset[] {
-  return template.assets.map(asset => ({
+  return template.assets.map((asset) => ({
     name: asset.name,
     required: asset.required,
     dependsOn: asset.depends_on,
@@ -274,7 +268,7 @@ export function topologicalSort(assets: TemplateAsset[]): string[] {
 
     visiting.add(assetName);
 
-    const asset = assets.find(a => a.name === assetName);
+    const asset = assets.find((a) => a.name === assetName);
     if (asset) {
       for (const dep of asset.dependsOn) {
         visit(dep);

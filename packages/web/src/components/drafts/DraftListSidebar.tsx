@@ -1,29 +1,34 @@
 import { useState, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import {
-  Search,
-  Star,
-  X,
-  Filter,
-  SortAsc,
-  SortDesc,
-  Clock,
-  Heart,
-  FileText,
-  Layers,
-} from 'lucide-react';
-import type { DraftMetadata } from '@char-gen/shared';
+import { Globe, Search, Star, X, Filter, SortAsc, SortDesc, Clock, Heart, FileText, Layers } from 'lucide-react';
+import type { DraftMetadata, WorldCharacterDraftLinkRecord } from '@char-gen/shared';
+import { buildDraftLibraryBadges } from '@/lib/drafts/export-readiness';
+import { getLatestDraftSnapshotSummary } from '@/lib/drafts/revision-snapshots';
 import { cn } from '@/utils/cn';
 
 export interface DraftListSidebarProps {
   drafts: DraftMetadata[];
   isLoading?: boolean;
+  draftWorldLinksByDraftId?: Map<string, WorldCharacterDraftLinkRecord>;
+  activeSnapshotPreviewId?: string;
+  onSelectSnapshotPreview?: (draftId: string, snapshotId: string) => void;
 }
 
 type SortField = 'created' | 'modified' | 'name';
 type SortOrder = 'asc' | 'desc';
+type MergeStrategyFilter = '' | 'single-asset' | 'staged-merge';
 
-export function DraftListSidebar({ drafts, isLoading }: DraftListSidebarProps) {
+function formatAssetLabel(assetName: string): string {
+  return assetName.replace(/_/g, ' ');
+}
+
+export function DraftListSidebar({
+  drafts,
+  isLoading,
+  draftWorldLinksByDraftId,
+  activeSnapshotPreviewId,
+  onSelectSnapshotPreview,
+}: DraftListSidebarProps) {
   const location = useLocation();
   const reviewMatch = location.pathname.match(/^\/drafts\/([^/]+)$/);
   const currentDraftId = reviewMatch ? decodeURIComponent(reviewMatch[1]) : null;
@@ -31,6 +36,9 @@ export function DraftListSidebar({ drafts, isLoading }: DraftListSidebarProps) {
   const [search, setSearch] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [mergedOnly, setMergedOnly] = useState(false);
+  const [undoableOnly, setUndoableOnly] = useState(false);
+  const [selectedMergeStrategy, setSelectedMergeStrategy] = useState<MergeStrategyFilter>('');
   const [selectedMode, setSelectedMode] = useState<string>('');
   const [selectedGenre, setSelectedGenre] = useState<string>('');
   const [sortField, setSortField] = useState<SortField>('modified');
@@ -64,13 +72,33 @@ export function DraftListSidebar({ drafts, isLoading }: DraftListSidebarProps) {
           draft.character_name?.toLowerCase().includes(searchLower) ||
           draft.seed.toLowerCase().includes(searchLower) ||
           draft.template_name?.toLowerCase().includes(searchLower) ||
-          draft.notes?.toLowerCase().includes(searchLower)
+          draft.notes?.toLowerCase().includes(searchLower),
       );
     }
 
     // Favorites filter
     if (favoritesOnly) {
       result = result.filter((draft) => draft.favorite);
+    }
+
+    if (mergedOnly) {
+      result = result.filter((draft) => Boolean((draft.merge_history?.length ?? 0) > 0 || draft.merge_provenance));
+    }
+
+    if (undoableOnly) {
+      result = result.filter((draft) => Boolean(draft.merge_history?.some((entry) => Boolean(entry.undo_snapshot_id))));
+    }
+
+    if (selectedMergeStrategy) {
+      result = result.filter((draft) => {
+        const mergeStrategies = draft.merge_history?.length
+          ? draft.merge_history.map((entry) => entry.strategy)
+          : draft.merge_provenance
+            ? [draft.merge_provenance.strategy]
+            : [];
+
+        return mergeStrategies.includes(selectedMergeStrategy);
+      });
     }
 
     // Mode filter
@@ -112,14 +140,44 @@ export function DraftListSidebar({ drafts, isLoading }: DraftListSidebarProps) {
     });
 
     return result;
-  }, [drafts, search, favoritesOnly, selectedMode, selectedGenre, sortField, sortOrder]);
+  }, [
+    drafts,
+    search,
+    favoritesOnly,
+    mergedOnly,
+    undoableOnly,
+    selectedMergeStrategy,
+    selectedMode,
+    selectedGenre,
+    sortField,
+    sortOrder,
+  ]);
 
-  const hasActiveFilters = search || favoritesOnly || selectedMode || selectedGenre;
-  const activeFilterCount = Number(Boolean(search)) + Number(favoritesOnly) + Number(Boolean(selectedMode)) + Number(Boolean(selectedGenre));
+  const hasMergeRecords = useMemo(
+    () => drafts.some((draft) => Boolean((draft.merge_history?.length ?? 0) > 0 || draft.merge_provenance)),
+    [drafts],
+  );
+  const hasUndoableMergeRecords = useMemo(
+    () => drafts.some((draft) => draft.merge_history?.some((entry) => Boolean(entry.undo_snapshot_id))),
+    [drafts],
+  );
+  const hasActiveFilters =
+    search || favoritesOnly || mergedOnly || undoableOnly || selectedMergeStrategy || selectedMode || selectedGenre;
+  const activeFilterCount =
+    Number(Boolean(search)) +
+    Number(favoritesOnly) +
+    Number(mergedOnly) +
+    Number(undoableOnly) +
+    Number(Boolean(selectedMergeStrategy)) +
+    Number(Boolean(selectedMode)) +
+    Number(Boolean(selectedGenre));
 
   const clearFilters = () => {
     setSearch('');
     setFavoritesOnly(false);
+    setMergedOnly(false);
+    setUndoableOnly(false);
+    setSelectedMergeStrategy('');
     setSelectedMode('');
     setSelectedGenre('');
   };
@@ -129,14 +187,16 @@ export function DraftListSidebar({ drafts, isLoading }: DraftListSidebarProps) {
     const favorites = drafts.filter((d) => d.favorite).length;
     return { total, favorites };
   }, [drafts]);
+  const draftNameById = useMemo(
+    () => new Map(drafts.map((draft) => [draft.review_id, draft.character_name || draft.seed] as const)),
+    [drafts],
+  );
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
       {/* Header */}
       <div className="border-b border-border/60 px-3 py-2.5">
-        <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-          Draft Library
-        </h3>
+        <h3 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Draft Library</h3>
         <div className="mt-1.5 flex items-center gap-3 text-xs text-muted-foreground">
           <span>{stats.total} drafts</span>
           <span className="flex items-center gap-1">
@@ -180,7 +240,7 @@ export function DraftListSidebar({ drafts, isLoading }: DraftListSidebarProps) {
               'flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-colors',
               showFilters || hasActiveFilters
                 ? 'bg-primary/10 text-primary'
-                : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground'
+                : 'text-muted-foreground hover:bg-accent/50 hover:text-foreground',
             )}
           >
             <Filter className="h-3.5 w-3.5" />
@@ -242,6 +302,46 @@ export function DraftListSidebar({ drafts, isLoading }: DraftListSidebarProps) {
             Favorites only
           </label>
 
+          <label className="flex items-center gap-2 rounded-md border border-border/60 bg-background/60 px-2.5 py-2 text-xs">
+            <input
+              type="checkbox"
+              checked={mergedOnly}
+              onChange={(e) => setMergedOnly(e.target.checked)}
+              className="rounded border-input"
+            />
+            <Layers className="h-3.5 w-3.5 text-primary" />
+            Merged only
+          </label>
+
+          {hasUndoableMergeRecords && (
+            <label className="flex items-center gap-2 rounded-md border border-border/60 bg-background/60 px-2.5 py-2 text-xs">
+              <input
+                type="checkbox"
+                checked={undoableOnly}
+                onChange={(e) => setUndoableOnly(e.target.checked)}
+                className="rounded border-input"
+              />
+              <Clock className="h-3.5 w-3.5 text-emerald-500" />
+              Undoable merges only
+            </label>
+          )}
+
+          {hasMergeRecords && (
+            <label className="space-y-1 text-xs sm:col-span-2">
+              <span className="text-muted-foreground">Merge strategy</span>
+              <select
+                value={selectedMergeStrategy}
+                onChange={(e) => setSelectedMergeStrategy(e.target.value as MergeStrategyFilter)}
+                title="Filter by merge strategy"
+                className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs"
+              >
+                <option value="">All merge strategies</option>
+                <option value="staged-merge">Staged merge</option>
+                <option value="single-asset">Single-asset merge</option>
+              </select>
+            </label>
+          )}
+
           {modes.length > 0 && (
             <label className="space-y-1 text-xs">
               <span className="text-muted-foreground">Mode</span>
@@ -295,9 +395,7 @@ export function DraftListSidebar({ drafts, isLoading }: DraftListSidebarProps) {
       {/* Draft list */}
       <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
         {isLoading ? (
-          <div className="p-4 text-center text-xs text-muted-foreground">
-            Loading drafts...
-          </div>
+          <div className="p-4 text-center text-xs text-muted-foreground">Loading drafts...</div>
         ) : filteredDrafts.length === 0 ? (
           <div className="p-4 text-center">
             <FileText className="mx-auto h-8 w-8 text-muted-foreground/50" />
@@ -305,11 +403,7 @@ export function DraftListSidebar({ drafts, isLoading }: DraftListSidebarProps) {
               {hasActiveFilters ? 'No drafts match filters' : 'No drafts yet'}
             </p>
             {hasActiveFilters && (
-              <button
-                type="button"
-                onClick={clearFilters}
-                className="mt-2 text-xs text-primary hover:underline"
-              >
+              <button type="button" onClick={clearFilters} className="mt-2 text-xs text-primary hover:underline">
                 Clear filters
               </button>
             )}
@@ -318,26 +412,34 @@ export function DraftListSidebar({ drafts, isLoading }: DraftListSidebarProps) {
           <div className="space-y-1 p-2">
             {filteredDrafts.map((draft) => {
               const isActive = currentDraftId === draft.review_id;
+              const reviewBadges = buildDraftLibraryBadges(draft).slice(0, 3);
+              const latestSnapshot = getLatestDraftSnapshotSummary(draft);
+              const worldLink = draftWorldLinksByDraftId?.get(draft.review_id) ?? null;
+              const mergeProvenance = draft.merge_provenance;
+              const mergeSourceName = mergeProvenance
+                ? (draftNameById.get(mergeProvenance.source_draft_id) ?? mergeProvenance.source_draft_id)
+                : null;
+              const mergeBaseName = mergeProvenance
+                ? (draftNameById.get(mergeProvenance.base_draft_id) ?? mergeProvenance.base_draft_id)
+                : null;
+              const mergeAssetPreview = mergeProvenance
+                ? mergeProvenance.asset_names.slice(0, 3).map(formatAssetLabel).join(', ')
+                : '';
               return (
-                <Link
+                <article
                   key={draft.review_id}
-                  to={`/drafts/${encodeURIComponent(draft.review_id)}`}
                   className={cn(
                     'group block rounded-lg border p-2 transition-all',
                     isActive
                       ? 'border-primary bg-primary/10'
-                      : 'border-transparent hover:border-border/60 hover:bg-accent/40'
+                      : 'border-transparent hover:border-border/60 hover:bg-accent/40',
                   )}
                 >
                   <div className="flex min-w-0 items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
+                    <Link to={`/drafts/${encodeURIComponent(draft.review_id)}`} className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
-                        <span className="truncate text-sm font-medium">
-                          {draft.character_name || draft.seed}
-                        </span>
-                        {draft.favorite && (
-                          <Star className="h-3 w-3 shrink-0 fill-yellow-500 text-yellow-500" />
-                        )}
+                        <span className="truncate text-sm font-medium">{draft.character_name || draft.seed}</span>
+                        {draft.favorite && <Star className="h-3 w-3 shrink-0 fill-yellow-500 text-yellow-500" />}
                       </div>
                       <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-2 text-xs text-muted-foreground">
                         {draft.mode && (
@@ -346,36 +448,99 @@ export function DraftListSidebar({ drafts, isLoading }: DraftListSidebarProps) {
                             {draft.mode}
                           </span>
                         )}
-                        {draft.template_name && (
-                          <span className="truncate">{draft.template_name}</span>
-                        )}
+                        {draft.template_name && <span className="truncate">{draft.template_name}</span>}
                       </div>
+                      {worldLink && (
+                        <div className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground/80">
+                          <Globe className="h-2.5 w-2.5" />
+                          World: {worldLink.worldName}
+                          {worldLink.role ? ` · ${worldLink.role}` : ''}
+                        </div>
+                      )}
                       {(draft.created || draft.modified) && (
                         <div className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground/70">
                           <Clock className="h-2.5 w-2.5" />
                           {new Date(draft.modified || draft.created || '').toLocaleDateString()}
                         </div>
                       )}
-                    </div>
+                      {latestSnapshot && (
+                        <div className="mt-1 text-[10px] text-muted-foreground/80">
+                          Snapshot: {latestSnapshot.label}
+                          {latestSnapshot.reason ? ` · ${latestSnapshot.reason}` : ''}
+                        </div>
+                      )}
+                      {mergeProvenance && (
+                        <div className="mt-1 space-y-0.5 text-[10px] text-muted-foreground/80">
+                          <div>
+                            Merge: {mergeSourceName} ({mergeProvenance.source_side}) into branch of {mergeBaseName}
+                          </div>
+                          <div>
+                            Assets: {mergeAssetPreview}
+                            {mergeProvenance.asset_names.length > 3
+                              ? `, +${mergeProvenance.asset_names.length - 3} more`
+                              : ''}
+                          </div>
+                        </div>
+                      )}
+                      {reviewBadges.length > 0 && (
+                        <div className="mt-1.5 flex flex-wrap gap-1">
+                          {reviewBadges.map((badge) => (
+                            <span
+                              key={`${draft.review_id}-${badge.label}`}
+                              className={cn(
+                                'rounded px-1.5 py-0.5 text-[9px] font-medium',
+                                badge.tone === 'warning'
+                                  ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300'
+                                  : badge.tone === 'success'
+                                    ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                                    : 'bg-muted text-muted-foreground',
+                              )}
+                            >
+                              {badge.label}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </Link>
                     {draft.tags && draft.tags.length > 0 && (
                       <div className="flex max-w-[8rem] shrink-0 flex-wrap justify-end gap-0.5 overflow-hidden">
                         {draft.tags.slice(0, 2).map((tag) => (
-                          <span
-                            key={tag}
-                            className="rounded bg-muted px-1 py-0.5 text-[9px] text-muted-foreground"
-                          >
+                          <span key={tag} className="rounded bg-muted px-1 py-0.5 text-[9px] text-muted-foreground">
                             {tag}
                           </span>
                         ))}
                         {draft.tags.length > 2 && (
-                          <span className="text-[9px] text-muted-foreground">
-                            +{draft.tags.length - 2}
-                          </span>
+                          <span className="text-[9px] text-muted-foreground">+{draft.tags.length - 2}</span>
                         )}
                       </div>
                     )}
                   </div>
-                </Link>
+
+                  {latestSnapshot && onSelectSnapshotPreview && (
+                    <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-border/40 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => onSelectSnapshotPreview(draft.review_id, latestSnapshot.id)}
+                        className={cn(
+                          'rounded-md border px-2.5 py-1.5 text-[11px] font-medium transition-colors',
+                          activeSnapshotPreviewId === latestSnapshot.id
+                            ? 'border-primary/40 bg-primary/10 text-foreground'
+                            : 'border-border/60 bg-background/70 text-muted-foreground hover:border-primary/30 hover:text-foreground',
+                        )}
+                      >
+                        {activeSnapshotPreviewId === latestSnapshot.id
+                          ? 'Previewing latest snapshot'
+                          : 'Preview latest snapshot'}
+                      </button>
+                      <Link
+                        to={`/drafts/${encodeURIComponent(draft.review_id)}?historySnapshot=${encodeURIComponent(latestSnapshot.id)}`}
+                        className="text-[11px] font-medium text-primary hover:underline"
+                      >
+                        Open full diff
+                      </Link>
+                    </div>
+                  )}
+                </article>
               );
             })}
           </div>

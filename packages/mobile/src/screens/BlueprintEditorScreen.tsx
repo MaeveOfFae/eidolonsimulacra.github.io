@@ -46,7 +46,11 @@ export default function BlueprintEditorScreen() {
   const [showPreview, setShowPreview] = useState(false);
   const [initialBlueprint, setInitialBlueprint] = useState<Blueprint | null>(null);
 
-  const { data: blueprint, isLoading, error } = useQuery({
+  const {
+    data: blueprint,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['blueprint', path],
     queryFn: () => api.getBlueprint(path),
     enabled: !!path,
@@ -151,7 +155,11 @@ export default function BlueprintEditorScreen() {
       <CollapsibleTray
         title="Frontmatter"
         subtitle={`${formData.versionMajor}.${formData.versionMinor} • ${formData.invokable ? 'invokable' : 'manual only'}`}
-        preview={<Text style={styles.trayPreviewText} numberOfLines={1}>{formData.description || formData.name || 'No description'}</Text>}
+        preview={
+          <Text style={styles.trayPreviewText} numberOfLines={1}>
+            {formData.description || formData.name || 'No description'}
+          </Text>
+        }
         style={styles.card}
       >
         <Text style={styles.fieldLabel}>Name</Text>
@@ -180,7 +188,9 @@ export default function BlueprintEditorScreen() {
             <TextInput
               style={styles.input}
               value={String(formData.versionMajor)}
-              onChangeText={(value) => setFormData((current) => ({ ...current, versionMajor: parseInt(value, 10) || 0 }))}
+              onChangeText={(value) =>
+                setFormData((current) => ({ ...current, versionMajor: parseInt(value, 10) || 0 }))
+              }
               keyboardType="number-pad"
             />
           </View>
@@ -189,7 +199,9 @@ export default function BlueprintEditorScreen() {
             <TextInput
               style={styles.input}
               value={String(formData.versionMinor)}
-              onChangeText={(value) => setFormData((current) => ({ ...current, versionMinor: parseInt(value, 10) || 0 }))}
+              onChangeText={(value) =>
+                setFormData((current) => ({ ...current, versionMinor: parseInt(value, 10) || 0 }))
+              }
               keyboardType="number-pad"
             />
           </View>

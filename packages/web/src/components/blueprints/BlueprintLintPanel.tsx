@@ -8,9 +8,7 @@ export interface BlueprintLintPanelProps {
   blueprintPath?: string;
 }
 
-export function BlueprintLintPanel({
-  blueprintPath,
-}: BlueprintLintPanelProps) {
+export function BlueprintLintPanel({ blueprintPath }: BlueprintLintPanelProps) {
   const { data, isLoading, error } = useQuery({
     queryKey: ['blueprint', blueprintPath, 'lint'],
     queryFn: () => api.getBlueprint(blueprintPath || ''),
@@ -61,12 +59,8 @@ export function BlueprintLintPanel({
       {!isLoading && !error && data && (
         <div className="mt-4 space-y-3">
           <div className="flex flex-wrap gap-2 text-xs">
-            <span className="app-pill app-pill-muted">
-              {errorCount} errors
-            </span>
-            <span className="app-pill app-pill-muted">
-              {warningCount} warnings
-            </span>
+            <span className="app-pill app-pill-muted">{errorCount} errors</span>
+            <span className="app-pill app-pill-muted">{warningCount} warnings</span>
           </div>
 
           {issues.length === 0 ? (

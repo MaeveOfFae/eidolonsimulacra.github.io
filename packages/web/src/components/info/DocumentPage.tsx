@@ -24,7 +24,8 @@ export default function DocumentPage({ eyebrow, title, summary, markdown, childr
           <div className="app-panel-muted p-5">
             <p className="app-page-eyebrow">Page mode</p>
             <p className="mt-4 text-base leading-7 text-muted-foreground">
-              This surface is part of the same browser-first runtime as the workflow pages. Guidance, legal docs, and help content should read as part of the product, not detached support pages.
+              This surface is part of the same browser-first runtime as the workflow pages. Guidance, legal docs, and
+              help content should read as part of the product, not detached support pages.
             </p>
           </div>
         </div>
@@ -34,7 +35,9 @@ export default function DocumentPage({ eyebrow, title, summary, markdown, childr
 
       {markdown ? (
         <section className="app-panel space-y-4 p-6">
-          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>{markdown}</ReactMarkdown>
+          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+            {markdown}
+          </ReactMarkdown>
         </section>
       ) : null}
     </div>

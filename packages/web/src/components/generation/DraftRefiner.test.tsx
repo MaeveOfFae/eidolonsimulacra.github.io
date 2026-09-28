@@ -10,6 +10,7 @@ vi.mock('@/lib/api', () => ({
     getDraft: vi.fn(),
     updateAsset: vi.fn(),
     updateMetadata: vi.fn(),
+    createDraftSnapshot: vi.fn(),
   },
 }));
 
@@ -57,7 +58,7 @@ function renderRefiner() {
   return render(
     <QueryClientProvider client={queryClient}>
       <DraftRefiner templates={templates as never} />
-    </QueryClientProvider>
+    </QueryClientProvider>,
   );
 }
 
@@ -65,8 +66,10 @@ async function findAssetHeaderButton(assetLabel: RegExp): Promise<HTMLButtonElem
   await screen.findAllByText(assetLabel);
 
   const headerButton = Array.from(document.querySelectorAll('button')).find((button) => {
-    return button.className.includes('w-full flex items-center justify-between p-4 text-left')
-      && assetLabel.test(button.textContent ?? '');
+    return (
+      button.className.includes('w-full flex items-center justify-between p-4 text-left') &&
+      assetLabel.test(button.textContent ?? '')
+    );
   });
 
   if (!headerButton) {
@@ -113,16 +116,19 @@ describe('DraftRefiner', () => {
       yield { type: 'asset', content: 'generated post history' } as never;
     });
 
-    window.localStorage.setItem('eidolon.active-draft-refiner-session', JSON.stringify({
-      version: 1,
-      selectedDraftId: 'review-1',
-      assetStates: {},
-      expandedAssets: [],
-      editingAsset: null,
-      editContent: '',
-      interrupted: false,
-      updatedAt: Date.now(),
-    }));
+    window.localStorage.setItem(
+      'eidolon.active-draft-refiner-session',
+      JSON.stringify({
+        version: 1,
+        selectedDraftId: 'review-1',
+        assetStates: {},
+        expandedAssets: [],
+        editingAsset: null,
+        editContent: '',
+        interrupted: false,
+        updatedAt: Date.now(),
+      }),
+    );
 
     renderRefiner();
 
@@ -130,7 +136,11 @@ describe('DraftRefiner', () => {
       expect(api.getDraft).toHaveBeenCalledWith('review-1');
     });
 
-    expect(await screen.findByText('This draft is missing 1 template asset. Create them here with AI or by editing the empty fields directly.')).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        'This draft is missing 1 template asset. Create them here with AI or by editing the empty fields directly.',
+      ),
+    ).toBeInTheDocument();
 
     fireEvent.click(await findAssetHeaderButton(/post history/i));
 
@@ -159,16 +169,19 @@ describe('DraftRefiner', () => {
       yield { type: 'asset', content: '```text\nregenerated system prompt\n```' } as never;
     });
 
-    window.localStorage.setItem('eidolon.active-draft-refiner-session', JSON.stringify({
-      version: 1,
-      selectedDraftId: 'review-1',
-      assetStates: {},
-      expandedAssets: [],
-      editingAsset: null,
-      editContent: '',
-      interrupted: false,
-      updatedAt: Date.now(),
-    }));
+    window.localStorage.setItem(
+      'eidolon.active-draft-refiner-session',
+      JSON.stringify({
+        version: 1,
+        selectedDraftId: 'review-1',
+        assetStates: {},
+        expandedAssets: [],
+        editingAsset: null,
+        editContent: '',
+        interrupted: false,
+        updatedAt: Date.now(),
+      }),
+    );
 
     renderRefiner();
 
@@ -195,17 +208,20 @@ describe('DraftRefiner', () => {
       yield { type: 'asset', content: 'regenerated system prompt' } as never;
     });
 
-    window.localStorage.setItem('eidolon.active-draft-refiner-session', JSON.stringify({
-      version: 1,
-      selectedDraftId: 'review-1',
-      transientInstructions: '',
-      assetStates: {},
-      expandedAssets: [],
-      editingAsset: null,
-      editContent: '',
-      interrupted: false,
-      updatedAt: Date.now(),
-    }));
+    window.localStorage.setItem(
+      'eidolon.active-draft-refiner-session',
+      JSON.stringify({
+        version: 1,
+        selectedDraftId: 'review-1',
+        transientInstructions: '',
+        assetStates: {},
+        expandedAssets: [],
+        editingAsset: null,
+        editContent: '',
+        interrupted: false,
+        updatedAt: Date.now(),
+      }),
+    );
 
     renderRefiner();
 
@@ -220,16 +236,15 @@ describe('DraftRefiner', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Regenerate' }));
 
     await waitFor(() => {
-      expect(GenerationService.generateAsset).toHaveBeenCalledWith(expect.objectContaining({
-        asset_name: 'system_prompt',
-        prior_assets: {
-          post_history: 'existing post history',
-        },
-        additional_instructions: [
-          'Preserve the draft voice.',
-          'Sharpen the system prompt.',
-        ],
-      }));
+      expect(GenerationService.generateAsset).toHaveBeenCalledWith(
+        expect.objectContaining({
+          asset_name: 'system_prompt',
+          prior_assets: {
+            post_history: 'existing post history',
+          },
+          additional_instructions: ['Preserve the draft voice.', 'Sharpen the system prompt.'],
+        }),
+      );
     });
   });
 });

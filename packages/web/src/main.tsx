@@ -31,7 +31,7 @@ async function bootstrap() {
           </HashRouter>
         </ThemeProvider>
       </QueryClientProvider>
-    </StrictMode>
+    </StrictMode>,
   );
 }
 

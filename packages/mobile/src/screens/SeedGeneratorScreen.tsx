@@ -1,5 +1,14 @@
 import { useState } from 'react';
-import { View, Text, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, Alert, StyleSheet } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  TextInput,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+  StyleSheet,
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useMutation } from '@tanstack/react-query';
 import * as Clipboard from 'expo-clipboard';
@@ -96,7 +105,11 @@ export default function SeedGeneratorScreen() {
         title="Generated seeds"
         subtitle="Use or copy any result"
         initiallyExpanded={seeds.length > 0}
-        preview={<Text style={styles.trayPreviewText}>{seeds.length} seed{seeds.length === 1 ? '' : 's'}</Text>}
+        preview={
+          <Text style={styles.trayPreviewText}>
+            {seeds.length} seed{seeds.length === 1 ? '' : 's'}
+          </Text>
+        }
         style={styles.card}
       >
         <View style={styles.resultsHeader}>

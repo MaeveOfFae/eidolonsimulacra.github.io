@@ -27,10 +27,7 @@ function deriveAssetName(blueprintPath?: string): string {
   return fileName.replace(/\.md$/i, '') || 'preview_asset';
 }
 
-export function BlueprintSandboxPanel({
-  blueprintPath,
-  seed,
-}: BlueprintSandboxPanelProps) {
+export function BlueprintSandboxPanel({ blueprintPath, seed }: BlueprintSandboxPanelProps) {
   const [seedInput, setSeedInput] = useState(seed ?? 'preview seed');
   const [mode, setMode] = useState<ContentMode>('Auto');
   const [assetName, setAssetName] = useState(() => deriveAssetName(blueprintPath));
@@ -59,9 +56,12 @@ export function BlueprintSandboxPanel({
     setSeedInput(seed ?? 'preview seed');
   }, [seed]);
 
-  useEffect(() => () => {
-    streamRef.current?.abort();
-  }, []);
+  useEffect(
+    () => () => {
+      streamRef.current?.abort();
+    },
+    [],
+  );
 
   const handleReset = () => {
     streamRef.current?.abort();
@@ -138,13 +138,9 @@ export function BlueprintSandboxPanel({
             <FlaskConical className="h-4 w-4 text-primary" />
             Blueprint Sandbox
           </h3>
-          <p className="mt-2">
-            Run a preview against the selected blueprint without saving a draft.
-          </p>
+          <p className="mt-2">Run a preview against the selected blueprint without saving a draft.</p>
         </div>
-        <span className="app-pill app-pill-muted">
-          Live
-        </span>
+        <span className="app-pill app-pill-muted">Live</span>
       </div>
 
       <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -189,7 +185,9 @@ export function BlueprintSandboxPanel({
             disabled={!blueprintPath || isRunning}
           >
             {MODES.map((option) => (
-              <option key={option} value={option}>{option}</option>
+              <option key={option} value={option}>
+                {option}
+              </option>
             ))}
           </select>
         </label>

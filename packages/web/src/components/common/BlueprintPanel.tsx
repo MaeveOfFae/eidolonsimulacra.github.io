@@ -89,9 +89,7 @@ export function BlueprintPanel({
           <BookOpen className="h-5 w-5 text-primary shrink-0" />
           <div className="min-w-0 flex-1">
             <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-            {description && (
-              <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
-            )}
+            {description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
             <p className="text-xs text-muted-foreground mt-1 opacity-75">
               Blueprint: <code className="bg-background/60 px-1.5 py-0.5 rounded text-[10px]">{blueprintName}</code>
             </p>
@@ -133,11 +131,7 @@ export function BlueprintPanel({
             onClick={() => setIsExpanded(!isExpanded)}
             className="inline-flex items-center justify-center p-1.5 rounded-md hover:bg-background/60 transition-colors"
           >
-            {isExpanded ? (
-              <ChevronUp className="h-5 w-5" />
-            ) : (
-              <ChevronDown className="h-5 w-5" />
-            )}
+            {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
           </button>
         </div>
       </div>

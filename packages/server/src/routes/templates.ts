@@ -1,9 +1,9 @@
 // Templates CRUD routes
-import { Router, Request, Response } from "express";
-import { z } from "zod";
-import { prisma, Prisma } from "../db.js";
-import { authenticateToken, optionalAuth } from "../middleware/auth.js";
-import { validateBody, validateParams, validateQuery } from "../middleware/validation.js";
+import { Router, Request, Response } from 'express';
+import { z } from 'zod';
+import { prisma, Prisma } from '../db.js';
+import { authenticateToken, optionalAuth } from '../middleware/auth.js';
+import { validateBody, validateParams, validateQuery } from '../middleware/validation.js';
 
 const router: Router = Router();
 
@@ -31,7 +31,7 @@ const assetDefinitionSchema = z.object({
 
 const createTemplateSchema = z.object({
   name: z.string().min(1).max(255),
-  version: z.string().default("1.0.0"),
+  version: z.string().default('1.0.0'),
   description: z.string().optional(),
   isDefault: z.boolean().optional(),
   assets: z.array(assetDefinitionSchema),
@@ -41,13 +41,13 @@ const createTemplateSchema = z.object({
 const templateParamsSchema = z.object({ name: z.string() });
 
 const templateQuerySchema = z.object({
-  includeOfficial: z.enum(["true", "false"]).optional(),
+  includeOfficial: z.enum(['true', 'false']).optional(),
   search: z.string().optional(),
 });
 
 // GET / - List templates
 router.get(
-  "/",
+  '/',
   optionalAuth,
   validateQuery(templateQuerySchema),
   async (req: Request, res: Response): Promise<void> => {
@@ -55,48 +55,41 @@ router.get(
     const q = req.query as { includeOfficial?: string; search?: string };
 
     const where: Prisma.TemplateWhereInput = {
-      OR: [
-        { isOfficial: q.includeOfficial !== "false" },
-        ...(userId ? [{ userId }] : []),
-      ],
+      OR: [{ isOfficial: q.includeOfficial !== 'false' }, ...(userId ? [{ userId }] : [])],
     };
 
     if (q.search) {
       where.OR = (where.OR as Prisma.TemplateWhereInput[]).map((cond) => ({
         ...cond,
         OR: [
-          { name: { contains: q.search, mode: "insensitive" } },
-          { description: { contains: q.search, mode: "insensitive" } },
+          { name: { contains: q.search, mode: 'insensitive' } },
+          { description: { contains: q.search, mode: 'insensitive' } },
         ],
       }));
     }
 
     const templates = await prisma.template.findMany({
       where,
-      orderBy: [{ isOfficial: "desc" }, { isDefault: "desc" }, { name: "asc" }],
+      orderBy: [{ isOfficial: 'desc' }, { isDefault: 'desc' }, { name: 'asc' }],
     });
     res.json({ templates });
-  }
+  },
 );
 
 // GET /:name - Get template by name
-router.get(
-  "/:name",
-  validateParams(templateParamsSchema),
-  async (req: Request, res: Response): Promise<void> => {
-    const name = req.params.name as string;
-    const template = await prisma.template.findUnique({ where: { name } });
-    if (!template) {
-      res.status(404).json({ error: "Template not found" });
-      return;
-    }
-    res.json({ template });
+router.get('/:name', validateParams(templateParamsSchema), async (req: Request, res: Response): Promise<void> => {
+  const name = req.params.name as string;
+  const template = await prisma.template.findUnique({ where: { name } });
+  if (!template) {
+    res.status(404).json({ error: 'Template not found' });
+    return;
   }
-);
+  res.json({ template });
+});
 
 // POST / - Create template
 router.post(
-  "/",
+  '/',
   authenticateToken,
   validateBody(createTemplateSchema),
   async (req: Request, res: Response): Promise<void> => {
@@ -105,14 +98,14 @@ router.post(
 
     const existing = await prisma.template.findUnique({ where: { name: data.name } });
     if (existing) {
-      res.status(409).json({ error: "Template with this name already exists" });
+      res.status(409).json({ error: 'Template with this name already exists' });
       return;
     }
 
     const template = await prisma.template.create({
       data: {
         name: data.name,
-        version: data.version || "1.0.0",
+        version: data.version || '1.0.0',
         description: data.description,
         isDefault: data.isDefault || false,
         assets: data.assets,
@@ -121,12 +114,12 @@ router.post(
       },
     });
     res.status(201).json({ template });
-  }
+  },
 );
 
 // PUT /:name - Update template
 router.put(
-  "/:name",
+  '/:name',
   authenticateToken,
   validateParams(templateParamsSchema),
   validateBody(createTemplateSchema),
@@ -137,12 +130,12 @@ router.put(
 
     const existing = await prisma.template.findUnique({ where: { name } });
     if (!existing) {
-      res.status(404).json({ error: "Template not found" });
+      res.status(404).json({ error: 'Template not found' });
       return;
     }
 
     if (existing.isOfficial || existing.userId !== userId) {
-      res.status(403).json({ error: "Cannot modify this template" });
+      res.status(403).json({ error: 'Cannot modify this template' });
       return;
     }
 
@@ -158,12 +151,12 @@ router.put(
       },
     });
     res.json({ template });
-  }
+  },
 );
 
 // DELETE /:name - Delete template
 router.delete(
-  "/:name",
+  '/:name',
   authenticateToken,
   validateParams(templateParamsSchema),
   async (req: Request, res: Response): Promise<void> => {
@@ -172,18 +165,18 @@ router.delete(
 
     const existing = await prisma.template.findUnique({ where: { name } });
     if (!existing) {
-      res.status(404).json({ error: "Template not found" });
+      res.status(404).json({ error: 'Template not found' });
       return;
     }
 
     if (existing.isOfficial || existing.userId !== userId) {
-      res.status(403).json({ error: "Cannot delete this template" });
+      res.status(403).json({ error: 'Cannot delete this template' });
       return;
     }
 
     await prisma.template.delete({ where: { name } });
-    res.json({ message: "Template deleted successfully" });
-  }
+    res.json({ message: 'Template deleted successfully' });
+  },
 );
 
 // =============================================================================
@@ -191,56 +184,44 @@ router.delete(
 // =============================================================================
 
 // GET /list - List all templates for sync
-router.get(
-  "/list",
-  optionalAuth,
-  async (req: Request, res: Response): Promise<void> => {
-    const userId = req.user?.userId;
+router.get('/list', optionalAuth, async (req: Request, res: Response): Promise<void> => {
+  const userId = req.user?.userId;
 
-    const where: Prisma.TemplateWhereInput = {
-      OR: [
-        { isOfficial: true },
-        ...(userId ? [{ userId }] : []),
-      ],
-    };
+  const where: Prisma.TemplateWhereInput = {
+    OR: [{ isOfficial: true }, ...(userId ? [{ userId }] : [])],
+  };
 
-    const templates = await prisma.template.findMany({
-      where,
-      orderBy: [{ isOfficial: "desc" }, { name: "asc" }],
-    });
+  const templates = await prisma.template.findMany({
+    where,
+    orderBy: [{ isOfficial: 'desc' }, { name: 'asc' }],
+  });
 
-    res.json({ templates });
-  }
-);
+  res.json({ templates });
+});
 
 // GET /pull - Pull all templates for sync
-router.get(
-  "/pull",
-  authenticateToken,
-  async (req: Request, res: Response): Promise<void> => {
-    const userId = req.user!.userId;
+router.get('/pull', authenticateToken, async (req: Request, res: Response): Promise<void> => {
+  const userId = req.user!.userId;
 
-    const templates = await prisma.template.findMany({
-      where: {
-        OR: [
-          { isOfficial: true },
-          { userId },
-        ],
-      },
-      orderBy: [{ isOfficial: "desc" }, { name: "asc" }],
-    });
+  const templates = await prisma.template.findMany({
+    where: {
+      OR: [{ isOfficial: true }, { userId }],
+    },
+    orderBy: [{ isOfficial: 'desc' }, { name: 'asc' }],
+  });
 
-    res.json({ templates });
-  }
-);
+  res.json({ templates });
+});
 
 // POST /push - Push templates to server
 router.post(
-  "/push",
+  '/push',
   authenticateToken,
-  validateBody(z.object({
-    templates: z.array(z.record(z.unknown())),
-  })),
+  validateBody(
+    z.object({
+      templates: z.array(z.record(z.unknown())),
+    }),
+  ),
   async (req: Request, res: Response): Promise<void> => {
     const userId = req.user!.userId;
     const { templates } = req.body as { templates: TemplatePushData[] };
@@ -253,11 +234,11 @@ router.post(
 
         if (existing) {
           if (existing.isOfficial) {
-            results.push({ name, status: "skipped_official" });
+            results.push({ name, status: 'skipped_official' });
             continue;
           }
           if (existing.userId !== userId) {
-            results.push({ name, status: "skipped_not_owner" });
+            results.push({ name, status: 'skipped_not_owner' });
             continue;
           }
 
@@ -272,12 +253,12 @@ router.post(
               blueprintContent: (templateData.blueprintContent ?? existing.blueprintContent) as Prisma.InputJsonValue,
             },
           });
-          results.push({ name, status: "updated" });
+          results.push({ name, status: 'updated' });
         } else {
           await prisma.template.create({
             data: {
               name: templateData.name,
-              version: templateData.version ?? "1.0.0",
+              version: templateData.version ?? '1.0.0',
               description: templateData.description,
               isDefault: templateData.isDefault ?? false,
               isOfficial: false,
@@ -286,15 +267,15 @@ router.post(
               userId,
             },
           });
-          results.push({ name, status: "created" });
+          results.push({ name, status: 'created' });
         }
       } catch {
-        results.push({ name: templateData.name, status: "error" });
+        results.push({ name: templateData.name, status: 'error' });
       }
     }
 
     res.json({ results });
-  }
+  },
 );
 
 export default router;

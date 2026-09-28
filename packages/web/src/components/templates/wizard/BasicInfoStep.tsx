@@ -18,9 +18,7 @@ export default function BasicInfoStep({ name, version, description, onChange, er
         </div>
         <div className="flex-1">
           <h3 className="text-lg font-semibold">Basic Information</h3>
-          <p className="text-sm text-muted-foreground">
-            Define the basic metadata for your template
-          </p>
+          <p className="text-sm text-muted-foreground">Define the basic metadata for your template</p>
         </div>
         <Info className="h-5 w-5 text-muted-foreground flex-shrink-0" />
       </div>
@@ -29,9 +27,7 @@ export default function BasicInfoStep({ name, version, description, onChange, er
       <div className="space-y-4 pl-11">
         {/* Template Name */}
         <div>
-          <label className="block text-sm font-medium mb-1.5">
-            Template Name *
-          </label>
+          <label className="block text-sm font-medium mb-1.5">Template Name *</label>
           <input
             type="text"
             value={name}
@@ -42,19 +38,13 @@ export default function BasicInfoStep({ name, version, description, onChange, er
               ${errors.name ? 'border-destructive focus-visible:ring-destructive' : 'border-input focus-visible:ring-ring'}
             `}
           />
-          {errors.name && (
-            <p className="text-xs text-destructive mt-1">{errors.name}</p>
-          )}
-          <p className="text-xs text-muted-foreground mt-1">
-            Use lowercase with underscores (snake_case)
-          </p>
+          {errors.name && <p className="text-xs text-destructive mt-1">{errors.name}</p>}
+          <p className="text-xs text-muted-foreground mt-1">Use lowercase with underscores (snake_case)</p>
         </div>
 
         {/* Version */}
         <div>
-          <label className="block text-sm font-medium mb-1.5">
-            Version *
-          </label>
+          <label className="block text-sm font-medium mb-1.5">Version *</label>
           <input
             type="text"
             value={version}
@@ -65,19 +55,13 @@ export default function BasicInfoStep({ name, version, description, onChange, er
               ${errors.version ? 'border-destructive focus-visible:ring-destructive' : 'border-input focus-visible:ring-ring'}
             `}
           />
-          {errors.version && (
-            <p className="text-xs text-destructive mt-1">{errors.version}</p>
-          )}
-          <p className="text-xs text-muted-foreground mt-1">
-            Semantic versioning (major.minor)
-          </p>
+          {errors.version && <p className="text-xs text-destructive mt-1">{errors.version}</p>}
+          <p className="text-xs text-muted-foreground mt-1">Semantic versioning (major.minor)</p>
         </div>
 
         {/* Description */}
         <div>
-          <label className="block text-sm font-medium mb-1.5">
-            Description
-          </label>
+          <label className="block text-sm font-medium mb-1.5">Description</label>
           <textarea
             value={description}
             onChange={(e) => onChange('description', e.target.value)}

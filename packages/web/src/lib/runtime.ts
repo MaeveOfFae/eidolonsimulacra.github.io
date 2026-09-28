@@ -1,7 +1,8 @@
-type TauriAwareWindow = Window & typeof globalThis & {
-  __TAURI__?: unknown;
-  __TAURI_INTERNALS__?: unknown;
-};
+type TauriAwareWindow = Window &
+  typeof globalThis & {
+    __TAURI__?: unknown;
+    __TAURI_INTERNALS__?: unknown;
+  };
 
 export function isDesktopRuntime(): boolean {
   if (typeof window === 'undefined') {

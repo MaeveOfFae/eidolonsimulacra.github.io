@@ -13,7 +13,7 @@ Goal: scan current workspace files or provided generated assets for common failu
    - "((" or "))" (A1111 placeholders)
    - "[" placeholders like "[Age]" "[Name]" (character_sheet)
    - "Adjustment Note:" appearing inside an asset block
-   - any example/seed character names leaking into intro_page
+   - any example/seed character names leaking into creator_notes
 
 3) Check content-mode consistency:
    - A1111 [Content: SFW|NSFW] matches chosen mode

@@ -10,12 +10,7 @@ import {
   type ContentMode,
   type Template,
 } from '@char-gen/shared';
-import {
-  loadBlueprint,
-  resolveFeatureBlueprint,
-  templateToAssets,
-  topologicalSort,
-} from './blueprint.js';
+import { loadBlueprint, resolveFeatureBlueprint, templateToAssets, topologicalSort } from './blueprint.js';
 import { resolveTemplateBlueprintContent, resolveTemplateDefinition } from '../templates/browser.js';
 
 export interface ReferenceSuiteContext {
@@ -84,13 +79,7 @@ function buildTemplateOverrideSection(template: Template): string {
         return null;
       }
 
-      return [
-        '',
-        `### ASSET BLUEPRINT: ${asset.name}`,
-        '```md',
-        blueprintContent,
-        '```',
-      ].join('\n');
+      return ['', `### ASSET BLUEPRINT: ${asset.name}`, '```md', blueprintContent, '```'].join('\n');
     })
     .filter((section): section is string => Boolean(section));
 
@@ -125,7 +114,7 @@ function buildParentSuiteSection(
   label: string,
   parentName: string,
   parentAssets: Record<string, string>,
-  template?: Template
+  template?: Template,
 ): string[] {
   const orderedNames = getOrderedTemplateAssetNames(template);
   const assetNames = orderedNames.length > 0 ? orderedNames : Object.keys(parentAssets);
@@ -148,12 +137,13 @@ function buildPriorAssetContext(priorName: string, priorContent: string): string
 
 function buildImportedSourceSection(
   importedSource: ImportedSourceContext,
-  options: { assetName?: string; template?: Template } = {}
+  options: { assetName?: string; template?: Template } = {},
 ): string[] {
   const referenceTemplate = options.template ?? importedSource.template;
-  const relevantAssets = options.assetName && referenceTemplate
-    ? selectRelevantPriorAssets(referenceTemplate, options.assetName, importedSource.assets)
-    : { ...importedSource.assets };
+  const relevantAssets =
+    options.assetName && referenceTemplate
+      ? selectRelevantPriorAssets(referenceTemplate, options.assetName, importedSource.assets)
+      : { ...importedSource.assets };
 
   if (options.assetName) {
     const currentAsset = importedSource.assets[options.assetName];
@@ -163,9 +153,10 @@ function buildImportedSourceSection(
   }
 
   const orderedNames = getOrderedTemplateAssetNames(referenceTemplate);
-  const assetNames = orderedNames.length > 0
-    ? orderedNames.filter((assetName) => assetName in relevantAssets)
-    : Object.keys(relevantAssets);
+  const assetNames =
+    orderedNames.length > 0
+      ? orderedNames.filter((assetName) => assetName in relevantAssets)
+      : Object.keys(relevantAssets);
   const remainingAssetNames = Object.keys(relevantAssets).filter((assetName) => !assetNames.includes(assetName));
   const finalAssetNames = [...assetNames, ...remainingAssetNames];
 
@@ -187,9 +178,12 @@ function buildImportedSourceSection(
   }
 
   finalAssetNames.forEach((assetName) => {
-    lines.push(...buildAssetContextLines(`### ${assetName}:`, assetName, relevantAssets[assetName] || '', {
-      jsonInstruction: 'Treat the extracted fields below as imported source material. Do not assume access to any external file.',
-    }));
+    lines.push(
+      ...buildAssetContextLines(`### ${assetName}:`, assetName, relevantAssets[assetName] || '', {
+        jsonInstruction:
+          'Treat the extracted fields below as imported source material. Do not assume access to any external file.',
+      }),
+    );
   });
 
   return lines;
@@ -230,7 +224,9 @@ export async function buildOrchestratorPrompt(
   if (referenceSuites.length > 0) {
     userLines.push('');
     userLines.push('CONNECTED CHARACTER REFERENCES:');
-    userLines.push('Treat these suites as secondary canon anchors for continuity, shared setting pressure, and existing entanglements.');
+    userLines.push(
+      'Treat these suites as secondary canon anchors for continuity, shared setting pressure, and existing entanglements.',
+    );
     userLines.push('Do not let them override the active seed or collapse the new character into a duplicate.');
 
     referenceSuites.forEach((suite, index) => {
@@ -265,22 +261,26 @@ export async function buildAssetPrompt(
   importedSource?: ImportedSourceContext,
 ): Promise<[system: string, user: string]> {
   // Load blueprint content
-  const blueprint = blueprintContent || await loadBlueprint(assetName, baseUrl);
+  const blueprint = blueprintContent || (await loadBlueprint(assetName, baseUrl));
 
   const systemPrompt = `# BLUEPRINT: ${assetName}\n\n${blueprint}`;
   const relevantPriorAssets = selectRelevantPriorAssets(
     templateName ? resolveTemplateDefinition(templateName) : undefined,
     assetName,
-    priorAssets
+    priorAssets,
   );
 
   const userLines: string[] = [];
   userLines.push(`TARGET ASSET: ${assetName}`);
   userLines.push(`TASK: Generate only the requested ${assetName} asset.`);
-  userLines.push('Do not regenerate, restate, or summarize any other asset unless it is quoted below as supporting context.');
+  userLines.push(
+    'Do not regenerate, restate, or summarize any other asset unless it is quoted below as supporting context.',
+  );
 
   if (assetName === 'a1111') {
-    userLines.push('OUTPUT: Return only the final raw A1111 prompt lines. Do not write narration, scene prose, explanations, headings, labels, or code fences.');
+    userLines.push(
+      'OUTPUT: Return only the final raw A1111 prompt lines. Do not write narration, scene prose, explanations, headings, labels, or code fences.',
+    );
   }
 
   if (mode) {
@@ -302,8 +302,12 @@ export async function buildAssetPrompt(
 
   if (referenceSuites.length > 0) {
     userLines.push('\n---\n## Connected Character References:\n');
-    userLines.push('Treat these suites as established canon anchors for relationship continuity, shared world state, and cross-character consistency.');
-    userLines.push('Use them to keep the new character interconnected without duplicating an existing suite or overriding the active seed.');
+    userLines.push(
+      'Treat these suites as established canon anchors for relationship continuity, shared world state, and cross-character consistency.',
+    );
+    userLines.push(
+      'Use them to keep the new character interconnected without duplicating an existing suite or overriding the active seed.',
+    );
 
     referenceSuites.forEach((suite, index) => {
       userLines.push(...buildParentSuiteSection(`REFERENCE ${index + 1}`, suite.label, suite.assets, suite.template));
@@ -311,10 +315,12 @@ export async function buildAssetPrompt(
   }
 
   if (importedSource) {
-    userLines.push(...buildImportedSourceSection(importedSource, {
-      assetName,
-      template: templateName ? resolveTemplateDefinition(templateName) : undefined,
-    }));
+    userLines.push(
+      ...buildImportedSourceSection(importedSource, {
+        assetName,
+        template: templateName ? resolveTemplateDefinition(templateName) : undefined,
+      }),
+    );
   }
 
   // Add prior assets as context
@@ -333,9 +339,9 @@ export async function buildAssetPrompt(
  */
 export async function buildSeedGenPrompt(
   genreLines: string,
-  blueprintContent?: string
+  blueprintContent?: string,
 ): Promise<[system: string, user: string]> {
-  const systemPrompt = blueprintContent?.trim() || await resolveFeatureBlueprint('seed_generation');
+  const systemPrompt = blueprintContent?.trim() || (await resolveFeatureBlueprint('seed_generation'));
 
   return [systemPrompt, genreLines];
 }
@@ -345,9 +351,9 @@ export async function buildLorebookPrompt(
   options: {
     focus?: string;
     blueprintContent?: string;
-  } = {}
+  } = {},
 ): Promise<[system: string, user: string]> {
-  const systemPrompt = options.blueprintContent?.trim() || await resolveFeatureBlueprint('worldbook_generation');
+  const systemPrompt = options.blueprintContent?.trim() || (await resolveFeatureBlueprint('worldbook_generation'));
 
   const userLines: string[] = [
     `REFERENCE_DRAFT_COUNT: ${referenceSuites.length}`,
@@ -361,7 +367,9 @@ export async function buildLorebookPrompt(
   }
 
   referenceSuites.forEach((suite, index) => {
-    userLines.push(...buildParentSuiteSection(`REFERENCE DRAFT ${index + 1}`, suite.label, suite.assets, suite.template));
+    userLines.push(
+      ...buildParentSuiteSection(`REFERENCE DRAFT ${index + 1}`, suite.label, suite.assets, suite.template),
+    );
   });
 
   return [systemPrompt, userLines.join('\n')];
@@ -400,7 +408,7 @@ export function buildSimilarityPrompt(
     motivations?: string[];
     goals?: string[];
     fears?: string[];
-  }
+  },
 ): [system: string, user: string] {
   const systemPrompt = `You are an expert character analyst specializing in understanding character relationships, dynamics, and narrative potential. Your task is to deeply analyze two characters and provide insights about how they would interact in a story.
 
@@ -506,7 +514,7 @@ Be specific, insightful, and focus on narrative potential. Consider:
   }
 
   userLines.push('\n## TASK');
-  userLines.push('Provide a deep analysis of these two characters\' relationship potential.');
+  userLines.push("Provide a deep analysis of these two characters' relationship potential.");
   userLines.push('Return your response as valid JSON following the structure specified in the system prompt.');
 
   return [systemPrompt, userLines.join('\n')];
@@ -524,7 +532,7 @@ export async function buildOffspringPrompt(
   parent1Template?: Template,
   parent2Template?: Template,
   baseUrl?: string,
-  blueprintOverride?: string
+  blueprintOverride?: string,
 ): Promise<[system: string, user: string]> {
   // Load offspring generator blueprint - respects settings and override
   const systemPrompt = await resolveFeatureBlueprint('offspring_generation', blueprintOverride, baseUrl);
@@ -540,7 +548,9 @@ export async function buildOffspringPrompt(
 
   // Instruction
   userLines.push('\n## INSTRUCTION:');
-  userLines.push('Analyze how these two parents would shape a new character\'s upbringing and generate the offspring\'s SEED.');
+  userLines.push(
+    "Analyze how these two parents would shape a new character's upbringing and generate the offspring's SEED.",
+  );
   userLines.push('Treat each parent suite according to the template contract shown in the provided assets.');
 
   return [systemPrompt, userLines.join('\n')];
@@ -553,7 +563,7 @@ export async function buildRefinementSystemPrompt(
   assetName: string,
   currentContent: string,
   characterSheet: string,
-  baseUrl?: string
+  baseUrl?: string,
 ): Promise<string> {
   // Asset labels for friendly names
   const assetLabels: Record<string, string> = {
@@ -561,7 +571,8 @@ export async function buildRefinementSystemPrompt(
     post_history: 'Post History',
     character_sheet: 'Character Sheet',
     intro_scene: 'Intro Scene',
-    intro_page: 'Intro Page',
+    creator_notes: 'Creator Notes',
+    intro_page: 'Creator Notes',
     a1111: 'A1111 Image Prompt',
     suno: 'Suno Music Prompt',
   };
@@ -590,11 +601,13 @@ ${blueprint}
 \`\`\`
 
 ${buildAssetContextLines(`## Current Asset: ${label}`, assetName, currentContent, {
-  jsonInstruction: 'Use the extracted fields below as the active asset content. Do not assume access to any external file.',
+  jsonInstruction:
+    'Use the extracted fields below as the active asset content. Do not assume access to any external file.',
 }).join('\n')}
 
 ${buildAssetContextLines('## Character Sheet (for context)', 'character_sheet', characterSheet, {
-  jsonInstruction: 'Use the extracted character-sheet fields below to maintain consistency. Do not assume access to any external file.',
+  jsonInstruction:
+    'Use the extracted character-sheet fields below to maintain consistency. Do not assume access to any external file.',
 }).join('\n')}
 
 ## Your Role:
@@ -628,11 +641,9 @@ If the user asks for changes, provide the complete edited asset content only. Ot
 export function formatMessages(
   systemPrompt: string,
   userPrompt: string,
-  conversationHistory?: ChatMessage[]
+  conversationHistory?: ChatMessage[],
 ): ChatMessage[] {
-  const messages: ChatMessage[] = [
-    { role: 'system', content: systemPrompt },
-  ];
+  const messages: ChatMessage[] = [{ role: 'system', content: systemPrompt }];
 
   if (conversationHistory && conversationHistory.length > 0) {
     messages.push(...conversationHistory);

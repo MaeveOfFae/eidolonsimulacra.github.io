@@ -137,10 +137,14 @@ function parseAcceptTokens(accept?: string): { extensions: string[]; browserType
 
   return {
     extensions: Array.from(extensions),
-    browserTypes: [{
-      description: 'Supported files',
-      accept: Object.fromEntries(Array.from(browserAccept.entries()).map(([mimeType, values]) => [mimeType, Array.from(values)])),
-    }],
+    browserTypes: [
+      {
+        description: 'Supported files',
+        accept: Object.fromEntries(
+          Array.from(browserAccept.entries()).map(([mimeType, values]) => [mimeType, Array.from(values)]),
+        ),
+      },
+    ],
   };
 }
 
@@ -366,7 +370,7 @@ function openWithInputFallback(options: PickFileOptions, input: HTMLInputElement
     const handleCancel = () => finish(null);
     const handleFocus = () => {
       window.setTimeout(() => {
-        if (!settled && !(input.files?.length)) {
+        if (!settled && !input.files?.length) {
           finish(null);
         }
       }, 250);
@@ -417,11 +421,14 @@ export async function saveBlobDownload(blob: Blob, filename: string, contentType
       filename,
       contentType: contentType ?? (blob.type || null),
     },
-    filename
+    filename,
   );
 }
 
-export async function pickFile(options: PickFileOptions = {}, fallbackInput?: HTMLInputElement | null): Promise<File | null> {
+export async function pickFile(
+  options: PickFileOptions = {},
+  fallbackInput?: HTMLInputElement | null,
+): Promise<File | null> {
   if (isDesktopRuntime()) {
     return openWithTauri(options.accept);
   }

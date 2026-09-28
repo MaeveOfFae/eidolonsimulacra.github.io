@@ -34,12 +34,7 @@ function isJsonRecord(value: JsonPromptValue): value is { [key: string]: JsonPro
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function collectJsonContextLines(
-  value: JsonPromptValue,
-  path: string,
-  lines: string[],
-  depth: number = 0
-): void {
+function collectJsonContextLines(value: JsonPromptValue, path: string, lines: string[], depth: number = 0): void {
   if (lines.length >= 60 || depth > 4) {
     return;
   }
@@ -50,9 +45,11 @@ function collectJsonContextLines(
     }
 
     const scalarValues = value
-      .map((entry) => (entry === null || typeof entry === 'boolean' || typeof entry === 'number' || typeof entry === 'string'
-        ? normalizeJsonScalar(entry)
-        : null))
+      .map((entry) =>
+        entry === null || typeof entry === 'boolean' || typeof entry === 'number' || typeof entry === 'string'
+          ? normalizeJsonScalar(entry)
+          : null,
+      )
       .filter((entry): entry is string => Boolean(entry));
 
     if (scalarValues.length === value.length) {
@@ -149,7 +146,7 @@ export function buildAssetContextLines(
   heading: string,
   assetName: string,
   assetContent: string,
-  options: AssetContextOptions = {}
+  options: AssetContextOptions = {},
 ): string[] {
   const structuredHeading = heading.endsWith(':') ? heading.slice(0, -1) : heading;
   const trimmed = assetContent.trim();
@@ -184,17 +181,15 @@ export function buildAssetContextLines(
 export function buildAssetContextBlock(
   assetName: string,
   assetContent: string,
-  options: AssetContextOptions = {}
+  options: AssetContextOptions = {},
 ): string {
-  return buildAssetContextLines(`### ${assetName}`, assetName, assetContent, options)
-    .join('\n')
-    .trimEnd();
+  return buildAssetContextLines(`### ${assetName}`, assetName, assetContent, options).join('\n').trimEnd();
 }
 
 export function selectRelevantPriorAssets(
   template: Template | undefined,
   assetName: string,
-  priorAssets: Record<string, string>
+  priorAssets: Record<string, string>,
 ): Record<string, string> {
   if (!template || Object.keys(priorAssets).length === 0) {
     return priorAssets;
@@ -219,7 +214,5 @@ export function selectRelevantPriorAssets(
 
   targetAsset.depends_on.forEach(visitDependency);
 
-  return Object.fromEntries(
-    Object.entries(priorAssets).filter(([priorName]) => requiredDependencies.has(priorName))
-  );
+  return Object.fromEntries(Object.entries(priorAssets).filter(([priorName]) => requiredDependencies.has(priorName)));
 }

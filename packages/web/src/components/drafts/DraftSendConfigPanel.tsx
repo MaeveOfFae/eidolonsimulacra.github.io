@@ -44,14 +44,8 @@ export default function DraftSendConfigPanel({
   transientInstructions,
 }: DraftSendConfigPanelProps) {
   const persistedInstructions = draft.metadata.custom_instructions ?? '';
-  const persistedOrder = useMemo(
-    () => getEffectiveDraftComponentSendOrder(draft, template),
-    [draft, template]
-  );
-  const defaultOrder = useMemo(
-    () => getDefaultDraftComponentSendOrder(draft, template),
-    [draft, template]
-  );
+  const persistedOrder = useMemo(() => getEffectiveDraftComponentSendOrder(draft, template), [draft, template]);
+  const defaultOrder = useMemo(() => getDefaultDraftComponentSendOrder(draft, template), [draft, template]);
   const persistedOrderKey = persistedOrder.join('\u0000');
   const defaultOrderKey = defaultOrder.join('\u0000');
 
@@ -69,12 +63,9 @@ export default function DraftSendConfigPanel({
 
   const sendOrderWarnings = useMemo(
     () => getDraftSendOrderWarnings(componentOrder, template),
-    [componentOrder, template]
+    [componentOrder, template],
   );
-  const templateAssetNames = useMemo(
-    () => new Set(template?.assets.map((asset) => asset.name) ?? []),
-    [template]
-  );
+  const templateAssetNames = useMemo(() => new Set(template?.assets.map((asset) => asset.name) ?? []), [template]);
   const hasUnsavedChanges = savedInstructions !== persistedInstructions || !arraysEqual(componentOrder, persistedOrder);
 
   const moveAsset = (assetName: string, direction: -1 | 1) => {
@@ -129,19 +120,23 @@ export default function DraftSendConfigPanel({
       className="app-panel"
       bodyClassName="space-y-3"
     >
-
       <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2.5 text-sm text-foreground">
-        These settings affect outbound generation context only. They do not change the asset card order shown elsewhere on the page.
+        These settings affect outbound generation context only. They do not change the asset card order shown elsewhere
+        on the page.
       </div>
 
       {(saveNotice || saveError) && (
-        <div className={`rounded-lg border px-3 py-2.5 text-sm ${saveError ? 'border-destructive/40 bg-destructive/10 text-destructive' : 'border-primary/30 bg-primary/10 text-foreground'}`}>
+        <div
+          className={`rounded-lg border px-3 py-2.5 text-sm ${saveError ? 'border-destructive/40 bg-destructive/10 text-destructive' : 'border-primary/30 bg-primary/10 text-foreground'}`}
+        >
           {saveError || saveNotice}
         </div>
       )}
 
       <div className="space-y-2">
-        <label className="text-sm font-medium" htmlFor="draft-send-custom-instructions">Saved draft instructions</label>
+        <label className="text-sm font-medium" htmlFor="draft-send-custom-instructions">
+          Saved draft instructions
+        </label>
         <textarea
           id="draft-send-custom-instructions"
           value={savedInstructions}
@@ -172,7 +167,8 @@ export default function DraftSendConfigPanel({
             disabled={transientInstructions.disabled}
           />
           <p className="text-xs text-muted-foreground">
-            {transientInstructions.description || 'Merged with the saved instructions above for the current generation action only.'}
+            {transientInstructions.description ||
+              'Merged with the saved instructions above for the current generation action only.'}
           </p>
         </div>
       )}
@@ -203,7 +199,10 @@ export default function DraftSendConfigPanel({
             const isTemplateAsset = templateAssetNames.has(assetName);
 
             return (
-              <div key={assetName} className="flex items-center gap-2.5 rounded-lg border border-border/60 bg-background px-2.5 py-2">
+              <div
+                key={assetName}
+                className="flex items-center gap-2.5 rounded-lg border border-border/60 bg-background px-2.5 py-2"
+              >
                 <div className="w-7 text-center text-xs font-medium text-muted-foreground">{index + 1}</div>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
@@ -261,7 +260,9 @@ export default function DraftSendConfigPanel({
             <div className="mt-2 space-y-1 text-xs sm:text-sm">
               {sendOrderWarnings.map((warning) => (
                 <p key={`${warning.assetName}-${warning.dependencyNames.join('-')}`}>
-                  {formatAssetLabel(warning.assetName)} now appears before {warning.dependencyNames.map(formatAssetLabel).join(', ')}. This is allowed, but later generation will follow your chosen order.
+                  {formatAssetLabel(warning.assetName)} now appears before{' '}
+                  {warning.dependencyNames.map(formatAssetLabel).join(', ')}. This is allowed, but later generation will
+                  follow your chosen order.
                 </p>
               ))}
             </div>

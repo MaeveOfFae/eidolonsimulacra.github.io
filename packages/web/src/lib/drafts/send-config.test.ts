@@ -44,7 +44,7 @@ describe('draft send config helpers', () => {
         system_prompt: 'system prompt',
         post_history: 'post history',
         imported_extra: 'extra asset',
-      }
+      },
     );
 
     expect(getEffectiveDraftComponentSendOrder(draft, template)).toEqual([
@@ -73,7 +73,7 @@ describe('draft send config helpers', () => {
         system_prompt: 'system prompt',
         post_history: 'post history',
         character_sheet: 'character sheet',
-      }
+      },
     );
 
     expect(buildDraftPriorAssets(draft, 'system_prompt', template)).toEqual({
@@ -82,10 +82,13 @@ describe('draft send config helpers', () => {
   });
 
   it('normalizes saved order and merges instruction blocks for outbound generation', () => {
-    const draft = createDraft({}, {
-      system_prompt: 'system prompt',
-      post_history: 'post history',
-    });
+    const draft = createDraft(
+      {},
+      {
+        system_prompt: 'system prompt',
+        post_history: 'post history',
+      },
+    );
 
     expect(normalizeDraftComponentSendOrderForSave(['post_history'], draft, template)).toEqual([
       'post_history',

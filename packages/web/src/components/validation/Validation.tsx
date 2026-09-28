@@ -30,7 +30,10 @@ export default function Validation() {
     if (!result?.output) {
       return [] as string[];
     }
-    return result.output.split('\n').map((line) => line.trim()).filter(Boolean);
+    return result.output
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
   }, [result]);
 
   const isPending = validatePathMutation.isPending || validateDraftMutation.isPending;
@@ -72,7 +75,9 @@ export default function Validation() {
               </div>
               <div className="app-page-metric">
                 <p className="app-page-metric-label">Last run</p>
-                <div className="app-page-metric-value text-xl sm:text-2xl">{result ? (result.success ? 'Passed' : 'Failed') : 'Idle'}</div>
+                <div className="app-page-metric-value text-xl sm:text-2xl">
+                  {result ? (result.success ? 'Passed' : 'Failed') : 'Idle'}
+                </div>
               </div>
             </div>
           </div>
@@ -106,7 +111,11 @@ export default function Validation() {
               disabled={isPending || !path.trim()}
               className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 sm:self-start"
             >
-              {validatePathMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+              {validatePathMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <ShieldCheck className="h-4 w-4" />
+              )}
               Validate
             </button>
           </div>
@@ -146,7 +155,11 @@ export default function Validation() {
               data-tour-anchor="validation-draft-run"
               className="inline-flex items-center justify-center gap-2 rounded-md border border-input px-4 py-2 text-sm font-medium hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50 sm:self-start"
             >
-              {validateDraftMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+              {validateDraftMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <CheckCircle className="h-4 w-4" />
+              )}
               Validate Draft
             </button>
           </div>
@@ -171,7 +184,9 @@ export default function Validation() {
               <h2 className="text-base font-semibold">Validation Results</h2>
               <p className="text-sm text-muted-foreground">{result.path}</p>
             </div>
-            <span className={`rounded-full px-3 py-1 text-sm font-medium ${result.success ? 'bg-green-500/15 text-green-600 dark:text-green-400' : 'bg-destructive/15 text-destructive'}`}>
+            <span
+              className={`rounded-full px-3 py-1 text-sm font-medium ${result.success ? 'bg-green-500/15 text-green-600 dark:text-green-400' : 'bg-destructive/15 text-destructive'}`}
+            >
               {result.success ? 'Passed' : 'Failed'}
             </span>
           </div>
@@ -182,7 +197,18 @@ export default function Validation() {
             ) : (
               <div className="space-y-1.5 text-sm">
                 {findings.map((line) => (
-                  <div key={line} className={line.startsWith('OK') ? 'text-green-700 dark:text-green-400' : line.startsWith('VALIDATION FAILED') ? 'font-semibold text-destructive' : line.startsWith('- ') ? 'text-yellow-700 dark:text-yellow-400' : 'text-muted-foreground'}>
+                  <div
+                    key={line}
+                    className={
+                      line.startsWith('OK')
+                        ? 'text-green-700 dark:text-green-400'
+                        : line.startsWith('VALIDATION FAILED')
+                          ? 'font-semibold text-destructive'
+                          : line.startsWith('- ')
+                            ? 'text-yellow-700 dark:text-yellow-400'
+                            : 'text-muted-foreground'
+                    }
+                  >
                     {line}
                   </div>
                 ))}
@@ -198,7 +224,6 @@ export default function Validation() {
           )}
         </CollapsibleSection>
       )}
-
     </div>
   );
 }

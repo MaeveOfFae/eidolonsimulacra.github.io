@@ -14,7 +14,6 @@ import {
   getFavoriteSeeds,
   getSeedRunHistory,
   getSeedSuggestionPresets,
-  hydrateFavoriteSeedsFromServer,
   markSeedUsed,
   pickSurpriseSeedPreset,
   SEED_FAVORITES_CHANGED_EVENT,
@@ -27,10 +26,13 @@ import {
   type SeedRunRecord,
   type SeedSuggestionPreset,
 } from '../../lib/seed-generator.js';
-import { queueAutoSync } from '../../lib/server/auto-sync.js';
 import { BlueprintPanel } from '../common/BlueprintPanel';
 import CollapsibleSection from '../common/CollapsibleSection';
-import { getBlueprintsForFeature, resolveBlueprintForFeature, toBlueprintOptions } from '@/lib/blueprints/featureSelection';
+import {
+  getBlueprintsForFeature,
+  resolveBlueprintForFeature,
+  toBlueprintOptions,
+} from '@/lib/blueprints/featureSelection';
 import { configManager } from '@/lib/config/manager';
 import {
   clearActiveSeedGeneratorSession,
@@ -42,7 +44,10 @@ const defaultPreset = pickSurpriseSeedPreset();
 const PAGE_FEATURE_CATEGORY: FeatureCategory = 'seed_generation';
 
 function countNonEmptyLines(value: string): number {
-  return value.split('\n').map((line) => line.trim()).filter(Boolean).length;
+  return value
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean).length;
 }
 
 type SeedGenerationRunRequest = SeedGenerationRequest & {
@@ -69,7 +74,7 @@ export default function SeedGenerator() {
   const [blueprintLoading, setBlueprintLoading] = useState(true);
   const [blueprintError, setBlueprintError] = useState<string | null>(null);
   const [selectedBlueprintPath, setSelectedBlueprintPath] = useState<string>(
-    () => configManager.getConfig().feature_blueprints?.seed_generation || 'blueprints/system/seed_generator.md'
+    () => configManager.getConfig().feature_blueprints?.seed_generation || 'blueprints/system/seed_generator.md',
   );
   const [seedBlueprintOverride, setSeedBlueprintOverride] = useState<string | null>(null);
   const [availableBlueprints, setAvailableBlueprints] = useState<Array<{ name: string; label: string }>>([]);
@@ -82,11 +87,7 @@ export default function SeedGenerator() {
         const matching = getBlueprintsForFeature(list, PAGE_FEATURE_CATEGORY);
         setAvailableBlueprints(toBlueprintOptions(matching));
 
-        const resolved = resolveBlueprintForFeature(
-          list,
-          PAGE_FEATURE_CATEGORY,
-          selectedBlueprintPath
-        );
+        const resolved = resolveBlueprintForFeature(list, PAGE_FEATURE_CATEGORY, selectedBlueprintPath);
 
         if (resolved) {
           setBlueprint(resolved);
@@ -149,24 +150,7 @@ export default function SeedGenerator() {
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-
-    const syncFavorites = async () => {
-      try {
-        const syncedFavorites = await hydrateFavoriteSeedsFromServer();
-        if (!cancelled && syncedFavorites) {
-          setFavorites(syncedFavorites);
-        }
-      } catch (error) {
-        console.warn('Failed to hydrate favorite seeds from server:', error);
-      }
-    };
-
-    void syncFavorites();
-
-    return () => {
-      cancelled = true;
-    };
+    setFavorites(getFavoriteSeeds());
   }, []);
 
   useEffect(() => {
@@ -199,10 +183,7 @@ export default function SeedGenerator() {
     favorite_seed_count: favorites.length,
   });
 
-  const requestGenreLines = useMemo(
-    () => buildSeedGenerationLines(genreLines, controls),
-    [genreLines, controls]
-  );
+  const requestGenreLines = useMemo(() => buildSeedGenerationLines(genreLines, controls), [genreLines, controls]);
 
   const favoriteSeeds = useMemo(() => new Set(favorites.map((entry) => entry.seed)), [favorites]);
   const effectiveSeedBlueprint = seedBlueprintOverride ?? blueprint?.content;
@@ -277,9 +258,6 @@ export default function SeedGenerator() {
   const handleUseSeed = (seed: string) => {
     const nextFavorites = markSeedUsed(seed);
     setFavorites(nextFavorites);
-    if (nextFavorites.some((entry) => entry.seed === seed)) {
-      queueAutoSync('seeds');
-    }
     navigate('/generate', { state: { seed } });
   };
 
@@ -295,7 +273,6 @@ export default function SeedGenerator() {
 
   const handleToggleFavorite = (seed: string) => {
     setFavorites(toggleFavoriteSeed(seed));
-    queueAutoSync('seeds');
   };
 
   const handleUseHistoryEntry = (entry: SeedRunRecord) => {
@@ -315,7 +292,6 @@ export default function SeedGenerator() {
 
   const handleArchiveHistoryEntry = (id: string) => {
     setHistory(archiveSeedRun(id));
-    queueAutoSync('seeds');
   };
 
   const handleCountChange = (value: string) => {
@@ -327,10 +303,7 @@ export default function SeedGenerator() {
 
   useEffect(() => {
     const hasState = Boolean(
-      genreLines.trim()
-      || seeds.length > 0
-      || activePreset
-      || controls.count !== DEFAULT_SEED_COUNT
+      genreLines.trim() || seeds.length > 0 || activePreset || controls.count !== DEFAULT_SEED_COUNT,
     );
 
     if (!hasState) {
@@ -374,7 +347,9 @@ export default function SeedGenerator() {
             <p className="app-page-eyebrow">Seed Generator</p>
             <div className="space-y-3">
               <h1 className="app-page-title">Build seed batches</h1>
-              <p className="app-page-summary">Turn genre clusters into reusable concept seeds, then send the strongest ones into draft generation.</p>
+              <p className="app-page-summary">
+                Turn genre clusters into reusable concept seeds, then send the strongest ones into draft generation.
+              </p>
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-3">
               <Link to="/generate" className="app-button app-button-secondary">
@@ -411,9 +386,7 @@ export default function SeedGenerator() {
       </section>
 
       {resumeNotice && !seedMutation.error && (
-        <div className="app-note px-4 py-3 text-sm text-foreground">
-          {resumeNotice}
-        </div>
+        <div className="app-note px-4 py-3 text-sm text-foreground">{resumeNotice}</div>
       )}
 
       <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
@@ -479,7 +452,8 @@ export default function SeedGenerator() {
             <div>
               <label className="text-sm font-medium text-foreground">Genre or Theme Lines</label>
               <p className="mt-1 text-xs text-muted-foreground">
-                Use one line per genre or tone cluster. Inline tags like realism, slow-burn, low-magic, moreau, or count=12 can stay in place.
+                Use one line per genre or tone cluster. Inline tags like realism, slow-burn, low-magic, moreau, or
+                count=12 can stay in place.
               </p>
               <textarea
                 value={genreLines}
@@ -493,7 +467,8 @@ export default function SeedGenerator() {
             </div>
 
             <div className="rounded-xl border border-border/60 bg-background/35 p-3 text-xs text-muted-foreground">
-              {inputLineCount} input lines. Request count: {controls.count} seeds. All lines are blended into one batch, and output stays one seed per line with no numbering or headings.
+              {inputLineCount} input lines. Request count: {controls.count} seeds. All lines are blended into one batch,
+              and output stays one seed per line with no numbering or headings.
             </div>
 
             <div className="flex flex-wrap gap-3">
@@ -648,20 +623,12 @@ export default function SeedGenerator() {
                 {history.slice(0, 6).map((entry) => (
                   <div key={entry.id} className="rounded-xl border border-border/60 bg-background/35 p-3">
                     <div className="flex items-start justify-between gap-3">
-                      <button
-                        type="button"
-                        onClick={() => handleUseHistoryEntry(entry)}
-                        className="min-w-0 text-left"
-                      >
+                      <button type="button" onClick={() => handleUseHistoryEntry(entry)} className="min-w-0 text-left">
                         <span className="text-xs text-muted-foreground">
                           {new Date(entry.createdAt).toLocaleString()}
                         </span>
-                        <p className="mt-2 line-clamp-2 text-sm text-foreground">
-                          {entry.request.genreLines}
-                        </p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {entry.seeds.length} generated seeds
-                        </p>
+                        <p className="mt-2 line-clamp-2 text-sm text-foreground">{entry.request.genreLines}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{entry.seeds.length} generated seeds</p>
                       </button>
                       <div className="flex shrink-0 items-center gap-2">
                         <span className="app-pill app-pill-muted !px-2 !py-1 !text-[11px]">

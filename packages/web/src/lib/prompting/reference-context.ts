@@ -1,16 +1,8 @@
-import {
-  MAX_CONNECTED_DRAFT_REFERENCES,
-  type Draft,
-  type Template,
-} from '@char-gen/shared';
+import { MAX_CONNECTED_DRAFT_REFERENCES, type Draft, type Template } from '@char-gen/shared';
 import { DraftStorage } from '../storage/draft-db.js';
 import type { ReferenceSuiteContext } from './builder.js';
 
-const PREFERRED_REFERENCE_ASSET_ORDER = [
-  'character_sheet',
-  'post_history',
-  'system_prompt',
-] as const;
+const PREFERRED_REFERENCE_ASSET_ORDER = ['character_sheet', 'post_history', 'system_prompt'] as const;
 
 const REFERENCE_ASSET_CHAR_LIMITS: Record<string, number> = {
   character_sheet: 1400,
@@ -128,7 +120,9 @@ function buildCompactReferenceAssets(draft: Draft, options: LoadReferenceSuitesO
     return assets;
   }
 
-  const fallbackAsset = Object.entries(draft.assets).find(([, content]) => typeof content === 'string' && content.trim().length > 0);
+  const fallbackAsset = Object.entries(draft.assets).find(
+    ([, content]) => typeof content === 'string' && content.trim().length > 0,
+  );
   if (fallbackAsset) {
     const [assetName, content] = fallbackAsset;
     assets[assetName] = truncateReferenceAssetContent(assetName, content);
@@ -139,13 +133,13 @@ function buildCompactReferenceAssets(draft: Draft, options: LoadReferenceSuitesO
 
 export function normalizeConnectedReferenceIds(
   draftIds: string[] | undefined,
-  options: { excludeIds?: string[] } = {}
+  options: { excludeIds?: string[] } = {},
 ): string[] {
   const excludedIds = new Set(
     (options.excludeIds ?? [])
       .filter((draftId): draftId is string => typeof draftId === 'string')
       .map((draftId) => draftId.trim())
-      .filter(Boolean)
+      .filter(Boolean),
   );
 
   const normalized: string[] = [];
@@ -174,7 +168,7 @@ export function normalizeConnectedReferenceIds(
 
 export async function loadReferenceSuites(
   draftIds: string[] | undefined,
-  options: LoadReferenceSuitesOptions = {}
+  options: LoadReferenceSuitesOptions = {},
 ): Promise<ReferenceSuiteContext[]> {
   const normalizedDraftIds = normalizeConnectedReferenceIds(draftIds, {
     excludeIds: options.excludeIds,
@@ -184,9 +178,7 @@ export async function loadReferenceSuites(
     return [];
   }
 
-  const drafts = await Promise.all(
-    normalizedDraftIds.map((draftId) => DraftStorage.getDraft(draftId))
-  );
+  const drafts = await Promise.all(normalizedDraftIds.map((draftId) => DraftStorage.getDraft(draftId)));
 
   return drafts
     .filter((draft): draft is Draft => Boolean(draft))

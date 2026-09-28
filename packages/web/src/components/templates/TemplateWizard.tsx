@@ -26,7 +26,13 @@ const defaultTemplateData: CreateTemplateRequest = {
   blueprint_contents: {},
 };
 
-export default function TemplateWizard({ open, onClose, initialData, templateName, forkMode = false }: TemplateWizardProps) {
+export default function TemplateWizard({
+  open,
+  onClose,
+  initialData,
+  templateName,
+  forkMode = false,
+}: TemplateWizardProps) {
   const queryClient = useQueryClient();
   const isEditMode = Boolean(templateName);
 
@@ -61,9 +67,7 @@ export default function TemplateWizard({ open, onClose, initialData, templateNam
 
   const createMutation = useMutation({
     mutationFn: (data: CreateTemplateRequest) =>
-      isEditMode && templateName
-        ? api.updateTemplate(templateName, data)
-        : api.createTemplate(data),
+      isEditMode && templateName ? api.updateTemplate(templateName, data) : api.createTemplate(data),
     onSuccess: (template) => {
       setCreated(true);
       setCreatedTemplate(template);
@@ -100,9 +104,7 @@ export default function TemplateWizard({ open, onClose, initialData, templateNam
 
   const canProceed = (step: Step): boolean => {
     if (step === 1) {
-      return templateData.name.trim() !== '' &&
-             templateData.version.trim() !== '' &&
-             !errors.name && !errors.version;
+      return templateData.name.trim() !== '' && templateData.version.trim() !== '' && !errors.name && !errors.version;
     }
     if (step === 2) {
       return templateData.assets.length > 0;
@@ -115,7 +117,7 @@ export default function TemplateWizard({ open, onClose, initialData, templateNam
 
         // Check for transitive circular dependencies
         for (const dep of deps) {
-          const depAsset = templateData.assets.find(a => a.name === dep);
+          const depAsset = templateData.assets.find((a) => a.name === dep);
           if (depAsset && depAsset.depends_on?.includes(asset.name)) {
             return false;
           }
@@ -146,8 +148,8 @@ export default function TemplateWizard({ open, onClose, initialData, templateNam
   };
 
   const handleFieldChange = (field: 'name' | 'version' | 'description', value: string) => {
-    setTemplateData(prev => ({ ...prev, [field]: value }));
-    setErrors(prev => {
+    setTemplateData((prev) => ({ ...prev, [field]: value }));
+    setErrors((prev) => {
       const next = { ...prev };
       delete next[field];
       return next;
@@ -155,11 +157,11 @@ export default function TemplateWizard({ open, onClose, initialData, templateNam
   };
 
   const handleAssetsChange = (assets: AssetDefinition[]) => {
-    setTemplateData(prev => ({ ...prev, assets }));
+    setTemplateData((prev) => ({ ...prev, assets }));
   };
 
   const handleBlueprintContentsChange = (blueprint_contents: Record<string, string>) => {
-    setTemplateData(prev => ({ ...prev, blueprint_contents }));
+    setTemplateData((prev) => ({ ...prev, blueprint_contents }));
   };
 
   if (!open) return null;
@@ -181,13 +183,20 @@ export default function TemplateWizard({ open, onClose, initialData, templateNam
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border">
           <div>
-            <h2 className="text-lg font-semibold">{forkMode ? 'Create Template Copy' : isEditMode ? 'Edit Template' : 'Create Template'}</h2>
+            <h2 className="text-lg font-semibold">
+              {forkMode ? 'Create Template Copy' : isEditMode ? 'Edit Template' : 'Create Template'}
+            </h2>
             <p className="text-sm text-muted-foreground">
               Step {currentStep} of 4 · {stepTitles[currentStep]}
             </p>
           </div>
           {!created && (
-            <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground" aria-label="Close">
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-muted-foreground hover:text-foreground"
+              aria-label="Close"
+            >
               <X className="h-5 w-5" />
             </button>
           )}
@@ -203,9 +212,7 @@ export default function TemplateWizard({ open, onClose, initialData, templateNam
                     <div
                       className={`
                         flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold
-                        ${currentStep >= step
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted text-muted-foreground'}
+                        ${currentStep >= step ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}
                       `}
                     >
                       {currentStep > step ? <CheckCircle2 className="h-3.5 w-3.5" /> : step}
@@ -244,13 +251,11 @@ export default function TemplateWizard({ open, onClose, initialData, templateNam
               <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mb-4">
                 <CheckCircle2 className="h-8 w-8 text-green-500" />
               </div>
-                <h3 className="text-xl font-semibold mb-2">{forkMode ? 'Template Copy Saved!' : isEditMode ? 'Template Updated!' : 'Template Created!'}</h3>
-              <p className="text-muted-foreground mb-1">
-                {createdTemplate?.name}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Closing shortly...
-              </p>
+              <h3 className="text-xl font-semibold mb-2">
+                {forkMode ? 'Template Copy Saved!' : isEditMode ? 'Template Updated!' : 'Template Created!'}
+              </h3>
+              <p className="text-muted-foreground mb-1">{createdTemplate?.name}</p>
+              <p className="text-sm text-muted-foreground">Closing shortly...</p>
             </div>
           ) : (
             <>
@@ -273,16 +278,9 @@ export default function TemplateWizard({ open, onClose, initialData, templateNam
                 />
               )}
 
-              {currentStep === 3 && (
-                <DependenciesStep
-                  assets={templateData.assets}
-                  onChange={handleAssetsChange}
-                />
-              )}
+              {currentStep === 3 && <DependenciesStep assets={templateData.assets} onChange={handleAssetsChange} />}
 
-              {currentStep === 4 && (
-                <ReviewStep templateData={templateData} />
-              )}
+              {currentStep === 4 && <ReviewStep templateData={templateData} />}
             </>
           )}
         </div>
@@ -304,9 +302,11 @@ export default function TemplateWizard({ open, onClose, initialData, templateNam
               disabled={!canProceed(currentStep) || isCreating}
               className={`
                 inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md
-                ${currentStep === 4
-                  ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                  : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}
+                ${
+                  currentStep === 4
+                    ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                    : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                }
                 disabled:opacity-50
               `}
             >

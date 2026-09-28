@@ -23,8 +23,8 @@ asset = "intro_scene"
 target = "intro_scene.txt"
 
 [[fields]]
-asset = "intro_page"
-target = "intro_page.md"
+asset = "creator_notes"
+target = "creator_notes.md"
 
 [[fields]]
 asset = "a1111"

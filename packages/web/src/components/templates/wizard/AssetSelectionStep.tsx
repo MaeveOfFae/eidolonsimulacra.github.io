@@ -1,11 +1,6 @@
 import { useState } from 'react';
 import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core';
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-  useSortable,
-  arrayMove,
-} from '@dnd-kit/sortable';
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, Plus, Trash2, FileText, Star } from 'lucide-react';
 import { type AssetDefinition } from '@char-gen/shared';
@@ -23,19 +18,16 @@ function getBlueprintContentKey(asset: Pick<AssetDefinition, 'name' | 'blueprint
   return asset.blueprint_file ?? `${asset.name}.md`;
 }
 
-function SortableAsset({ asset, onEdit, onRemove }: {
+function SortableAsset({
+  asset,
+  onEdit,
+  onRemove,
+}: {
   asset: AssetDefinition;
   onEdit: (asset: AssetDefinition) => void;
   onRemove: () => void;
 }) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: asset.name });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: asset.name });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -49,7 +41,7 @@ function SortableAsset({ asset, onEdit, onRemove }: {
       className={cn(
         'flex items-center gap-3 p-3 rounded-lg border bg-card group',
         isDragging ? 'border-primary/50 shadow-lg' : 'border-border',
-        asset.required ? 'border-l-4 border-l-primary' : ''
+        asset.required ? 'border-l-4 border-l-primary' : '',
       )}
     >
       {/* Drag Handle */}
@@ -69,13 +61,9 @@ function SortableAsset({ asset, onEdit, onRemove }: {
           </span>
           {asset.required && <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />}
         </div>
-        {asset.description && (
-          <p className="text-xs text-muted-foreground truncate">{asset.description}</p>
-        )}
+        {asset.description && <p className="text-xs text-muted-foreground truncate">{asset.description}</p>}
         {asset.import_aliases && asset.import_aliases.length > 0 && (
-          <p className="text-[11px] text-muted-foreground truncate">
-            Imports: {asset.import_aliases.join(', ')}
-          </p>
+          <p className="text-[11px] text-muted-foreground truncate">Imports: {asset.import_aliases.join(', ')}</p>
         )}
       </div>
 
@@ -113,8 +101,8 @@ export default function AssetSelectionStep({
     const { active, over } = event;
 
     if (over && active.id !== over.id) {
-      const oldIndex = assets.findIndex(a => a.name === active.id);
-      const newIndex = assets.findIndex(a => a.name === over.id);
+      const oldIndex = assets.findIndex((a) => a.name === active.id);
+      const newIndex = assets.findIndex((a) => a.name === over.id);
 
       onChange(arrayMove(assets, oldIndex, newIndex));
     }
@@ -129,8 +117,8 @@ export default function AssetSelectionStep({
     const previousKey = editingAsset ? getBlueprintContentKey(editingAsset) : undefined;
     const nextKey = getBlueprintContentKey(newAsset);
     const existingIndex = previousName
-      ? assets.findIndex(a => a.name === previousName)
-      : assets.findIndex(a => a.name === newAsset.name);
+      ? assets.findIndex((a) => a.name === previousName)
+      : assets.findIndex((a) => a.name === newAsset.name);
 
     if (existingIndex >= 0) {
       const updated = [...assets];
@@ -163,7 +151,7 @@ export default function AssetSelectionStep({
 
   const handleRemoveAsset = (assetName: string) => {
     const asset = assets.find((candidate) => candidate.name === assetName);
-    onChange(assets.filter(a => a.name !== assetName));
+    onChange(assets.filter((a) => a.name !== assetName));
     const nextBlueprintContents = { ...blueprintContents };
     if (asset) {
       delete nextBlueprintContents[getBlueprintContentKey(asset)];
@@ -182,8 +170,12 @@ export default function AssetSelectionStep({
         }}
         onSave={handleSaveAsset}
         asset={editingAsset}
-        blueprintContent={editingAsset ? blueprintContents[getBlueprintContentKey(editingAsset)] ?? blueprintContents[editingAsset.name] ?? '' : ''}
-        existingAssets={assets.map(a => a.name)}
+        blueprintContent={
+          editingAsset
+            ? (blueprintContents[getBlueprintContentKey(editingAsset)] ?? blueprintContents[editingAsset.name] ?? '')
+            : ''
+        }
+        existingAssets={assets.map((a) => a.name)}
       />
 
       <div className="space-y-6">
@@ -219,10 +211,7 @@ export default function AssetSelectionStep({
           ) : (
             <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <div className="space-y-2">
-                <SortableContext
-                  items={assets.map(a => a.name)}
-                  strategy={verticalListSortingStrategy}
-                >
+                <SortableContext items={assets.map((a) => a.name)} strategy={verticalListSortingStrategy}>
                   {assets.map((asset) => (
                     <SortableAsset
                       key={asset.name}

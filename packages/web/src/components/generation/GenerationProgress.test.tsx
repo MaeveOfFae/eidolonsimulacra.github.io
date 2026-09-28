@@ -21,10 +21,6 @@ vi.mock('../../lib/config/manager.js', () => ({
   },
 }));
 
-vi.mock('../../lib/server/auto-sync.js', () => ({
-  queueAutoSync: vi.fn(),
-}));
-
 vi.mock('../../lib/services/generation-session.js', () => ({
   clearActiveGenerationSession: vi.fn(),
   loadActiveGenerationSession: vi.fn(() => null),
@@ -47,9 +43,12 @@ describe('GenerationProgress', () => {
   });
 
   it('keeps the flow open on asset generation with no content', async () => {
-    vi.mocked(GenerationService.generateAsset).mockImplementation(async function* () {
-      return;
-    });
+    vi.mocked(GenerationService.generateAsset).mockImplementation(
+      // eslint-disable-next-line require-yield -- deliberate empty stream: this case asserts "generated no content"
+      async function* () {
+        return;
+      },
+    );
 
     const onError = vi.fn();
     const onCancel = vi.fn();
@@ -63,15 +62,13 @@ describe('GenerationProgress', () => {
         templates={[
           {
             name: 'Test Template',
-            assets: [
-              { name: 'system_prompt', required: true, depends_on: [] },
-            ],
+            assets: [{ name: 'system_prompt', required: true, depends_on: [] }],
           } as never,
         ]}
         onComplete={onComplete}
         onError={onError}
         onCancel={onCancel}
-      />
+      />,
     );
 
     await waitFor(() => {
@@ -80,7 +77,10 @@ describe('GenerationProgress', () => {
 
     expect(onError).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: 'Regenerate Asset' })).toBeEnabled();
-    expect(screen.getByRole('button', { name: 'Approve and Continue' })).toBeDisabled();
+    // A single-asset run is also the final asset, so the primary action is labelled
+    // "Save Draft". With no content there is nothing to save, so it stays disabled
+    // and the flow remains open for regeneration instead of closing on an error.
+    expect(screen.getByRole('button', { name: 'Save Draft' })).toBeDisabled();
   });
 
   it('saves a partial draft when the final asset fails empty', async () => {
@@ -92,9 +92,12 @@ describe('GenerationProgress', () => {
           content: 'System prompt content',
         };
       })
-      .mockImplementationOnce(async function* () {
-        return;
-      });
+      .mockImplementationOnce(
+        // eslint-disable-next-line require-yield -- deliberate empty stream: the final asset produces no content
+        async function* () {
+          return;
+        },
+      );
 
     const onError = vi.fn();
     const onCancel = vi.fn();
@@ -117,7 +120,7 @@ describe('GenerationProgress', () => {
         onComplete={onComplete}
         onError={onError}
         onCancel={onCancel}
-      />
+      />,
     );
 
     await waitFor(() => {
@@ -168,15 +171,13 @@ describe('GenerationProgress', () => {
         templates={[
           {
             name: 'Test Template',
-            assets: [
-              { name: 'system_prompt', required: true, depends_on: [] },
-            ],
+            assets: [{ name: 'system_prompt', required: true, depends_on: [] }],
           } as never,
         ]}
         onComplete={onComplete}
         onError={onError}
         onCancel={onCancel}
-      />
+      />,
     );
 
     await waitFor(() => {

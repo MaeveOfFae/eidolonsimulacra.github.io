@@ -12,7 +12,7 @@ Generate assets in the active template's exact order.
 
 Examples:
 
-1) `V2/V3 Card`: `system_prompt -> post_history -> character_sheet -> intro_scene -> intro_page -> a1111`
+1) `V2/V3 Card`: `system_prompt -> post_history -> character_sheet -> intro_scene -> creator_notes -> a1111`
 2) `Aksho` reference flow: `system_prompt -> char_basic_info -> char_physical -> char_clothing -> char_personality -> char_background -> post_history -> initial_message`
 
 Do not invent missing assets, and do not assume `suno` is part of the default flow.

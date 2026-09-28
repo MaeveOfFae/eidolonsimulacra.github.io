@@ -63,7 +63,7 @@ The `asset` field should be one of:
 - `post_history`
 - `character_sheet`
 - `intro_scene`
-- `intro_page`
+- `creator_notes`
 - `a1111`
 - `suno`
 

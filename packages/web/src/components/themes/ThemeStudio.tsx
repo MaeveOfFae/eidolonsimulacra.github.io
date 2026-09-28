@@ -1,9 +1,10 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Globe, Palette, Pencil } from 'lucide-react';
 import { api } from '@/lib/api';
 import { isSelfContainedDesktopRuntime } from '@/lib/runtime';
-import { EDITABLE_THEME_SECTIONS } from '../../theme/theme';
+import { APP_THEME_FIELDS } from '../../theme/theme';
 import ThemeSelection from './ThemeSelection';
 import ThemeEditor from './ThemeEditor';
 import ThemeBrowserPlaceholder from './ThemeBrowserPlaceholder';
@@ -24,8 +25,9 @@ const sections: StudioSection[] = [
     label: 'Runtime Editor',
     icon: Palette,
     title: 'Tune the active preset and preview changes live.',
-    description: 'Choose the active preset, preview it live, and edit app or tokenizer colors in one place.',
-    note: 'This is the primary surface. Most theme work should start here.',
+    description:
+      'Choose the active preset, preview it live, and edit the app-facing palette without burying it under tokenizer-specific controls.',
+    note: 'Tokenizer syntax colors now have their own route so the main theme page can stay focused on app chrome.',
   },
   {
     id: 'theme-workshop',
@@ -61,7 +63,7 @@ export default function ThemeStudio() {
   const activeTheme = themes.find((theme) => theme.name === config?.theme_name) ?? themes[0];
   const customThemeCount = themes.filter((theme) => !theme.is_builtin).length;
   const builtinThemeCount = themes.filter((theme) => theme.is_builtin).length;
-  const editableFieldCount = EDITABLE_THEME_SECTIONS.reduce((count, section) => count + section.fields.length, 0);
+  const appFieldCount = APP_THEME_FIELDS.length;
   const activeStudioSection = sections.find((section) => section.id === activeSection) ?? sections[0];
 
   return (
@@ -72,10 +74,12 @@ export default function ThemeStudio() {
             <p className="app-page-eyebrow">Theme runtime</p>
             <h1 className="app-page-title">Tune the live palette</h1>
             <p className="app-page-summary">
-              Keep the theme route focused on the current preset first, then open preset management or the community browser only when you actually need them.
+              Keep the theme route focused on the current preset first, then open preset management or the community
+              browser only when you actually need them.
             </p>
             <p className="text-xs text-muted-foreground">
-              Changes apply automatically. If another page does not repaint cleanly, press <kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">F5</kbd> to refresh.
+              Changes apply automatically. If another page does not repaint cleanly, press{' '}
+              <kbd className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">F5</kbd> to refresh.
             </p>
             <div className="flex flex-wrap gap-2">
               <span className="app-pill app-pill-emerald">Live preview enabled</span>
@@ -103,8 +107,8 @@ export default function ThemeStudio() {
                 <div className="app-page-metric-value text-2xl">{builtinThemeCount}</div>
               </div>
               <div className="app-page-metric">
-                <p className="app-page-metric-label">Editable fields</p>
-                <div className="app-page-metric-value text-2xl">{editableFieldCount}</div>
+                <p className="app-page-metric-label">App fields</p>
+                <div className="app-page-metric-value text-2xl">{appFieldCount}</div>
               </div>
             </div>
           </div>
@@ -138,18 +142,35 @@ export default function ThemeStudio() {
           <div className="space-y-2">
             <p className="app-page-eyebrow">{activeStudioSection.label}</p>
             <h2 className="text-2xl font-semibold text-foreground">{activeStudioSection.title}</h2>
-            <p className="max-w-3xl text-sm text-muted-foreground">
-              {activeStudioSection.description}
-            </p>
+            <p className="max-w-3xl text-sm text-muted-foreground">{activeStudioSection.description}</p>
           </div>
-          <div className="app-note max-w-xl p-4 text-sm text-muted-foreground">
-            {activeStudioSection.note}
-          </div>
+          <div className="app-note max-w-xl p-4 text-sm text-muted-foreground">{activeStudioSection.note}</div>
         </div>
 
         {activeSection === 'theme-runtime' && (
-          <div className="app-panel p-5">
-            <ThemeSelection />
+          <div className="space-y-4">
+            <div className="app-panel p-5">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="space-y-2">
+                  <p className="app-page-eyebrow">Tokenizer colors</p>
+                  <h3 className="text-lg font-semibold text-foreground">Syntax highlighting has its own page now</h3>
+                  <p className="max-w-2xl text-sm text-muted-foreground">
+                    Keep this route focused on app-facing palette work, then switch to the tokenizer page when you need
+                    to tune bracket, pipe, or annotation colors used in review and prompt-facing surfaces.
+                  </p>
+                </div>
+                <Link
+                  to="/tokenizer"
+                  className="inline-flex items-center gap-2 rounded-xl border border-border/60 bg-background/55 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary/35 hover:text-primary"
+                >
+                  Open tokenizer colors
+                </Link>
+              </div>
+            </div>
+
+            <div className="app-panel p-5">
+              <ThemeSelection sectionFilter="app" />
+            </div>
           </div>
         )}
 

@@ -162,10 +162,12 @@ function isStringArray(value: unknown): value is string[] {
 }
 
 function isStringRecord(value: unknown): value is Record<string, string> {
-  return typeof value === 'object'
-    && value !== null
-    && !Array.isArray(value)
-    && Object.values(value).every((entry) => typeof entry === 'string');
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    !Array.isArray(value) &&
+    Object.values(value).every((entry) => typeof entry === 'string')
+  );
 }
 
 function isImportedCharacterSnapshot(value: unknown): value is ImportedCharacterSnapshot {
@@ -174,15 +176,19 @@ function isImportedCharacterSnapshot(value: unknown): value is ImportedCharacter
   }
 
   const snapshot = value as Partial<ImportedCharacterSnapshot>;
-  return typeof snapshot.name === 'string'
-    && typeof snapshot.sourceFormat === 'string'
-    && (typeof snapshot.sourcePreset === 'string' || typeof snapshot.sourcePreset === 'undefined')
-    && (typeof snapshot.templateName === 'string' || typeof snapshot.templateName === 'undefined')
-    && isStringRecord(snapshot.assets);
+  return (
+    typeof snapshot.name === 'string' &&
+    typeof snapshot.sourceFormat === 'string' &&
+    (typeof snapshot.sourcePreset === 'string' || typeof snapshot.sourcePreset === 'undefined') &&
+    (typeof snapshot.templateName === 'string' || typeof snapshot.templateName === 'undefined') &&
+    isStringRecord(snapshot.assets)
+  );
 }
 
 function normalizeImportedCharacterSnapshot(
-  importedCharacter: Pick<ImportedCharacterSnapshot, 'name' | 'sourceFormat' | 'sourcePreset' | 'templateName' | 'assets'> | undefined
+  importedCharacter:
+    | Pick<ImportedCharacterSnapshot, 'name' | 'sourceFormat' | 'sourcePreset' | 'templateName' | 'assets'>
+    | undefined,
 ): ImportedCharacterSnapshot | undefined {
   if (!importedCharacter) {
     return undefined;
@@ -190,8 +196,11 @@ function normalizeImportedCharacterSnapshot(
 
   const assets = Object.fromEntries(
     Object.entries(importedCharacter.assets)
-      .filter((entry): entry is [string, string] => typeof entry[0] === 'string' && entry[0].trim().length > 0 && typeof entry[1] === 'string')
-      .sort(([left], [right]) => left.localeCompare(right))
+      .filter(
+        (entry): entry is [string, string] =>
+          typeof entry[0] === 'string' && entry[0].trim().length > 0 && typeof entry[1] === 'string',
+      )
+      .sort(([left], [right]) => left.localeCompare(right)),
   );
 
   return {
@@ -238,20 +247,22 @@ function isValidSession(value: unknown): value is ActiveGenerationSession {
   }
 
   const session = value as Partial<ActiveGenerationSession>;
-  return session.version === 1
-    && typeof session.seed === 'string'
-    && typeof session.mode === 'string'
-    && (typeof session.template === 'string' || typeof session.template === 'undefined')
-    && (typeof session.selectedAssets === 'undefined' || isStringArray(session.selectedAssets))
-    && (typeof session.connectedDraftIds === 'undefined' || isStringArray(session.connectedDraftIds))
-    && (typeof session.importedCharacter === 'undefined' || isImportedCharacterSnapshot(session.importedCharacter))
-    && !!session.assetDrafts
-    && typeof session.assetDrafts === 'object'
-    && (typeof session.currentAsset === 'string' || session.currentAsset === null)
-    && typeof session.currentAssetContent === 'string'
-    && typeof session.currentStatus === 'string'
-    && typeof session.startedAt === 'number'
-    && typeof session.updatedAt === 'number';
+  return (
+    session.version === 1 &&
+    typeof session.seed === 'string' &&
+    typeof session.mode === 'string' &&
+    (typeof session.template === 'string' || typeof session.template === 'undefined') &&
+    (typeof session.selectedAssets === 'undefined' || isStringArray(session.selectedAssets)) &&
+    (typeof session.connectedDraftIds === 'undefined' || isStringArray(session.connectedDraftIds)) &&
+    (typeof session.importedCharacter === 'undefined' || isImportedCharacterSnapshot(session.importedCharacter)) &&
+    !!session.assetDrafts &&
+    typeof session.assetDrafts === 'object' &&
+    (typeof session.currentAsset === 'string' || session.currentAsset === null) &&
+    typeof session.currentAssetContent === 'string' &&
+    typeof session.currentStatus === 'string' &&
+    typeof session.startedAt === 'number' &&
+    typeof session.updatedAt === 'number'
+  );
 }
 
 function isValidOffspringSession(value: unknown): value is ActiveOffspringSession {
@@ -260,21 +271,21 @@ function isValidOffspringSession(value: unknown): value is ActiveOffspringSessio
   }
 
   const session = value as Partial<ActiveOffspringSession>;
-  return session.version === 1
-    && typeof session.parent1Id === 'string'
-    && typeof session.parent2Id === 'string'
-    && typeof session.mode === 'string'
-    && (typeof session.template === 'string' || typeof session.template === 'undefined')
-    && typeof session.templateManuallySelected === 'boolean'
-    && (typeof session.offspringSeed === 'string' || typeof session.offspringSeed === 'undefined')
-    && typeof session.output === 'string'
-    && (
-      session.status === 'configuring'
-      || session.status === 'generating_seed'
-      || session.status === 'review_seed'
-      || session.status === 'generating_character'
-    )
-    && typeof session.updatedAt === 'number';
+  return (
+    session.version === 1 &&
+    typeof session.parent1Id === 'string' &&
+    typeof session.parent2Id === 'string' &&
+    typeof session.mode === 'string' &&
+    (typeof session.template === 'string' || typeof session.template === 'undefined') &&
+    typeof session.templateManuallySelected === 'boolean' &&
+    (typeof session.offspringSeed === 'string' || typeof session.offspringSeed === 'undefined') &&
+    typeof session.output === 'string' &&
+    (session.status === 'configuring' ||
+      session.status === 'generating_seed' ||
+      session.status === 'review_seed' ||
+      session.status === 'generating_character') &&
+    typeof session.updatedAt === 'number'
+  );
 }
 
 function isValidSeedGeneratorSession(value: unknown): value is ActiveSeedGeneratorSession {
@@ -284,16 +295,18 @@ function isValidSeedGeneratorSession(value: unknown): value is ActiveSeedGenerat
 
   const session = value as Partial<ActiveSeedGeneratorSession>;
   const controls = session.controls as ActiveSeedGeneratorSession['controls'] | undefined;
-  return session.version === 1
-    && typeof session.genreLines === 'string'
-    && (typeof session.activePreset === 'string' || session.activePreset === null)
-    && !!controls
-    && typeof controls.count === 'number'
-    && (controls.coverageMode === 'per-genre' || controls.coverageMode === 'blended')
-    && Array.isArray(session.seeds)
-    && session.seeds.every((seed) => typeof seed === 'string')
-    && (session.status === 'idle' || session.status === 'generating' || session.status === 'ready')
-    && typeof session.updatedAt === 'number';
+  return (
+    session.version === 1 &&
+    typeof session.genreLines === 'string' &&
+    (typeof session.activePreset === 'string' || session.activePreset === null) &&
+    !!controls &&
+    typeof controls.count === 'number' &&
+    (controls.coverageMode === 'per-genre' || controls.coverageMode === 'blended') &&
+    Array.isArray(session.seeds) &&
+    session.seeds.every((seed) => typeof seed === 'string') &&
+    (session.status === 'idle' || session.status === 'generating' || session.status === 'ready') &&
+    typeof session.updatedAt === 'number'
+  );
 }
 
 function isValidBatchGenerationSession(value: unknown): value is ActiveBatchGenerationSession {
@@ -302,21 +315,25 @@ function isValidBatchGenerationSession(value: unknown): value is ActiveBatchGene
   }
 
   const session = value as Partial<ActiveBatchGenerationSession>;
-  return session.version === 1
-    && Array.isArray(session.seeds)
-    && session.seeds.every((seed) => typeof seed === 'string')
-    && typeof session.mode === 'string'
-    && (typeof session.template === 'string' || typeof session.template === 'undefined')
-    && (typeof session.selectedAssets === 'undefined' || isStringArray(session.selectedAssets))
-    && (typeof session.connectedDraftIds === 'undefined' || isStringArray(session.connectedDraftIds))
-    && typeof session.parallel === 'boolean'
-    && typeof session.maxConcurrent === 'number'
-    && typeof session.inputText === 'string'
-    && Array.isArray(session.jobs)
-    && session.jobs.every((job) => job && typeof job === 'object' && typeof job.seed === 'string' && typeof job.status === 'string')
-    && typeof session.currentSeed === 'string'
-    && (session.status === 'configuring' || session.status === 'running' || session.status === 'ready')
-    && typeof session.updatedAt === 'number';
+  return (
+    session.version === 1 &&
+    Array.isArray(session.seeds) &&
+    session.seeds.every((seed) => typeof seed === 'string') &&
+    typeof session.mode === 'string' &&
+    (typeof session.template === 'string' || typeof session.template === 'undefined') &&
+    (typeof session.selectedAssets === 'undefined' || isStringArray(session.selectedAssets)) &&
+    (typeof session.connectedDraftIds === 'undefined' || isStringArray(session.connectedDraftIds)) &&
+    typeof session.parallel === 'boolean' &&
+    typeof session.maxConcurrent === 'number' &&
+    typeof session.inputText === 'string' &&
+    Array.isArray(session.jobs) &&
+    session.jobs.every(
+      (job) => job && typeof job === 'object' && typeof job.seed === 'string' && typeof job.status === 'string',
+    ) &&
+    typeof session.currentSeed === 'string' &&
+    (session.status === 'configuring' || session.status === 'running' || session.status === 'ready') &&
+    typeof session.updatedAt === 'number'
+  );
 }
 
 function isValidDraftRefinerSession(value: unknown): value is ActiveDraftRefinerSession {
@@ -326,29 +343,31 @@ function isValidDraftRefinerSession(value: unknown): value is ActiveDraftRefiner
 
   const session = value as Partial<ActiveDraftRefinerSession>;
   const assetStates = session.assetStates;
-  return session.version === 1
-    && typeof session.selectedDraftId === 'string'
-    && (typeof session.transientInstructions === 'string' || typeof session.transientInstructions === 'undefined')
-    && !!assetStates
-    && typeof assetStates === 'object'
-    && Object.values(assetStates).every(
-      (state) => state && typeof state === 'object'
-        && typeof state.assetName === 'string'
-        && (state.status === 'idle' || state.status === 'reviewing')
-        && typeof state.content === 'string'
-        && typeof state.originalContent === 'string'
-        && (
-          typeof state.storedContent === 'undefined'
-          || typeof state.storedContent === 'string'
-          || state.storedContent === null
-        )
-    )
-    && Array.isArray(session.expandedAssets)
-    && session.expandedAssets.every((asset) => typeof asset === 'string')
-    && (typeof session.editingAsset === 'string' || session.editingAsset === null)
-    && typeof session.editContent === 'string'
-    && typeof session.interrupted === 'boolean'
-    && typeof session.updatedAt === 'number';
+  return (
+    session.version === 1 &&
+    typeof session.selectedDraftId === 'string' &&
+    (typeof session.transientInstructions === 'string' || typeof session.transientInstructions === 'undefined') &&
+    !!assetStates &&
+    typeof assetStates === 'object' &&
+    Object.values(assetStates).every(
+      (state) =>
+        state &&
+        typeof state === 'object' &&
+        typeof state.assetName === 'string' &&
+        (state.status === 'idle' || state.status === 'reviewing') &&
+        typeof state.content === 'string' &&
+        typeof state.originalContent === 'string' &&
+        (typeof state.storedContent === 'undefined' ||
+          typeof state.storedContent === 'string' ||
+          state.storedContent === null),
+    ) &&
+    Array.isArray(session.expandedAssets) &&
+    session.expandedAssets.every((asset) => typeof asset === 'string') &&
+    (typeof session.editingAsset === 'string' || session.editingAsset === null) &&
+    typeof session.editContent === 'string' &&
+    typeof session.interrupted === 'boolean' &&
+    typeof session.updatedAt === 'number'
+  );
 }
 
 function isValidAssetRegeneratorSession(value: unknown): value is ActiveAssetRegeneratorSession {
@@ -357,24 +376,28 @@ function isValidAssetRegeneratorSession(value: unknown): value is ActiveAssetReg
   }
 
   const session = value as Partial<ActiveAssetRegeneratorSession>;
-  return session.version === 1
-    && typeof session.draftId === 'string'
-    && typeof session.assetName === 'string'
-    && typeof session.generationCount === 'number'
-    && typeof session.customInstructions === 'string'
-    && (typeof session.blueprintOverrideContent === 'string' || typeof session.blueprintOverrideContent === 'undefined')
-    && Array.isArray(session.generatedCandidates)
-    && session.generatedCandidates.every(
-      (candidate) => candidate && typeof candidate === 'object'
-        && typeof candidate.id === 'string'
-        && typeof candidate.content === 'string'
-        && typeof candidate.timestamp === 'number'
-    )
-    && Array.isArray(session.expandedCandidates)
-    && session.expandedCandidates.every((candidateId) => typeof candidateId === 'string')
-    && typeof session.generatingContent === 'string'
-    && (session.status === 'configuring' || session.status === 'generating' || session.status === 'ready')
-    && typeof session.updatedAt === 'number';
+  return (
+    session.version === 1 &&
+    typeof session.draftId === 'string' &&
+    typeof session.assetName === 'string' &&
+    typeof session.generationCount === 'number' &&
+    typeof session.customInstructions === 'string' &&
+    (typeof session.blueprintOverrideContent === 'string' || typeof session.blueprintOverrideContent === 'undefined') &&
+    Array.isArray(session.generatedCandidates) &&
+    session.generatedCandidates.every(
+      (candidate) =>
+        candidate &&
+        typeof candidate === 'object' &&
+        typeof candidate.id === 'string' &&
+        typeof candidate.content === 'string' &&
+        typeof candidate.timestamp === 'number',
+    ) &&
+    Array.isArray(session.expandedCandidates) &&
+    session.expandedCandidates.every((candidateId) => typeof candidateId === 'string') &&
+    typeof session.generatingContent === 'string' &&
+    (session.status === 'configuring' || session.status === 'generating' || session.status === 'ready') &&
+    typeof session.updatedAt === 'number'
+  );
 }
 
 export function loadActiveGenerationSession(): ActiveGenerationSession | null {
@@ -535,8 +558,11 @@ export function matchesActiveGenerationSession(
     template?: string;
     selectedAssets?: string[];
     connectedDraftIds?: string[];
-    importedCharacter?: Pick<ImportedCharacterSnapshot, 'name' | 'sourceFormat' | 'sourcePreset' | 'templateName' | 'assets'>;
-  }
+    importedCharacter?: Pick<
+      ImportedCharacterSnapshot,
+      'name' | 'sourceFormat' | 'sourcePreset' | 'templateName' | 'assets'
+    >;
+  },
 ): boolean {
   const currentSelectedAssets = normalizeConnectedDraftIds(session.selectedAssets);
   const nextSelectedAssets = normalizeConnectedDraftIds(params.selectedAssets);
@@ -545,12 +571,14 @@ export function matchesActiveGenerationSession(
   const currentImportedCharacter = normalizeImportedCharacterSnapshot(session.importedCharacter);
   const nextImportedCharacter = normalizeImportedCharacterSnapshot(params.importedCharacter);
 
-  return session.seed === params.seed
-    && session.mode === params.mode
-    && (session.template || '') === (params.template || '')
-    && currentSelectedAssets.length === nextSelectedAssets.length
-    && currentSelectedAssets.every((assetName, index) => assetName === nextSelectedAssets[index])
-    && currentConnectedDraftIds.length === nextConnectedDraftIds.length
-    && currentConnectedDraftIds.every((draftId, index) => draftId === nextConnectedDraftIds[index])
-    && JSON.stringify(currentImportedCharacter ?? null) === JSON.stringify(nextImportedCharacter ?? null);
+  return (
+    session.seed === params.seed &&
+    session.mode === params.mode &&
+    (session.template || '') === (params.template || '') &&
+    currentSelectedAssets.length === nextSelectedAssets.length &&
+    currentSelectedAssets.every((assetName, index) => assetName === nextSelectedAssets[index]) &&
+    currentConnectedDraftIds.length === nextConnectedDraftIds.length &&
+    currentConnectedDraftIds.every((draftId, index) => draftId === nextConnectedDraftIds[index]) &&
+    JSON.stringify(currentImportedCharacter ?? null) === JSON.stringify(nextImportedCharacter ?? null)
+  );
 }

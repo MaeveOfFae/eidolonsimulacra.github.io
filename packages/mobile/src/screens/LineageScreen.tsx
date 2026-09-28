@@ -1,10 +1,15 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
 import type { LineageNode } from '@char-gen/shared';
 import { api } from '../config/api';
 import CollapsibleTray from '../components/CollapsibleTray';
+import {
+  getMobileCompareSelection,
+  setMobileCompareSelection,
+  type MobileCompareSelection,
+} from '../lib/compare-selection';
 import type { HomeStackNavigationProp } from '../types/navigation';
 
 function LineageRow({
@@ -47,6 +52,9 @@ export default function LineageScreen() {
   const [maxDepth, setMaxDepth] = useState(6);
   const [rootsOnly, setRootsOnly] = useState(false);
   const [leavesOnly, setLeavesOnly] = useState(false);
+  const [pendingCompareSelection, setPendingCompareSelection] = useState<MobileCompareSelection | null>(() =>
+    getMobileCompareSelection(),
+  );
 
   const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ['lineage'],
@@ -55,9 +63,20 @@ export default function LineageScreen() {
 
   const nodeMap = useMemo(() => new Map((data?.nodes ?? []).map((node) => [node.id, node])), [data?.nodes]);
 
-  const selectedNode = selectedId ? nodeMap.get(selectedId) ?? null : data?.nodes[0] ?? null;
+  const selectedNode = selectedId ? (nodeMap.get(selectedId) ?? null) : (data?.nodes[0] ?? null);
   const canCompareParents = Boolean(selectedNode && selectedNode.parent_ids.length >= 2);
   const canGenerateFromParents = Boolean(selectedNode && selectedNode.parent_ids.length >= 2);
+  const canCompleteCompare = Boolean(
+    selectedNode &&
+    pendingCompareSelection?.character1Id &&
+    pendingCompareSelection.character1Id !== selectedNode.review_id,
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      setPendingCompareSelection(getMobileCompareSelection());
+    }, []),
+  );
 
   const flatFilteredNodes = useMemo(() => {
     const nodes = data?.nodes ?? [];
@@ -135,7 +154,11 @@ export default function LineageScreen() {
       <CollapsibleTray
         title="Stats"
         subtitle="Library lineage snapshot"
-        preview={<Text style={styles.trayPreviewText}>{data?.stats.total_characters ?? 0} characters • {data?.stats.generations ?? 0} generations</Text>}
+        preview={
+          <Text style={styles.trayPreviewText}>
+            {data?.stats.total_characters ?? 0} characters • {data?.stats.generations ?? 0} generations
+          </Text>
+        }
       >
         <View style={styles.statsGrid}>
           <View style={styles.statCard}>
@@ -161,7 +184,12 @@ export default function LineageScreen() {
         title="Filters"
         subtitle="Generation, roots or leaves, and depth"
         initiallyExpanded
-        preview={<Text style={styles.trayPreviewText}>{generationFilter === 'all' ? 'all generations' : `Gen ${generationFilter}`} • {rootsOnly ? 'roots' : leavesOnly ? 'leaves' : 'all nodes'} • depth {maxDepth}</Text>}
+        preview={
+          <Text style={styles.trayPreviewText}>
+            {generationFilter === 'all' ? 'all generations' : `Gen ${generationFilter}`} •{' '}
+            {rootsOnly ? 'roots' : leavesOnly ? 'leaves' : 'all nodes'} • depth {maxDepth}
+          </Text>
+        }
       >
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
           <TouchableOpacity
@@ -207,11 +235,17 @@ export default function LineageScreen() {
             <Text style={[styles.chipText, leavesOnly && styles.chipTextActive]}>Leaves only</Text>
           </TouchableOpacity>
           <View style={styles.depthControl}>
-            <TouchableOpacity style={styles.depthButton} onPress={() => setMaxDepth((current) => Math.max(1, current - 1))}>
+            <TouchableOpacity
+              style={styles.depthButton}
+              onPress={() => setMaxDepth((current) => Math.max(1, current - 1))}
+            >
               <Text style={styles.depthButtonText}>-</Text>
             </TouchableOpacity>
             <Text style={styles.depthValue}>Depth {maxDepth}</Text>
-            <TouchableOpacity style={styles.depthButton} onPress={() => setMaxDepth((current) => Math.min(10, current + 1))}>
+            <TouchableOpacity
+              style={styles.depthButton}
+              onPress={() => setMaxDepth((current) => Math.min(10, current + 1))}
+            >
               <Text style={styles.depthButtonText}>+</Text>
             </TouchableOpacity>
           </View>
@@ -222,7 +256,11 @@ export default function LineageScreen() {
         title="Family tree"
         subtitle={`${renderedTree.length} visible node${renderedTree.length === 1 ? '' : 's'}`}
         initiallyExpanded
-        preview={<Text style={styles.trayPreviewText}>{selectedNode ? selectedNode.character_name : 'Select a node to inspect details'}</Text>}
+        preview={
+          <Text style={styles.trayPreviewText}>
+            {selectedNode ? selectedNode.character_name : 'Select a node to inspect details'}
+          </Text>
+        }
       >
         {renderedTree.length === 0 ? (
           <Text style={styles.emptyText}>No lineage data matches the current filters.</Text>
@@ -245,7 +283,13 @@ export default function LineageScreen() {
         title="Details"
         subtitle={selectedNode ? selectedNode.character_name : 'Select a character'}
         initiallyExpanded={false}
-        preview={<Text style={styles.trayPreviewText}>{selectedNode ? `Gen ${selectedNode.generation}${selectedNode.mode ? ` • ${selectedNode.mode}` : ''}` : 'No character selected'}</Text>}
+        preview={
+          <Text style={styles.trayPreviewText}>
+            {selectedNode
+              ? `Gen ${selectedNode.generation}${selectedNode.mode ? ` • ${selectedNode.mode}` : ''}`
+              : 'No character selected'}
+          </Text>
+        }
       >
         {!selectedNode ? (
           <Text style={styles.emptyText}>Select a character to inspect lineage details.</Text>
@@ -271,15 +315,21 @@ export default function LineageScreen() {
 
             <View style={styles.infoBlock}>
               <Text style={styles.infoLabel}>Parents</Text>
-              <Text style={styles.infoValue}>{selectedNode.parent_names.length > 0 ? selectedNode.parent_names.join(', ') : 'None'}</Text>
+              <Text style={styles.infoValue}>
+                {selectedNode.parent_names.length > 0 ? selectedNode.parent_names.join(', ') : 'None'}
+              </Text>
             </View>
             <View style={styles.infoBlock}>
               <Text style={styles.infoLabel}>Children</Text>
-              <Text style={styles.infoValue}>{selectedNode.child_names.length > 0 ? selectedNode.child_names.join(', ') : 'None'}</Text>
+              <Text style={styles.infoValue}>
+                {selectedNode.child_names.length > 0 ? selectedNode.child_names.join(', ') : 'None'}
+              </Text>
             </View>
             <View style={styles.infoBlock}>
               <Text style={styles.infoLabel}>Siblings</Text>
-              <Text style={styles.infoValue}>{selectedNode.sibling_names.length > 0 ? selectedNode.sibling_names.join(', ') : 'None'}</Text>
+              <Text style={styles.infoValue}>
+                {selectedNode.sibling_names.length > 0 ? selectedNode.sibling_names.join(', ') : 'None'}
+              </Text>
             </View>
 
             <View style={styles.actionRow}>
@@ -293,6 +343,38 @@ export default function LineageScreen() {
                 }
               >
                 <Text style={styles.primaryActionText}>View Draft</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.secondaryAction}
+                onPress={() => {
+                  if (!selectedNode) {
+                    return;
+                  }
+
+                  const currentSelection = getMobileCompareSelection();
+                  if (currentSelection?.character1Id && currentSelection.character1Id !== selectedNode.review_id) {
+                    navigation.navigate('Compare', {
+                      character1: currentSelection.character1Id,
+                      character2: selectedNode.review_id,
+                    });
+                    return;
+                  }
+
+                  const nextSelection = {
+                    character1Id: selectedNode.review_id,
+                    character1Name: selectedNode.character_name,
+                  } satisfies MobileCompareSelection;
+
+                  setMobileCompareSelection(nextSelection);
+                  setPendingCompareSelection(nextSelection);
+                  navigation.navigate('Compare', {
+                    character1: selectedNode.review_id,
+                  });
+                }}
+              >
+                <Text style={styles.secondaryActionText}>
+                  {canCompleteCompare ? 'Complete Compare' : 'Compare Node'}
+                </Text>
               </TouchableOpacity>
               {canCompareParents ? (
                 <TouchableOpacity

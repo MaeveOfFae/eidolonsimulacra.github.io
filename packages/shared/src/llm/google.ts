@@ -155,26 +155,27 @@ export class GoogleEngine extends BaseLLMEngine {
     });
   }
 
-  async generate(
-    messages: LLMChatMessage[],
-    options?: GenerateOptions
-  ): Promise<GenerateResult> {
+  async generate(messages: LLMChatMessage[], options?: GenerateOptions): Promise<GenerateResult> {
     const opts = this.mergeOptions(options);
 
-    const response = await this.callEndpoint(`/models/${this.config.model}:generateContent`, {
-      contents: this.formatMessages(messages),
-      generationConfig: {
-        temperature: opts.temperature,
-        maxOutputTokens: opts.maxTokens,
-        topP: opts.topP,
+    const response = await this.callEndpoint(
+      `/models/${this.config.model}:generateContent`,
+      {
+        contents: this.formatMessages(messages),
+        generationConfig: {
+          temperature: opts.temperature,
+          maxOutputTokens: opts.maxTokens,
+          topP: opts.topP,
+        },
       },
-    }, options?.signal);
+      options?.signal,
+    );
 
     if (!response.ok) {
       throw new Error(await this.parseError(response));
     }
 
-    const data = await response.json() as GeminiResponse;
+    const data = (await response.json()) as GeminiResponse;
     const candidate = data.candidates?.[0];
     const content = this.extractCandidateText(candidate).trim();
     if (!content) {
@@ -184,28 +185,31 @@ export class GoogleEngine extends BaseLLMEngine {
     return {
       content,
       finishReason: candidate?.finishReason,
-      usage: data.usageMetadata ? {
-        promptTokens: data.usageMetadata.promptTokenCount || 0,
-        completionTokens: data.usageMetadata.candidatesTokenCount || 0,
-        totalTokens: data.usageMetadata.totalTokenCount || 0,
-      } : undefined,
+      usage: data.usageMetadata
+        ? {
+            promptTokens: data.usageMetadata.promptTokenCount || 0,
+            completionTokens: data.usageMetadata.candidatesTokenCount || 0,
+            totalTokens: data.usageMetadata.totalTokenCount || 0,
+          }
+        : undefined,
     };
   }
 
-  async *generateStream(
-    messages: LLMChatMessage[],
-    options?: StreamGenerateOptions
-  ): AsyncIterable<StreamChunk> {
+  async *generateStream(messages: LLMChatMessage[], options?: StreamGenerateOptions): AsyncIterable<StreamChunk> {
     const opts = this.mergeOptions(options);
 
-    const response = await this.callEndpoint(`/models/${this.config.model}:streamGenerateContent`, {
-      contents: this.formatMessages(messages),
-      generationConfig: {
-        temperature: opts.temperature,
-        maxOutputTokens: opts.maxTokens,
-        topP: opts.topP,
+    const response = await this.callEndpoint(
+      `/models/${this.config.model}:streamGenerateContent`,
+      {
+        contents: this.formatMessages(messages),
+        generationConfig: {
+          temperature: opts.temperature,
+          maxOutputTokens: opts.maxTokens,
+          topP: opts.topP,
+        },
       },
-    }, options?.signal);
+      options?.signal,
+    );
 
     if (!response.ok) {
       throw new Error(await this.parseError(response));
@@ -296,7 +300,7 @@ export class GoogleEngine extends BaseLLMEngine {
 
   private async parseError(response: Response): Promise<string> {
     try {
-      const data = await response.json() as { error?: { message?: string; status?: string } };
+      const data = (await response.json()) as { error?: { message?: string; status?: string } };
       return data.error?.message || data.error?.status || `HTTP ${response.status}`;
     } catch {
       return `HTTP ${response.status}`;

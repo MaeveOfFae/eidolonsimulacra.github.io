@@ -1,9 +1,9 @@
 // Timelines CRUD routes
-import { Router, Request, Response } from "express";
-import { z } from "zod";
-import { prisma, Prisma } from "../db.js";
-import { authenticateToken, optionalAuth } from "../middleware/auth.js";
-import { validateBody, validateParams, validateQuery } from "../middleware/validation.js";
+import { Router, Request, Response } from 'express';
+import { z } from 'zod';
+import { prisma, Prisma } from '../db.js';
+import { authenticateToken, optionalAuth } from '../middleware/auth.js';
+import { validateBody, validateParams, validateQuery } from '../middleware/validation.js';
 
 const router: Router = Router();
 
@@ -51,7 +51,7 @@ const pushTimelineSchema = z.object({
 
 // GET / - List timelines
 router.get(
-  "/",
+  '/',
   optionalAuth,
   validateQuery(timelineQuerySchema),
   async (req: Request, res: Response): Promise<void> => {
@@ -64,11 +64,11 @@ router.get(
       // Check world access
       const world = await prisma.world.findUnique({ where: { id: q.worldId } });
       if (!world) {
-        res.status(404).json({ error: "World not found" });
+        res.status(404).json({ error: 'World not found' });
         return;
       }
       if (!world.isPublic && world.userId !== userId) {
-        res.status(403).json({ error: "Access denied" });
+        res.status(403).json({ error: 'Access denied' });
         return;
       }
       where.worldId = q.worldId;
@@ -81,18 +81,18 @@ router.get(
 
     if (q.search) {
       where.OR = [
-        { name: { contains: q.search, mode: "insensitive" } },
-        { description: { contains: q.search, mode: "insensitive" } },
+        { name: { contains: q.search, mode: 'insensitive' } },
+        { description: { contains: q.search, mode: 'insensitive' } },
       ];
     }
 
     if (q.tags) {
-      where.tags = { hasEvery: q.tags.split(",") };
+      where.tags = { hasEvery: q.tags.split(',') };
     }
 
     const timelines = await prisma.timeline.findMany({
       where,
-      orderBy: { updatedAt: "desc" },
+      orderBy: { updatedAt: 'desc' },
       include: {
         _count: { select: { events: true } },
         world: { select: { id: true, name: true } },
@@ -100,12 +100,12 @@ router.get(
     });
 
     res.json({ timelines });
-  }
+  },
 );
 
 // GET /:id - Get timeline by ID with events
 router.get(
-  "/:id",
+  '/:id',
   optionalAuth,
   validateParams(timelineParamsSchema),
   async (req: Request, res: Response): Promise<void> => {
@@ -115,28 +115,28 @@ router.get(
     const timeline = await prisma.timeline.findUnique({
       where: { id: params.id },
       include: {
-        events: { orderBy: { sortOrder: "asc" } },
+        events: { orderBy: { sortOrder: 'asc' } },
         world: { select: { id: true, name: true, userId: true, isPublic: true } },
       },
     });
 
     if (!timeline) {
-      res.status(404).json({ error: "Timeline not found" });
+      res.status(404).json({ error: 'Timeline not found' });
       return;
     }
 
     if (!timeline.world.isPublic && timeline.world.userId !== userId) {
-      res.status(403).json({ error: "Access denied" });
+      res.status(403).json({ error: 'Access denied' });
       return;
     }
 
     res.json({ timeline });
-  }
+  },
 );
 
 // POST / - Create timeline
 router.post(
-  "/",
+  '/',
   authenticateToken,
   validateBody(createTimelineSchema),
   async (req: Request, res: Response): Promise<void> => {
@@ -146,12 +146,12 @@ router.post(
     // Check world ownership
     const world = await prisma.world.findUnique({ where: { id: data.worldId } });
     if (!world) {
-      res.status(404).json({ error: "World not found" });
+      res.status(404).json({ error: 'World not found' });
       return;
     }
 
     if (world.userId !== userId) {
-      res.status(403).json({ error: "Cannot create timeline in this world" });
+      res.status(403).json({ error: 'Cannot create timeline in this world' });
       return;
     }
 
@@ -159,7 +159,7 @@ router.post(
       where: { worldId: data.worldId, name: data.name },
     });
     if (existing) {
-      res.status(409).json({ error: "Timeline with this name already exists in world" });
+      res.status(409).json({ error: 'Timeline with this name already exists in world' });
       return;
     }
 
@@ -175,12 +175,12 @@ router.post(
       },
     });
     res.status(201).json({ timeline });
-  }
+  },
 );
 
 // PUT /:id - Update timeline
 router.put(
-  "/:id",
+  '/:id',
   authenticateToken,
   validateParams(timelineParamsSchema),
   validateBody(createTimelineSchema.omit({ worldId: true })),
@@ -191,12 +191,12 @@ router.put(
 
     const existing = await prisma.timeline.findUnique({ where: { id: params.id } });
     if (!existing) {
-      res.status(404).json({ error: "Timeline not found" });
+      res.status(404).json({ error: 'Timeline not found' });
       return;
     }
 
     if (existing.userId !== userId) {
-      res.status(403).json({ error: "Cannot modify this timeline" });
+      res.status(403).json({ error: 'Cannot modify this timeline' });
       return;
     }
 
@@ -211,12 +211,12 @@ router.put(
       },
     });
     res.json({ timeline });
-  }
+  },
 );
 
 // PATCH /:id - Partial update timeline
 router.patch(
-  "/:id",
+  '/:id',
   authenticateToken,
   validateParams(timelineParamsSchema),
   validateBody(updateTimelineSchema),
@@ -227,12 +227,12 @@ router.patch(
 
     const existing = await prisma.timeline.findUnique({ where: { id: params.id } });
     if (!existing) {
-      res.status(404).json({ error: "Timeline not found" });
+      res.status(404).json({ error: 'Timeline not found' });
       return;
     }
 
     if (existing.userId !== userId) {
-      res.status(403).json({ error: "Cannot modify this timeline" });
+      res.status(403).json({ error: 'Cannot modify this timeline' });
       return;
     }
 
@@ -241,12 +241,12 @@ router.patch(
       data,
     });
     res.json({ timeline });
-  }
+  },
 );
 
 // DELETE /:id - Delete timeline
 router.delete(
-  "/:id",
+  '/:id',
   authenticateToken,
   validateParams(timelineParamsSchema),
   async (req: Request, res: Response): Promise<void> => {
@@ -255,18 +255,18 @@ router.delete(
 
     const existing = await prisma.timeline.findUnique({ where: { id: params.id } });
     if (!existing) {
-      res.status(404).json({ error: "Timeline not found" });
+      res.status(404).json({ error: 'Timeline not found' });
       return;
     }
 
     if (existing.userId !== userId) {
-      res.status(403).json({ error: "Cannot delete this timeline" });
+      res.status(403).json({ error: 'Cannot delete this timeline' });
       return;
     }
 
     await prisma.timeline.delete({ where: { id: params.id } });
-    res.json({ message: "Timeline deleted successfully" });
-  }
+    res.json({ message: 'Timeline deleted successfully' });
+  },
 );
 
 // =============================================================================
@@ -275,7 +275,7 @@ router.delete(
 
 // GET /:id/events - List events in timeline
 router.get(
-  "/:id/events",
+  '/:id/events',
   optionalAuth,
   validateParams(timelineParamsSchema),
   async (req: Request, res: Response): Promise<void> => {
@@ -287,27 +287,27 @@ router.get(
       include: { world: { select: { userId: true, isPublic: true } } },
     });
     if (!timeline) {
-      res.status(404).json({ error: "Timeline not found" });
+      res.status(404).json({ error: 'Timeline not found' });
       return;
     }
 
     if (!timeline.world.isPublic && timeline.world.userId !== userId) {
-      res.status(403).json({ error: "Access denied" });
+      res.status(403).json({ error: 'Access denied' });
       return;
     }
 
     const events = await prisma.timelineEvent.findMany({
       where: { timelineId: params.id },
-      orderBy: { sortOrder: "asc" },
+      orderBy: { sortOrder: 'asc' },
     });
 
     res.json({ events });
-  }
+  },
 );
 
 // POST /:id/events - Add event to timeline
 router.post(
-  "/:id/events",
+  '/:id/events',
   authenticateToken,
   validateParams(timelineParamsSchema),
   validateBody(createEventSchema),
@@ -318,12 +318,12 @@ router.post(
 
     const timeline = await prisma.timeline.findUnique({ where: { id: params.id } });
     if (!timeline) {
-      res.status(404).json({ error: "Timeline not found" });
+      res.status(404).json({ error: 'Timeline not found' });
       return;
     }
 
     if (timeline.userId !== userId) {
-      res.status(403).json({ error: "Cannot modify this timeline" });
+      res.status(403).json({ error: 'Cannot modify this timeline' });
       return;
     }
 
@@ -332,7 +332,7 @@ router.post(
     if (sortOrder === undefined) {
       const maxEvent = await prisma.timelineEvent.findFirst({
         where: { timelineId: params.id },
-        orderBy: { sortOrder: "desc" },
+        orderBy: { sortOrder: 'desc' },
         select: { sortOrder: true },
       });
       sortOrder = (maxEvent?.sortOrder ?? -1) + 1;
@@ -350,12 +350,12 @@ router.post(
       },
     });
     res.status(201).json({ event });
-  }
+  },
 );
 
 // PATCH /:id/events/:eventId - Update event
 router.patch(
-  "/:id/events/:eventId",
+  '/:id/events/:eventId',
   authenticateToken,
   validateParams(eventParamsSchema),
   validateBody(updateEventSchema),
@@ -366,12 +366,12 @@ router.patch(
 
     const timeline = await prisma.timeline.findUnique({ where: { id: params.timelineId } });
     if (!timeline) {
-      res.status(404).json({ error: "Timeline not found" });
+      res.status(404).json({ error: 'Timeline not found' });
       return;
     }
 
     if (timeline.userId !== userId) {
-      res.status(403).json({ error: "Cannot modify this timeline" });
+      res.status(403).json({ error: 'Cannot modify this timeline' });
       return;
     }
 
@@ -382,7 +382,7 @@ router.patch(
       },
     });
     if (!existingEvent) {
-      res.status(404).json({ error: "Event not found" });
+      res.status(404).json({ error: 'Event not found' });
       return;
     }
 
@@ -391,12 +391,12 @@ router.patch(
       data,
     });
     res.json({ event });
-  }
+  },
 );
 
 // DELETE /:id/events/:eventId - Delete event
 router.delete(
-  "/:id/events/:eventId",
+  '/:id/events/:eventId',
   authenticateToken,
   validateParams(eventParamsSchema),
   async (req: Request, res: Response): Promise<void> => {
@@ -405,12 +405,12 @@ router.delete(
 
     const timeline = await prisma.timeline.findUnique({ where: { id: params.timelineId } });
     if (!timeline) {
-      res.status(404).json({ error: "Timeline not found" });
+      res.status(404).json({ error: 'Timeline not found' });
       return;
     }
 
     if (timeline.userId !== userId) {
-      res.status(403).json({ error: "Cannot modify this timeline" });
+      res.status(403).json({ error: 'Cannot modify this timeline' });
       return;
     }
 
@@ -422,22 +422,24 @@ router.delete(
     });
 
     if (deleted.count === 0) {
-      res.status(404).json({ error: "Event not found" });
+      res.status(404).json({ error: 'Event not found' });
       return;
     }
 
-    res.json({ message: "Event deleted" });
-  }
+    res.json({ message: 'Event deleted' });
+  },
 );
 
 // POST /:id/events/reorder - Reorder events
 router.post(
-  "/:id/events/reorder",
+  '/:id/events/reorder',
   authenticateToken,
   validateParams(timelineParamsSchema),
-  validateBody(z.object({
-    eventIds: z.array(z.string().uuid()),
-  })),
+  validateBody(
+    z.object({
+      eventIds: z.array(z.string().uuid()),
+    }),
+  ),
   async (req: Request, res: Response): Promise<void> => {
     const userId = req.user!.userId;
     const params = req.params as z.infer<typeof timelineParamsSchema>;
@@ -445,12 +447,12 @@ router.post(
 
     const timeline = await prisma.timeline.findUnique({ where: { id: params.id } });
     if (!timeline) {
-      res.status(404).json({ error: "Timeline not found" });
+      res.status(404).json({ error: 'Timeline not found' });
       return;
     }
 
     if (timeline.userId !== userId) {
-      res.status(403).json({ error: "Cannot modify this timeline" });
+      res.status(403).json({ error: 'Cannot modify this timeline' });
       return;
     }
 
@@ -464,7 +466,7 @@ router.post(
     });
 
     if (timelineEvents.length !== uniqueEventIds.length) {
-      res.status(404).json({ error: "One or more events were not found in this timeline" });
+      res.status(404).json({ error: 'One or more events were not found in this timeline' });
       return;
     }
 
@@ -474,12 +476,12 @@ router.post(
         prisma.timelineEvent.update({
           where: { id: eventId },
           data: { sortOrder: index },
-        })
-      )
+        }),
+      ),
     );
 
-    res.json({ message: "Events reordered" });
-  }
+    res.json({ message: 'Events reordered' });
+  },
 );
 
 // =============================================================================
@@ -487,29 +489,27 @@ router.post(
 // =============================================================================
 
 // GET /pull - Pull all timelines for sync
-router.get(
-  "/pull",
-  authenticateToken,
-  async (req: Request, res: Response): Promise<void> => {
-    const userId = req.user!.userId;
+router.get('/pull', authenticateToken, async (req: Request, res: Response): Promise<void> => {
+  const userId = req.user!.userId;
 
-    const timelines = await prisma.timeline.findMany({
-      where: { userId },
-      orderBy: { updatedAt: "desc" },
-      include: { events: true },
-    });
+  const timelines = await prisma.timeline.findMany({
+    where: { userId },
+    orderBy: { updatedAt: 'desc' },
+    include: { events: true },
+  });
 
-    res.json({ timelines });
-  }
-);
+  res.json({ timelines });
+});
 
 // POST /push - Push timelines to server
 router.post(
-  "/push",
+  '/push',
   authenticateToken,
-  validateBody(z.object({
-    timelines: z.array(pushTimelineSchema),
-  })),
+  validateBody(
+    z.object({
+      timelines: z.array(pushTimelineSchema),
+    }),
+  ),
   async (req: Request, res: Response): Promise<void> => {
     const userId = req.user!.userId;
     const { timelines } = req.body as { timelines: Array<z.infer<typeof pushTimelineSchema>> };
@@ -525,7 +525,7 @@ router.post(
           select: { id: true },
         });
         if (!world) {
-          results.push({ id, name, status: "error" });
+          results.push({ id, name, status: 'error' });
           continue;
         }
 
@@ -554,7 +554,7 @@ router.post(
                 tags: timelineWriteData.tags,
               },
             });
-            results.push({ id, name, status: "updated" });
+            results.push({ id, name, status: 'updated' });
             continue;
           }
         }
@@ -562,14 +562,14 @@ router.post(
         const created = await prisma.timeline.create({
           data: { ...timelineWriteData, userId },
         });
-        results.push({ id: created.id, name, status: "created" });
+        results.push({ id: created.id, name, status: 'created' });
       } catch {
-        results.push({ name: timelineData.name ?? "unknown", status: "error" });
+        results.push({ name: timelineData.name ?? 'unknown', status: 'error' });
       }
     }
 
     res.json({ results });
-  }
+  },
 );
 
 export default router;

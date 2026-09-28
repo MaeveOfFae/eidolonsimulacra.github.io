@@ -1,22 +1,9 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  RotateCcw,
-  Save,
-  Loader2,
-  FileText,
-  CheckCircle2,
-  Circle,
-  Sparkles,
-  ChevronDown,
-  ChevronRight,
-} from 'lucide-react';
+import { RotateCcw, Save, Loader2, FileText, CheckCircle2, Sparkles, ChevronDown, ChevronRight } from 'lucide-react';
 import { api } from '@/lib/api';
 import DraftSendConfigPanel from '@/components/drafts/DraftSendConfigPanel';
-import {
-  buildDraftPriorAssets,
-  mergeDraftAdditionalInstructions,
-} from '@/lib/drafts/send-config';
+import { buildDraftPriorAssets, mergeDraftAdditionalInstructions } from '@/lib/drafts/send-config';
 import { GenerationService } from '@/lib/services/generation';
 import {
   clearActiveDraftRefinerSession,
@@ -137,8 +124,8 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
             originalContent: state.originalContent,
             storedContent: state.storedContent ?? state.originalContent,
           },
-        ])
-      )
+        ]),
+      ),
     );
     setExpandedAssets(new Set(session.expandedAssets));
     setEditingAsset(session.editingAsset);
@@ -149,7 +136,11 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
       setResumeNotice('Draft refinement was interrupted. Restored your editable snapshot.');
     } else if (session.editingAsset) {
       setResumeNotice('Restored draft refinement edit in progress.');
-    } else if (Object.values(session.assetStates).some((state) => state.status === 'reviewing' || state.content !== state.originalContent)) {
+    } else if (
+      Object.values(session.assetStates).some(
+        (state) => state.status === 'reviewing' || state.content !== state.originalContent,
+      )
+    ) {
       setResumeNotice('Restored draft refinement changes for review.');
     } else if (session.selectedDraftId) {
       setResumeNotice('Restored selected draft.');
@@ -195,7 +186,7 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
 
   // Update asset mutation
   const updateAsset = useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       assetName,
       content,
       expectedPreviousContent,
@@ -205,10 +196,19 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
       content: string;
       expectedPreviousContent: string | null;
       overwrite: boolean;
-    }) => api.updateAsset(selectedDraftId, assetName, content, {
-      expectedPreviousContent,
-      overwrite,
-    }),
+    }) => {
+      if (expectedPreviousContent !== content) {
+        await api.createDraftSnapshot(selectedDraftId, {
+          label: `Before editing ${assetName} in refiner`,
+          reason: `pre-draft-refiner-asset-update:${assetName}`,
+        });
+      }
+
+      return api.updateAsset(selectedDraftId, assetName, content, {
+        expectedPreviousContent,
+        overwrite,
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['draft', selectedDraftId] });
       setRefinerError(null);
@@ -219,7 +219,28 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
   });
 
   const updateMetadata = useMutation({
-    mutationFn: (metadata: Partial<DraftMetadata>) => api.updateMetadata(selectedDraftId, metadata),
+    mutationFn: async ({
+      metadata,
+      snapshot,
+    }: {
+      metadata: Partial<DraftMetadata>;
+      snapshot?: { label?: string; reason?: string; enabled?: boolean };
+    }) => {
+      const currentDraft = await api.getDraft(selectedDraftId);
+      const hasChanges = Object.entries(metadata).some(([key, value]) => {
+        const currentValue = currentDraft.metadata[key as keyof DraftMetadata];
+        return JSON.stringify(currentValue ?? null) !== JSON.stringify(value ?? null);
+      });
+
+      if (hasChanges && snapshot?.enabled !== false) {
+        await api.createDraftSnapshot(selectedDraftId, {
+          label: snapshot?.label ?? 'Before draft refiner metadata update',
+          reason: snapshot?.reason ?? 'pre-draft-refiner-metadata-update',
+        });
+      }
+
+      return api.updateMetadata(selectedDraftId, metadata);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['draft', selectedDraftId] });
       queryClient.invalidateQueries({ queryKey: ['drafts'] });
@@ -242,15 +263,6 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
       return next;
     });
   }, []);
-
-  // Start editing an asset
-  const startEditing = useCallback((assetName: string) => {
-    if (draft) {
-      setEditingAsset(assetName);
-      setEditContent(draft.assets[assetName] ?? assetStates[assetName]?.content ?? '');
-      setRefinerError(null);
-    }
-  }, [assetStates, draft]);
 
   // Cancel editing
   const cancelEditing = useCallback(() => {
@@ -307,140 +319,147 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
   }, [assetStates, editingAsset, editContent, updateAsset]);
 
   // Regenerate a single asset
-  const regenerateAsset = useCallback(async (assetName: string) => {
-    if (!draft || !draftTemplate) return;
+  const regenerateAsset = useCallback(
+    async (assetName: string) => {
+      if (!draft || !draftTemplate) return;
 
-    setRefinerError(null);
+      setRefinerError(null);
 
-    setAssetStates((prev) => ({
-      ...prev,
-      [assetName]: {
-        ...prev[assetName],
-        status: 'generating',
-      },
-    }));
-
-    const draftWithCurrentState: Draft = {
-      ...draft,
-      assets: Object.fromEntries(
-        Object.entries(assetStates).map(([name, state]) => [name, state.content])
-      ),
-    };
-    const priorAssets = buildDraftPriorAssets(draftWithCurrentState, assetName, draftTemplate);
-    const additionalInstructions = mergeDraftAdditionalInstructions(
-      draft.metadata.custom_instructions,
-      transientInstructions
-    );
-
-    try {
-      let newContent = '';
-
-      for await (const progress of GenerationService.generateAsset({
-        seed: draft.metadata.seed,
-        mode: draft.metadata.mode ?? 'Auto',
-        template: draft.metadata.template_name,
-        asset_name: assetName,
-        prior_assets: priorAssets,
-        additional_instructions: additionalInstructions,
-      })) {
-        if (progress.type === 'chunk' && progress.content) {
-          newContent += progress.content;
-          setAssetStates((prev) => ({
-            ...prev,
-            [assetName]: {
-              ...prev[assetName],
-              status: 'generating',
-              content: newContent,
-            },
-          }));
-        } else if (progress.type === 'asset' && progress.content) {
-          newContent = unwrapSingleCodeFence(progress.content);
-          setAssetStates((prev) => ({
-            ...prev,
-            [assetName]: {
-              ...prev[assetName],
-              status: 'reviewing',
-              content: newContent,
-            },
-          }));
-        }
-      }
-
-      if (!newContent) {
-        throw new Error('No content generated');
-      }
-    } catch (error) {
-      console.error('Asset regeneration failed:', error);
-      setRefinerError(error instanceof Error ? error.message : 'Asset regeneration failed');
       setAssetStates((prev) => ({
         ...prev,
         [assetName]: {
           ...prev[assetName],
-          status: 'idle',
+          status: 'generating',
         },
       }));
-    }
-  }, [assetStates, draft, draftTemplate, transientInstructions]);
+
+      const draftWithCurrentState: Draft = {
+        ...draft,
+        assets: Object.fromEntries(Object.entries(assetStates).map(([name, state]) => [name, state.content])),
+      };
+      const priorAssets = buildDraftPriorAssets(draftWithCurrentState, assetName, draftTemplate);
+      const additionalInstructions = mergeDraftAdditionalInstructions(
+        draft.metadata.custom_instructions,
+        transientInstructions,
+      );
+
+      try {
+        let newContent = '';
+
+        for await (const progress of GenerationService.generateAsset({
+          seed: draft.metadata.seed,
+          mode: draft.metadata.mode ?? 'Auto',
+          template: draft.metadata.template_name,
+          asset_name: assetName,
+          prior_assets: priorAssets,
+          additional_instructions: additionalInstructions,
+        })) {
+          if (progress.type === 'chunk' && progress.content) {
+            newContent += progress.content;
+            setAssetStates((prev) => ({
+              ...prev,
+              [assetName]: {
+                ...prev[assetName],
+                status: 'generating',
+                content: newContent,
+              },
+            }));
+          } else if (progress.type === 'asset' && progress.content) {
+            newContent = unwrapSingleCodeFence(progress.content);
+            setAssetStates((prev) => ({
+              ...prev,
+              [assetName]: {
+                ...prev[assetName],
+                status: 'reviewing',
+                content: newContent,
+              },
+            }));
+          }
+        }
+
+        if (!newContent) {
+          throw new Error('No content generated');
+        }
+      } catch (error) {
+        console.error('Asset regeneration failed:', error);
+        setRefinerError(error instanceof Error ? error.message : 'Asset regeneration failed');
+        setAssetStates((prev) => ({
+          ...prev,
+          [assetName]: {
+            ...prev[assetName],
+            status: 'idle',
+          },
+        }));
+      }
+    },
+    [assetStates, draft, draftTemplate, transientInstructions],
+  );
 
   // Accept regenerated content
-  const acceptRegenerated = useCallback(async (assetName: string) => {
-    const state = assetStates[assetName];
-    if (!state || state.status !== 'reviewing') return;
+  const acceptRegenerated = useCallback(
+    async (assetName: string) => {
+      const state = assetStates[assetName];
+      if (!state || state.status !== 'reviewing') return;
 
-    const sanitizedContent = unwrapSingleCodeFence(state.content);
+      const sanitizedContent = unwrapSingleCodeFence(state.content);
 
-    setRefinerError(null);
+      setRefinerError(null);
 
-    setAssetStates((prev) => ({
-      ...prev,
-      [assetName]: {
-        ...prev[assetName],
-        status: 'saving',
-      },
-    }));
+      setAssetStates((prev) => ({
+        ...prev,
+        [assetName]: {
+          ...prev[assetName],
+          status: 'saving',
+        },
+      }));
 
-    try {
-      await updateAsset.mutateAsync({
-        assetName,
-        content: sanitizedContent,
-        expectedPreviousContent: state.storedContent,
-        overwrite: state.storedContent !== null,
-      });
+      try {
+        await updateAsset.mutateAsync({
+          assetName,
+          content: sanitizedContent,
+          expectedPreviousContent: state.storedContent,
+          overwrite: state.storedContent !== null,
+        });
+        setAssetStates((prev) => ({
+          ...prev,
+          [assetName]: {
+            ...prev[assetName],
+            status: 'idle',
+            content: sanitizedContent,
+            originalContent: sanitizedContent,
+            storedContent: sanitizedContent,
+          },
+        }));
+      } catch {
+        setAssetStates((prev) => ({
+          ...prev,
+          [assetName]: {
+            ...prev[assetName],
+            status: 'reviewing',
+          },
+        }));
+      }
+    },
+    [assetStates, updateAsset],
+  );
+
+  // Discard regenerated content
+  const discardRegenerated = useCallback(
+    (assetName: string) => {
+      const state = assetStates[assetName];
+      if (!state) return;
+
       setAssetStates((prev) => ({
         ...prev,
         [assetName]: {
           ...prev[assetName],
           status: 'idle',
-          content: sanitizedContent,
-          originalContent: sanitizedContent,
-          storedContent: sanitizedContent,
+          content: state.originalContent,
         },
       }));
-    } catch {
-      setAssetStates((prev) => ({
-        ...prev,
-        [assetName]: {
-          ...prev[assetName],
-          status: 'reviewing',
-        },
-      }));
-    }
-  }, [assetStates, updateAsset]);
-
-  // Discard regenerated content
-  const discardRegenerated = useCallback((assetName: string) => {
-    const state = assetStates[assetName];
-    if (!state) return;
-
-    setAssetStates((prev) => ({
-      ...prev,
-      [assetName]: {
-        ...prev[assetName],
-        status: 'idle',
-        content: state.originalContent,
-      },
-    }));
-  }, [assetStates]);
+    },
+    [assetStates],
+  );
 
   // Handle draft selection
   const handleDraftSelect = useCallback((draftId: string) => {
@@ -456,11 +475,11 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
 
   useEffect(() => {
     const hasState = Boolean(
-      selectedDraftId
-      || transientInstructions.trim()
-      || Object.keys(assetStates).length > 0
-      || editingAsset
-      || editContent.trim()
+      selectedDraftId ||
+      transientInstructions.trim() ||
+      Object.keys(assetStates).length > 0 ||
+      editingAsset ||
+      editContent.trim(),
     );
 
     if (!hasState) {
@@ -469,7 +488,7 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
     }
 
     const interrupted = Object.values(assetStates).some(
-      (state) => state.status === 'generating' || state.status === 'saving'
+      (state) => state.status === 'generating' || state.status === 'saving',
     );
 
     const serializedAssetStates: Record<string, ActiveDraftRefinerAssetState> = Object.fromEntries(
@@ -482,7 +501,7 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
           originalContent: state.originalContent,
           storedContent: state.storedContent,
         },
-      ])
+      ]),
     );
 
     saveActiveDraftRefinerSession({
@@ -500,10 +519,9 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
 
   useEffect(() => {
     const hasWorkingState = Boolean(
-      transientInstructions.trim()
-      ||
-      editingAsset
-      || Object.values(assetStates).some((state) => state.status !== 'idle' || state.content !== state.originalContent)
+      transientInstructions.trim() ||
+      editingAsset ||
+      Object.values(assetStates).some((state) => state.status !== 'idle' || state.content !== state.originalContent),
     );
 
     if (!hasWorkingState) {
@@ -584,9 +602,7 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
                   </span>
                 )}
                 {draft.metadata.template_name && (
-                  <span className="rounded-full bg-secondary px-2 py-1 text-xs">
-                    {draft.metadata.template_name}
-                  </span>
+                  <span className="rounded-full bg-secondary px-2 py-1 text-xs">{draft.metadata.template_name}</span>
                 )}
               </div>
             </div>
@@ -596,7 +612,13 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
             draft={draft}
             template={draftTemplate}
             onSave={async (updates) => {
-              await updateMetadata.mutateAsync(updates);
+              await updateMetadata.mutateAsync({
+                metadata: updates,
+                snapshot: {
+                  label: 'Before updating draft refiner outbound settings',
+                  reason: 'pre-draft-refiner-send-config-update',
+                },
+              });
             }}
             isSaving={updateMetadata.isPending}
             description="Adjust the saved outbound instructions and component order used for future regeneration from this draft."
@@ -605,14 +627,17 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
               onChange: setTransientInstructions,
               disabled: updateMetadata.isPending,
               label: 'Transient send-only instructions',
-              description: 'Merged with the saved draft instructions for regeneration actions in this refiner session only.',
-              placeholder: 'Temporary guidance for the next regenerate action without changing the saved draft instructions.',
+              description:
+                'Merged with the saved draft instructions for regeneration actions in this refiner session only.',
+              placeholder:
+                'Temporary guidance for the next regenerate action without changing the saved draft instructions.',
             }}
           />
 
           {missingAssetCount > 0 && (
             <div className="rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm text-foreground">
-              This draft is missing {missingAssetCount} template asset{missingAssetCount === 1 ? '' : 's'}. Create them here with AI or by editing the empty fields directly.
+              This draft is missing {missingAssetCount} template asset{missingAssetCount === 1 ? '' : 's'}. Create them
+              here with AI or by editing the empty fields directly.
             </div>
           )}
 
@@ -647,8 +672,8 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
                     isReviewing
                       ? 'border-amber-500/50 bg-amber-500/5'
                       : hasChanges
-                      ? 'border-primary/50 bg-primary/5'
-                      : 'border-border/50'
+                        ? 'border-primary/50 bg-primary/5'
+                        : 'border-border/50'
                   }`}
                 >
                   {/* Asset Header */}
@@ -664,9 +689,7 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
                       )}
                       {getStatusIcon(state.status)}
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-medium capitalize">
-                          {assetName.replace(/_/g, ' ')}
-                        </span>
+                        <span className="font-medium capitalize">{assetName.replace(/_/g, ' ')}</span>
                         {!assetExists && (
                           <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium uppercase tracking-[0.14em] text-amber-700 dark:text-amber-300">
                             Missing
@@ -683,15 +706,9 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
                       )}
                     </div>
                     <div className="flex items-center gap-2">
-                      {isGenerating && (
-                        <span className="text-xs text-muted-foreground">Generating...</span>
-                      )}
-                      {isReviewing && (
-                        <span className="text-xs text-amber-500">Review changes</span>
-                      )}
-                      {isSaving && (
-                        <span className="text-xs text-muted-foreground">Saving...</span>
-                      )}
+                      {isGenerating && <span className="text-xs text-muted-foreground">Generating...</span>}
+                      {isReviewing && <span className="text-xs text-amber-500">Review changes</span>}
+                      {isSaving && <span className="text-xs text-muted-foreground">Saving...</span>}
                     </div>
                   </button>
 
@@ -717,11 +734,7 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
                               disabled={isSaving || !editContent.trim()}
                               className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                             >
-                              {isSaving ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Save className="h-4 w-4" />
-                              )}
+                              {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                               {saveLabel}
                             </button>
                             <button
@@ -841,10 +854,10 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
                                 ? 'Edit the content directly or regenerate with AI.'
                                 : 'This asset is missing. Create it with AI or type content directly, then save.'
                               : state.status === 'reviewing'
-                              ? assetExists
-                                ? 'Review the regenerated content above. Accept to save, or discard to revert.'
-                                : 'Review the generated content above. Create the asset to save it, or discard to keep this slot empty.'
-                              : 'Processing...'}
+                                ? assetExists
+                                  ? 'Review the regenerated content above. Accept to save, or discard to revert.'
+                                  : 'Review the generated content above. Create the asset to save it, or discard to keep this slot empty.'
+                                : 'Processing...'}
                           </p>
                         </div>
                       )}

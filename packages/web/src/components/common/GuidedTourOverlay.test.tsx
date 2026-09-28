@@ -30,7 +30,7 @@ describe('GuidedTourOverlay', () => {
           <div data-tour-anchor="generation-submit">Generate target</div>
           <GuidedTourOverlay />
         </div>
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     expect(screen.queryByText('Guided Tour')).not.toBeInTheDocument();
@@ -50,7 +50,7 @@ describe('GuidedTourOverlay', () => {
           <div data-tour-anchor="generation-submit">Generate target</div>
           <GuidedTourOverlay />
         </div>
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     expect(screen.getByText('Guided Tour')).toBeInTheDocument();

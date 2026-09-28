@@ -29,7 +29,7 @@ describe('InlineHelpTip', () => {
         description="Helpful description"
         actionLabel="Do thing"
         onAction={vi.fn()}
-      />
+      />,
     );
 
     expect(screen.getByRole('button', { name: 'Helpful title' })).toBeInTheDocument();
@@ -48,13 +48,7 @@ describe('InlineHelpTip', () => {
       },
     });
 
-    const view = render(
-      <InlineHelpTip
-        tipId="sample-tip"
-        title="Helpful title"
-        description="Helpful description"
-      />
-    );
+    const view = render(<InlineHelpTip tipId="sample-tip" title="Helpful title" description="Helpful description" />);
 
     expect(view.container).toBeEmptyDOMElement();
   });

@@ -1,11 +1,6 @@
 import { useCallback, useMemo, useState, type ReactNode } from 'react';
 
-import {
-  AssistantContext,
-  type AssistantContextValue,
-  type AssistantScreenContext,
-} from './AssistantContext.shared';
-
+import { AssistantContext, type AssistantContextValue, type AssistantScreenContext } from './AssistantContext.shared';
 
 interface AssistantContextState {
   ownerId: string | null;
@@ -20,19 +15,22 @@ export function AssistantContextProvider({ children }: { children: ReactNode }) 
     serializedContext: '',
   });
 
-  const setScreenContext = useCallback((ownerId: string, context: AssistantScreenContext, serializedContext: string) => {
-    setState((previous) => {
-      if (previous.ownerId === ownerId && previous.serializedContext === serializedContext) {
-        return previous;
-      }
+  const setScreenContext = useCallback(
+    (ownerId: string, context: AssistantScreenContext, serializedContext: string) => {
+      setState((previous) => {
+        if (previous.ownerId === ownerId && previous.serializedContext === serializedContext) {
+          return previous;
+        }
 
-      return {
-        ownerId,
-        screenContext: context,
-        serializedContext,
-      };
-    });
-  }, []);
+        return {
+          ownerId,
+          screenContext: context,
+          serializedContext,
+        };
+      });
+    },
+    [],
+  );
 
   const clearScreenContext = useCallback((ownerId: string) => {
     setState((previous) => {
@@ -58,7 +56,7 @@ export function AssistantContextProvider({ children }: { children: ReactNode }) 
       setScreenContext,
       clearScreenContext,
     }),
-    [clearScreenContext, setScreenContext, state.screenContext]
+    [clearScreenContext, setScreenContext, state.screenContext],
   );
 
   return <AssistantContext.Provider value={value}>{children}</AssistantContext.Provider>;

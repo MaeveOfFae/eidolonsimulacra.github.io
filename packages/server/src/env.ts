@@ -1,13 +1,21 @@
 // Environment configuration with validation
-import { config } from "dotenv";
-import { z } from "zod";
+import { config } from 'dotenv';
+import { z } from 'zod';
 
 // Load .env file
 config();
 
+// Boolean() coercion would treat the string "false" as true, which silently
+// inverts operator intent, so parse the common boolean spellings explicitly.
+const booleanFromEnv = (defaultValue: boolean) =>
+  z
+    .enum(['true', 'false', '1', '0'])
+    .default(defaultValue ? 'true' : 'false')
+    .transform((value) => value === 'true' || value === '1');
+
 const envSchema = z.object({
   // Server
-  NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.coerce.number().default(3001),
 
   // Database
@@ -18,7 +26,10 @@ const envSchema = z.object({
   JWT_REFRESH_SECRET: z.string().min(32),
 
   // Encryption (32 bytes hex string for AES-256)
-  ENCRYPTION_KEY: z.string().length(64).regex(/^[0-9a-f]+$/),
+  ENCRYPTION_KEY: z
+    .string()
+    .length(64)
+    .regex(/^[0-9a-f]+$/),
 
   // OAuth - Google
   OAUTH_GOOGLE_CLIENT_ID: z.string().optional(),
@@ -35,12 +46,16 @@ const envSchema = z.object({
   SMTP_PASSWORD: z.string().optional(),
 
   // CORS
-  CORS_ORIGIN: z.string().default("*"),
+  CORS_ORIGIN: z.string().default('*'),
 
-  // Rate limiting
-  RATE_LIMIT_ENABLED: z.coerce.boolean().default(false),
-  RATE_LIMIT_AUTH_ENABLED: z.coerce.boolean().default(false),
-  RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(15 * 60 * 1000),
+  // Rate limiting (enabled by default so a public deployment is not unprotected)
+  RATE_LIMIT_ENABLED: booleanFromEnv(true),
+  RATE_LIMIT_AUTH_ENABLED: booleanFromEnv(true),
+  RATE_LIMIT_WINDOW_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(15 * 60 * 1000),
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(1000),
   RATE_LIMIT_AUTH_MAX: z.coerce.number().int().positive().default(40),
 
@@ -54,7 +69,7 @@ function loadEnv(): Env {
   const result = envSchema.safeParse(process.env);
 
   if (!result.success) {
-    console.error("Invalid environment configuration:");
+    console.error('Invalid environment configuration:');
     console.error(result.error.flatten().fieldErrors);
     process.exit(1);
   }

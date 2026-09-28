@@ -57,10 +57,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function isTemplateShape(value: unknown): value is Template {
-  return isRecord(value)
-    && typeof value.name === 'string'
-    && typeof value.version === 'string'
-    && Array.isArray(value.assets);
+  return (
+    isRecord(value) &&
+    typeof value.name === 'string' &&
+    typeof value.version === 'string' &&
+    Array.isArray(value.assets)
+  );
 }
 
 function toStringMap(value: unknown): Record<string, string> {
@@ -69,7 +71,7 @@ function toStringMap(value: unknown): Record<string, string> {
   }
 
   return Object.fromEntries(
-    Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === 'string')
+    Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === 'string'),
   );
 }
 
@@ -98,18 +100,13 @@ function coerceStoredTemplateRecord(value: unknown): StoredTemplateRecord | null
 }
 
 function coerceStoredTemplateRecords(value: unknown): StoredTemplateRecord[] {
-  const candidates = Array.isArray(value)
-    ? value
-    : isRecord(value)
-      ? Object.values(value)
-      : [];
+  const candidates = Array.isArray(value) ? value : isRecord(value) ? Object.values(value) : [];
 
   return candidates
     .map(coerceStoredTemplateRecord)
 
     .filter((record): record is StoredTemplateRecord => Boolean(record));
 }
-
 
 function buildBuiltinTemplateRecords(): StoredTemplateRecord[] {
   const manifestRecords = Object.entries(templateManifestModules)
@@ -130,7 +127,9 @@ function buildBuiltinTemplateRecords(): StoredTemplateRecord[] {
     })
     .filter((record): record is StoredTemplateRecord => Boolean(record));
 
-  const defaultTemplateRoot = manifestRecords.find((record) => record.template_root?.endsWith('/official_v2v3'))?.template_root;
+  const defaultTemplateRoot = manifestRecords.find((record) =>
+    record.template_root?.endsWith('/official_v2v3'),
+  )?.template_root;
   const builtinRecords: StoredTemplateRecord[] = [
     {
       template: {
@@ -201,7 +200,7 @@ function buildDefaultBlueprintCatalog(): Map<string, BrowserBlueprint> {
 export function getBlueprintOverrides(): Record<string, string> {
   return readStorage<Record<string, string>>(
     [BLUEPRINT_OVERRIDES_STORAGE_KEY, ...LEGACY_BLUEPRINT_OVERRIDES_STORAGE_KEYS],
-    {}
+    {},
   );
 }
 
@@ -265,24 +264,24 @@ export function findBlueprintContent(fileName?: string): string {
 
   const normalizedFileName = fileName.replace(/^\.?\//, '');
   const targetBase = normalizedFileName.replace(/\.(txt|md)$/i, '');
-  const match = [...getBlueprintCatalog().values()].find((blueprint) => (
-    blueprint.path === normalizedFileName
-      || blueprint.path.endsWith(`/${normalizedFileName}`)
-      || blueprint.path.endsWith(`/${targetBase}.md`)
-  ));
+  const match = [...getBlueprintCatalog().values()].find(
+    (blueprint) =>
+      blueprint.path === normalizedFileName ||
+      blueprint.path.endsWith(`/${normalizedFileName}`) ||
+      blueprint.path.endsWith(`/${targetBase}.md`),
+  );
 
   return match?.content ?? '';
 }
 
 export function getStoredTemplates(): StoredTemplateRecord[] {
-  const stored = readStorage<unknown>(
-    [CUSTOM_TEMPLATES_STORAGE_KEY, ...LEGACY_CUSTOM_TEMPLATES_STORAGE_KEYS],
-    []
-  );
+  const stored = readStorage<unknown>([CUSTOM_TEMPLATES_STORAGE_KEY, ...LEGACY_CUSTOM_TEMPLATES_STORAGE_KEYS], []);
   const coerced = coerceStoredTemplateRecords(stored);
-  const normalized = coerced.map((record) => normalizeStoredTemplateRecord(record, {
-    resolveBuiltinContent: findBlueprintContent,
-  }));
+  const normalized = coerced.map((record) =>
+    normalizeStoredTemplateRecord(record, {
+      resolveBuiltinContent: findBlueprintContent,
+    }),
+  );
 
   if (JSON.stringify(stored) !== JSON.stringify(normalized)) {
     writeStorage(CUSTOM_TEMPLATES_STORAGE_KEY, LEGACY_CUSTOM_TEMPLATES_STORAGE_KEYS, normalized);
@@ -295,20 +294,26 @@ export function saveStoredTemplates(records: StoredTemplateRecord[]): void {
   writeStorage(
     CUSTOM_TEMPLATES_STORAGE_KEY,
     LEGACY_CUSTOM_TEMPLATES_STORAGE_KEYS,
-    records.map((record) => normalizeStoredTemplateRecord(record, {
-      resolveBuiltinContent: findBlueprintContent,
-    }))
+    records.map((record) =>
+      normalizeStoredTemplateRecord(record, {
+        resolveBuiltinContent: findBlueprintContent,
+      }),
+    ),
   );
 }
 
 export function getAllTemplateRecords(): StoredTemplateRecord[] {
   return [
-    ...buildBuiltinTemplateRecords().map((record) => hydrateStoredTemplateRecord(record, {
-      resolveBuiltinContent: findBlueprintContent,
-    })),
-    ...getStoredTemplates().map((record) => hydrateStoredTemplateRecord(record, {
-      resolveBuiltinContent: findBlueprintContent,
-    })),
+    ...buildBuiltinTemplateRecords().map((record) =>
+      hydrateStoredTemplateRecord(record, {
+        resolveBuiltinContent: findBlueprintContent,
+      }),
+    ),
+    ...getStoredTemplates().map((record) =>
+      hydrateStoredTemplateRecord(record, {
+        resolveBuiltinContent: findBlueprintContent,
+      }),
+    ),
   ];
 }
 
@@ -329,7 +334,10 @@ export function resolveTemplateAssets(name?: string): TemplateAsset[] | undefine
   return template ? templateToAssets(template) : undefined;
 }
 
-export function resolveTemplateBlueprintContent(templateName: string | undefined, assetName: string): string | undefined {
+export function resolveTemplateBlueprintContent(
+  templateName: string | undefined,
+  assetName: string,
+): string | undefined {
   const record = getTemplateRecord(templateName);
   if (!record) {
     return undefined;
@@ -346,12 +354,10 @@ export function getTemplateBlueprintContents(name: string): TemplateBlueprintCon
 
 export function inferCharacterDisplayNameForTemplate(
   assets: Record<string, string>,
-  templateName?: string
+  templateName?: string,
 ): string | undefined {
   const template = resolveTemplateDefinition(templateName);
-  const preferredAssets = template
-    ? getOrderedAssets(template).map((asset) => asset.name)
-    : ['character_sheet'];
+  const preferredAssets = template ? getOrderedAssets(template).map((asset) => asset.name) : ['character_sheet'];
 
   const displayName = inferCharacterDisplayNameFromAssets(assets, preferredAssets);
   return displayName ?? undefined;

@@ -1,0 +1,1308 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Eidolon Simulacra — Template-Aware Character Generation</title>
+<meta name="description" content="Eidolon Simulacra compiles structured character packages from a single seed — assets in dependency order, formats kept module-specific. Local-first: browser, desktop, Android." />
+<meta name="theme-color" content="#111827" />
+<meta property="og:title" content="Eidolon Simulacra" />
+<meta property="og:description" content="One seed in. A complete, ordered character pack out." />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230f172a'/%3E%3Cpath d='M16 6l8 10-8 10-8-10z' fill='none' stroke='%2338bdf8' stroke-width='2'/%3E%3Ccircle cx='16' cy='16' r='2.4' fill='%237dd3fc'/%3E%3C/svg%3E" />
+<style>
+/* ============================================================
+   Eidolon Simulacra — project home
+   Design tokens lifted from the app's built-in themes
+   (packages/web/src/lib/api.ts · theme.ts) — dark is the app default.
+   ============================================================ */
+
+/* ---- theme: dark (app default) ---- */
+:root {
+  --bg: #0f172a;
+  --surface: #1e293b;
+  --window: #111827;
+  --text: #e5e7eb;
+  --muted: #94a3b8;
+  --accent: #38bdf8;
+  --button: #1d4ed8;
+  --button-text: #f8fafc;
+  --border: #334155;
+  --highlight: #7dd3fc;
+}
+
+/* ---- theme: nyx ---- */
+[data-theme="nyx"] {
+  --bg: #111113;
+  --surface: #18181b;
+  --window: #18181b;
+  --text: #f3f4f6;
+  --muted: #a1a1aa;
+  --accent: #f97316;
+  --button: #c2410c;
+  --button-text: #fff7ed;
+  --border: #3f3f46;
+  --highlight: #fb923c;
+}
+
+/* ---- theme: midnight ---- */
+[data-theme="midnight"] {
+  --bg: #0a1929;
+  --surface: #0f2638;
+  --window: #051923;
+  --text: #b2d4f0;
+  --muted: #6b8aa3;
+  --accent: #00b4d8;
+  --button: #014361;
+  --button-text: #caf0f8;
+  --border: #1d3557;
+  --highlight: #48cae4;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+::selection { background: color-mix(in srgb, var(--accent) 35%, transparent); }
+
+a { color: inherit; }
+
+h1, h2, h3 {
+  font-family: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0;
+  text-wrap: balance;
+}
+
+.mono { font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+.wrap {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* ---- kickers: mono eyebrow with a lit node, per the app's home-kicker ---- */
+.kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.kicker::before {
+  content: '';
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--highlight) 65%, white 35%);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--highlight) 45%, transparent);
+  flex: none;
+}
+
+/* ================= nav ================= */
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+.nav-inner {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  height: 64px;
+}
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  text-decoration: none;
+  flex: none;
+}
+.brand svg { display: block; }
+.brand-name {
+  font-family: "Space Grotesk", sans-serif;
+  font-weight: 600;
+  font-size: 0.95rem;
+  letter-spacing: 0.01em;
+}
+.brand-version {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  border-radius: 999px;
+  padding: 0.14rem 0.5rem;
+  margin-left: 0.1rem;
+}
+.nav-links {
+  display: flex;
+  gap: 1.4rem;
+  margin-left: auto;
+}
+.nav-links a {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-decoration: none;
+  transition: color 160ms ease;
+  padding: 0.5rem 0;
+}
+.nav-links a:hover { color: var(--highlight); }
+.nav-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: 0.4rem;
+}
+.swatches { display: flex; gap: 0.4rem; }
+.swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 2px solid color-mix(in srgb, var(--border) 80%, transparent);
+  cursor: pointer;
+  padding: 0;
+  background: linear-gradient(135deg, var(--sw-bg) 55%, var(--sw-ac) 55%);
+  transition: border-color 160ms ease, transform 160ms ease;
+}
+.swatch:hover { transform: translateY(-1px); border-color: color-mix(in srgb, var(--highlight) 45%, var(--border)); }
+.swatch[aria-pressed="true"] {
+  border-color: var(--highlight);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--highlight) 25%, transparent);
+}
+.nav-repo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--text);
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  border-radius: 999px;
+  padding: 0.42rem 0.85rem;
+  transition: border-color 160ms ease, color 160ms ease;
+}
+.nav-repo:hover { border-color: color-mix(in srgb, var(--highlight) 40%, var(--border)); color: var(--highlight); }
+
+/* ================= hero ================= */
+.hero {
+  position: relative;
+  padding: 84px 0 72px;
+  overflow: hidden;
+}
+/* radial glows + blueprint grid — mirrors the app's .home-grid-bg layers */
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--border) 42%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--border) 42%, transparent) 1px, transparent 1px),
+    radial-gradient(circle at top left, color-mix(in srgb, var(--highlight) 16%, transparent), transparent 38%),
+    radial-gradient(circle at bottom right, color-mix(in srgb, var(--accent) 14%, transparent), transparent 34%);
+  background-size: 22px 22px, 22px 22px, auto, auto;
+  mask-image: linear-gradient(to bottom, black 55%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 55%, transparent 100%);
+}
+.hero-glow {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 999px;
+  filter: blur(42px);
+  animation: drift 9s ease-in-out infinite;
+}
+.hero-glow.g1 {
+  left: -80px; top: 90px; width: 240px; height: 240px;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+}
+.hero-glow.g2 {
+  right: 6%; top: 40px; width: 130px; height: 130px;
+  background: color-mix(in srgb, white 7%, transparent);
+  animation-delay: -3s;
+}
+@keyframes drift {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-14px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .hero-glow { animation: none; }
+}
+
+.hero-grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.02fr) minmax(0, 0.98fr);
+  gap: 56px;
+  align-items: center;
+}
+.hero h1 {
+  margin-top: 20px;
+  font-size: clamp(2.2rem, 4.6vw, 3.4rem);
+  line-height: 1.08;
+}
+.hero-sub {
+  margin: 20px 0 0;
+  max-width: 34rem;
+  color: var(--muted);
+  font-size: 1.02rem;
+  line-height: 1.7;
+}
+.hero-sub strong { color: var(--text); font-weight: 600; }
+.cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 32px;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  border-radius: 0.85rem;
+  padding: 0.85rem 1.35rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+  min-height: 44px;
+  transition: transform 180ms ease, border-color 180ms ease, background 180ms ease, color 180ms ease;
+}
+.btn svg { flex: none; }
+.btn-primary {
+  background: var(--button);
+  color: var(--button-text);
+  border: 1px solid color-mix(in srgb, var(--highlight) 25%, transparent);
+  box-shadow: 0 14px 34px -22px color-mix(in srgb, var(--accent) 70%, transparent);
+}
+.btn-primary:hover { transform: translateY(-1px); background: color-mix(in srgb, var(--button) 88%, var(--accent) 12%); }
+.btn-ghost {
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  background: color-mix(in srgb, var(--bg) 50%, transparent);
+  color: var(--text);
+}
+.btn-ghost:hover { border-color: color-mix(in srgb, var(--highlight) 40%, var(--border)); color: var(--highlight); }
+.hero-meta {
+  margin-top: 22px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.hero-meta b { color: color-mix(in srgb, var(--highlight) 80%, white 20%); font-weight: 500; }
+
+/* ---- asset graph panel: the real six-asset contract ---- */
+.graph {
+  position: relative;
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  border-radius: 1.6rem;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--surface) 88%, white 4%), color-mix(in srgb, var(--bg) 92%, black 8%));
+  box-shadow: 0 28px 80px -48px rgba(2, 6, 23, 0.9);
+  overflow: hidden;
+}
+.graph::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--border) 34%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--border) 34%, transparent) 1px, transparent 1px);
+  background-size: 22px 22px;
+  mask-image: linear-gradient(160deg, black 30%, transparent 90%);
+  -webkit-mask-image: linear-gradient(160deg, black 30%, transparent 90%);
+}
+.graph-head {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+}
+.graph-head .id {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.72rem;
+  color: var(--text);
+}
+.graph-head .id span { color: var(--muted); }
+.chip {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--highlight) 85%, white 10%);
+  border: 1px solid color-mix(in srgb, var(--highlight) 35%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-radius: 999px;
+  padding: 0.22rem 0.6rem;
+  white-space: nowrap;
+}
+.graph-seed {
+  position: relative;
+  padding: 14px 20px;
+  border-bottom: 1px dashed color-mix(in srgb, var(--border) 70%, transparent);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+.graph-seed b { color: var(--accent); font-weight: 500; }
+.graph-seed em { color: var(--text); font-style: normal; }
+.graph-rows {
+  list-style: none;
+  margin: 0;
+  padding: 10px 20px 6px;
+  position: relative;
+}
+.graph-rows::before {
+  content: '';
+  position: absolute;
+  left: 33px;
+  top: 22px;
+  bottom: 22px;
+  width: 1px;
+  background: linear-gradient(to bottom,
+    color-mix(in srgb, var(--accent) 55%, transparent),
+    color-mix(in srgb, var(--accent) 22%, transparent));
+}
+.g-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 26px 1fr auto;
+  gap: 12px;
+  align-items: baseline;
+  padding: 8px 0 8px 0;
+}
+.g-num {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.66rem;
+  color: var(--muted);
+  background: var(--bg);
+  border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
+  border-radius: 999px;
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+}
+.g-name {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.8rem;
+  color: var(--text);
+}
+.g-dep {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.64rem;
+  color: var(--muted);
+  margin-left: 0.5rem;
+}
+.g-dep b { color: var(--accent); font-weight: 500; }
+.g-desc {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.g-flag {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.58rem;
+  letter-spacing: 0.12em;
+  border-radius: 999px;
+  padding: 0.16rem 0.5rem;
+  white-space: nowrap;
+}
+.g-flag.req {
+  color: color-mix(in srgb, var(--highlight) 85%, white 10%);
+  border: 1px solid color-mix(in srgb, var(--highlight) 32%, transparent);
+}
+.g-flag.opt {
+  color: var(--muted);
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+}
+.graph-foot {
+  position: relative;
+  padding: 12px 20px 16px;
+  border-top: 1px dashed color-mix(in srgb, var(--border) 70%, transparent);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.64rem;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+/* ================= sections ================= */
+section { scroll-margin-top: 88px; }
+.sec { padding: 76px 0; }
+.sec-head { max-width: 42rem; }
+.sec-head h2 {
+  margin-top: 16px;
+  font-size: clamp(1.5rem, 2.6vw, 2.05rem);
+}
+.sec-head p {
+  margin: 14px 0 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.sec-alt {
+  background: color-mix(in srgb, var(--window) 55%, var(--bg));
+  border-top: 1px solid color-mix(in srgb, var(--border) 45%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 45%, transparent);
+}
+
+/* ---- contract rules ---- */
+.rules {
+  margin-top: 40px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+.rule {
+  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  border-radius: 1.25rem;
+  padding: 22px 20px;
+  background: color-mix(in srgb, var(--bg) 45%, transparent);
+  transition: border-color 200ms ease, transform 200ms ease;
+}
+.rule:hover {
+  border-color: color-mix(in srgb, var(--highlight) 30%, var(--border));
+  transform: translateY(-2px);
+}
+.rule .n {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.64rem;
+  letter-spacing: 0.2em;
+  color: color-mix(in srgb, var(--highlight) 85%, white 10%);
+}
+.rule h3 { font-size: 1rem; margin-top: 12px; }
+.rule p { margin: 8px 0 0; font-size: 0.84rem; color: var(--muted); line-height: 1.6; }
+
+/* ---- surfaces ---- */
+.surfaces {
+  margin-top: 44px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.surface {
+  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  border-radius: 1.5rem;
+  padding: 26px 24px;
+  background:
+    linear-gradient(160deg, color-mix(in srgb, var(--surface) 60%, transparent), color-mix(in srgb, var(--bg) 90%, transparent));
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transition: border-color 200ms ease, transform 200ms ease, box-shadow 200ms ease;
+}
+.surface:hover {
+  border-color: color-mix(in srgb, var(--highlight) 32%, var(--border));
+  transform: translateY(-3px);
+  box-shadow: 0 22px 50px -38px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+.surface-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.surface-top .plate {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.22em;
+  color: var(--muted);
+}
+.surface h3 { font-size: 1.12rem; }
+.surface p { margin: 0; font-size: 0.86rem; color: var(--muted); line-height: 1.65; }
+.surface .foot {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px dashed color-mix(in srgb, var(--border) 60%, transparent);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.64rem;
+  color: var(--muted);
+}
+
+/* ---- workflow lanes ---- */
+.lanes {
+  margin-top: 44px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  counter-reset: lane;
+}
+.lane {
+  position: relative;
+  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  border-radius: 1.25rem;
+  padding: 22px 20px 20px;
+  background: color-mix(in srgb, var(--bg) 45%, transparent);
+  transition: border-color 200ms ease, transform 200ms ease;
+}
+.lane:hover {
+  border-color: color-mix(in srgb, var(--highlight) 30%, var(--border));
+  transform: translateY(-2px);
+}
+.lane .step {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.lane h3 { margin-top: 12px; font-size: 1rem; }
+.lane p { margin: 8px 0 0; font-size: 0.84rem; color: var(--muted); line-height: 1.6; }
+.lane .tag {
+  margin-top: 14px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--highlight) 70%, var(--muted));
+}
+.lane:not(:last-child)::after {
+  content: '→';
+  position: absolute;
+  right: -11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: color-mix(in srgb, var(--muted) 70%, transparent);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.8rem;
+  pointer-events: none;
+}
+
+/* ---- manifest ---- */
+.manifest {
+  margin-top: 40px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 56px;
+}
+.m-item {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 11px 2px;
+  border-bottom: 1px dashed color-mix(in srgb, var(--border) 45%, transparent);
+  font-size: 0.87rem;
+}
+.m-item .m-name {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.78rem;
+  color: var(--text);
+  white-space: nowrap;
+  transition: color 180ms ease;
+}
+.m-item:hover .m-name { color: var(--highlight); }
+.m-item .m-dot {
+  flex: 1;
+  border-bottom: 1px dotted color-mix(in srgb, var(--muted) 40%, transparent);
+  transform: translateY(-3px);
+  min-width: 24px;
+}
+.m-item .m-desc {
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-align: right;
+}
+
+/* ---- quick start ---- */
+.start-grid {
+  margin-top: 44px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.term {
+  border: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
+  border-radius: 1.4rem;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--window) 80%, black 8%);
+  box-shadow: 0 22px 60px -46px rgba(2, 6, 23, 0.95);
+}
+.term-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 12px 16px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.66rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.term-dots { display: inline-flex; gap: 5px; margin-right: 4px; }
+.term-dots i {
+  width: 8px; height: 8px; border-radius: 999px;
+  background: color-mix(in srgb, var(--border) 90%, transparent);
+}
+.term-dots i:first-child { background: color-mix(in srgb, var(--accent) 60%, var(--border)); }
+.term-body {
+  position: relative;
+  padding: 18px 18px 20px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.8rem;
+  line-height: 1.9;
+}
+.term-body .cmd { color: var(--text); }
+.term-body .cmd::before { content: '$ '; color: color-mix(in srgb, var(--highlight) 80%, white 10%); }
+.term-body .c-note { color: var(--muted); }
+.term-body .c-acc { color: color-mix(in srgb, var(--accent) 90%, white 10%); }
+.copy-btn {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.6rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  border-radius: 999px;
+  padding: 0.5rem 0.85rem;
+  cursor: pointer;
+  min-height: 34px;
+  min-width: 44px;
+  transition: color 160ms ease, border-color 160ms ease;
+}
+.copy-btn:hover { color: var(--highlight); border-color: color-mix(in srgb, var(--highlight) 40%, var(--border)); }
+.copy-btn.ok { color: color-mix(in srgb, var(--highlight) 90%, white 5%); border-color: color-mix(in srgb, var(--highlight) 45%, transparent); }
+.req-line {
+  margin-top: 20px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.req-line b { color: color-mix(in srgb, var(--highlight) 80%, white 20%); font-weight: 500; }
+
+/* ---- release strip ---- */
+.release {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.4fr);
+  gap: 44px;
+  align-items: start;
+}
+.release h2 { margin-top: 16px; font-size: clamp(1.4rem, 2.4vw, 1.9rem); }
+.release .date {
+  margin-top: 12px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.rel-list { list-style: none; margin: 0; padding: 0; }
+.rel-list li {
+  position: relative;
+  padding: 13px 0 13px 26px;
+  border-bottom: 1px dashed color-mix(in srgb, var(--border) 45%, transparent);
+  font-size: 0.88rem;
+  color: var(--text);
+}
+.rel-list li::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 21px;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 75%, white 10%);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+/* ================= footer ================= */
+footer {
+  background: var(--window);
+  border-top: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
+  padding: 64px 0 40px;
+}
+.foot-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) repeat(2, minmax(0, 0.7fr));
+  gap: 48px;
+}
+.foot-brand p {
+  margin: 16px 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.7;
+  max-width: 26rem;
+}
+.foot-col h4 {
+  margin: 0 0 16px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.64rem;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.foot-col a {
+  display: block;
+  padding: 5px 0;
+  font-size: 0.86rem;
+  color: var(--text);
+  text-decoration: none;
+  transition: color 160ms ease;
+}
+.foot-col a:hover { color: var(--highlight); }
+.foot-bottom {
+  margin-top: 56px;
+  padding-top: 24px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 45%, transparent);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 28px;
+  align-items: baseline;
+  justify-content: space-between;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+.foot-bottom a { color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+.foot-bottom a:hover { color: var(--highlight); }
+
+/* visibility */
+:focus-visible {
+  outline: 2px solid var(--highlight);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ================= responsive ================= */
+@media (max-width: 1000px) {
+  .hero-grid { grid-template-columns: 1fr; gap: 44px; }
+  .rules { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .surfaces { grid-template-columns: 1fr; }
+  .lanes { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .lane:not(:last-child)::after { display: none; }
+  .start-grid { grid-template-columns: 1fr; }
+  .release { grid-template-columns: 1fr; gap: 28px; }
+  .foot-grid { grid-template-columns: 1fr; gap: 36px; }
+}
+@media (max-width: 720px) {
+  .nav-links { display: none; }
+  .hero { padding: 56px 0 48px; }
+  .sec { padding: 56px 0; }
+  .manifest { grid-template-columns: 1fr; }
+  .rules { grid-template-columns: 1fr; }
+  .lanes { grid-template-columns: 1fr; }
+  .m-item .m-desc { text-align: left; }
+  .m-item { flex-wrap: wrap; }
+  .m-item .m-dot { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     LAUNCH CONFIG — fill these in when the project goes public.
+     `app`: the deployed workspace URL (CI already deploys the web
+     build to GitHub Pages — point this at that URL and the hero
+     CTA flips from "Get started locally" to "Open the workspace").
+     ============================================================ -->
+<script>
+  window.EIDOLON_SITE = {
+    app:     '',                                                     // e.g. 'https://<user>.github.io/<repo>/'
+    repo:    'https://github.com/MaeveOfFae/eidolonsimulacra.github.io',
+    issues:  'https://github.com/MaeveOfFae/eidolonsimulacra.github.io/issues',
+    support: 'https://ko-fi.com/maeveoffae',
+    contact: 'mailto:[EMAIL]',
+    version: 'v3.3.5'
+  };
+</script>
+
+<!-- ================= nav ================= -->
+<nav class="nav" aria-label="Primary">
+  <div class="wrap nav-inner">
+    <a class="brand" href="#top" aria-label="Eidolon Simulacra home">
+      <svg width="26" height="26" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <rect width="32" height="32" rx="8" fill="currentColor" opacity="0.08"/>
+        <path d="M16 5.5l8.5 10.5L16 26.5 7.5 16z" stroke="var(--accent)" stroke-width="1.8"/>
+        <circle cx="16" cy="16" r="2.6" fill="var(--highlight)"/>
+        <circle cx="16" cy="5.5" r="1.7" fill="var(--accent)"/>
+        <circle cx="24.5" cy="16" r="1.7" fill="var(--accent)"/>
+        <circle cx="7.5" cy="16" r="1.7" fill="var(--accent)"/>
+      </svg>
+      <span class="brand-name">Eidolon Simulacra</span>
+      <span class="brand-version">v3.3.5</span>
+    </a>
+
+    <div class="nav-links">
+      <a href="#contract">Contract</a>
+      <a href="#workspace">Workspace</a>
+      <a href="#surfaces">Surfaces</a>
+      <a href="#start">Quick start</a>
+    </div>
+
+    <div class="nav-tools">
+      <div class="swatches" role="group" aria-label="Theme">
+        <button class="swatch" data-set-theme="dark" aria-pressed="true" title="Dark" aria-label="Dark theme"
+          style="--sw-bg:#0f172a; --sw-ac:#38bdf8;"></button>
+        <button class="swatch" data-set-theme="nyx" aria-pressed="false" title="Nyx" aria-label="Nyx theme"
+          style="--sw-bg:#111113; --sw-ac:#f97316;"></button>
+        <button class="swatch" data-set-theme="midnight" aria-pressed="false" title="Midnight" aria-label="Midnight theme"
+          style="--sw-bg:#0a1929; --sw-ac:#00b4d8;"></button>
+      </div>
+      <a class="nav-repo" data-site="repo" href="https://github.com/MaeveOfFae/eidolonsimulacra.github.io">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+        Repo
+      </a>
+    </div>
+  </div>
+</nav>
+
+<main id="top">
+
+  <!-- ================= hero ================= -->
+  <header class="hero">
+    <span class="hero-glow g1" aria-hidden="true"></span>
+    <span class="hero-glow g2" aria-hidden="true"></span>
+    <div class="wrap hero-grid">
+      <div>
+        <p class="kicker">Template-aware generation</p>
+        <h1>One seed in. A complete character pack out.</h1>
+        <p class="hero-sub">
+          Eidolon Simulacra compiles structured character packages from a single seed —
+          <strong>assets generated in dependency order</strong>, formats kept module-specific,
+          nothing leaking downstream. Generate, review, validate, and export from a workspace
+          that runs entirely on your side.
+        </p>
+        <div class="cta-row">
+          <a class="btn btn-primary" id="hero-primary" href="#start">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v14"/><path d="m6 13 6 6 6-6"/></svg>
+            <span id="hero-primary-label">Get started locally</span>
+          </a>
+          <a class="btn btn-ghost" data-site="repo" href="https://github.com/MaeveOfFae/eidolonsimulacra.github.io">
+            Repository
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>
+          </a>
+        </div>
+        <p class="hero-meta">Local-first &nbsp;·&nbsp; <b>Browser</b> + Desktop + Android &nbsp;·&nbsp; Keys stay on your machine</p>
+      </div>
+
+      <!-- the real six-asset contract, rendered as a blueprint manifest -->
+      <aside class="graph" aria-label="Official V2/V3 template asset graph">
+        <div class="graph-head">
+          <span class="id mono">blueprints/templates/official_v2v3 <span>· v3.2</span></span>
+          <span class="chip">6 assets</span>
+        </div>
+        <div class="graph-seed mono">
+          <b>seed ▸</b> <em>"a lighthouse keeper who never blinks"</em>
+        </div>
+        <ol class="graph-rows">
+          <li class="g-row">
+            <span class="g-num">01</span>
+            <div>
+              <span class="g-name">system_prompt</span><span class="g-dep">depends_on <b>—</b></span>
+              <div class="g-desc">System-level behavioral instructions.</div>
+            </div>
+            <span class="g-flag opt">OPT</span>
+          </li>
+          <li class="g-row">
+            <span class="g-num">02</span>
+            <div>
+              <span class="g-name">post_history</span><span class="g-dep">depends_on <b>system_prompt</b></span>
+              <div class="g-desc">Conversation context and relationship state.</div>
+            </div>
+            <span class="g-flag opt">OPT</span>
+          </li>
+          <li class="g-row">
+            <span class="g-num">03</span>
+            <div>
+              <span class="g-name">character_sheet</span><span class="g-dep">depends_on <b>—</b></span>
+              <div class="g-desc">Structured character data — the hub every later asset reads from.</div>
+            </div>
+            <span class="g-flag req">REQ</span>
+          </li>
+          <li class="g-row">
+            <span class="g-num">04</span>
+            <div>
+              <span class="g-name">intro_scene</span><span class="g-dep">depends_on <b>character_sheet</b></span>
+              <div class="g-desc">First interaction scenario.</div>
+            </div>
+            <span class="g-flag req">REQ</span>
+          </li>
+          <li class="g-row">
+            <span class="g-num">05</span>
+            <div>
+              <span class="g-name">creator_notes</span><span class="g-dep">depends_on <b>character_sheet</b></span>
+              <div class="g-desc">Creator notes section.</div>
+            </div>
+            <span class="g-flag req">REQ</span>
+          </li>
+          <li class="g-row">
+            <span class="g-num">06</span>
+            <div>
+              <span class="g-name">a1111</span><span class="g-dep">depends_on <b>character_sheet</b></span>
+              <div class="g-desc">Stable Diffusion image-generation prompt.</div>
+            </div>
+            <span class="g-flag req">REQ</span>
+          </li>
+        </ol>
+        <div class="graph-foot">generated 01 → 06 · depends_on enforced per asset · formats stay module-specific</div>
+      </aside>
+    </div>
+  </header>
+
+  <!-- ================= contract ================= -->
+  <section class="sec" id="contract">
+    <div class="wrap">
+      <div class="sec-head">
+        <p class="kicker">The contract</p>
+        <h2>Four rules the generator never breaks.</h2>
+        <p>
+          The blueprint contract isn't documentation — it's the pipeline. Validation runs
+          fatal checks for placeholder and format violations before a draft can ship.
+        </p>
+      </div>
+      <div class="rules">
+        <div class="rule">
+          <span class="n">01</span>
+          <h3>Start from one seed</h3>
+          <p>A single spark in, nothing else. No parallel inputs, no drift between assets.</p>
+        </div>
+        <div class="rule">
+          <span class="n">02</span>
+          <h3>Generate in dependency order</h3>
+          <p>Each asset is compiled only after whatever it depends on exists.</p>
+        </div>
+        <div class="rule">
+          <span class="n">03</span>
+          <h3>Keep formats module-specific</h3>
+          <p>The a1111 layer is an image prompt; the sheet is a sheet. Nothing bleeds across.</p>
+        </div>
+        <div class="rule">
+          <span class="n">04</span>
+          <h3>Never leak downstream facts</h3>
+          <p>The character sheet can't know its own intro scene. Context flows one way, always.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= surfaces ================= -->
+  <section class="sec sec-alt" id="surfaces">
+    <div class="wrap">
+      <div class="sec-head">
+        <p class="kicker">Surfaces</p>
+        <h2>One workspace, three places to run it.</h2>
+        <p>Same blueprint stack, same local-first storage. Move between them with workspace bundles.</p>
+      </div>
+      <div class="surfaces">
+        <article class="surface">
+          <div class="surface-top">
+            <h3>Web workspace</h3>
+            <span class="chip">Primary</span>
+          </div>
+          <p>
+            The most complete day-to-day workflow — generate, review, compare, and export
+            from the browser. No local API server required.
+          </p>
+          <div class="foot">React · served from the repo's Pages build</div>
+        </article>
+        <article class="surface">
+          <div class="surface-top">
+            <h3>Desktop shell</h3>
+            <span class="chip">Offline</span>
+          </div>
+          <p>
+            A Tauri build over the same blueprint compiler. Draft offline, keep a local
+            API server nearby, and pair with your phone via device link.
+          </p>
+          <div class="foot">Tauri · local API server · device link</div>
+        </article>
+        <article class="surface">
+          <div class="surface-top">
+            <h3>Android app</h3>
+            <span class="chip">On device</span>
+          </div>
+          <p>
+            Expo + React Native, local-first. Generate on the go, then import a workspace
+            bundle to mirror drafts, templates, and overrides from your PC.
+          </p>
+          <div class="foot">Expo · workspace bundle import</div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= workflow ================= -->
+  <section class="sec" id="workflow">
+    <div class="wrap">
+      <div class="sec-head">
+        <p class="kicker">Workflow</p>
+        <h2>From seed to shipped pack in four stops.</h2>
+        <p>The home screen walks you down one path — setup, structure, draft, review.</p>
+      </div>
+      <div class="lanes">
+        <article class="lane">
+          <div class="step">01 · Setup</div>
+          <h3>Wire the model path first</h3>
+          <p>Set keys, model, and persistence once.</p>
+          <div class="tag">Settings &amp; keys</div>
+        </article>
+        <article class="lane">
+          <div class="step">02 · Structure</div>
+          <h3>Lock the asset graph</h3>
+          <p>Choose the pack structure before you generate.</p>
+          <div class="tag">Template contract</div>
+        </article>
+        <article class="lane">
+          <div class="step">03 · Draft</div>
+          <h3>Generate the first usable pack</h3>
+          <p>Turn one seed into a reviewable draft.</p>
+          <div class="tag">Seed to draft</div>
+        </article>
+        <article class="lane">
+          <div class="step">04 · Review</div>
+          <h3>Reopen, compare, and export</h3>
+          <p>Review, clean up, validate, and export.</p>
+          <div class="tag">Library &amp; export</div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= manifest ================= -->
+  <section class="sec sec-alt" id="workspace">
+    <div class="wrap">
+      <div class="sec-head">
+        <p class="kicker">Workspace</p>
+        <h2>Everything else, within reach.</h2>
+        <p>Supporting tools stay available without crowding the main path.</p>
+      </div>
+      <div class="manifest">
+        <div class="m-item"><span class="m-name">seed generator</span><span class="m-dot"></span><span class="m-desc">concepts from a single spark</span></div>
+        <div class="m-item"><span class="m-name">batch</span><span class="m-dot"></span><span class="m-desc">queue multiple seeds in sequence</span></div>
+        <div class="m-item"><span class="m-name">validation</span><span class="m-dot"></span><span class="m-desc">fatal contract checks before export</span></div>
+        <div class="m-item"><span class="m-name">optimization</span><span class="m-dot"></span><span class="m-desc">shorten text without dropping facts</span></div>
+        <div class="m-item"><span class="m-name">compare</span><span class="m-dot"></span><span class="m-desc">check overlap across drafts</span></div>
+        <div class="m-item"><span class="m-name">offspring</span><span class="m-dot"></span><span class="m-desc">blend two drafts into a new run</span></div>
+        <div class="m-item"><span class="m-name">lineage</span><span class="m-dot"></span><span class="m-desc">trace a draft back through its parents</span></div>
+        <div class="m-item"><span class="m-name">worlds · timelines · events</span><span class="m-dot"></span><span class="m-desc">shared context layer</span></div>
+        <div class="m-item"><span class="m-name">theme studio</span><span class="m-dot"></span><span class="m-desc">app + tokenizer colors, per surface</span></div>
+        <div class="m-item"><span class="m-name">exports</span><span class="m-dot"></span><span class="m-desc">JSON · text · combined markdown</span></div>
+        <div class="m-item"><span class="m-name">presets</span><span class="m-dot"></span><span class="m-desc">raw packs · Chub AI · RisuAI · TavernAI</span></div>
+        <div class="m-item"><span class="m-name">workspace bundles</span><span class="m-dot"></span><span class="m-desc">move everything between devices</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= quick start ================= -->
+  <section class="sec" id="start">
+    <div class="wrap">
+      <div class="sec-head">
+        <p class="kicker">Quick start</p>
+        <h2>Two commands from a checkout.</h2>
+        <p>Node 20+ and pnpm 9+ — that's the whole prerequisite list.</p>
+      </div>
+      <div class="start-grid">
+        <div class="term">
+          <div class="term-head">
+            <span class="term-dots"><i></i><i></i><i></i></span>
+            browser workspace
+          </div>
+          <div class="term-body">
+            <button class="copy-btn" data-copy="pnpm install
+pnpm dev:web">Copy</button>
+            <div class="cmd">pnpm install</div>
+            <div class="cmd">pnpm dev:web <span class="c-note"># → http://localhost:5173</span></div>
+            <div class="c-note"># drafts &amp; keys persist client-side; the page talks</div>
+            <div class="c-note"># straight to the provider you configure</div>
+          </div>
+        </div>
+        <div class="term">
+          <div class="term-head">
+            <span class="term-dots"><i></i><i></i><i></i></span>
+            docker web stack
+          </div>
+          <div class="term-body">
+            <button class="copy-btn" data-copy="pnpm docker:web">Copy</button>
+            <div class="cmd">pnpm docker:web</div>
+            <div class="c-note">preview <span class="c-acc">:3000</span> · dev server <span class="c-acc">:3100</span></div>
+            <div class="c-note"># for LAN access: pnpm dev:web:lan</div>
+          </div>
+        </div>
+      </div>
+      <p class="req-line">Requirements &nbsp;<b>Node.js 20+</b> &nbsp;·&nbsp; <b>pnpm 9+</b></p>
+    </div>
+  </section>
+
+  <!-- ================= release ================= -->
+  <section class="sec sec-alt" id="releases">
+    <div class="wrap release">
+      <div>
+        <p class="kicker">Current build</p>
+        <h2>v3.3.5 — Platform and UI update</h2>
+        <p class="date">2026-04-20 · release notes live in the app under About → What's New</p>
+      </div>
+      <ul class="rel-list">
+        <li>Draft configuration with custom instructions and component send order</li>
+        <li>Refreshed LLM engine options and improved base64 encoding</li>
+        <li>Tighter draft review and refinement flow</li>
+        <li>Help overlay positioning fixed; contextual help panel accessibility</li>
+      </ul>
+    </div>
+  </section>
+
+</main>
+
+<!-- ================= footer ================= -->
+<footer>
+  <div class="wrap">
+    <div class="foot-grid">
+      <div class="foot-brand">
+        <a class="brand" href="#top">
+          <svg width="24" height="24" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+            <rect width="32" height="32" rx="8" fill="currentColor" opacity="0.08"/>
+            <path d="M16 5.5l8.5 10.5L16 26.5 7.5 16z" stroke="var(--accent)" stroke-width="1.8"/>
+            <circle cx="16" cy="16" r="2.6" fill="var(--highlight)"/>
+          </svg>
+          <span class="brand-name">Eidolon Simulacra</span>
+        </a>
+        <p>
+          Template-aware character generation with a strict blueprint contract.
+          Local-first by default — drafts, keys, and settings stay on your machine, and model
+          calls go directly from your client to the provider you configure.
+        </p>
+      </div>
+      <div class="foot-col">
+        <h4>Project</h4>
+        <a data-site="repo" href="https://github.com/MaeveOfFae/eidolonsimulacra.github.io">Repository</a>
+        <a data-site="issues" href="https://github.com/MaeveOfFae/eidolonsimulacra.github.io/issues">Issues</a>
+        <a data-site="support" href="https://ko-fi.com/maeveoffae">Ko-fi</a>
+        <a data-site="contact" href="mailto:[EMAIL]">Contact</a>
+      </div>
+      <div class="foot-col">
+        <h4>Read</h4>
+        <a href="#contract">The contract</a>
+        <a href="#workspace">Workspace map</a>
+        <a href="#start">Quick start</a>
+        <a href="#releases">Current build</a>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>Eidolon Simulacra Personal Use License v1.0 — © 2026 MaeveOfFae. Personal, non-commercial use only.</span>
+      <span>blueprints · rules · presets · six-asset flow</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  var SITE = window.EIDOLON_SITE || {};
+
+  /* ---- site links: single source of truth for the launch config ---- */
+  document.querySelectorAll('[data-site]').forEach(function (el) {
+    var key = el.getAttribute('data-site');
+    if (SITE[key]) { el.href = SITE[key]; }
+  });
+
+  /* ---- hero CTA: flips to the live workspace once SITE.app is set ---- */
+  var primary = document.getElementById('hero-primary');
+  var primaryLabel = document.getElementById('hero-primary-label');
+  if (SITE.app && primary && primaryLabel) {
+    primary.href = SITE.app;
+    primaryLabel.textContent = 'Open the workspace';
+    primary.setAttribute('rel', 'noopener');
+  }
+
+  /* ---- theme switcher (app built-ins: dark / nyx / midnight) ---- */
+  var THEMES = ['dark', 'nyx', 'midnight'];
+  var STORE_KEY = 'eidolon-home.theme';
+  var META = {
+    dark:     { bg: '#0f172a', window: '#111827' },
+    nyx:      { bg: '#111113', window: '#18181b' },
+    midnight: { bg: '#0a1929', window: '#051923' }
+  };
+  var root = document.documentElement;
+
+  function applyTheme(name) {
+    if (THEMES.indexOf(name) === -1) { name = 'dark'; }
+    root.setAttribute('data-theme', name);
+    try { localStorage.setItem(STORE_KEY, name); } catch (e) {}
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta && META[name]) { meta.setAttribute('content', META[name].window); }
+    document.querySelectorAll('.swatch').forEach(function (btn) {
+      btn.setAttribute('aria-pressed', String(btn.getAttribute('data-set-theme') === name));
+    });
+  }
+
+  var saved = 'dark';
+  try { saved = localStorage.getItem(STORE_KEY) || 'dark'; } catch (e) {}
+  applyTheme(saved);
+
+  document.querySelectorAll('.swatch').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      applyTheme(btn.getAttribute('data-set-theme'));
+    });
+  });
+
+  /* ---- copy buttons ---- */
+  document.querySelectorAll('.copy-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var text = btn.getAttribute('data-copy') || '';
+      var done = function (ok) {
+        btn.textContent = ok ? 'Copied ✓' : 'Select + copy';
+        btn.classList.toggle('ok', ok);
+        setTimeout(function () {
+          btn.textContent = 'Copy';
+          btn.classList.remove('ok');
+        }, 1600);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); });
+      } else {
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        var ok = false;
+        try { ok = document.execCommand('copy'); } catch (e) {}
+        document.body.removeChild(ta);
+        done(ok);
+      }
+    });
+  });
+})();
+</script>
+</body>
+</html>

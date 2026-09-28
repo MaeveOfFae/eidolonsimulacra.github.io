@@ -1,8 +1,8 @@
-import { Router, Request, Response } from "express";
-import { z } from "zod";
-import { prisma, Prisma } from "../db.js";
-import { authenticateToken } from "../middleware/auth.js";
-import { validateBody } from "../middleware/validation.js";
+import { Router, Request, Response } from 'express';
+import { z } from 'zod';
+import { prisma, Prisma } from '../db.js';
+import { authenticateToken } from '../middleware/auth.js';
+import { validateBody } from '../middleware/validation.js';
 
 const router: Router = Router();
 router.use(authenticateToken);
@@ -52,15 +52,17 @@ async function listSeeds(req: Request, res: Response): Promise<void> {
   });
 }
 
-router.get("/", listSeeds);
-router.get("/list", listSeeds);
-router.get("/pull", listSeeds);
+router.get('/', listSeeds);
+router.get('/list', listSeeds);
+router.get('/pull', listSeeds);
 
 router.post(
-  "/push",
-  validateBody(z.object({
-    seeds: z.array(savedSeedSchema),
-  })),
+  '/push',
+  validateBody(
+    z.object({
+      seeds: z.array(savedSeedSchema),
+    }),
+  ),
   async (req: Request, res: Response): Promise<void> => {
     const userId = req.user!.userId;
     const { seeds } = req.body as { seeds: SavedSeedPayload[] };
@@ -77,7 +79,8 @@ router.post(
       }
 
       const rows = Prisma.join(
-        nextSeeds.map((seed) => Prisma.sql`(
+        nextSeeds.map(
+          (seed) => Prisma.sql`(
           ${crypto.randomUUID()},
           ${userId},
           ${seed.seed},
@@ -86,7 +89,8 @@ router.post(
           ${seed.archivedAt ?? null},
           NOW(),
           NOW()
-        )`)
+        )`,
+        ),
       );
 
       await transaction.$executeRaw(Prisma.sql`
@@ -107,10 +111,10 @@ router.post(
     res.json({
       results: nextSeeds.map((seed) => ({
         seed: seed.seed,
-        status: "saved",
+        status: 'saved',
       })),
     });
-  }
+  },
 );
 
 export default router;

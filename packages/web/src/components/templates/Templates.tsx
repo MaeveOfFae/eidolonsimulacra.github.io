@@ -1,17 +1,6 @@
 import { lazy, Suspense, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  Copy,
-  Download,
-  FileText,
-  Loader2,
-  Pencil,
-  Plus,
-  ShieldCheck,
-  Star,
-  Trash2,
-  Upload,
-} from 'lucide-react';
+import { Copy, Download, FileText, Loader2, Pencil, Plus, ShieldCheck, Star, Trash2, Upload } from 'lucide-react';
 import type { AssetDefinition, CreateTemplateRequest, Template } from '@char-gen/shared';
 import { api } from '@/lib/api';
 import { pickFile, saveDownload } from '../../utils/download';
@@ -38,10 +27,16 @@ export default function Templates() {
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
   const [editingTemplateData, setEditingTemplateData] = useState<CreateTemplateRequest | null>(null);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  const [validationResults, setValidationResults] = useState<Record<string, { errors: string[]; warnings: string[] }>>({});
+  const [validationResults, setValidationResults] = useState<Record<string, { errors: string[]; warnings: string[] }>>(
+    {},
+  );
   const queryClient = useQueryClient();
 
-  const { data: templates, isLoading, error } = useQuery({
+  const {
+    data: templates,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['templates'],
     queryFn: () => api.getTemplates(),
   });
@@ -174,14 +169,13 @@ export default function Templates() {
     editing_template: editingTemplate?.name ?? null,
     wizard_open: showWizard,
     validation_templates: Object.keys(validationResults),
-    pending_action:
-      deleteMutation.isPending
-        ? 'delete'
-        : duplicateMutation.isPending
-          ? 'duplicate'
-          : importMutation.isPending
-            ? 'import'
-            : null,
+    pending_action: deleteMutation.isPending
+      ? 'delete'
+      : duplicateMutation.isPending
+        ? 'duplicate'
+        : importMutation.isPending
+          ? 'import'
+          : null,
     feedback_message: feedback?.message ?? null,
   });
 
@@ -239,7 +233,11 @@ export default function Templates() {
               <h1 className="app-page-title">Manage templates</h1>
               <p className="app-page-summary">Asset graphs, order, and export contracts.</p>
               <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
-                <button type="button" onClick={() => void handleImport()} className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-input px-4 py-2.5 text-sm font-medium hover:bg-accent sm:justify-start">
+                <button
+                  type="button"
+                  onClick={() => void handleImport()}
+                  className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-input px-4 py-2.5 text-sm font-medium hover:bg-accent sm:justify-start"
+                >
                   <Upload className="h-4 w-4" />
                   Import Template
                 </button>
@@ -290,108 +288,114 @@ export default function Templates() {
               className="app-panel"
               bodyClassName="space-y-4"
             >
-                  <div>
-                    <h3 className="mb-2 text-sm font-medium text-foreground">Assets ({template.assets.length})</h3>
-                    <div className="space-y-2">
-                      {template.assets.map((asset: AssetDefinition) => (
-                        <div key={asset.name} className="app-panel-muted flex flex-col gap-2 p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className={asset.required ? 'text-primary' : 'text-muted-foreground'}>{asset.name}</span>
-                            {asset.depends_on.length > 0 && (
-                              <span className="text-xs text-muted-foreground">depends on {asset.depends_on.join(', ')}</span>
-                            )}
-                          </div>
-                          <div className="flex flex-wrap items-center gap-2">
-                            {asset.required && (
-                              <span className="rounded-full bg-primary/20 px-2 py-0.5 text-xs text-primary">required</span>
-                            )}
-                            {asset.blueprint_file && (
-                              <span className="break-all text-xs text-muted-foreground">{asset.blueprint_file}</span>
-                            )}
-                          </div>
-                        </div>
-                      ))}
+              <div>
+                <h3 className="mb-2 text-sm font-medium text-foreground">Assets ({template.assets.length})</h3>
+                <div className="space-y-2">
+                  {template.assets.map((asset: AssetDefinition) => (
+                    <div
+                      key={asset.name}
+                      className="app-panel-muted flex flex-col gap-2 p-3 text-sm sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={asset.required ? 'text-primary' : 'text-muted-foreground'}>{asset.name}</span>
+                        {asset.depends_on.length > 0 && (
+                          <span className="text-xs text-muted-foreground">
+                            depends on {asset.depends_on.join(', ')}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {asset.required && (
+                          <span className="rounded-full bg-primary/20 px-2 py-0.5 text-xs text-primary">required</span>
+                        )}
+                        {asset.blueprint_file && (
+                          <span className="break-all text-xs text-muted-foreground">{asset.blueprint_file}</span>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  ))}
+                </div>
+              </div>
 
-                  {validationResults[template.name] && (
-                    <div className="app-panel-muted p-3 text-sm">
-                      {validationResults[template.name].errors.length === 0 && validationResults[template.name].warnings.length === 0 ? (
-                        <p className="text-green-700 dark:text-green-400">No validation issues found.</p>
-                      ) : (
-                        <div className="space-y-2">
-                          {validationResults[template.name].errors.length > 0 && (
-                            <div>
-                              <p className="font-medium text-destructive">Errors</p>
-                              <ul className="list-disc pl-5 text-destructive">
-                                {validationResults[template.name].errors.map((issue) => (
-                                  <li key={issue}>{issue}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-                          {validationResults[template.name].warnings.length > 0 && (
-                            <div>
-                              <p className="font-medium text-yellow-700 dark:text-yellow-400">Warnings</p>
-                              <ul className="list-disc pl-5 text-yellow-700 dark:text-yellow-400">
-                                {validationResults[template.name].warnings.map((issue) => (
-                                  <li key={issue}>{issue}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
+              {validationResults[template.name] && (
+                <div className="app-panel-muted p-3 text-sm">
+                  {validationResults[template.name].errors.length === 0 &&
+                  validationResults[template.name].warnings.length === 0 ? (
+                    <p className="text-green-700 dark:text-green-400">No validation issues found.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {validationResults[template.name].errors.length > 0 && (
+                        <div>
+                          <p className="font-medium text-destructive">Errors</p>
+                          <ul className="list-disc pl-5 text-destructive">
+                            {validationResults[template.name].errors.map((issue) => (
+                              <li key={issue}>{issue}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {validationResults[template.name].warnings.length > 0 && (
+                        <div>
+                          <p className="font-medium text-yellow-700 dark:text-yellow-400">Warnings</p>
+                          <ul className="list-disc pl-5 text-yellow-700 dark:text-yellow-400">
+                            {validationResults[template.name].warnings.map((issue) => (
+                              <li key={issue}>{issue}</li>
+                            ))}
+                          </ul>
                         </div>
                       )}
                     </div>
                   )}
+                </div>
+              )}
 
-                  <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end sm:gap-3">
-                    <button
-                      onClick={() => handleValidate(template.name)}
-                      className="inline-flex items-center justify-center gap-2 text-sm text-foreground hover:text-primary sm:justify-start"
-                    >
-                      <ShieldCheck className="h-4 w-4" />
-                      Validate
-                    </button>
-                    <button
-                      onClick={() => handleDuplicate(template.name)}
-                      disabled={duplicateMutation.isPending}
-                      className="inline-flex items-center justify-center gap-2 text-sm text-foreground hover:text-primary disabled:opacity-50 sm:justify-start"
-                    >
-                      <Copy className="h-4 w-4" />
-                      Duplicate
-                    </button>
-                    <button
-                      onClick={() => handleExport(template.name)}
-                      className="inline-flex items-center justify-center gap-2 text-sm text-foreground hover:text-primary sm:justify-start"
-                    >
-                      <Download className="h-4 w-4" />
-                      Export
-                    </button>
-                    {!template.is_official && (
-                      <button
-                        onClick={() => handleEdit(template)}
-                        className="inline-flex items-center justify-center gap-2 text-sm text-foreground hover:text-primary sm:justify-start"
-                      >
-                        <Pencil className="h-4 w-4" />
-                        Edit
-                      </button>
-                    )}
-                    {!template.is_official && (
-                      <button
-                        onClick={() => {
-                          if (confirm(`Delete template "${template.name}"?`)) {
-                            deleteMutation.mutate(template.name);
-                          }
-                        }}
-                        disabled={deleteMutation.isPending}
-                        className="col-span-2 inline-flex items-center justify-center gap-2 text-sm text-destructive hover:text-destructive/80 disabled:opacity-50 sm:col-auto sm:justify-start"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        Delete Template
-                      </button>
-                    )}
-                  </div>
+              <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end sm:gap-3">
+                <button
+                  onClick={() => handleValidate(template.name)}
+                  className="inline-flex items-center justify-center gap-2 text-sm text-foreground hover:text-primary sm:justify-start"
+                >
+                  <ShieldCheck className="h-4 w-4" />
+                  Validate
+                </button>
+                <button
+                  onClick={() => handleDuplicate(template.name)}
+                  disabled={duplicateMutation.isPending}
+                  className="inline-flex items-center justify-center gap-2 text-sm text-foreground hover:text-primary disabled:opacity-50 sm:justify-start"
+                >
+                  <Copy className="h-4 w-4" />
+                  Duplicate
+                </button>
+                <button
+                  onClick={() => handleExport(template.name)}
+                  className="inline-flex items-center justify-center gap-2 text-sm text-foreground hover:text-primary sm:justify-start"
+                >
+                  <Download className="h-4 w-4" />
+                  Export
+                </button>
+                {!template.is_official && (
+                  <button
+                    onClick={() => handleEdit(template)}
+                    className="inline-flex items-center justify-center gap-2 text-sm text-foreground hover:text-primary sm:justify-start"
+                  >
+                    <Pencil className="h-4 w-4" />
+                    Edit
+                  </button>
+                )}
+                {!template.is_official && (
+                  <button
+                    onClick={() => {
+                      if (confirm(`Delete template "${template.name}"?`)) {
+                        deleteMutation.mutate(template.name);
+                      }
+                    }}
+                    disabled={deleteMutation.isPending}
+                    className="col-span-2 inline-flex items-center justify-center gap-2 text-sm text-destructive hover:text-destructive/80 disabled:opacity-50 sm:col-auto sm:justify-start"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Delete Template
+                  </button>
+                )}
+              </div>
             </CollapsibleSection>
           ))}
         </div>
@@ -407,9 +411,17 @@ export default function Templates() {
         <CollapsibleSection
           title="Compare templates"
           subtitle="Check ordering and contract differences before switching flows"
-          preview={templatesList.length > 1 ? `${templatesList[0]?.name ?? 'Template'} vs ${templatesList[1]?.name ?? 'Template'}` : 'Select two templates'}
+          preview={
+            templatesList.length > 1
+              ? `${templatesList[0]?.name ?? 'Template'} vs ${templatesList[1]?.name ?? 'Template'}`
+              : 'Select two templates'
+          }
         >
-          <TemplateComparisonPanel templates={templatesList} leftTemplate={templatesList[0]?.name} rightTemplate={templatesList[1]?.name} />
+          <TemplateComparisonPanel
+            templates={templatesList}
+            leftTemplate={templatesList[0]?.name}
+            rightTemplate={templatesList[1]?.name}
+          />
         </CollapsibleSection>
       </div>
     </>

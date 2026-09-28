@@ -2,7 +2,6 @@ import { lazy, Suspense } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Link, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
-import { isSelfContainedDesktopRuntime } from './lib/runtime';
 import {
   appRouteHelpCoverage,
   guidedTourTargetCatalog,
@@ -29,11 +28,12 @@ const Timelines = lazy(() => import('./components/timelines/Timelines'));
 const Events = lazy(() => import('./components/worlds/Events'));
 const Settings = lazy(() => import('./components/settings/Settings'));
 const ThemeStudio = lazy(() => import('./components/themes/ThemeStudio'));
+const TokenizerThemeStudio = lazy(() => import('./components/themes/TokenizerThemeStudio'));
 const DataManager = lazy(() => import('./components/common/DataManager'));
 const BatchGenerate = lazy(() => import('./components/batch/BatchGenerate'));
-const AuthPage = lazy(() => import('./components/auth/AuthPage'));
 const About = lazy(() => import('./components/info/About'));
 const HelpCenterPage = lazy(() => import('./components/info/HelpCenterPage'));
+const CommunityPage = lazy(() => import('./components/info/CommunityPage'));
 const WhatsNewPage = lazy(() => import('./components/info/WhatsNewPage'));
 const LicensePage = lazy(() => import('./components/info/LicensePage'));
 const TermsPage = lazy(() => import('./components/info/TermsPage'));
@@ -87,8 +87,6 @@ function RouteNotFound() {
 }
 
 export default function App() {
-  const selfContainedDesktop = isSelfContainedDesktopRuntime();
-
   return (
     <Layout>
       <Suspense fallback={<RouteFallback />}>
@@ -113,11 +111,12 @@ export default function App() {
           <Route path="/timelines" element={<Timelines />} />
           <Route path="/events" element={<Events />} />
           <Route path="/themes" element={<ThemeStudio />} />
+          <Route path="/tokenizer" element={<TokenizerThemeStudio />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/data" element={<DataManager />} />
-          {!selfContainedDesktop && <Route path="/auth" element={<AuthPage />} />}
           <Route path="/about" element={<About />} />
           <Route path="/help" element={<HelpCenterPage />} />
+          <Route path="/community" element={<CommunityPage />} />
           <Route path="/whats-new" element={<WhatsNewPage />} />
           <Route path="/license" element={<LicensePage />} />
           <Route path="/terms" element={<TermsPage />} />

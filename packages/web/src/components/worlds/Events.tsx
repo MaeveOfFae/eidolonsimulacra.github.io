@@ -10,7 +10,7 @@ const PLANNED_EVENT_MODULES = [
 ] as const;
 
 export default function Events() {
-  const [selectedWorld, setSelectedWorld] = useState<string | null>(null);
+  const [selectedWorld] = useState<string | null>(null);
 
   useAssistantScreenContext({
     selected_world: selectedWorld,

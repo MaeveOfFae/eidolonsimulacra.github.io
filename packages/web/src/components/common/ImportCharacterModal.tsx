@@ -29,36 +29,42 @@ export default function ImportCharacterModal({ onClose, onImport, template }: Im
     };
   }, []);
 
-  const processFile = useCallback(async (file: File) => {
-    setParseError(null);
+  const processFile = useCallback(
+    async (file: File) => {
+      setParseError(null);
 
-    try {
-      const filename = file.name.toLowerCase();
+      try {
+        const filename = file.name.toLowerCase();
 
-      if (filename.endsWith('.png')) {
-        // Read as ArrayBuffer for PNG parsing
-        const buffer = await file.arrayBuffer();
-        const character = detectAndParseCharacter(buffer, file.name, { template });
-        setImportedCharacter(character);
-        setStep('preview');
-      } else {
-        // Read as text for JSON/text parsing
-        const text = await file.text();
-        const character = detectAndParseCharacter(text, file.name, { template });
-        setImportedCharacter(character);
-        setStep('preview');
+        if (filename.endsWith('.png')) {
+          // Read as ArrayBuffer for PNG parsing
+          const buffer = await file.arrayBuffer();
+          const character = detectAndParseCharacter(buffer, file.name, { template });
+          setImportedCharacter(character);
+          setStep('preview');
+        } else {
+          // Read as text for JSON/text parsing
+          const text = await file.text();
+          const character = detectAndParseCharacter(text, file.name, { template });
+          setImportedCharacter(character);
+          setStep('preview');
+        }
+      } catch (err) {
+        console.error('Import parse error:', err);
+        setParseError(err instanceof Error ? err.message : 'Failed to parse character file');
+        setStep('upload');
       }
-    } catch (err) {
-      console.error('Import parse error:', err);
-      setParseError(err instanceof Error ? err.message : 'Failed to parse character file');
-      setStep('upload');
-    }
-  }, [template]);
+    },
+    [template],
+  );
 
-  const handleFileSelect = useCallback((files: FileList | null) => {
-    if (!files || files.length === 0) return;
-    void processFile(files[0]);
-  }, [processFile]);
+  const handleFileSelect = useCallback(
+    (files: FileList | null) => {
+      if (!files || files.length === 0) return;
+      void processFile(files[0]);
+    },
+    [processFile],
+  );
 
   const handleBrowse = useCallback(async () => {
     const file = await pickFile({ accept: ACCEPTED_EXTENSIONS.join(',') }, fileInputRef.current);
@@ -69,11 +75,14 @@ export default function ImportCharacterModal({ onClose, onImport, template }: Im
     await processFile(file);
   }, [processFile]);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-    handleFileSelect(e.dataTransfer.files);
-  }, [handleFileSelect]);
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setIsDragOver(false);
+      handleFileSelect(e.dataTransfer.files);
+    },
+    [handleFileSelect],
+  );
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -86,7 +95,7 @@ export default function ImportCharacterModal({ onClose, onImport, template }: Im
   }, []);
 
   const toggleAsset = (assetName: string) => {
-    setExpandedAssets(prev => {
+    setExpandedAssets((prev) => {
       const next = new Set(prev);
       if (next.has(assetName)) {
         next.delete(assetName);
@@ -103,12 +112,8 @@ export default function ImportCharacterModal({ onClose, onImport, template }: Im
     setStep('done');
   };
 
-  const assetNames = importedCharacter
-    ? Object.keys(importedCharacter.assets)
-    : [];
-  const unmappedNames = importedCharacter?.unmappedFields
-    ? Object.keys(importedCharacter.unmappedFields)
-    : [];
+  const assetNames = importedCharacter ? Object.keys(importedCharacter.assets) : [];
+  const unmappedNames = importedCharacter?.unmappedFields ? Object.keys(importedCharacter.unmappedFields) : [];
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center p-3 sm:items-center sm:p-4">
@@ -133,7 +138,6 @@ export default function ImportCharacterModal({ onClose, onImport, template }: Im
         {/* Content */}
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
           <div className="space-y-4 pb-2">
-
             {/* Step: Upload */}
             {step === 'upload' && (
               <>
@@ -149,15 +153,11 @@ export default function ImportCharacterModal({ onClose, onImport, template }: Im
                   }`}
                 >
                   <Upload className="mx-auto h-10 w-10 text-muted-foreground" />
-                  <p className="mt-3 text-sm font-medium">
-                    Drop a character file here or click to browse
-                  </p>
+                  <p className="mt-3 text-sm font-medium">Drop a character file here or click to browse</p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     Supports TavernAI / SillyTavern JSON, PNG character cards, Chub AI, and plain text
                   </p>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    ({ACCEPTED_EXTENSIONS.join(', ')})
-                  </p>
+                  <p className="mt-2 text-xs text-muted-foreground">({ACCEPTED_EXTENSIONS.join(', ')})</p>
                 </div>
 
                 <input
@@ -205,9 +205,7 @@ export default function ImportCharacterModal({ onClose, onImport, template }: Im
 
                 {/* Mapped Assets */}
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">
-                    Mapped Assets ({assetNames.length})
-                  </label>
+                  <label className="text-sm font-medium">Mapped Assets ({assetNames.length})</label>
                   {assetNames.length === 0 ? (
                     <p className="text-sm text-muted-foreground italic">
                       No standard assets could be mapped from this file.
@@ -217,9 +215,7 @@ export default function ImportCharacterModal({ onClose, onImport, template }: Im
                       {assetNames.map((assetName) => {
                         const content = importedCharacter.assets[assetName];
                         const isExpanded = expandedAssets.has(assetName);
-                        const preview = content.length > 120
-                          ? content.slice(0, 120) + '…'
-                          : content;
+                        const preview = content.length > 120 ? content.slice(0, 120) + '…' : content;
 
                         return (
                           <div key={assetName} className="rounded-lg border border-border/60 bg-background/50">
@@ -234,9 +230,7 @@ export default function ImportCharacterModal({ onClose, onImport, template }: Im
                               )}
                               <FileText className="h-4 w-4 shrink-0 text-primary" />
                               <span className="font-medium">{assetName}</span>
-                              <span className="ml-auto text-xs text-muted-foreground">
-                                {content.length} chars
-                              </span>
+                              <span className="ml-auto text-xs text-muted-foreground">{content.length} chars</span>
                             </button>
                             {isExpanded && (
                               <div className="border-t border-border/40 px-3 py-2">
@@ -247,9 +241,7 @@ export default function ImportCharacterModal({ onClose, onImport, template }: Im
                             )}
                             {!isExpanded && (
                               <div className="border-t border-border/40 px-3 py-1.5">
-                                <p className="text-xs text-muted-foreground truncate">
-                                  {preview}
-                                </p>
+                                <p className="text-xs text-muted-foreground truncate">{preview}</p>
                               </div>
                             )}
                           </div>
@@ -280,7 +272,8 @@ export default function ImportCharacterModal({ onClose, onImport, template }: Im
 
                 {/* Info notice */}
                 <div className="rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-                  The imported assets will be used as context for re-generating the character through the workflow. The original seed cannot be recovered, but the imported content will guide the new generation.
+                  The imported assets will be used as context for re-generating the character through the workflow. The
+                  original seed cannot be recovered, but the imported content will guide the new generation.
                 </div>
               </>
             )}
@@ -292,8 +285,8 @@ export default function ImportCharacterModal({ onClose, onImport, template }: Im
                 <div>
                   <p className="text-lg font-semibold">Character Imported</p>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    {importedCharacter?.name ?? 'Character'} has been loaded into the generation form.
-                    Adjust the seed and settings, then generate to rehash.
+                    {importedCharacter?.name ?? 'Character'} has been loaded into the generation form. Adjust the seed
+                    and settings, then generate to rehash.
                   </p>
                 </div>
               </div>

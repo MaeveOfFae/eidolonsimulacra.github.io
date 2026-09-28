@@ -66,7 +66,10 @@ function writeJson(key: string, value: unknown): void {
   storage.setItem(key, JSON.stringify(value));
 }
 
-function parseBlueprintMetadata(path: string, content: string): {
+function parseBlueprintMetadata(
+  path: string,
+  content: string,
+): {
   name: string;
   description: string;
   version: string;
@@ -130,14 +133,17 @@ function resolveBundledBlueprintContent(path: string): string | undefined {
 }
 
 function getBuiltInTemplateRecords(): StoredTemplateRecord[] {
-  return Object.entries(templateManifestMap).reduce<StoredTemplateRecord[]>((records, [manifestPath, content], index) => {
+  return Object.entries(templateManifestMap).reduce<StoredTemplateRecord[]>(
+    (records, [manifestPath, content], index) => {
       const template = parseTemplateManifest(content);
       if (!template) {
         return records;
       }
 
       template.is_default = index === 0;
-      const templateRoot = manifestPath.includes('/') ? manifestPath.slice(0, manifestPath.lastIndexOf('/')) : undefined;
+      const templateRoot = manifestPath.includes('/')
+        ? manifestPath.slice(0, manifestPath.lastIndexOf('/'))
+        : undefined;
 
       records.push({
         template,
@@ -146,7 +152,9 @@ function getBuiltInTemplateRecords(): StoredTemplateRecord[] {
       });
 
       return records;
-    }, []);
+    },
+    [],
+  );
 }
 
 function readStoredTemplateRecords(): StoredTemplateRecord[] {
@@ -156,16 +164,25 @@ function readStoredTemplateRecords(): StoredTemplateRecord[] {
   }
 
   return stored
-    .filter((record): record is StoredTemplateRecord => Boolean(record?.template?.name && Array.isArray(record?.template?.assets)))
-    .map((record) => normalizeStoredTemplateRecord(record, {
-      resolveBuiltinContent: resolveBundledBlueprintContent,
-    }));
+    .filter((record): record is StoredTemplateRecord =>
+      Boolean(record?.template?.name && Array.isArray(record?.template?.assets)),
+    )
+    .map((record) =>
+      normalizeStoredTemplateRecord(record, {
+        resolveBuiltinContent: resolveBundledBlueprintContent,
+      }),
+    );
 }
 
 export function saveStoredTemplates(records: StoredTemplateRecord[]): void {
-  writeJson(CUSTOM_TEMPLATES_STORAGE_KEY, records.map((record) => normalizeStoredTemplateRecord(record, {
-    resolveBuiltinContent: resolveBundledBlueprintContent,
-  })));
+  writeJson(
+    CUSTOM_TEMPLATES_STORAGE_KEY,
+    records.map((record) =>
+      normalizeStoredTemplateRecord(record, {
+        resolveBuiltinContent: resolveBundledBlueprintContent,
+      }),
+    ),
+  );
 }
 
 export function getStoredTemplates(): StoredTemplateRecord[] {
@@ -178,12 +195,22 @@ export function getStoredTemplateRecord(name: string): StoredTemplateRecord | nu
 
 export function getAllTemplateRecords(): StoredTemplateRecord[] {
   const byName = new Map<string, StoredTemplateRecord>();
-  getBuiltInTemplateRecords().forEach((record) => byName.set(record.template.name, hydrateStoredTemplateRecord(record, {
-    resolveBuiltinContent: resolveBundledBlueprintContent,
-  })));
-  readStoredTemplateRecords().forEach((record) => byName.set(record.template.name, hydrateStoredTemplateRecord(record, {
-    resolveBuiltinContent: resolveBundledBlueprintContent,
-  })));
+  getBuiltInTemplateRecords().forEach((record) =>
+    byName.set(
+      record.template.name,
+      hydrateStoredTemplateRecord(record, {
+        resolveBuiltinContent: resolveBundledBlueprintContent,
+      }),
+    ),
+  );
+  readStoredTemplateRecords().forEach((record) =>
+    byName.set(
+      record.template.name,
+      hydrateStoredTemplateRecord(record, {
+        resolveBuiltinContent: resolveBundledBlueprintContent,
+      }),
+    ),
+  );
   return Array.from(byName.values());
 }
 
@@ -237,14 +264,18 @@ export function getBlueprintCatalog(): Map<string, Blueprint> {
 }
 
 export function resolveTemplateBlueprintContent(templateName: string | undefined, assetName: string): string | null {
-  const record = templateName ? getTemplateRecord(templateName) : getAllTemplateRecords().find((entry) => entry.template.is_default) ?? getAllTemplateRecords()[0];
+  const record = templateName
+    ? getTemplateRecord(templateName)
+    : (getAllTemplateRecords().find((entry) => entry.template.is_default) ?? getAllTemplateRecords()[0]);
   if (!record) {
     return null;
   }
 
-  return resolveTemplateRecordBlueprintContent(record, assetName, {
-    resolveBuiltinContent: resolveBundledBlueprintContent,
-  }) ?? null;
+  return (
+    resolveTemplateRecordBlueprintContent(record, assetName, {
+      resolveBuiltinContent: resolveBundledBlueprintContent,
+    }) ?? null
+  );
 }
 
 export function getBlueprintList(): BlueprintList {

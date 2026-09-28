@@ -21,13 +21,7 @@ describe('ManualDraftCreateModal', () => {
   it('submits a trimmed manual draft request', async () => {
     const onCreate = vi.fn();
 
-    render(
-      <ManualDraftCreateModal
-        templates={templates}
-        onClose={vi.fn()}
-        onCreate={onCreate}
-      />
-    );
+    render(<ManualDraftCreateModal templates={templates} onClose={vi.fn()} onCreate={onCreate} />);
 
     fireEvent.change(screen.getByLabelText('Character name'), {
       target: { value: '  Maeve  ' },
@@ -65,13 +59,7 @@ describe('ManualDraftCreateModal', () => {
   it('shows a validation error when seed is blank', () => {
     const onCreate = vi.fn();
 
-    render(
-      <ManualDraftCreateModal
-        templates={templates}
-        onClose={vi.fn()}
-        onCreate={onCreate}
-      />
-    );
+    render(<ManualDraftCreateModal templates={templates} onClose={vi.fn()} onCreate={onCreate} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Create Draft' }));
 

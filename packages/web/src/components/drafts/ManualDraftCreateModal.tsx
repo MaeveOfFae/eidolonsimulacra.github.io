@@ -98,7 +98,8 @@ export default function ManualDraftCreateModal({
         <form onSubmit={handleSubmit} className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
           <div className="space-y-4 pb-2">
             <div className="rounded-lg border border-border/60 bg-muted/30 p-3 text-sm text-muted-foreground">
-              The draft starts with metadata only. The review screen will expose every template asset so you can add content manually or ask the LLM to generate each missing section.
+              The draft starts with metadata only. The review screen will expose every template asset so you can add
+              content manually or ask the LLM to generate each missing section.
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">

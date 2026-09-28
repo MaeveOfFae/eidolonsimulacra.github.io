@@ -41,14 +41,14 @@ export default function CollapsibleSection({
         isExpanded
           ? 'border-primary/20 bg-card/85 shadow-[0_18px_44px_-34px_rgba(15,23,42,0.52)]'
           : 'shadow-[0_14px_30px_-34px_rgba(15,23,42,0.38)]',
-        className
+        className,
       )}
     >
       <div
         className={cn(
           'flex items-start gap-3 transition-colors',
           compact ? 'px-3 py-3.5 sm:px-4 sm:py-4' : 'px-4 py-4 sm:px-5 sm:py-5',
-          isExpanded ? 'bg-background/10' : 'hover:bg-background/10'
+          isExpanded ? 'bg-background/10' : 'hover:bg-background/10',
         )}
       >
         <button
@@ -59,25 +59,66 @@ export default function CollapsibleSection({
         >
           <div className="min-w-0 flex-1 space-y-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className={cn('font-semibold tracking-tight text-foreground', compact ? 'text-[0.95rem] sm:text-base' : 'text-base sm:text-lg')}>{title}</h2>
+              <h2
+                className={cn(
+                  'font-semibold tracking-tight text-foreground',
+                  compact ? 'text-[0.95rem] sm:text-base' : 'text-base sm:text-lg',
+                )}
+              >
+                {title}
+              </h2>
               {meta}
             </div>
-            {subtitle ? <p className={cn('max-w-3xl text-muted-foreground', compact ? 'text-[0.78rem] leading-5' : 'text-sm leading-6')}>{subtitle}</p> : null}
-            {!isExpanded && preview ? <div className={cn('line-clamp-2 pt-1 text-muted-foreground/95', compact ? 'text-[0.78rem] leading-5' : 'text-sm leading-6')}>{preview}</div> : null}
+            {subtitle ? (
+              <p
+                className={cn(
+                  'max-w-3xl text-muted-foreground',
+                  compact ? 'text-[0.78rem] leading-5' : 'text-sm leading-6',
+                )}
+              >
+                {subtitle}
+              </p>
+            ) : null}
+            {!isExpanded && preview ? (
+              <div
+                className={cn(
+                  'line-clamp-2 pt-1 text-muted-foreground/95',
+                  compact ? 'text-[0.78rem] leading-5' : 'text-sm leading-6',
+                )}
+              >
+                {preview}
+              </div>
+            ) : null}
           </div>
-          <span className={cn(
-            'mt-0.5 rounded-full border border-border/70 bg-background/60 text-muted-foreground transition-colors',
-            compact ? 'p-1' : 'p-1.5',
-            isExpanded ? 'border-primary/20 bg-primary/10 text-primary' : 'hover:bg-background/80'
-          )}>
-            {isExpanded ? <ChevronUp className={compact ? 'h-3.5 w-3.5' : 'h-4 w-4'} /> : <ChevronDown className={compact ? 'h-3.5 w-3.5' : 'h-4 w-4'} />}
+          <span
+            className={cn(
+              'mt-0.5 rounded-full border border-border/70 bg-background/60 text-muted-foreground transition-colors',
+              compact ? 'p-1' : 'p-1.5',
+              isExpanded ? 'border-primary/20 bg-primary/10 text-primary' : 'hover:bg-background/80',
+            )}
+          >
+            {isExpanded ? (
+              <ChevronUp className={compact ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
+            ) : (
+              <ChevronDown className={compact ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
+            )}
           </span>
         </button>
 
         {actions ? <div className="hidden shrink-0 items-center gap-2 sm:flex sm:self-center">{actions}</div> : null}
       </div>
 
-      {isExpanded ? <div className={cn('border-t border-border/50', compact ? 'px-3 py-3 sm:px-4 sm:py-4' : 'px-4 py-4 sm:px-5 sm:py-5', bodyClassName)}>{children}</div> : null}
+      {isExpanded ? (
+        <div
+          className={cn(
+            'border-t border-border/50',
+            compact ? 'px-3 py-3 sm:px-4 sm:py-4' : 'px-4 py-4 sm:px-5 sm:py-5',
+            bodyClassName,
+          )}
+        >
+          {children}
+        </div>
+      ) : null}
       {actions ? <div className="flex justify-end border-t border-border/50 px-4 py-3 sm:hidden">{actions}</div> : null}
     </section>
   );

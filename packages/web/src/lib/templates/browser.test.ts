@@ -38,7 +38,7 @@ describe('browser template storage', () => {
             'intro_scene.md': 'legacy blueprint content',
           },
         },
-      })
+      }),
     );
 
     const storedTemplates = getStoredTemplates();

@@ -1,12 +1,12 @@
 // Themes CRUD routes
-import { Router, Request, Response } from "express";
-import { z } from "zod";
-import { prisma } from "../db.js";
-import { Prisma } from "@prisma/client";
-import { authenticateToken, optionalAuth } from "../middleware/auth.js";
-import { validateBody, validateParams, validateQuery } from "../middleware/validation.js";
+import { Router, Request, Response } from 'express';
+import { z } from 'zod';
+import { prisma } from '../db.js';
+import { Prisma } from '@prisma/client';
+import { authenticateToken, optionalAuth } from '../middleware/auth.js';
+import { validateBody, validateParams, validateQuery } from '../middleware/validation.js';
 
-const router: Router = Router();;
+const router: Router = Router();
 
 // Validation Schemas
 const themeColorsSchema = z.object({
@@ -49,123 +49,107 @@ const createThemeSchema = z.object({
 const themeParamsSchema = z.object({ name: z.string() });
 
 const themeQuerySchema = z.object({
-  includeBuiltin: z.enum(["true", "false"]).optional(),
+  includeBuiltin: z.enum(['true', 'false']).optional(),
   search: z.string().optional(),
   tags: z.string().optional(),
 });
 
 // GET / - List themes
-router.get(
-  "/",
-  optionalAuth,
-  validateQuery(themeQuerySchema),
-  async (req: Request, res: Response): Promise<void> => {
-    const userId = req.user?.userId;
-    const q = req.query as { includeBuiltin?: string; search?: string; tags?: string };
+router.get('/', optionalAuth, validateQuery(themeQuerySchema), async (req: Request, res: Response): Promise<void> => {
+  const userId = req.user?.userId;
+  const q = req.query as { includeBuiltin?: string; search?: string; tags?: string };
 
-    const where: Prisma.ThemeWhereInput = {
+  const where: Prisma.ThemeWhereInput = {
+    OR: [{ isBuiltin: q.includeBuiltin !== 'false' }, ...(userId ? [{ userId }] : [])],
+  };
+
+  if (q.search) {
+    where.OR = (where.OR as Prisma.ThemeWhereInput[]).map((cond) => ({
+      ...cond,
       OR: [
-        { isBuiltin: q.includeBuiltin !== "false" },
-        ...(userId ? [{ userId }] : []),
+        { name: { contains: q.search, mode: 'insensitive' } },
+        { displayName: { contains: q.search, mode: 'insensitive' } },
       ],
-    };
-
-    if (q.search) {
-      where.OR = (where.OR as Prisma.ThemeWhereInput[]).map((cond) => ({
-        ...cond,
-        OR: [
-          { name: { contains: q.search, mode: "insensitive" } },
-          { displayName: { contains: q.search, mode: "insensitive" } },
-        ],
-      }));
-    }
-
-    if (q.tags) {
-      where.tags = { hasEvery: q.tags.split(",") };
-    }
-
-    const themes = await prisma.theme.findMany({
-      where,
-      orderBy: [{ isBuiltin: "desc" }, { name: "asc" }],
-    });
-    res.json({ themes });
+    }));
   }
-);
+
+  if (q.tags) {
+    where.tags = { hasEvery: q.tags.split(',') };
+  }
+
+  const themes = await prisma.theme.findMany({
+    where,
+    orderBy: [{ isBuiltin: 'desc' }, { name: 'asc' }],
+  });
+  res.json({ themes });
+});
 
 // =============================================================================
 // Sync Endpoints (MUST come before /:name routes)
 // =============================================================================
 
 // GET /list - List all themes for sync
-router.get(
-  "/list",
-  optionalAuth,
-  async (req: Request, res: Response): Promise<void> => {
-    const userId = req.user?.userId;
+router.get('/list', optionalAuth, async (req: Request, res: Response): Promise<void> => {
+  const userId = req.user?.userId;
 
-    const where: Prisma.ThemeWhereInput = {
-      OR: [
-        { isBuiltin: true },
-        ...(userId ? [{ userId }] : []),
-      ],
-    };
+  const where: Prisma.ThemeWhereInput = {
+    OR: [{ isBuiltin: true }, ...(userId ? [{ userId }] : [])],
+  };
 
-    const themes = await prisma.theme.findMany({
-      where,
-      orderBy: [{ isBuiltin: "desc" }, { name: "asc" }],
-    });
+  const themes = await prisma.theme.findMany({
+    where,
+    orderBy: [{ isBuiltin: 'desc' }, { name: 'asc' }],
+  });
 
-    res.json({ themes });
-  }
-);
+  res.json({ themes });
+});
 
 // GET /pull - Pull all themes for sync
-router.get(
-  "/pull",
-  authenticateToken,
-  async (req: Request, res: Response): Promise<void> => {
-    const userId = req.user!.userId;
+router.get('/pull', authenticateToken, async (req: Request, res: Response): Promise<void> => {
+  const userId = req.user!.userId;
 
-    const themes = await prisma.theme.findMany({
-      where: {
-        OR: [
-          { isBuiltin: true },
-          { userId },
-        ],
-      },
-      orderBy: [{ isBuiltin: "desc" }, { name: "asc" }],
-    });
+  const themes = await prisma.theme.findMany({
+    where: {
+      OR: [{ isBuiltin: true }, { userId }],
+    },
+    orderBy: [{ isBuiltin: 'desc' }, { name: 'asc' }],
+  });
 
-    res.json({ themes });
-  }
-);
+  res.json({ themes });
+});
 
 // POST /push - Push themes to server
 router.post(
-  "/push",
+  '/push',
   authenticateToken,
-  validateBody(z.object({
-    themes: z.array(z.object({
-      name: z.string(),
-      displayName: z.string().optional(),
-      description: z.string().optional(),
-      author: z.string().optional(),
-      tags: z.array(z.string()).optional(),
-      basedOn: z.string().optional(),
-      colors: themeColorsSchema,
-    })),
-  })),
+  validateBody(
+    z.object({
+      themes: z.array(
+        z.object({
+          name: z.string(),
+          displayName: z.string().optional(),
+          description: z.string().optional(),
+          author: z.string().optional(),
+          tags: z.array(z.string()).optional(),
+          basedOn: z.string().optional(),
+          colors: themeColorsSchema,
+        }),
+      ),
+    }),
+  ),
   async (req: Request, res: Response): Promise<void> => {
     const userId = req.user!.userId;
-    const { themes } = req.body as { themes: Array<{
-      name: string;
-      displayName?: string;
-      description?: string;
-      author?: string;
-      tags?: string[];
-      basedOn?: string;
-      colors: z.infer<typeof themeColorsSchema>;
-    }> };
+    const { themes } = req.body as {
+      themes: Array<{
+        name: string;
+        displayName?: string;
+        description?: string;
+        author?: string;
+        tags?: string[];
+        basedOn?: string;
+        colors: z.infer<typeof themeColorsSchema>;
+      }>;
+    };
 
     const results: Array<{ name: string; status: string; theme?: unknown }> = [];
 
@@ -175,11 +159,11 @@ router.post(
 
         if (existing) {
           if (existing.isBuiltin) {
-            results.push({ name: themeData.name, status: "skipped_builtin" });
+            results.push({ name: themeData.name, status: 'skipped_builtin' });
             continue;
           }
           if (existing.userId !== userId) {
-            results.push({ name: themeData.name, status: "skipped_not_owner" });
+            results.push({ name: themeData.name, status: 'skipped_not_owner' });
             continue;
           }
 
@@ -194,7 +178,7 @@ router.post(
               colors: themeData.colors,
             },
           });
-          results.push({ name: themeData.name, status: "updated", theme: updated });
+          results.push({ name: themeData.name, status: 'updated', theme: updated });
         } else {
           const created = await prisma.theme.create({
             data: {
@@ -209,15 +193,15 @@ router.post(
               isBuiltin: false,
             },
           });
-          results.push({ name: themeData.name, status: "created", theme: created });
+          results.push({ name: themeData.name, status: 'created', theme: created });
         }
       } catch {
-        results.push({ name: themeData.name, status: "error" });
+        results.push({ name: themeData.name, status: 'error' });
       }
     }
 
     res.json({ results });
-  }
+  },
 );
 
 // =============================================================================
@@ -225,23 +209,19 @@ router.post(
 // =============================================================================
 
 // GET /:name - Get theme by name
-router.get(
-  "/:name",
-  validateParams(themeParamsSchema),
-  async (req: Request, res: Response): Promise<void> => {
-    const name = req.params.name as string;
-    const theme = await prisma.theme.findUnique({ where: { name } });
-    if (!theme) {
-      res.status(404).json({ error: "Theme not found" });
-      return;
-    }
-    res.json({ theme });
+router.get('/:name', validateParams(themeParamsSchema), async (req: Request, res: Response): Promise<void> => {
+  const name = req.params.name as string;
+  const theme = await prisma.theme.findUnique({ where: { name } });
+  if (!theme) {
+    res.status(404).json({ error: 'Theme not found' });
+    return;
   }
-);
+  res.json({ theme });
+});
 
 // POST / - Create theme
 router.post(
-  "/",
+  '/',
   authenticateToken,
   validateBody(createThemeSchema),
   async (req: Request, res: Response): Promise<void> => {
@@ -250,7 +230,7 @@ router.post(
 
     const existing = await prisma.theme.findUnique({ where: { name: data.name } });
     if (existing) {
-      res.status(409).json({ error: "Theme with this name already exists" });
+      res.status(409).json({ error: 'Theme with this name already exists' });
       return;
     }
 
@@ -267,12 +247,12 @@ router.post(
       },
     });
     res.status(201).json({ theme });
-  }
+  },
 );
 
 // PUT /:name - Update theme
 router.put(
-  "/:name",
+  '/:name',
   authenticateToken,
   validateParams(themeParamsSchema),
   validateBody(createThemeSchema),
@@ -283,12 +263,12 @@ router.put(
 
     const existing = await prisma.theme.findUnique({ where: { name } });
     if (!existing) {
-      res.status(404).json({ error: "Theme not found" });
+      res.status(404).json({ error: 'Theme not found' });
       return;
     }
 
     if (existing.isBuiltin || existing.userId !== userId) {
-      res.status(403).json({ error: "Cannot modify this theme" });
+      res.status(403).json({ error: 'Cannot modify this theme' });
       return;
     }
 
@@ -305,12 +285,12 @@ router.put(
       },
     });
     res.json({ theme });
-  }
+  },
 );
 
 // DELETE /:name - Delete theme
 router.delete(
-  "/:name",
+  '/:name',
   authenticateToken,
   validateParams(themeParamsSchema),
   async (req: Request, res: Response): Promise<void> => {
@@ -319,23 +299,23 @@ router.delete(
 
     const existing = await prisma.theme.findUnique({ where: { name } });
     if (!existing) {
-      res.status(404).json({ error: "Theme not found" });
+      res.status(404).json({ error: 'Theme not found' });
       return;
     }
 
     if (existing.isBuiltin || existing.userId !== userId) {
-      res.status(403).json({ error: "Cannot delete this theme" });
+      res.status(403).json({ error: 'Cannot delete this theme' });
       return;
     }
 
     await prisma.theme.delete({ where: { name } });
-    res.json({ message: "Theme deleted successfully" });
-  }
+    res.json({ message: 'Theme deleted successfully' });
+  },
 );
 
 // POST /:name/duplicate - Duplicate theme
 router.post(
-  "/:name/duplicate",
+  '/:name/duplicate',
   authenticateToken,
   validateParams(themeParamsSchema),
   validateBody(z.object({ newName: z.string().optional() })),
@@ -346,14 +326,14 @@ router.post(
 
     const existing = await prisma.theme.findUnique({ where: { name } });
     if (!existing) {
-      res.status(404).json({ error: "Theme not found" });
+      res.status(404).json({ error: 'Theme not found' });
       return;
     }
 
     const duplicateName = newName || `${name}-copy`;
     const conflict = await prisma.theme.findUnique({ where: { name: duplicateName } });
     if (conflict) {
-      res.status(409).json({ error: "Theme with this name already exists" });
+      res.status(409).json({ error: 'Theme with this name already exists' });
       return;
     }
 
@@ -371,7 +351,7 @@ router.post(
       },
     });
     res.status(201).json({ theme });
-  }
+  },
 );
 
 export default router;

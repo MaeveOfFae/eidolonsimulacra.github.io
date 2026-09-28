@@ -43,7 +43,7 @@ function resolveApiKey(provider: LLMProvider, apiKey?: string, apiKeys?: ApiKeys
   }
 
   return Object.values(apiKeys ?? {}).find(
-    (value): value is string => typeof value === 'string' && value.trim().length > 0
+    (value): value is string => typeof value === 'string' && value.trim().length > 0,
   );
 }
 
@@ -51,16 +51,7 @@ function resolveApiKey(provider: LLMProvider, apiKey?: string, apiKeys?: ApiKeys
  * Create an LLM engine based on the model name and configuration
  */
 export function createEngine(options: CreateEngineOptions) {
-  const {
-    model,
-    apiKey,
-    apiKeys,
-    provider: explicitProvider,
-    baseUrl,
-    proxyKey,
-    temperature,
-    maxTokens,
-  } = options;
+  const { model, apiKey, apiKeys, provider: explicitProvider, baseUrl, proxyKey, temperature, maxTokens } = options;
 
   const provider = explicitProvider ?? detectProviderFromModel(model);
 
@@ -100,7 +91,7 @@ export function createEngine(options: CreateEngineOptions) {
 export function getProviderForModel(
   model: string,
   engineMode: 'auto' | 'explicit' = 'auto',
-  explicitProvider?: LLMProvider
+  explicitProvider?: LLMProvider,
 ): LLMProvider {
   if (engineMode === 'explicit' && explicitProvider) {
     return explicitProvider;
@@ -127,7 +118,7 @@ export function getProviderAuthType(provider: LLMProvider): 'bearer' | 'raw' {
 export function buildProviderHeaders(
   provider: LLMProvider,
   apiKey?: string,
-  options: ProviderHeaderOptions = {}
+  options: ProviderHeaderOptions = {},
 ): Record<string, string> {
   const headers: Record<string, string> = {};
 
@@ -198,50 +189,17 @@ export function getDefaultBaseUrl(provider: LLMProvider): string {
  * Get popular model suggestions for each provider
  */
 export const MODEL_SUGGESTIONS: Record<LLMProvider, string[]> = {
-  openai: [
-    'gpt-4o',
-    'gpt-4o-mini',
-    'gpt-4-turbo',
-    'gpt-3.5-turbo',
-    'o1-preview',
-  ],
-  google: [
-    'gemini-2.0-flash-exp',
-    'gemini-2.0-flash-thinking-exp',
-    'gemini-1.5-pro',
-    'gemini-1.5-flash',
-  ],
+  openai: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo', 'o1-preview'],
+  google: ['gemini-2.0-flash-exp', 'gemini-2.0-flash-thinking-exp', 'gemini-1.5-pro', 'gemini-1.5-flash'],
   openrouter: [
     'anthropic/claude-3.5-sonnet',
     'anthropic/claude-3.5-haiku',
     'google/gemini-pro-1.5',
     'openai/gpt-4o-mini',
   ],
-  anthropic: [
-    'claude-3.5-sonnet',
-    'claude-3.5-haiku',
-    'claude-3-opus',
-  ],
-  deepseek: [
-    'deepseek-chat',
-    'deepseek-coder',
-  ],
-  zai: [
-    'glm-4',
-    'glm-4-flash',
-  ],
-  moonshot: [
-    'moonshot-v1-8k',
-    'moonshot-v1-32k',
-    'moonshot-v1-128k',
-  ],
-  ollama: [
-    'llama3.2',
-    'llama3.1',
-    'mistral',
-    'codellama',
-    'qwen2.5',
-    'phi3',
-    'gemma2',
-  ],
+  anthropic: ['claude-3.5-sonnet', 'claude-3.5-haiku', 'claude-3-opus'],
+  deepseek: ['deepseek-chat', 'deepseek-coder'],
+  zai: ['glm-4', 'glm-4-flash'],
+  moonshot: ['moonshot-v1-8k', 'moonshot-v1-32k', 'moonshot-v1-128k'],
+  ollama: ['llama3.2', 'llama3.1', 'mistral', 'codellama', 'qwen2.5', 'phi3', 'gemma2'],
 } as const;

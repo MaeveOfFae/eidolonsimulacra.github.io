@@ -1,21 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  CheckCircle2,
-  Download,
-  RotateCcw,
-  Upload,
-  XCircle,
-  Shield,
-  Save,
-} from 'lucide-react';
+import { CheckCircle2, Download, RotateCcw, Upload, XCircle, Shield, Save } from 'lucide-react';
 import type { ThemeOverride, ThemePreset } from '@char-gen/shared';
 import { useThemePreview } from '../common/useThemePreview';
-import {
-  EDITABLE_THEME_SECTIONS,
-  resolveThemeColors,
-} from '../../theme/theme';
+import { EDITABLE_THEME_SECTIONS, resolveThemeColors } from '../../theme/theme';
 import { api } from '../../lib/api.js';
 import { pickFile, saveBlobDownload } from '../../utils/download';
+
+interface ThemeSelectionProps {
+  sectionFilter?: 'all' | 'app' | 'tokenizer';
+}
 
 type ThemeImportPayload = {
   version?: number;
@@ -58,7 +51,7 @@ function buildThemeOverrideFromColors(colors: ThemePreset['colors']): ThemeOverr
   } as ThemeOverride;
 }
 
-export default function ThemeSelection() {
+export default function ThemeSelection({ sectionFilter = 'all' }: ThemeSelectionProps) {
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const { themes, isLoading: themesLoading, previewTheme, clearPreview } = useThemePreview();
 
@@ -88,13 +81,33 @@ export default function ThemeSelection() {
   const selectedThemeName = localConfig.theme_name ?? 'dark';
   const selectedTheme = useMemo(
     () => themes.find((theme) => theme.name === selectedThemeName) ?? themes[0],
-    [themes, selectedThemeName]
+    [themes, selectedThemeName],
   );
 
   const resolvedTheme = useMemo(
     () => resolveThemeColors(selectedTheme, localConfig.theme),
-    [selectedTheme, localConfig.theme]
+    [selectedTheme, localConfig.theme],
   );
+  const editableSections = useMemo(() => {
+    if (sectionFilter === 'all') {
+      return EDITABLE_THEME_SECTIONS;
+    }
+
+    return EDITABLE_THEME_SECTIONS.filter((section) => section.fields.some((field) => field.section === sectionFilter));
+  }, [sectionFilter]);
+  const tokenizerOnly = sectionFilter === 'tokenizer';
+  const appOnly = sectionFilter === 'app';
+  const presetDescription = tokenizerOnly
+    ? 'Select a base preset, then tune only the tokenizer syntax colors used in review and prompt-facing surfaces.'
+    : appOnly
+      ? 'Select a base theme preset, then tune only the app-facing palette for the main runtime surfaces.'
+      : 'Select a base theme preset to customize.';
+  const overridesTitle = tokenizerOnly ? 'Tokenizer Overrides' : appOnly ? 'App Color Overrides' : 'Custom Overrides';
+  const overridesDescription = tokenizerOnly
+    ? 'Customize tokenizer syntax colors on top of the selected preset.'
+    : appOnly
+      ? 'Customize app-facing colors on top of the selected preset.'
+      : 'Customize colors on top of the selected preset.';
 
   // Live preview effect
   useEffect(() => {
@@ -118,11 +131,7 @@ export default function ThemeSelection() {
     setError(null);
   };
 
-  const handleThemeFieldChange = (
-    section: 'app' | 'tokenizer',
-    key: string,
-    value: string
-  ) => {
+  const handleThemeFieldChange = (section: 'app' | 'tokenizer', key: string, value: string) => {
     const themeSections = (localConfig.theme ?? {}) as Record<string, Record<string, string | undefined> | undefined>;
     const sectionValues = themeSections[section] ?? {};
     const nextTheme = {
@@ -146,7 +155,11 @@ export default function ThemeSelection() {
 
   const handleResetThemeOverrides = () => {
     updateTheme(selectedThemeName, {});
-    setNotice('Custom overrides cleared. Preset colors restored.');
+    setNotice(
+      tokenizerOnly
+        ? 'Tokenizer overrides cleared. Preset colors restored.'
+        : 'Custom overrides cleared. Preset colors restored.',
+    );
     setError(null);
   };
 
@@ -156,7 +169,9 @@ export default function ThemeSelection() {
         theme_name: localConfig.theme_name,
         theme: localConfig.theme,
       });
-      setNotice('Theme settings saved.');
+      setNotice(
+        tokenizerOnly ? 'Tokenizer colors saved.' : appOnly ? 'App theme colors saved.' : 'Theme settings saved.',
+      );
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save theme');
@@ -207,16 +222,21 @@ export default function ThemeSelection() {
     <div className="space-y-6">
       {/* Status Messages */}
       {(notice || error) && (
-        <div className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm ${
-          error
-            ? 'bg-destructive/10 border border-destructive/30 text-destructive'
-            : 'bg-primary/10 border border-primary/30 text-foreground'
-        }`}>
+        <div
+          className={`flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm ${
+            error
+              ? 'bg-destructive/10 border border-destructive/30 text-destructive'
+              : 'bg-primary/10 border border-primary/30 text-foreground'
+          }`}
+        >
           <Shield className={`h-4 w-4 flex-shrink-0 ${error ? 'text-destructive' : 'text-primary'}`} />
           {error || notice}
           <button
             type="button"
-            onClick={() => { setError(null); setNotice(null); }}
+            onClick={() => {
+              setError(null);
+              setNotice(null);
+            }}
             className="ml-auto p-1 rounded hover:bg-black/10 transition-colors"
             title="Dismiss"
             aria-label="Dismiss notification"
@@ -232,11 +252,7 @@ export default function ThemeSelection() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-3 mb-3">
               <h2 className="text-lg font-semibold">Active Theme</h2>
-              {selectedTheme && (
-                <span className="text-sm text-muted-foreground">
-                  {selectedTheme.display_name}
-                </span>
-              )}
+              {selectedTheme && <span className="text-sm text-muted-foreground">{selectedTheme.display_name}</span>}
             </div>
             {resolvedTheme && (
               <div
@@ -323,9 +339,7 @@ export default function ThemeSelection() {
       {/* Preset Selection */}
       <div className="space-y-3">
         <h2 className="text-lg font-semibold">Theme Presets</h2>
-        <p className="text-sm text-muted-foreground">
-          Select a base theme preset to customize.
-        </p>
+        <p className="text-sm text-muted-foreground">{presetDescription}</p>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {themesLoading ? (
             <div className="col-span-full flex items-center gap-2 text-sm text-muted-foreground">
@@ -346,9 +360,7 @@ export default function ThemeSelection() {
                       : 'bg-background/50 border border-border/50 hover:border-primary/50 hover:bg-accent/50'
                   }`}
                 >
-                  {isSelected && (
-                    <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-white/5 -z-10" />
-                  )}
+                  {isSelected && <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-white/5 -z-10" />}
                   <div className="relative">
                     <div className="flex items-center justify-between mb-2">
                       <div className="space-y-0.5">
@@ -359,13 +371,15 @@ export default function ThemeSelection() {
                     </div>
                     <p className="text-sm opacity-80 line-clamp-2">{theme.description || 'No description'}</p>
                     <div className="flex gap-2 mt-3">
-                      {[theme.colors.background, theme.colors.surface, theme.colors.accent, theme.colors.highlight].map((color, index) => (
-                        <span
-                          key={`${theme.name}-preview-${index}-${color}`}
-                          className="h-6 w-6 rounded-full border border-black/10"
-                          style={{ backgroundColor: color }}
-                        />
-                      ))}
+                      {[theme.colors.background, theme.colors.surface, theme.colors.accent, theme.colors.highlight].map(
+                        (color, index) => (
+                          <span
+                            key={`${theme.name}-preview-${index}-${color}`}
+                            className="h-6 w-6 rounded-full border border-black/10"
+                            style={{ backgroundColor: color }}
+                          />
+                        ),
+                      )}
                     </div>
                   </div>
                 </button>
@@ -379,10 +393,8 @@ export default function ThemeSelection() {
       <div className="space-y-4 rounded-xl border border-border bg-card p-5">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold">Custom Overrides</h2>
-            <p className="text-sm text-muted-foreground">
-              Customize colors on top of the selected preset.
-            </p>
+            <h2 className="text-lg font-semibold">{overridesTitle}</h2>
+            <p className="text-sm text-muted-foreground">{overridesDescription}</p>
           </div>
           <button
             type="button"
@@ -395,7 +407,7 @@ export default function ThemeSelection() {
         </div>
 
         <div className="space-y-5">
-          {EDITABLE_THEME_SECTIONS.map((section) => (
+          {editableSections.map((section) => (
             <div key={section.title} className="space-y-3">
               <div>
                 <h3 className="font-medium text-sm">{section.title}</h3>
@@ -409,7 +421,11 @@ export default function ThemeSelection() {
                       <input
                         type="color"
                         title={field.label}
-                        value={getThemeOverrideValue(field.section, field.key) || resolvedTheme?.[field.colorKey] || '#000000'}
+                        value={
+                          getThemeOverrideValue(field.section, field.key) ||
+                          resolvedTheme?.[field.colorKey] ||
+                          '#000000'
+                        }
                         onChange={(e) => handleThemeFieldChange(field.section, field.key, e.target.value)}
                         className="h-9 w-9 rounded-lg border border-border bg-background p-1 cursor-pointer"
                       />

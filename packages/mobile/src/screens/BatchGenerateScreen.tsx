@@ -42,9 +42,7 @@ function normalizeAssetSelection(selection: readonly string[], templateDefinitio
   }
 
   const templateAssetNames = new Set(templateDefinition.assets.map((asset) => asset.name));
-  const requiredNames = new Set(
-    templateDefinition.assets.filter((asset) => asset.required).map((asset) => asset.name)
-  );
+  const requiredNames = new Set(templateDefinition.assets.filter((asset) => asset.required).map((asset) => asset.name));
   const selected = new Set<string>();
 
   selection.forEach((assetName) => {
@@ -55,9 +53,7 @@ function normalizeAssetSelection(selection: readonly string[], templateDefinitio
 
   requiredNames.forEach((assetName) => selected.add(assetName));
 
-  return templateDefinition.assets
-    .map((asset) => asset.name)
-    .filter((assetName) => selected.has(assetName));
+  return templateDefinition.assets.map((asset) => asset.name).filter((assetName) => selected.has(assetName));
 }
 
 export default function BatchGenerateScreen() {
@@ -87,14 +83,15 @@ export default function BatchGenerateScreen() {
   const effectiveMaxConcurrent = maxConcurrent || config?.batch?.max_concurrent || 3;
   const modes: ContentMode[] = ['SFW', 'NSFW', 'Platform-Safe', 'Auto'];
   const selectedTemplate = useMemo(
-    () => templates?.find((candidate: Template) => candidate.name === template)
-      ?? templates?.find((candidate: Template) => candidate.is_default)
-      ?? templates?.[0],
-    [template, templates]
+    () =>
+      templates?.find((candidate: Template) => candidate.name === template) ??
+      templates?.find((candidate: Template) => candidate.is_default) ??
+      templates?.[0],
+    [template, templates],
   );
   const optionalTemplateAssets = useMemo(
     () => selectedTemplate?.assets.filter((asset) => !asset.required) ?? [],
-    [selectedTemplate]
+    [selectedTemplate],
   );
 
   useEffect(() => {
@@ -181,30 +178,32 @@ export default function BatchGenerateScreen() {
         if (event.event === 'batch_start') {
           const data = event.data as { index: number; seed: string };
           setCurrentSeed(data.seed);
-          setJobs((previous) => previous.map((job, index) => (
-            index === data.index ? { ...job, status: 'generating' } : job
-          )));
+          setJobs((previous) =>
+            previous.map((job, index) => (index === data.index ? { ...job, status: 'generating' } : job)),
+          );
         }
 
         if (event.event === 'batch_complete') {
           const data = event.data as { index: number; seed: string; draft_id?: string; character_name?: string };
-          setJobs((previous) => previous.map((job, index) => (
-            index === data.index
-              ? {
-                  ...job,
-                  status: 'complete',
-                  draftId: data.draft_id,
-                  characterName: data.character_name,
-                }
-              : job
-          )));
+          setJobs((previous) =>
+            previous.map((job, index) =>
+              index === data.index
+                ? {
+                    ...job,
+                    status: 'complete',
+                    draftId: data.draft_id,
+                    characterName: data.character_name,
+                  }
+                : job,
+            ),
+          );
         }
 
         if (event.event === 'batch_error') {
           const data = event.data as { index: number; seed: string; error: string };
-          setJobs((previous) => previous.map((job, index) => (
-            index === data.index ? { ...job, status: 'error', error: data.error } : job
-          )));
+          setJobs((previous) =>
+            previous.map((job, index) => (index === data.index ? { ...job, status: 'error', error: data.error } : job)),
+          );
         }
 
         if (event.event === 'complete') {
@@ -303,7 +302,11 @@ export default function BatchGenerateScreen() {
       <CollapsibleTray
         title="Options"
         subtitle="Mode, template, and concurrency"
-        preview={<Text style={styles.trayPreviewText}>{mode} • {template || 'Default'} • {parallel ? `parallel ${effectiveMaxConcurrent}` : 'serial'}</Text>}
+        preview={
+          <Text style={styles.trayPreviewText}>
+            {mode} • {template || 'Default'} • {parallel ? `parallel ${effectiveMaxConcurrent}` : 'serial'}
+          </Text>
+        }
       >
         <Text style={styles.sectionTitle}>Options</Text>
         <Text style={styles.fieldLabel}>Content Mode</Text>
@@ -373,7 +376,9 @@ export default function BatchGenerateScreen() {
         </View>
 
         {config?.batch ? (
-          <Text style={styles.helperText}>Saved default: {config.batch.max_concurrent} concurrent • {config.batch.rate_limit_delay}s delay.</Text>
+          <Text style={styles.helperText}>
+            Saved default: {config.batch.max_concurrent} concurrent • {config.batch.rate_limit_delay}s delay.
+          </Text>
         ) : null}
 
         {optionalTemplateAssets.length > 0 ? (
@@ -395,7 +400,9 @@ export default function BatchGenerateScreen() {
                     </View>
                     <View style={styles.optionalAssetTextWrap}>
                       <Text style={styles.optionalAssetName}>{asset.name}</Text>
-                      {asset.description ? <Text style={styles.optionalAssetDescription}>{asset.description}</Text> : null}
+                      {asset.description ? (
+                        <Text style={styles.optionalAssetDescription}>{asset.description}</Text>
+                      ) : null}
                     </View>
                   </TouchableOpacity>
                 );
@@ -410,7 +417,11 @@ export default function BatchGenerateScreen() {
           title="Progress"
           subtitle="Live job status"
           initiallyExpanded
-          preview={<Text style={styles.trayPreviewText}>{completedCount}/{jobs.length} complete{errorCount > 0 ? ` • ${errorCount} failed` : ''}</Text>}
+          preview={
+            <Text style={styles.trayPreviewText}>
+              {completedCount}/{jobs.length} complete{errorCount > 0 ? ` • ${errorCount} failed` : ''}
+            </Text>
+          }
         >
           <View style={styles.cardHeader}>
             <Text style={styles.sectionTitle}>Progress</Text>

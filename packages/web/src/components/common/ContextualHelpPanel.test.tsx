@@ -31,7 +31,7 @@ describe('ContextualHelpPanel', () => {
     render(
       <MemoryRouter>
         <ContextualHelpPanel entry={entry} topics={topics} isOpen onClose={() => {}} />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     expect(screen.getByText('Generate help')).toBeInTheDocument();

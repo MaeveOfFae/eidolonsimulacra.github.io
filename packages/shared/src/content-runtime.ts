@@ -1,4 +1,10 @@
-import type { Blueprint, BlueprintList, CreateTemplateRequest, Template, TemplateBlueprintContentsResponse } from './types';
+import type {
+  Blueprint,
+  BlueprintList,
+  CreateTemplateRequest,
+  Template,
+  TemplateBlueprintContentsResponse,
+} from './types';
 
 export type BlueprintCategory = Blueprint['category'];
 
@@ -95,7 +101,7 @@ export function getTemplateBlueprintKey(asset: { name: string; blueprint_file?: 
 
 export function buildStoredTemplateRecord<T extends StoredTemplateRecordLike = StoredTemplateRecordLike>(
   template: CreateTemplateRequest,
-  options: BuildStoredTemplateRecordOptions = {}
+  options: BuildStoredTemplateRecordOptions = {},
 ): T {
   const nextTemplate: Template = {
     name: template.name,
@@ -135,19 +141,17 @@ export function cloneStoredTemplateRecord<T extends StoredTemplateRecordLike>(re
 
 export function getLegacyTemplateBlueprintContent(
   blueprintContents: Record<string, string>,
-  asset: { name: string; blueprint_file?: string }
+  asset: { name: string; blueprint_file?: string },
 ): string | undefined {
   const blueprintKey = getTemplateBlueprintKey(asset);
   const shortFileName = blueprintKey.split('/').pop() ?? blueprintKey;
 
-  return blueprintContents[blueprintKey]
-    ?? blueprintContents[shortFileName]
-    ?? blueprintContents[asset.name];
+  return blueprintContents[blueprintKey] ?? blueprintContents[shortFileName] ?? blueprintContents[asset.name];
 }
 
 export function normalizeStoredTemplateRecord<T extends StoredTemplateRecordLike>(
   record: T,
-  options: { resolveBuiltinContent?: BlueprintContentResolver } = {}
+  options: { resolveBuiltinContent?: BlueprintContentResolver } = {},
 ): T {
   const normalized = cloneStoredTemplateRecord(record);
   const normalizedContents: Record<string, string> = {};
@@ -186,20 +190,21 @@ export function normalizeStoredTemplateRecord<T extends StoredTemplateRecordLike
 
 export function hydrateStoredTemplateRecord<T extends StoredTemplateRecordLike>(
   record: T,
-  options: { resolveBuiltinContent?: BlueprintContentResolver } = {}
+  options: { resolveBuiltinContent?: BlueprintContentResolver } = {},
 ): T {
   const hydrated = normalizeStoredTemplateRecord(record, options);
 
   hydrated.template.assets.forEach((asset) => {
     const blueprintKey = getTemplateBlueprintKey(asset);
     const resolvedBlueprintKey = resolveBlueprintPath(hydrated.template_root, blueprintKey);
-    const existingContent = hydrated.blueprint_contents[blueprintKey] ?? hydrated.blueprint_contents[resolvedBlueprintKey];
+    const existingContent =
+      hydrated.blueprint_contents[blueprintKey] ?? hydrated.blueprint_contents[resolvedBlueprintKey];
     if (existingContent?.trim()) {
       return;
     }
 
-    const builtinContent = options.resolveBuiltinContent?.(resolvedBlueprintKey)
-      ?? options.resolveBuiltinContent?.(blueprintKey);
+    const builtinContent =
+      options.resolveBuiltinContent?.(resolvedBlueprintKey) ?? options.resolveBuiltinContent?.(blueprintKey);
     if (!builtinContent?.trim()) {
       return;
     }
@@ -213,7 +218,7 @@ export function hydrateStoredTemplateRecord<T extends StoredTemplateRecordLike>(
 export function resolveTemplateRecordBlueprintContent<T extends StoredTemplateRecordLike>(
   record: T,
   assetName: string,
-  options: { resolveBuiltinContent?: BlueprintContentResolver } = {}
+  options: { resolveBuiltinContent?: BlueprintContentResolver } = {},
 ): string | undefined {
   const asset = record.template.assets.find((candidate) => candidate.name === assetName);
   if (!asset) {
@@ -222,17 +227,18 @@ export function resolveTemplateRecordBlueprintContent<T extends StoredTemplateRe
 
   const blueprintKey = getTemplateBlueprintKey(asset);
   const resolvedBlueprintKey = resolveBlueprintPath(record.template_root, blueprintKey);
-  const storedContent = record.blueprint_contents[blueprintKey]
-    ?? record.blueprint_contents[resolvedBlueprintKey]
-    ?? getLegacyTemplateBlueprintContent(record.blueprint_contents, asset);
+  const storedContent =
+    record.blueprint_contents[blueprintKey] ??
+    record.blueprint_contents[resolvedBlueprintKey] ??
+    getLegacyTemplateBlueprintContent(record.blueprint_contents, asset);
 
   if (storedContent?.trim()) {
     return storedContent;
   }
 
-  return options.resolveBuiltinContent?.(resolvedBlueprintKey)
-    ?? options.resolveBuiltinContent?.(blueprintKey)
-    ?? undefined;
+  return (
+    options.resolveBuiltinContent?.(resolvedBlueprintKey) ?? options.resolveBuiltinContent?.(blueprintKey) ?? undefined
+  );
 }
 
 export function buildBlueprintList(blueprints: Blueprint[]): BlueprintList {
@@ -248,7 +254,7 @@ export function buildBlueprintList(blueprints: Blueprint[]): BlueprintList {
 
 export function buildMissingTemplateBlueprintWarnings(
   template: Template,
-  resolveBlueprintContent: (assetName: string) => string | undefined | null
+  resolveBlueprintContent: (assetName: string) => string | undefined | null,
 ): string[] {
   return template.assets
     .filter((asset) => !resolveBlueprintContent(asset.name))
@@ -257,7 +263,7 @@ export function buildMissingTemplateBlueprintWarnings(
 
 export function findStoredTemplateRecord<T extends StoredTemplateRecordLike>(
   records: T[],
-  name?: string | null
+  name?: string | null,
 ): T | undefined {
   if (!name) {
     return undefined;
@@ -268,7 +274,7 @@ export function findStoredTemplateRecord<T extends StoredTemplateRecordLike>(
 
 export function resolveTemplateDefinitionFromRecords<T extends StoredTemplateRecordLike>(
   records: T[],
-  options: { name?: string | null; fallbackToDefault?: boolean } = {}
+  options: { name?: string | null; fallbackToDefault?: boolean } = {},
 ): Template | undefined {
   if (options.name) {
     return findStoredTemplateRecord(records, options.name)?.template;
@@ -282,7 +288,7 @@ export function resolveTemplateDefinitionFromRecords<T extends StoredTemplateRec
 }
 
 export function buildTemplateBlueprintContentsResponse(
-  record?: StoredTemplateRecordLike | null
+  record?: StoredTemplateRecordLike | null,
 ): TemplateBlueprintContentsResponse {
   return {
     blueprint_contents: record ? { ...record.blueprint_contents } : {},

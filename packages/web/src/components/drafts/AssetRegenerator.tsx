@@ -17,7 +17,7 @@ import {
   Star,
   Trash2,
 } from 'lucide-react';
-import { OFFICIAL_TEMPLATE, type Draft, type Template } from '@char-gen/shared';
+import { OFFICIAL_TEMPLATE, type Draft, type DraftMetadata, type Template } from '@char-gen/shared';
 import { api } from '@/lib/api';
 import { unwrapSingleCodeFence } from '@/lib/content-format';
 import DraftSendConfigPanel from '@/components/drafts/DraftSendConfigPanel';
@@ -90,7 +90,7 @@ function buildRecoveredTemplateContract(draft: Draft, templates: Template[]): Te
 const exportIntrosAsMarkdown = (
   characterName: string,
   savedIntros: AssetCandidate[],
-  activeIntroContent: string | undefined
+  activeIntroContent: string | undefined,
 ) => {
   const lines: string[] = [
     `# Intro Scenes for ${characterName}`,
@@ -139,7 +139,7 @@ const exportIntrosAsMarkdown = (
 const exportIntrosAsJson = (
   characterName: string,
   savedIntros: AssetCandidate[],
-  activeIntroContent: string | undefined
+  activeIntroContent: string | undefined,
 ) => {
   const data = {
     character_name: characterName,
@@ -200,7 +200,11 @@ export default function AssetRegenerator({
     enabled: enableDraftSelection,
   });
 
-  const { data: draft, isLoading: draftLoading, error: draftError } = useQuery({
+  const {
+    data: draft,
+    isLoading: draftLoading,
+    error: draftError,
+  } = useQuery({
     queryKey: ['draft', selectedDraftId],
     queryFn: () => api.getDraft(selectedDraftId),
     enabled: !!selectedDraftId,
@@ -213,7 +217,6 @@ export default function AssetRegenerator({
   });
 
   const templates = providedTemplates ?? queriedTemplates;
-
   const resolvedTemplate = useMemo(() => {
     if (!draft) {
       return undefined;
@@ -258,10 +261,14 @@ export default function AssetRegenerator({
   const hasBlueprintOverride = blueprintOverrideContent.trim().length > 0 || Boolean(externalBlueprintContent?.trim());
   const canUseBuiltinBlueprint = useMemo(
     () => OFFICIAL_TEMPLATE.assets.some((asset) => asset.name === selectedAssetName),
-    [selectedAssetName]
+    [selectedAssetName],
   );
-  const hasBlueprintSource = Boolean(hasBlueprintOverride || resolvedBlueprintContent.trim().length > 0 || canUseBuiltinBlueprint);
-  const canGenerateAsset = Boolean(draft && template && templateAssetIndex >= 0 && selectedAssetName && hasBlueprintSource);
+  const hasBlueprintSource = Boolean(
+    hasBlueprintOverride || resolvedBlueprintContent.trim().length > 0 || canUseBuiltinBlueprint,
+  );
+  const canGenerateAsset = Boolean(
+    draft && template && templateAssetIndex >= 0 && selectedAssetName && hasBlueprintSource,
+  );
   const savedIntros = useMemo((): AssetCandidate[] => {
     if (!isIntroAsset || !draft?.metadata.notes) {
       return [];
@@ -343,7 +350,7 @@ export default function AssetRegenerator({
   });
 
   const updateAsset = useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       content,
       expectedPreviousContent,
       overwrite,
@@ -351,10 +358,19 @@ export default function AssetRegenerator({
       content: string;
       expectedPreviousContent: string | null;
       overwrite: boolean;
-    }) => api.updateAsset(selectedDraftId, selectedAssetName, content, {
-      expectedPreviousContent,
-      overwrite,
-    }),
+    }) => {
+      if (expectedPreviousContent !== content) {
+        await api.createDraftSnapshot(selectedDraftId, {
+          label: `Before updating ${selectedAssetName}`,
+          reason: `pre-asset-regenerator-asset-update:${selectedAssetName}`,
+        });
+      }
+
+      return api.updateAsset(selectedDraftId, selectedAssetName, content, {
+        expectedPreviousContent,
+        overwrite,
+      });
+    },
     onSuccess: (_, content) => {
       queryClient.setQueryData<Draft | undefined>(['draft', selectedDraftId], (existingDraft) => {
         if (!existingDraft) {
@@ -375,7 +391,28 @@ export default function AssetRegenerator({
   });
 
   const updateMetadata = useMutation({
-    mutationFn: (metadata: Record<string, unknown>) => api.updateMetadata(selectedDraftId, metadata),
+    mutationFn: async ({
+      metadata,
+      snapshot,
+    }: {
+      metadata: Partial<DraftMetadata>;
+      snapshot?: { label?: string; reason?: string; enabled?: boolean };
+    }) => {
+      const currentDraft = await api.getDraft(selectedDraftId);
+      const hasChanges = Object.entries(metadata).some(([key, value]) => {
+        const currentValue = currentDraft.metadata[key as keyof DraftMetadata];
+        return JSON.stringify(currentValue ?? null) !== JSON.stringify(value ?? null);
+      });
+
+      if (hasChanges && snapshot?.enabled !== false) {
+        await api.createDraftSnapshot(selectedDraftId, {
+          label: snapshot?.label ?? 'Before asset regenerator metadata update',
+          reason: snapshot?.reason ?? 'pre-asset-regenerator-metadata-update',
+        });
+      }
+
+      return api.updateMetadata(selectedDraftId, metadata);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['draft', selectedDraftId] });
       queryClient.invalidateQueries({ queryKey: ['drafts'] });
@@ -426,7 +463,7 @@ export default function AssetRegenerator({
 
     const additionalInstructions = mergeDraftAdditionalInstructions(
       draft.metadata.custom_instructions,
-      customInstructions
+      customInstructions,
     );
 
     try {
@@ -478,7 +515,16 @@ export default function AssetRegenerator({
       setIsGenerating(false);
       setGeneratingContent('');
     }
-  }, [assetLabel, buildPriorAssets, canGenerateAsset, customInstructions, draft, effectiveBlueprintContent, hasBlueprintOverride, isGenerating, selectedAssetName]);
+  }, [
+    buildPriorAssets,
+    canGenerateAsset,
+    customInstructions,
+    draft,
+    effectiveBlueprintContent,
+    hasBlueprintOverride,
+    isGenerating,
+    selectedAssetName,
+  ]);
 
   const generateMultiple = useCallback(async () => {
     for (let index = 0; index < generationCount; index += 1) {
@@ -491,11 +537,11 @@ export default function AssetRegenerator({
 
   useEffect(() => {
     const hasState = Boolean(
-      customInstructions.trim()
-      || blueprintOverrideContent.trim()
-      || generatedCandidates.length > 0
-      || generatingContent.trim()
-      || generationCount !== 3
+      customInstructions.trim() ||
+      blueprintOverrideContent.trim() ||
+      generatedCandidates.length > 0 ||
+      generatingContent.trim() ||
+      generationCount !== 3,
     );
 
     if (!hasState || !selectedDraftId || !selectedAssetName) {
@@ -513,18 +559,32 @@ export default function AssetRegenerator({
       generatedCandidates,
       expandedCandidates: Array.from(expandedCandidates),
       generatingContent,
-      status: isGenerating ? 'generating' : (generatedCandidates.length > 0 || generatingContent.trim()) ? 'ready' : 'configuring',
+      status: isGenerating
+        ? 'generating'
+        : generatedCandidates.length > 0 || generatingContent.trim()
+          ? 'ready'
+          : 'configuring',
       updatedAt: Date.now(),
     });
-  }, [blueprintOverrideContent, customInstructions, expandedCandidates, generatedCandidates, generatingContent, generationCount, isGenerating, selectedAssetName, selectedDraftId]);
+  }, [
+    blueprintOverrideContent,
+    customInstructions,
+    expandedCandidates,
+    generatedCandidates,
+    generatingContent,
+    generationCount,
+    isGenerating,
+    selectedAssetName,
+    selectedDraftId,
+  ]);
 
   useEffect(() => {
     const hasWorkingState = Boolean(
-      isGenerating
-      || generatedCandidates.length > 0
-      || customInstructions.trim()
-      || blueprintOverrideContent.trim()
-      || generatingContent.trim()
+      isGenerating ||
+      generatedCandidates.length > 0 ||
+      customInstructions.trim() ||
+      blueprintOverrideContent.trim() ||
+      generatingContent.trim(),
     );
 
     if (!hasWorkingState) {
@@ -549,68 +609,90 @@ export default function AssetRegenerator({
     });
   }, []);
 
-  const applyCandidate = useCallback(async (content: string, options?: { returnToReview?: boolean }) => {
-    if (!draft) {
-      return;
-    }
-
-    setAssetWriteError(null);
-
-    const sanitizedContent = unwrapSingleCodeFence(content);
-
-    try {
-      const expectedPreviousContent = draftHasAsset(draft, selectedAssetName)
-        ? draft.assets[selectedAssetName]
-        : null;
-
-      await updateAsset.mutateAsync({
-        content: sanitizedContent,
-        expectedPreviousContent,
-        overwrite: draftHasAsset(draft, selectedAssetName),
-      });
-
-      if (options?.returnToReview) {
-        navigate(`/drafts/${encodeURIComponent(selectedDraftId)}`);
+  const applyCandidate = useCallback(
+    async (content: string, options?: { returnToReview?: boolean }) => {
+      if (!draft) {
+        return;
       }
-    } catch (error) {
-      setAssetWriteError(error instanceof Error ? error.message : 'Unable to save asset');
-    }
-  }, [draft, navigate, selectedAssetName, selectedDraftId, updateAsset]);
 
-  const saveToIntroCollection = useCallback(async (intro: AssetCandidate) => {
-    if (!draft || !isIntroAsset) {
-      return;
-    }
+      setAssetWriteError(null);
 
-    const newSavedIntros = [...savedIntros];
-    if (!newSavedIntros.find((entry) => entry.id === intro.id)) {
-      newSavedIntros.unshift(intro);
-    }
+      const sanitizedContent = unwrapSingleCodeFence(content);
 
-    const introsJson = JSON.stringify(newSavedIntros);
-    const existingNotes = draft.metadata.notes || '';
-    const notesWithoutIntros = existingNotes.replace(/\[SAVED_INTROS\][\s\S]*?\[\/SAVED_INTROS\]/g, '').trim();
-    const newNotes = `${notesWithoutIntros}\n\n[SAVED_INTROS]${introsJson}[/SAVED_INTROS]`.trim();
+      try {
+        const expectedPreviousContent = draftHasAsset(draft, selectedAssetName)
+          ? draft.assets[selectedAssetName]
+          : null;
 
-    await updateMetadata.mutateAsync({ notes: newNotes });
-    setGeneratedCandidates((previous) => previous.filter((candidate) => candidate.id !== intro.id));
-  }, [draft, isIntroAsset, savedIntros, updateMetadata]);
+        await updateAsset.mutateAsync({
+          content: sanitizedContent,
+          expectedPreviousContent,
+          overwrite: draftHasAsset(draft, selectedAssetName),
+        });
 
-  const deleteSavedIntro = useCallback(async (introId: string) => {
-    if (!draft || !isIntroAsset) {
-      return;
-    }
+        if (options?.returnToReview) {
+          navigate(`/drafts/${encodeURIComponent(selectedDraftId)}`);
+        }
+      } catch (error) {
+        setAssetWriteError(error instanceof Error ? error.message : 'Unable to save asset');
+      }
+    },
+    [draft, navigate, selectedAssetName, selectedDraftId, updateAsset],
+  );
 
-    const newSavedIntros = savedIntros.filter((intro) => intro.id !== introId);
-    const introsJson = JSON.stringify(newSavedIntros);
-    const existingNotes = draft.metadata.notes || '';
-    const notesWithoutIntros = existingNotes.replace(/\[SAVED_INTROS\][\s\S]*?\[\/SAVED_INTROS\]/g, '').trim();
-    const newNotes = newSavedIntros.length > 0
-      ? `${notesWithoutIntros}\n\n[SAVED_INTROS]${introsJson}[/SAVED_INTROS]`.trim()
-      : notesWithoutIntros;
+  const saveToIntroCollection = useCallback(
+    async (intro: AssetCandidate) => {
+      if (!draft || !isIntroAsset) {
+        return;
+      }
 
-    await updateMetadata.mutateAsync({ notes: newNotes });
-  }, [draft, isIntroAsset, savedIntros, updateMetadata]);
+      const newSavedIntros = [...savedIntros];
+      if (!newSavedIntros.find((entry) => entry.id === intro.id)) {
+        newSavedIntros.unshift(intro);
+      }
+
+      const introsJson = JSON.stringify(newSavedIntros);
+      const existingNotes = draft.metadata.notes || '';
+      const notesWithoutIntros = existingNotes.replace(/\[SAVED_INTROS\][\s\S]*?\[\/SAVED_INTROS\]/g, '').trim();
+      const newNotes = `${notesWithoutIntros}\n\n[SAVED_INTROS]${introsJson}[/SAVED_INTROS]`.trim();
+
+      await updateMetadata.mutateAsync({
+        metadata: { notes: newNotes },
+        snapshot: {
+          label: 'Before updating saved intro collection',
+          reason: 'pre-saved-intro-update',
+        },
+      });
+      setGeneratedCandidates((previous) => previous.filter((candidate) => candidate.id !== intro.id));
+    },
+    [draft, isIntroAsset, savedIntros, updateMetadata],
+  );
+
+  const deleteSavedIntro = useCallback(
+    async (introId: string) => {
+      if (!draft || !isIntroAsset) {
+        return;
+      }
+
+      const newSavedIntros = savedIntros.filter((intro) => intro.id !== introId);
+      const introsJson = JSON.stringify(newSavedIntros);
+      const existingNotes = draft.metadata.notes || '';
+      const notesWithoutIntros = existingNotes.replace(/\[SAVED_INTROS\][\s\S]*?\[\/SAVED_INTROS\]/g, '').trim();
+      const newNotes =
+        newSavedIntros.length > 0
+          ? `${notesWithoutIntros}\n\n[SAVED_INTROS]${introsJson}[/SAVED_INTROS]`.trim()
+          : notesWithoutIntros;
+
+      await updateMetadata.mutateAsync({
+        metadata: { notes: newNotes },
+        snapshot: {
+          label: 'Before deleting saved intro',
+          reason: 'pre-saved-intro-delete',
+        },
+      });
+    },
+    [draft, isIntroAsset, savedIntros, updateMetadata],
+  );
 
   const handleDraftSelect = useCallback((nextDraftId: string) => {
     setSelectedDraftId(nextDraftId);
@@ -671,7 +753,9 @@ export default function AssetRegenerator({
             ) : (
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
             )}
-            <span className="font-medium">{cardLabel} #{index + 1}</span>
+            <span className="font-medium">
+              {cardLabel} #{index + 1}
+            </span>
             {isActive && (
               <span className="inline-flex items-center gap-1 text-xs text-primary">
                 <Star className="h-3 w-3 fill-primary" />
@@ -690,7 +774,9 @@ export default function AssetRegenerator({
           <div className="space-y-3 border-t border-border/50 p-4">
             <div className="grid gap-3 lg:grid-cols-2">
               <div className="space-y-2">
-                <div className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Current active</div>
+                <div className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                  Current active
+                </div>
                 <div className="max-h-80 overflow-y-auto rounded-md bg-muted/50 p-3 text-sm font-mono whitespace-pre-wrap">
                   {currentAssetContent || 'No active content saved.'}
                 </div>
@@ -744,7 +830,7 @@ export default function AssetRegenerator({
               )}
 
               <button
-                onClick={() => isSaved ? void deleteSavedIntro(candidate.id) : removeCandidate(candidate.id)}
+                onClick={() => (isSaved ? void deleteSavedIntro(candidate.id) : removeCandidate(candidate.id))}
                 disabled={isSaved && updateMetadata.isPending}
                 className="inline-flex items-center gap-1.5 rounded-md border border-destructive/50 bg-destructive/10 px-3 py-1.5 text-sm text-destructive hover:bg-destructive/20 disabled:opacity-50"
               >
@@ -769,10 +855,7 @@ export default function AssetRegenerator({
   if (draftError || (!draft && !embedded)) {
     return (
       <div className="space-y-4">
-        <Link
-          to="/drafts"
-          className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground"
-        >
+        <Link to="/drafts" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" />
           Back to Library
         </Link>
@@ -849,9 +932,7 @@ export default function AssetRegenerator({
               </Link>
               <p className="app-page-eyebrow">Asset Regenerator</p>
               <div className="space-y-2">
-                <h1 className="app-page-title text-[clamp(2rem,4vw,3.2rem)] capitalize">
-                  {assetLabel}
-                </h1>
+                <h1 className="app-page-title text-[clamp(2rem,4vw,3.2rem)] capitalize">{assetLabel}</h1>
                 <p className="app-page-summary max-w-4xl">
                   Generate alternative versions of this asset without rerunning the entire draft.
                 </p>
@@ -863,7 +944,9 @@ export default function AssetRegenerator({
               <div className="mt-4 app-page-metrics">
                 <div className="app-page-metric">
                   <p className="app-page-metric-label">Character</p>
-                  <div className="app-page-metric-value text-lg sm:text-2xl">{draft?.metadata.character_name || 'Unnamed'}</div>
+                  <div className="app-page-metric-value text-lg sm:text-2xl">
+                    {draft?.metadata.character_name || 'Unnamed'}
+                  </div>
                 </div>
                 <div className="app-page-metric">
                   <p className="app-page-metric-label">Mode</p>
@@ -871,7 +954,9 @@ export default function AssetRegenerator({
                 </div>
                 <div className="app-page-metric">
                   <p className="app-page-metric-label">Template</p>
-                  <div className="app-page-metric-value text-base sm:text-xl">{draft?.metadata.template_name || 'Unset'}</div>
+                  <div className="app-page-metric-value text-base sm:text-xl">
+                    {draft?.metadata.template_name || 'Unset'}
+                  </div>
                 </div>
               </div>
             </div>
@@ -889,20 +974,20 @@ export default function AssetRegenerator({
 
       {draft && template && !templateContractResolved && (
         <div className="app-note border-primary/30 bg-primary/10 p-4 text-sm text-foreground">
-          The original template definition for this draft is not available locally. Using a recovered asset contract from the saved draft order instead.
+          The original template definition for this draft is not available locally. Using a recovered asset contract
+          from the saved draft order instead.
         </div>
       )}
 
       {draft && canGenerateAsset && !assetExists && (
         <div className="app-note border-primary/30 bg-primary/10 p-4 text-sm text-foreground">
-          This draft does not have a saved {assetLabel} yet. Generate a candidate to create it from the current seed and prior asset chain.
+          This draft does not have a saved {assetLabel} yet. Generate a candidate to create it from the current seed and
+          prior asset chain.
         </div>
       )}
 
       {resumeNotice && (
-        <div className="app-note border-primary/30 bg-primary/10 p-4 text-sm text-foreground">
-          {resumeNotice}
-        </div>
+        <div className="app-note border-primary/30 bg-primary/10 p-4 text-sm text-foreground">{resumeNotice}</div>
       )}
 
       {draft && !hideInternalBlueprintPanel && (
@@ -910,9 +995,11 @@ export default function AssetRegenerator({
           blueprintName={assetBlueprintFile}
           blueprintContent={effectiveBlueprintContent}
           title="Asset Blueprint"
-          description={resolvedBlueprintContent
-            ? 'Inspect or override the blueprint used only for this regeneration session.'
-            : 'No stored blueprint was resolved for this asset. Paste an override here to regenerate against a recovered contract.'}
+          description={
+            resolvedBlueprintContent
+              ? 'Inspect or override the blueprint used only for this regeneration session.'
+              : 'No stored blueprint was resolved for this asset. Paste an override here to regenerate against a recovered contract.'
+          }
           editable
           defaultExpanded={false}
           onContentChange={setBlueprintOverrideContent}
@@ -936,7 +1023,13 @@ export default function AssetRegenerator({
           draft={draft}
           template={template}
           onSave={async (updates) => {
-            await updateMetadata.mutateAsync(updates);
+            await updateMetadata.mutateAsync({
+              metadata: updates,
+              snapshot: {
+                label: 'Before updating asset regeneration outbound settings',
+                reason: 'pre-asset-regeneration-send-config-update',
+              },
+            });
           }}
           isSaving={updateMetadata.isPending}
           description="Adjust the saved outbound instructions and component order used for future asset regeneration from this draft."
@@ -952,149 +1045,165 @@ export default function AssetRegenerator({
       )}
 
       {draft && (
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-        <section className="app-panel space-y-4 p-4 sm:p-5">
-          <div>
-            <h2 className="text-lg font-semibold">Current Active Asset</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {assetExists
-                ? `This is what the draft currently uses for ${assetLabel}.`
-                : `No ${assetLabel} is saved yet for this draft.`}
-            </p>
-          </div>
-
-          <div className="max-h-[32rem] overflow-y-auto rounded-xl bg-muted/50 p-3 text-sm font-mono whitespace-pre-wrap">
-            {currentAssetContent || 'No content saved for this asset.'}
-          </div>
-        </section>
-
-        <section className="space-y-6">
-          <div className="app-panel space-y-4 p-4 sm:p-5">
-            <div className="flex items-start gap-3">
-              <div className="rounded-xl bg-gradient-to-br from-amber-500 to-rose-500 p-2.5 text-white">
-                <Sparkles className="h-5 w-5" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold">Generate Variants</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {assetExists
-                    ? 'Use the saved draft context and prior asset order to spin alternative versions of this one asset.'
-                    : 'Use the saved draft context and prior asset order to generate this missing asset without rerunning the full draft.'}
-                </p>
-              </div>
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+          <section className="app-panel space-y-4 p-4 sm:p-5">
+            <div>
+              <h2 className="text-lg font-semibold">Current Active Asset</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {assetExists
+                  ? `This is what the draft currently uses for ${assetLabel}.`
+                  : `No ${assetLabel} is saved yet for this draft.`}
+              </p>
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-              <label className="inline-flex items-center gap-2 text-sm text-muted-foreground">
-                Batch size
-                <select
-                  value={generationCount}
-                  onChange={(event) => setGenerationCount(Number(event.target.value))}
-                  className="rounded-md border border-input bg-background px-2 py-1 text-sm"
+            <div className="max-h-[32rem] overflow-y-auto rounded-xl bg-muted/50 p-3 text-sm font-mono whitespace-pre-wrap">
+              {currentAssetContent || 'No content saved for this asset.'}
+            </div>
+          </section>
+
+          <section className="space-y-6">
+            <div className="app-panel space-y-4 p-4 sm:p-5">
+              <div className="flex items-start gap-3">
+                <div className="rounded-xl bg-gradient-to-br from-amber-500 to-rose-500 p-2.5 text-white">
+                  <Sparkles className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold">Generate Variants</h2>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {assetExists
+                      ? 'Use the saved draft context and prior asset order to spin alternative versions of this one asset.'
+                      : 'Use the saved draft context and prior asset order to generate this missing asset without rerunning the full draft.'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                <label className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+                  Batch size
+                  <select
+                    value={generationCount}
+                    onChange={(event) => setGenerationCount(Number(event.target.value))}
+                    className="rounded-md border border-input bg-background px-2 py-1 text-sm"
+                    disabled={!canGenerateAsset || isGenerating}
+                  >
+                    {[1, 2, 3, 4, 5].map((count) => (
+                      <option key={count} value={count}>
+                        {count}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <button
+                  onClick={() => void generateCandidate()}
                   disabled={!canGenerateAsset || isGenerating}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-input bg-background px-4 py-2 text-sm hover:bg-accent disabled:opacity-50"
                 >
-                  {[1, 2, 3, 4, 5].map((count) => (
-                    <option key={count} value={count}>
-                      {count}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                  {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+                  Generate One
+                </button>
 
-              <button
-                onClick={() => void generateCandidate()}
-                disabled={!canGenerateAsset || isGenerating}
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-input bg-background px-4 py-2 text-sm hover:bg-accent disabled:opacity-50"
-              >
-                {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
-                Generate One
-              </button>
+                <button
+                  onClick={() => void generateMultiple()}
+                  disabled={!canGenerateAsset || isGenerating}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                >
+                  {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                  Generate {generationCount}
+                </button>
+              </div>
 
-              <button
-                onClick={() => void generateMultiple()}
-                disabled={!canGenerateAsset || isGenerating}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-              >
-                {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                Generate {generationCount}
-              </button>
+              {generationError && (
+                <div className="app-note border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+                  {generationError}
+                </div>
+              )}
+
+              {assetWriteError && (
+                <div className="app-note border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+                  {assetWriteError}
+                </div>
+              )}
+
+              {isGenerating && generatingContent && (
+                <div className="space-y-2 rounded-xl border border-primary/30 bg-primary/5 p-4">
+                  <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                    Streaming draft candidate
+                  </div>
+                  <div className="max-h-56 overflow-y-auto rounded-md bg-background/70 p-3 text-sm font-mono whitespace-pre-wrap">
+                    {generatingContent}
+                  </div>
+                </div>
+              )}
             </div>
 
-            {generationError && (
-              <div className="app-note border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
-                {generationError}
-              </div>
-            )}
-
-            {assetWriteError && (
-              <div className="app-note border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
-                {assetWriteError}
-              </div>
-            )}
-
-            {isGenerating && generatingContent && (
-              <div className="space-y-2 rounded-xl border border-primary/30 bg-primary/5 p-4">
-                <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                  Streaming draft candidate
-                </div>
-                <div className="max-h-56 overflow-y-auto rounded-md bg-background/70 p-3 text-sm font-mono whitespace-pre-wrap">
-                  {generatingContent}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {isIntroAsset && savedIntros.length > 0 && draft && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <h2 className="text-lg font-semibold">Saved Intros ({savedIntros.length})</h2>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => exportIntrosAsMarkdown(draft.metadata.character_name || draft.metadata.seed, savedIntros, draft.assets.intro_scene)}
-                    className="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-sm hover:bg-accent"
-                  >
-                    <FileText className="h-3.5 w-3.5" />
-                    Export MD
-                  </button>
-                  <button
-                    onClick={() => exportIntrosAsJson(draft.metadata.character_name || draft.metadata.seed, savedIntros, draft.assets.intro_scene)}
-                    className="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-sm hover:bg-accent"
-                  >
-                    <Download className="h-3.5 w-3.5" />
-                    Export JSON
-                  </button>
-                </div>
-              </div>
-              {savedIntros.map((intro, index) => renderCandidateCard(intro, index, true))}
-            </div>
-          )}
-
-          <div className="space-y-3">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-semibold">{isIntroAsset ? `New Intros (${generatedCandidates.length})` : 'Generated Variants'}</h2>
-                <p className="text-sm text-muted-foreground">
-                  {isIntroAsset
-                    ? 'Generate intros, keep the ones worth curating, or set one active immediately.'
-                    : 'Keep generating until one is better than the current active version.'}
-                </p>
-              </div>
-              {!isIntroAsset && <span className="app-pill app-pill-muted">{generatedCandidates.length} variants</span>}
-            </div>
-
-            {generatedCandidates.length === 0 ? (
-              <div className="app-note p-4 text-sm text-muted-foreground">
-                {isIntroAsset ? 'No intros generated yet.' : 'No variants generated yet.'}
-              </div>
-            ) : (
+            {isIntroAsset && savedIntros.length > 0 && draft && (
               <div className="space-y-3">
-                {generatedCandidates.map((candidate, index) => renderCandidateCard(candidate, index))}
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <h2 className="text-lg font-semibold">Saved Intros ({savedIntros.length})</h2>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() =>
+                        exportIntrosAsMarkdown(
+                          draft.metadata.character_name || draft.metadata.seed,
+                          savedIntros,
+                          draft.assets.intro_scene,
+                        )
+                      }
+                      className="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-sm hover:bg-accent"
+                    >
+                      <FileText className="h-3.5 w-3.5" />
+                      Export MD
+                    </button>
+                    <button
+                      onClick={() =>
+                        exportIntrosAsJson(
+                          draft.metadata.character_name || draft.metadata.seed,
+                          savedIntros,
+                          draft.assets.intro_scene,
+                        )
+                      }
+                      className="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-sm hover:bg-accent"
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      Export JSON
+                    </button>
+                  </div>
+                </div>
+                {savedIntros.map((intro, index) => renderCandidateCard(intro, index, true))}
               </div>
             )}
-          </div>
-        </section>
-      </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-semibold">
+                    {isIntroAsset ? `New Intros (${generatedCandidates.length})` : 'Generated Variants'}
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    {isIntroAsset
+                      ? 'Generate intros, keep the ones worth curating, or set one active immediately.'
+                      : 'Keep generating until one is better than the current active version.'}
+                  </p>
+                </div>
+                {!isIntroAsset && (
+                  <span className="app-pill app-pill-muted">{generatedCandidates.length} variants</span>
+                )}
+              </div>
+
+              {generatedCandidates.length === 0 ? (
+                <div className="app-note p-4 text-sm text-muted-foreground">
+                  {isIntroAsset ? 'No intros generated yet.' : 'No variants generated yet.'}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {generatedCandidates.map((candidate, index) => renderCandidateCard(candidate, index))}
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
       )}
     </div>
   );
