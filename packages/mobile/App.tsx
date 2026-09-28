@@ -16,6 +16,7 @@ import DraftsScreen from './src/screens/DraftsScreen';
 import GenerateScreen from './src/screens/GenerateScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import LineageScreen from './src/screens/LineageScreen';
+import LorebookGeneratorScreen from './src/screens/LorebookGeneratorScreen';
 import OffspringScreen from './src/screens/OffspringScreen';
 import SeedGeneratorScreen from './src/screens/SeedGeneratorScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
@@ -66,6 +67,11 @@ function HomeStackNavigator() {
         name="SeedGenerator"
         component={SeedGeneratorScreen}
         options={{ title: 'Seed Generator', headerShown: false }}
+      />
+      <HomeStack.Screen
+        name="LorebookGenerator"
+        component={LorebookGeneratorScreen}
+        options={{ title: 'Lorebook Generator', headerShown: false }}
       />
       <HomeStack.Screen
         name="Validation"

@@ -5,19 +5,17 @@
 
 import {
   buildAssetContextLines,
+  buildLorebookUserPrompt,
   selectRelevantPriorAssets,
   type ChatMessage,
   type ContentMode,
+  type ReferenceSuiteContext,
   type Template,
 } from '@char-gen/shared';
 import { loadBlueprint, resolveFeatureBlueprint, templateToAssets, topologicalSort } from './blueprint.js';
 import { resolveTemplateBlueprintContent, resolveTemplateDefinition } from '../templates/browser.js';
 
-export interface ReferenceSuiteContext {
-  label: string;
-  assets: Record<string, string>;
-  template?: Template;
-}
+export type { ReferenceSuiteContext };
 
 export interface ImportedSourceContext {
   label: string;
@@ -354,25 +352,9 @@ export async function buildLorebookPrompt(
   } = {},
 ): Promise<[system: string, user: string]> {
   const systemPrompt = options.blueprintContent?.trim() || (await resolveFeatureBlueprint('worldbook_generation'));
+  const userPrompt = buildLorebookUserPrompt(referenceSuites, { focus: options.focus });
 
-  const userLines: string[] = [
-    `REFERENCE_DRAFT_COUNT: ${referenceSuites.length}`,
-    'TASK: Synthesize a connected lorebook/worldbook packet from these reference drafts.',
-    'CONSTRAINT: Do not generate a new standalone character. Extract connected canon, events, places, factions, moments, and recurring pressure instead.',
-  ];
-
-  if (options.focus?.trim()) {
-    userLines.push('');
-    userLines.push(`FOCUS: ${options.focus.trim()}`);
-  }
-
-  referenceSuites.forEach((suite, index) => {
-    userLines.push(
-      ...buildParentSuiteSection(`REFERENCE DRAFT ${index + 1}`, suite.label, suite.assets, suite.template),
-    );
-  });
-
-  return [systemPrompt, userLines.join('\n')];
+  return [systemPrompt, userPrompt];
 }
 
 /**

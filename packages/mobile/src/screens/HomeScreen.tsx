@@ -11,6 +11,7 @@ import {
   DocumentTextIcon,
   GitCompareIcon,
   Cog6ToothIcon,
+  BookOpenIcon,
 } from '../components/Icons';
 import { DEFAULT_HELP_STATE, getStoredDeviceConfig, updateStoredDeviceConfig } from '../storage/device-config';
 import type { HomeScreenNavigationProp } from '../types/navigation';
@@ -273,7 +274,7 @@ export default function HomeScreen() {
       <CollapsibleTray
         title="Tools"
         subtitle="Secondary generation flows"
-        preview={<Text style={styles.trayPreviewText}>Seeds • Optimize • Batch • Validation</Text>}
+        preview={<Text style={styles.trayPreviewText}>Seeds • Lorebook • Optimize • Batch • Validation</Text>}
       >
         <View style={styles.actionsGrid}>
           <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate('SeedGenerator')}>
@@ -314,7 +315,11 @@ export default function HomeScreen() {
             <Text style={styles.actionDesc}>Multiple seeds</Text>
           </TouchableOpacity>
 
-          <View style={styles.actionCardPlaceholder} />
+          <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate('LorebookGenerator')}>
+            <BookOpenIcon color="#7c3aed" size={32} />
+            <Text style={styles.actionTitle}>Lorebook</Text>
+            <Text style={styles.actionDesc}>Shared canon</Text>
+          </TouchableOpacity>
         </View>
       </CollapsibleTray>
 

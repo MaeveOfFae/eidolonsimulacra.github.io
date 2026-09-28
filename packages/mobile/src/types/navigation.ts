@@ -6,6 +6,7 @@ import type { CompositeNavigationProp } from '@react-navigation/native';
 export type HomeStackParamList = {
   HomeRoot: undefined;
   SeedGenerator: undefined;
+  LorebookGenerator: undefined;
   Validation: undefined;
   TokenOptimization: { text?: string; draftId?: string; assetName?: string } | undefined;
   Lineage: undefined;

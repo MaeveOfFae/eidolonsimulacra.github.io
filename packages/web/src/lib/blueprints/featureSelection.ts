@@ -1,57 +1,13 @@
-import type { Blueprint, BlueprintList, FeatureCategory } from '@char-gen/shared';
+/**
+ * Re-export shim over `@char-gen/shared`'s `blueprint-features` module.
+ *
+ * The selection rules now live in shared so mobile resolves the same feature
+ * blueprint without forking the ranking logic a third time.
+ */
 
-function flattenBlueprintList(list: BlueprintList): Blueprint[] {
-  return [...list.system, ...list.core, ...list.examples, ...Object.values(list.templates).flat()];
-}
-
-function categoryRank(category: Blueprint['category']): number {
-  switch (category) {
-    case 'system':
-      return 0;
-    case 'core':
-      return 1;
-    case 'template':
-      return 2;
-    case 'example':
-      return 3;
-    default:
-      return 4;
-  }
-}
-
-export function getBlueprintsForFeature(list: BlueprintList, featureCategory: FeatureCategory): Blueprint[] {
-  return flattenBlueprintList(list)
-    .filter((entry) => entry.feature_category === featureCategory)
-    .sort((left, right) => {
-      const categoryDiff = categoryRank(left.category) - categoryRank(right.category);
-      if (categoryDiff !== 0) {
-        return categoryDiff;
-      }
-
-      return left.name.localeCompare(right.name);
-    });
-}
-
-export function resolveBlueprintForFeature(
-  list: BlueprintList,
-  featureCategory: FeatureCategory,
-  preferredPath?: string,
-): Blueprint | null {
-  const matching = getBlueprintsForFeature(list, featureCategory);
-
-  if (preferredPath) {
-    const preferred = matching.find((entry) => entry.path === preferredPath);
-    if (preferred) {
-      return preferred;
-    }
-  }
-
-  return matching[0] ?? null;
-}
-
-export function toBlueprintOptions(blueprints: Blueprint[]): Array<{ name: string; label: string }> {
-  return blueprints.map((entry) => ({
-    name: entry.path,
-    label: entry.name || entry.path,
-  }));
-}
+export {
+  flattenBlueprintList,
+  getBlueprintsForFeature,
+  resolveBlueprintForFeature,
+  toBlueprintOptions,
+} from '@char-gen/shared';

@@ -1,11 +1,3 @@
-/**
- * Browser storage adapter for lorebook packets.
- *
- * The packet format and every pure helper now live in `@char-gen/shared`
- * (`lorebook-packets`) so mobile persists the same records instead of growing a
- * third copy. This module only owns the `localStorage` read/write path.
- */
-
 import {
   buildLorebookPacketRecord,
   extractLorebookPacketSourceDrafts,
@@ -16,11 +8,10 @@ import {
   type SavedLorebookPacketRecord,
 } from '@char-gen/shared';
 
-const LOREBOOK_PACKETS_STORAGE_KEY = 'eidolon.web.lorebookPackets';
+const LOREBOOK_PACKETS_STORAGE_KEY = 'eidolon.mobile.lorebookPackets';
 
 export {
   MAX_LOREBOOK_PACKETS,
-  createLorebookPacketId,
   deriveLorebookPacketTitle,
   extractLorebookPacketSourceDrafts,
   getLorebookPacketFilename,
@@ -37,17 +28,25 @@ export type {
   SavedLorebookPacketRecord,
 } from '@char-gen/shared';
 
-function canUseStorage(): boolean {
-  return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+type StorageLike = Pick<Storage, 'getItem' | 'setItem'>;
+
+function getStorage(): StorageLike | null {
+  const maybeStorage = globalThis as { localStorage?: StorageLike };
+  return maybeStorage.localStorage ?? null;
 }
 
+/**
+ * Mobile persists packets through the same `globalThis.localStorage` surface the
+ * device config / content stores use (`expo-sqlite/localStorage/install`).
+ */
 function readLorebookPackets(): SavedLorebookPacketRecord[] {
-  if (!canUseStorage()) {
+  const storage = getStorage();
+  if (!storage) {
     return [];
   }
 
   try {
-    const raw = window.localStorage.getItem(LOREBOOK_PACKETS_STORAGE_KEY);
+    const raw = storage.getItem(LOREBOOK_PACKETS_STORAGE_KEY);
     if (!raw) {
       return [];
     }
@@ -59,11 +58,12 @@ function readLorebookPackets(): SavedLorebookPacketRecord[] {
 }
 
 function writeLorebookPackets(records: SavedLorebookPacketRecord[]): void {
-  if (!canUseStorage()) {
+  const storage = getStorage();
+  if (!storage) {
     return;
   }
 
-  window.localStorage.setItem(LOREBOOK_PACKETS_STORAGE_KEY, JSON.stringify(records));
+  storage.setItem(LOREBOOK_PACKETS_STORAGE_KEY, JSON.stringify(records));
 }
 
 export function listSavedLorebookPackets(): SavedLorebookPacketRecord[] {

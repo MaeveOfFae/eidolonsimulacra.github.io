@@ -47,6 +47,7 @@ import {
   type GenerationComplete,
   type LineageResponse,
   type LLMProvider,
+  type LorebookGenerationRequest,
   type ModelsResponse,
   type OffspringRequest,
   type OptimizeTextRequest,
@@ -66,10 +67,20 @@ import { Platform } from 'react-native';
 import { getStoredDeviceConfig, updateStoredDeviceConfig } from '../storage/device-config';
 import { deleteDraft, getAllMetadata, getDraft, saveDraft, updateAsset, updateMetadata } from './draft-store';
 import {
+  buildLorebookMessages,
+  buildLorebookReferenceSuites,
+  normalizeLorebookReferenceIds,
+  resolveLorebookBlueprintContent,
+  resolveLorebookBlueprintPath,
+  resolveLorebookBlueprintPathFromCatalog,
+} from '../lib/lorebook';
+
+import {
   getAllTemplateRecords,
   getBlueprintCatalog,
   getBlueprintList,
   getBlueprintOverrides,
+  getOriginalBlueprintContent,
   getStoredTemplateRecord,
   getStoredTemplates,
   getTemplateBlueprintContents,
@@ -921,6 +932,57 @@ export class MobileLocalAPI {
     const content = await collectStreamedContent(buildSeedMessages(request));
     const seeds = parseSeedOutput(content);
     return { seeds };
+  }
+
+  generateLorebook(request: LorebookGenerationRequest): LocalStream {
+    return new LocalStream(async ({ emit, signal }) => {
+      const draftIds = normalizeLorebookReferenceIds(request.draft_ids);
+      if (draftIds.length === 0) {
+        emit('error', { error: 'Select at least one reference draft to generate a lorebook packet.' });
+        return;
+      }
+
+      emit('status', { stage: 'loading_references', progress: 0.1 });
+
+      const drafts = await Promise.all(draftIds.map((draftId) => getDraft(draftId)));
+      const referenceSuites = buildLorebookReferenceSuites(drafts);
+      if (referenceSuites.length === 0) {
+        emit('error', {
+          error: 'The selected drafts did not contain enough usable reference context for lorebook generation.',
+        });
+        return;
+      }
+
+      emit('status', { stage: 'building_prompt', progress: 0.18 });
+
+      const blueprintPath = resolveLorebookBlueprintPathFromCatalog(
+        getBlueprintList(),
+        resolveLorebookBlueprintPath(getStoredDeviceConfig().feature_blueprints, request.blueprint_path),
+      );
+      const messages = buildLorebookMessages({
+        referenceSuites,
+        blueprintContent: resolveLorebookBlueprintContent({
+          requested: request.blueprint_content,
+          catalog: getBlueprintCatalog().get(blueprintPath)?.content,
+          bundled: getOriginalBlueprintContent(blueprintPath),
+        }),
+        focus: request.focus,
+      });
+
+      emit('status', { stage: 'generating', progress: 0.24 });
+
+      const content = await collectStreamedContent(
+        messages,
+        signal,
+        (chunk) => emit('chunk', { content: chunk }),
+        (stage, progress, asset) => emit('status', { stage, progress, asset }),
+        { start: 0.28, end: 0.92 },
+      );
+
+      if (!signal.aborted) {
+        emit('complete', { content });
+      }
+    });
   }
 
   async getTemplates(): Promise<Template[]> {

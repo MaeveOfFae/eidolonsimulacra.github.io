@@ -418,3 +418,81 @@ export function ArrowUturnLeftIcon({ color, size = 24 }: IconProps) {
     </View>
   );
 }
+
+export function BookOpenIcon({ color, size = 24 }: IconProps) {
+  return (
+    <View style={{ width: size, height: size }}>
+      <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <Path
+          d="M12 6.75C10.5 5.4 8.4 4.5 6 4.5H3.75V18H6C8.4 18 10.5 18.9 12 20.25M12 6.75C13.5 5.4 15.6 4.5 18 4.5H20.25V18H18C15.6 18 13.5 18.9 12 20.25M12 6.75V20.25"
+          stroke={color}
+          strokeWidth={1.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </Svg>
+    </View>
+  );
+}
+
+export function SquareArrowDownIcon({ color, size = 24 }: IconProps) {
+  return (
+    <View style={{ width: size, height: size }}>
+      <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <Path
+          d="M3.75 6.75V17.25C3.75 18.2855 4.58947 19.125 5.625 19.125H18.375C19.4105 19.125 20.25 18.2855 20.25 17.25V6.75C20.25 5.71447 19.4105 4.875 18.375 4.875H5.625C4.58947 4.875 3.75 5.71447 3.75 6.75Z"
+          stroke={color}
+          strokeWidth={1.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <Path
+          d="M12 7.875V14.625M12 14.625L9.375 12M12 14.625L14.625 12"
+          stroke={color}
+          strokeWidth={1.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </Svg>
+    </View>
+  );
+}
+
+export function SquareArrowUpIcon({ color, size = 24 }: IconProps) {
+  return (
+    <View style={{ width: size, height: size }}>
+      <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <Path
+          d="M3.75 6.75V17.25C3.75 18.2855 4.58947 19.125 5.625 19.125H18.375C19.4105 19.125 20.25 18.2855 20.25 17.25V6.75C20.25 5.71447 19.4105 4.875 18.375 4.875H5.625C4.58947 4.875 3.75 5.71447 3.75 6.75Z"
+          stroke={color}
+          strokeWidth={1.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <Path
+          d="M12 16.125V9.375M12 9.375L9.375 12M12 9.375L14.625 12"
+          stroke={color}
+          strokeWidth={1.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </Svg>
+    </View>
+  );
+}
+
+export function BookmarkSquareIcon({ color, size = 24 }: IconProps) {
+  return (
+    <View style={{ width: size, height: size }}>
+      <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <Path
+          d="M8.25 4.5H15.75C16.7855 4.5 17.625 5.33947 17.625 6.375V19.5L12 16.125L6.375 19.5V6.375C6.375 5.33947 7.21447 4.5 8.25 4.5Z"
+          stroke={color}
+          strokeWidth={1.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </Svg>
+    </View>
+  );
+}

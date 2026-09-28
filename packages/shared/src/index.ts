@@ -53,6 +53,50 @@ export {
 } from './draft-runtime';
 
 export {
+  MAX_LOREBOOK_PACKETS,
+  buildLorebookPacketRecord,
+  createLorebookPacketId,
+  deriveLorebookPacketTitle,
+  extractLorebookPacketSourceDrafts,
+  getLorebookPacketFilename,
+  mergeLorebookPacket,
+  normalizeLorebookPacketDraftIds,
+  normalizeLorebookPacketRecord,
+  normalizeLorebookPackets,
+  parseLorebookPacket,
+  removeLorebookPacket,
+  sortLorebookPackets,
+  type LorebookPacketEntryType,
+  type LorebookPacketSaveInput,
+  type ParsedLorebookPacket,
+  type ParsedLorebookPacketEntry,
+  type SavedLorebookPacketRecord,
+} from './lorebook-packets';
+
+export {
+  DEFAULT_REFERENCE_ASSET_CHAR_LIMITS,
+  DEFAULT_REFERENCE_ASSET_LINE_LIMITS,
+  DEFAULT_REFERENCE_ASSET_ORDER,
+  buildCompactReferenceAssets,
+  buildLorebookUserPrompt,
+  buildReferenceSummary,
+  buildReferenceSuiteSection,
+  getReferenceAssetCharLimit,
+  getReferenceAssetLineLimit,
+  normalizeConnectedReferenceIds,
+  truncateReferenceAssetContent,
+  type ReferenceAssetLimits,
+  type ReferenceSuiteContext,
+} from './lorebook-prompt';
+
+export {
+  flattenBlueprintList,
+  getBlueprintsForFeature,
+  resolveBlueprintForFeature,
+  toBlueprintOptions,
+} from './blueprint-features';
+
+export {
   buildDraftExportArtifact,
   buildDraftLibraryExport,
   coerceDraft,
