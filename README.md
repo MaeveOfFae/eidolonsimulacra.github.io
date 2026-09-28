@@ -84,7 +84,7 @@ Notes:
 - The current mobile flow stores drafts, templates, blueprint overrides, settings, and keys locally on-device.
 - Use the mobile Settings screen to import a workspace bundle exported from the PC app or browser workspace when you want to mirror data across devices, or pair with the desktop companion for LAN transfer.
 - Generation talks directly to the configured provider from the device; mobile has no backend dependency.
-- Parity status against the web app — what already matches, what is missing, and the recommended order — is scoped in [`docs/MOBILE_PARITY.md`](docs/MOBILE_PARITY.md).
+- Parity status against the web app — what already matches, what is missing, and the recommended order — is scoped in [`docs/MOBILE_PARITY.md`](docs/MOBILE_PARITY.md). Draft archiving and PNG card writing are already at parity; lorebook generation is next.
 
 ## Desktop App
 

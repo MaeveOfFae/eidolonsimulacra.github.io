@@ -144,7 +144,6 @@ export const roadmapGroups: RoadmapGroup[] = [
       'Shareable web preview page for a generated character pack',
       'Metadata manifest export for preserving provenance, model info, and template info alongside assets',
       'Export dry-run mode that shows mapped outputs before creating files',
-      'Print-friendly or PDF-style presentation export for review and archiving',
     ],
   },
   {

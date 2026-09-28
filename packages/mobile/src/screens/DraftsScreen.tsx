@@ -26,7 +26,21 @@ import {
 import { api } from '../config/api';
 import CollapsibleTray from '../components/CollapsibleTray';
 import { exportAllDrafts, importDrafts } from '../local/draft-store';
-import { StarIcon, FolderIcon, MagnifyingGlassIcon, PlusIcon, UsersIcon } from '../components/Icons';
+import {
+  ArrowUturnLeftIcon,
+  ArchiveBoxIcon,
+  StarIcon,
+  FolderIcon,
+  MagnifyingGlassIcon,
+  PlusIcon,
+  UsersIcon,
+} from '../components/Icons';
+import {
+  isDraftArchived,
+  resolveDraftArchiveAction,
+  selectDraftListSource,
+  type DraftFilterMode,
+} from '../lib/draft-archive';
 import {
   getMobileCompareSelection,
   setMobileCompareSelection,
@@ -37,7 +51,7 @@ import { getErrorMessage } from '../utils/errors';
 import { pickTextFile, saveTextFile } from '../utils/file-transfer';
 
 type SortOption = 'created' | 'modified' | 'name';
-type FilterMode = 'all' | 'favorites';
+type FilterMode = DraftFilterMode;
 
 function formatTimestamp(value?: string): string {
   if (!value) {
@@ -79,6 +93,14 @@ export default function DraftsScreen() {
     queryKey: ['drafts'],
     queryFn: () => api.getDrafts(),
   });
+
+  const { data: archivedData, isLoading: archivedLoading } = useQuery({
+    queryKey: ['drafts', 'archived'],
+    queryFn: () => api.getDrafts({ archived: true }),
+  });
+
+  const archivedDrafts = useMemo(() => archivedData?.drafts ?? [], [archivedData?.drafts]);
+  const archivedCount = data?.stats.archived_drafts ?? archivedDrafts.length;
 
   const { data: templates = [] } = useQuery({
     queryKey: ['templates'],
@@ -131,8 +153,42 @@ export default function DraftsScreen() {
     },
   });
 
+  const archiveDraftMutation = useMutation({
+    mutationFn: async (draft: DraftMetadata) => {
+      const action = resolveDraftArchiveAction(draft);
+
+      await api.createDraftSnapshot(draft.review_id, {
+        label: action.snapshotLabel,
+        reason: action.snapshotReason,
+      });
+
+      return action.kind === 'restore' ? api.restoreDraft(draft.review_id) : api.archiveDraft(draft.review_id);
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['drafts'] }),
+        queryClient.invalidateQueries({ queryKey: ['drafts', 'archived'] }),
+      ]);
+    },
+    onError: (mutationError: unknown) => {
+      Alert.alert('Error', getErrorMessage(mutationError, 'Failed to update archive state'));
+    },
+  });
+
+  const handleArchiveDraft = (draft: DraftMetadata) => {
+    const action = resolveDraftArchiveAction(draft);
+
+    Alert.alert(action.confirmationTitle, action.confirmationMessage, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: action.actionLabel,
+        onPress: () => archiveDraftMutation.mutate(draft),
+      },
+    ]);
+  };
+
   const filteredDrafts = useMemo(() => {
-    let drafts = data?.drafts || [];
+    let drafts = selectDraftListSource(data?.drafts || [], archivedDrafts, filterMode);
 
     // Filter by search query
     if (searchQuery.trim()) {
@@ -170,7 +226,7 @@ export default function DraftsScreen() {
     });
 
     return drafts;
-  }, [data?.drafts, searchQuery, filterMode, filterContentMode, sortOption, sortOrder]);
+  }, [data?.drafts, archivedDrafts, searchQuery, filterMode, filterContentMode, sortOption, sortOrder]);
 
   const handleExportAll = async () => {
     try {
@@ -199,7 +255,10 @@ export default function DraftsScreen() {
       }
 
       const result = await importDrafts(file.contents, { sourceName: file.name, template: selectedImportTemplate });
-      await queryClient.invalidateQueries({ queryKey: ['drafts'] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['drafts'] }),
+        queryClient.invalidateQueries({ queryKey: ['drafts', 'archived'] }),
+      ]);
 
       const remapMessage =
         result.remapped > 0
@@ -259,6 +318,7 @@ export default function DraftsScreen() {
   const renderDraft = ({ item }: { item: DraftMetadata }) => {
     const latestSnapshot = getLatestDraftSnapshotSummary(item);
     const readinessBadges = buildDraftLibraryBadges(item).slice(0, 4);
+    const archiveAction = resolveDraftArchiveAction(item);
     const canCompleteCompare = Boolean(
       pendingCompareSelection?.character1Id && pendingCompareSelection.character1Id !== item.review_id,
     );
@@ -303,6 +363,11 @@ export default function DraftsScreen() {
             {item.favorite && <StarIcon color="#eab308" size={18} />}
           </View>
           <View style={styles.draftMeta}>
+            {isDraftArchived(item) && (
+              <View style={styles.archivedTag}>
+                <Text style={styles.archivedTagText}>Archived</Text>
+              </View>
+            )}
             {item.mode && <Text style={styles.draftTag}>{item.mode}</Text>}
             {item.genre && <Text style={styles.draftTag}>{item.genre}</Text>}
             {item.template_name && <Text style={styles.draftTag}>{item.template_name}</Text>}
@@ -371,6 +436,18 @@ export default function DraftsScreen() {
             <UsersIcon color="#9ca3af" size={14} />
             <Text style={styles.draftActionButtonText}>{canCompleteCompare ? 'Complete Compare' : 'Compare'}</Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.draftActionButton}
+            onPress={() => handleArchiveDraft(item)}
+            disabled={archiveDraftMutation.isPending}
+          >
+            {archiveAction.kind === 'restore' ? (
+              <ArrowUturnLeftIcon color="#9ca3af" size={14} />
+            ) : (
+              <ArchiveBoxIcon color="#9ca3af" size={14} />
+            )}
+            <Text style={styles.draftActionButtonText}>{archiveAction.actionLabel}</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -397,8 +474,10 @@ export default function DraftsScreen() {
   }
 
   const contentModes: ContentMode[] = ['SFW', 'NSFW', 'Platform-Safe', 'Auto'];
+  const showingArchived = filterMode === 'archived';
   const hasActiveFilters =
     filterMode !== 'all' || filterContentMode !== 'all' || sortOption !== 'created' || sortOrder !== 'desc';
+  const filterSummary = showingArchived ? 'archived' : filterMode === 'favorites' ? 'favorites' : 'all drafts';
 
   return (
     <View style={styles.container}>
@@ -449,8 +528,7 @@ export default function DraftsScreen() {
           initiallyExpanded={hasActiveFilters}
           preview={
             <Text style={styles.filterSummaryText} numberOfLines={1}>
-              {selectedImportTemplate?.name || 'No import template'} •{' '}
-              {filterMode === 'favorites' ? 'favorites' : 'all drafts'} •{' '}
+              {selectedImportTemplate?.name || 'No import template'} • {filterSummary} •{' '}
               {filterContentMode === 'all' ? 'all modes' : filterContentMode}
             </Text>
           }
@@ -497,6 +575,15 @@ export default function DraftsScreen() {
                   <StarIcon color={filterMode === 'favorites' ? '#fff' : '#9ca3af'} size={14} />
                   <Text style={[styles.filterChipText, filterMode === 'favorites' && styles.filterChipTextActive]}>
                     Favorites
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.filterChip, filterMode === 'archived' && styles.filterChipActive]}
+                  onPress={() => setFilterMode('archived')}
+                >
+                  <ArchiveBoxIcon color={filterMode === 'archived' ? '#fff' : '#9ca3af'} size={14} />
+                  <Text style={[styles.filterChipText, filterMode === 'archived' && styles.filterChipTextActive]}>
+                    Archived{archivedCount > 0 ? ` (${archivedCount})` : ''}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -563,8 +650,10 @@ export default function DraftsScreen() {
       {data?.stats && (
         <View style={styles.statsBar}>
           <Text style={styles.statsText}>
-            {filteredDrafts.length} of {data.stats.total_drafts} characters
+            {filteredDrafts.length} of {showingArchived ? archivedDrafts.length : data.stats.total_drafts} characters
+            {showingArchived && ' • Archived only'}
             {filterMode === 'favorites' && ' • Favorites only'}
+            {archivedCount > 0 && !showingArchived && ` • ${archivedCount} archived`}
             {searchQuery.length > 0 && ' • Filtered'}
           </Text>
         </View>
@@ -576,19 +665,23 @@ export default function DraftsScreen() {
         keyExtractor={(item) => item.review_id}
         renderItem={renderDraft}
         contentContainerStyle={styles.listContent}
-        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor="#7c3aed" />}
+        refreshControl={
+          <RefreshControl refreshing={isLoading || archivedLoading} onRefresh={refetch} tintColor="#7c3aed" />
+        }
         ListEmptyComponent={
           <View style={styles.empty}>
-            <FolderIcon color="#6b7280" size={48} />
+            {showingArchived ? <ArchiveBoxIcon color="#6b7280" size={48} /> : <FolderIcon color="#6b7280" size={48} />}
             <Text style={styles.emptyTitle}>
               {searchQuery || filterMode !== 'all' || filterContentMode !== 'all'
                 ? 'No matches found'
                 : 'No drafts yet'}
             </Text>
             <Text style={styles.emptyText}>
-              {searchQuery || filterMode !== 'all' || filterContentMode !== 'all'
-                ? 'Try adjusting your search or filters'
-                : 'Generate a character or create a manual draft to get started'}
+              {showingArchived && !searchQuery && filterContentMode === 'all'
+                ? 'Archived drafts you put aside will show up here until you restore or delete them'
+                : searchQuery || filterMode !== 'all' || filterContentMode !== 'all'
+                  ? 'Try adjusting your search or filters'
+                  : 'Generate a character or create a manual draft to get started'}
             </Text>
             {!searchQuery && filterMode === 'all' && filterContentMode === 'all' ? (
               <TouchableOpacity style={styles.emptyActionButton} onPress={handleOpenCreateModal}>
@@ -907,6 +1000,19 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     color: '#9ca3af',
     fontSize: 12,
+  },
+  archivedTag: {
+    backgroundColor: '#3f2d18',
+    borderWidth: 1,
+    borderColor: '#78350f',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  archivedTagText: {
+    color: '#fbbf24',
+    fontSize: 12,
+    fontWeight: '600',
   },
   readinessBadgeRow: {
     flexDirection: 'row',

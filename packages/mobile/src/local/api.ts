@@ -1175,6 +1175,22 @@ export class MobileLocalAPI {
     return { status: 'restored', draft_id: reviewId, snapshot_id: snapshotId };
   }
 
+  async archiveDraft(reviewId: string): Promise<{ status: string; draft_id: string }> {
+    await updateMetadata(reviewId, {
+      archived_at: new Date().toISOString(),
+    });
+
+    return { status: 'archived', draft_id: reviewId };
+  }
+
+  async restoreDraft(reviewId: string): Promise<{ status: string; draft_id: string }> {
+    await updateMetadata(reviewId, {
+      archived_at: undefined,
+    });
+
+    return { status: 'restored', draft_id: reviewId };
+  }
+
   async saveDraft(draftId: string, updates: Partial<Draft>): Promise<Draft> {
     const current = await this.getDraft(draftId);
     const nextDraft: Draft = {

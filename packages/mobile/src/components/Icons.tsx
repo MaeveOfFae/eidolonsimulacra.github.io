@@ -384,3 +384,37 @@ export function PencilIcon({ color, size = 24 }: IconProps) {
     </View>
   );
 }
+
+export function ArchiveBoxIcon({ color, size = 24 }: IconProps) {
+  return (
+    <View style={{ width: size, height: size }}>
+      <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <Path
+          d="M3.75 7.5L4.5 18.75C4.53 19.578 5.172 20.25 6 20.25H18C18.828 20.25 19.47 19.578 19.5 18.75L20.25 7.5M3.75 7.5H20.25M3.75 7.5V5.25C3.75 4.42157 4.42157 3.75 5.25 3.75H18.75C19.5784 3.75 20.25 4.42157 20.25 5.25V7.5"
+          stroke={color}
+          strokeWidth={1.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <Path d="M9.75 11.25H14.25" stroke={color} strokeWidth={1.5} strokeLinecap="round" />
+      </Svg>
+    </View>
+  );
+}
+
+export function ArrowUturnLeftIcon({ color, size = 24 }: IconProps) {
+  return (
+    <View style={{ width: size, height: size }}>
+      <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <Path d="M9 15L3.75 9.75L9 4.5" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+        <Path
+          d="M3.75 9.75H14.25C17.5637 9.75 20.25 12.4363 20.25 15.75C20.25 19.0637 17.5637 21.75 14.25 21.75H12"
+          stroke={color}
+          strokeWidth={1.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </Svg>
+    </View>
+  );
+}

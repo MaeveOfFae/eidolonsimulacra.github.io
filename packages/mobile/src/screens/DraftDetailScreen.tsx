@@ -32,6 +32,8 @@ import CollapsibleTray from '../components/CollapsibleTray';
 import {
   StarIcon,
   ArrowLeftIcon,
+  ArchiveBoxIcon,
+  ArrowUturnLeftIcon,
   TrashIcon,
   DocumentTextIcon,
   ChatBubbleIcon,
@@ -45,6 +47,7 @@ import {
   setMobileCompareSelection,
   type MobileCompareSelection,
 } from '../lib/compare-selection';
+import { isDraftArchived, resolveDraftArchiveAction } from '../lib/draft-archive';
 import type { DraftDetailRouteProp, DraftsStackNavigationProp } from '../types/navigation';
 import { getErrorMessage } from '../utils/errors';
 import { pickCharacterImportFile, saveDownload } from '../utils/file-transfer';
@@ -437,6 +440,37 @@ export default function DraftDetailScreen() {
     },
   });
 
+  const archiveMutation = useMutation({
+    mutationFn: async () => {
+      if (!draft) {
+        return null;
+      }
+
+      const action = resolveDraftArchiveAction(draft.metadata);
+
+      await createSafeguardSnapshot(action.snapshotLabel, action.snapshotReason);
+
+      return action.kind === 'restore' ? api.restoreDraft(draftId) : api.archiveDraft(draftId);
+    },
+    onSuccess: (result) => {
+      if (!result) {
+        return;
+      }
+
+      invalidateDraftQueries();
+      queryClient.invalidateQueries({ queryKey: ['drafts', 'archived'] });
+      Alert.alert(
+        result.status === 'restored' ? 'Draft restored' : 'Draft archived',
+        result.status === 'restored'
+          ? 'The character is back in the active library. A safeguard restore point was saved first.'
+          : 'The character moved to the archive. Restore it from the Archived filter in the drafts list.',
+      );
+    },
+    onError: (error: unknown) => {
+      Alert.alert('Error', getErrorMessage(error, 'Failed to update archive state'));
+    },
+  });
+
   const createSnapshotMutation = useMutation({
     mutationFn: async () =>
       api.createDraftSnapshot(draftId, {
@@ -611,6 +645,22 @@ export default function DraftDetailScreen() {
         },
       ],
     );
+  };
+
+  const handleArchive = () => {
+    if (!draft) {
+      return;
+    }
+
+    const action = resolveDraftArchiveAction(draft.metadata);
+
+    Alert.alert(action.confirmationTitle, action.confirmationMessage, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: action.actionLabel,
+        onPress: () => archiveMutation.mutate(),
+      },
+    ]);
   };
 
   const handleCompareDraft = () => {
@@ -1415,6 +1465,11 @@ export default function DraftDetailScreen() {
 
       {/* Tags */}
       <ScrollView horizontal style={styles.tagsContainer} contentContainerStyle={styles.tagsContent}>
+        {isDraftArchived(draft.metadata) && (
+          <View style={[styles.tag, styles.tagArchived]}>
+            <Text style={styles.tagArchivedText}>Archived</Text>
+          </View>
+        )}
         {draft.metadata.mode && (
           <View style={[styles.tag, styles.tagPrimary]}>
             <Text style={styles.tagPrimaryText}>{draft.metadata.mode}</Text>
@@ -1470,6 +1525,14 @@ export default function DraftDetailScreen() {
           >
             <DocumentTextIcon color="#7c3aed" size={18} />
             <Text style={styles.actionButtonText}>Export</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionButton} onPress={handleArchive} disabled={archiveMutation.isPending}>
+            {isDraftArchived(draft.metadata) ? (
+              <ArrowUturnLeftIcon color="#7c3aed" size={18} />
+            ) : (
+              <ArchiveBoxIcon color="#7c3aed" size={18} />
+            )}
+            <Text style={styles.actionButtonText}>{isDraftArchived(draft.metadata) ? 'Restore' : 'Archive'}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.actionButton, styles.deleteActionButton]} onPress={handleDelete}>
             <TrashIcon color="#ef4444" size={18} />
@@ -2787,6 +2850,16 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 12,
     fontWeight: '500',
+  },
+  tagArchived: {
+    backgroundColor: '#3f2d18',
+    borderWidth: 1,
+    borderColor: '#78350f',
+  },
+  tagArchivedText: {
+    color: '#fbbf24',
+    fontSize: 12,
+    fontWeight: '600',
   },
   actionsContainer: {
     paddingTop: 10,

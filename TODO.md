@@ -22,12 +22,13 @@ Stretch goals:
 
 Known gaps found while reviewing the codebase (not yet scheduled):
 
-- [ ] Split the `EidolonBrowserAPI` class in `packages/web/src/lib/api.ts` into domain modules. The file is down from 2,727 to 1,826 lines after the theme-data extraction, and `src/lib/api.surface.ts` locks the public method set at compile time. Characterization tests now cover the draft, theme, template, config and export domains (`api.drafts.test.ts`, `api.themes.test.ts`, `api.templates.test.ts`, `api.config.test.ts`, `api.export.test.ts` — 40 tests). The blueprint and world/timeline domains still need coverage before they can be moved safely, since roughly 40 components depend on the `api` object shape
+- [ ] Split the `EidolonBrowserAPI` class in `packages/web/src/lib/api.ts` into domain modules. The file is down from 2,727 to 1,834 lines after the theme-data extraction, and `src/lib/api.surface.ts` locks the public method set at compile time. Characterization tests now cover the draft, theme, template, config and export domains (`api.drafts.test.ts`, `api.themes.test.ts`, `api.templates.test.ts`, `api.config.test.ts`, `api.export.test.ts` — 41 tests). The blueprint and world/timeline domains still need coverage before they can be moved safely, since roughly 40 components depend on the `api` object shape
 - [ ] Publish or drop `docs/index.html` (it is not built or published by CI)
 
 Recently completed hygiene work (kept here for context):
 
-- [X] Made the browser API runtime-testable: happy-dom has no `indexedDB`, which blocked the Dexie-backed draft store, so `fake-indexeddb` is now imported from `packages/web/src/test/setup.ts`. `test:web` grew from 22 files / 78 tests to 27 files / 118 tests across the draft, theme, template, config and export domains
+- [X] Made the browser API runtime-testable: happy-dom has no `indexedDB`, which blocked the Dexie-backed draft store, so `fake-indexeddb` is now imported from `packages/web/src/test/setup.ts`. `test:web` grew from 22 files / 78 tests to 27 files / 119 tests across the draft, theme, template, config and export domains
+- [X] Mobile draft archiving (MOBILE_PARITY Tier 1 item 1): `archiveDraft` / `restoreDraft` on `MobileLocalAPI`, an `archived` filter mode plus archive/restore row actions in `DraftsScreen`, a detail-screen action with a safeguard restore point, and `src/lib/draft-archive.ts` pinned by 11 logic tests. `test:mobile` grew from 2 files / 12 tests to 3 files / 23 tests
 
 - [X] Deleted the dead `packages/shared/src/services/generation.ts` stub. It was not exported from `shared/src/index.ts` or `services/index.ts`, was absent from the built `dist/services/index.js`, and had zero importers — web's `GenerationService` is the live implementation and stays in web because it depends on web's `configManager`
 - [X] Extracted `builtinTheme()` and the `builtinThemes` array out of `packages/web/src/lib/api.ts` into `lib/themes/builtin-themes.ts` (901 lines, ~33% of the file) and added `lib/api.surface.ts`, a compile-time lock over the 91 public API methods that fails `pnpm typecheck:web` if one is removed or renamed
