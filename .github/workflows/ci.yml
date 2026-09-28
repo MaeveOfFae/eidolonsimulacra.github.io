@@ -55,9 +55,6 @@ jobs:
       - name: Typecheck mobile
         run: pnpm typecheck:mobile
 
-      - name: Typecheck server
-        run: pnpm typecheck:server
-
       - name: Test web
         run: pnpm test:web
 
@@ -66,9 +63,6 @@ jobs:
 
       - name: Test mobile
         run: pnpm test:mobile
-
-      - name: Test server
-        run: pnpm test:server
 
   build-web:
     runs-on: ubuntu-latest

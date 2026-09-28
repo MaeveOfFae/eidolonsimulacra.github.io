@@ -1,2 +1,0 @@
-ALTER TABLE "drafts"
-ADD COLUMN "connectedDraftIds" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[];

@@ -24,13 +24,12 @@ Stretch goals:
 
 Known gaps found while reviewing the codebase (not yet scheduled):
 
-- [ ] Decide the fate of `packages/server`: it builds, lints, typechecks and now has tests in CI, but nothing in the web/desktop/mobile apps calls it
-- [ ] Split the `EidolonBrowserAPI` class in `packages/web/src/lib/api.ts` into domain modules (draft/template/config/world/timeline). The file is down from 2,727 to 1,826 lines after the theme-data extraction, and `src/lib/api.surface.ts` locks the public method set at compile time. The draft and theme domains now have characterization tests (`api.drafts.test.ts`, `api.themes.test.ts`, 19 tests); the template, config, export and world/timeline domains still need coverage before they can be moved safely, since roughly 40 components depend on the `api` object shape
+- [ ] Split the `EidolonBrowserAPI` class in `packages/web/src/lib/api.ts` into domain modules. The file is down from 2,727 to 1,826 lines after the theme-data extraction, and `src/lib/api.surface.ts` locks the public method set at compile time. Characterization tests now cover the draft, theme, template, config and export domains (`api.drafts.test.ts`, `api.themes.test.ts`, `api.templates.test.ts`, `api.config.test.ts`, `api.export.test.ts` — 40 tests). The blueprint and world/timeline domains still need coverage before they can be moved safely, since roughly 40 components depend on the `api` object shape
 - [ ] Publish or drop `docs/index.html` (it is not built or published by CI)
 
 Recently completed hygiene work (kept here for context):
 
-- [X] Made the browser API runtime-testable: happy-dom has no `indexedDB`, which blocked the Dexie-backed draft store, so `fake-indexeddb` is now imported from `packages/web/src/test/setup.ts`. `test:web` went from 22 files / 78 tests to 24 files / 97 tests
+- [X] Made the browser API runtime-testable: happy-dom has no `indexedDB`, which blocked the Dexie-backed draft store, so `fake-indexeddb` is now imported from `packages/web/src/test/setup.ts`. `test:web` grew from 22 files / 78 tests to 27 files / 118 tests across the draft, theme, template, config and export domains
 
 - [X] Deleted the dead `packages/shared/src/services/generation.ts` stub. It was not exported from `shared/src/index.ts` or `services/index.ts`, was absent from the built `dist/services/index.js`, and had zero importers — web's `GenerationService` is the live implementation and stays in web because it depends on web's `configManager`
 - [X] Extracted `builtinTheme()` and the `builtinThemes` array out of `packages/web/src/lib/api.ts` into `lib/themes/builtin-themes.ts` (901 lines, ~33% of the file) and added `lib/api.surface.ts`, a compile-time lock over the 91 public API methods that fails `pnpm typecheck:web` if one is removed or renamed
@@ -40,7 +39,8 @@ Recently completed hygiene work (kept here for context):
 
 - [X] Removed 31 unwired `*Placeholder` components and 3 dead modules; rewrote `roadmap.ts` with honest statuses
 - [X] Renamed `OnboardingPlaceholder` to `GettingStartedGuide` and added a `Home` smoke test
-- [X] Added CI coverage for shared tests, mobile typecheck, server typecheck, formatting, and placeholder wiring
+- [X] Added CI coverage for shared tests, mobile typecheck, formatting, and placeholder wiring
 - [X] Enforced formatting via `.prettierrc.json` + `pnpm format:check` and added `.prettierignore` for build output
-- [X] Aligned the whole workspace on TypeScript 5.9.3 (web and server were still on 5.7.3) and fixed the typed-array/Prisma `Bytes` fallout that surfaced
-- [X] Added logic-only Vitest suites for `packages/mobile` and `packages/server`, wired into CI, with server test files excluded from the built `dist`
+- [X] Aligned the whole workspace on TypeScript 5.9.3 and fixed the typed-array fallout that surfaced
+- [X] Added a logic-only Vitest suite for `packages/mobile`, wired into CI
+- [X] Deleted `packages/server` and its deployment artifacts (`docker/eidolon`, `docker-compose.yml`, `docker-compose.dev.yml`, `Caddyfile`, `.env.docker.example`, `docker/.env.example`). Nothing in the web, desktop or mobile apps called it, so the repo is now backend-free; `typecheck:server`/`test:server` scripts and their CI steps were removed too
