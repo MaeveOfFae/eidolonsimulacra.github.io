@@ -94,12 +94,11 @@ Outstanding: tone/style alternates; metadata suggestions; auto summaries; conver
 
 Tracked in [`TODO.md`](../TODO.md). Currently open:
 
-- Reconcile the generation services (`web/lib/services/generation.ts` orchestrator vs `shared/services/generation.ts` direct generator).
-- Split `packages/web/src/lib/api.ts` (~2.4k lines) along draft/template/config/theme/export/world seams, after expanding characterization tests.
+- Split the `EidolonBrowserAPI` class in `packages/web/src/lib/api.ts` into domain modules, after adding per-domain behaviour tests. The file already dropped from 2,727 to 1,826 lines (theme data extracted) and the public method set is locked by `src/lib/api.surface.ts`.
 - Decide the fate of `packages/server` (linted, typechecked and tested in CI, but no client calls it).
 - Publish or drop `docs/index.html`.
 
-Resolved: the forked web LLM layer was collapsed onto `@char-gen/shared` (web keeps thin re-export shims; `proxyKey` and the corrupted-key guard were ported into the shared engine, with characterization tests in `shared/src/llm/`).
+Resolved: the forked web LLM layer was collapsed onto `@char-gen/shared` (web keeps thin re-export shims; `proxyKey` and the corrupted-key guard were ported into the shared engine, with characterization tests in `shared/src/llm/`). The supposed duplicate generation service in `packages/shared` turned out to be dead code and was deleted.
 
 ## Keeping this accurate
 

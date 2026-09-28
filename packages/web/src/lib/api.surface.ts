@@ -1,0 +1,111 @@
+/**
+ * Compile-time surface lock for the browser API facade.
+ *
+ * `EidolonBrowserAPI` is the single object every screen and service depends on,
+ * so a refactor that drops or renames a method must fail `pnpm typecheck:web`
+ * instead of silently breaking a screen at runtime.
+ *
+ * This file intentionally contains only types; it is checked by `tsc -b`.
+ */
+import type { EidolonBrowserAPI } from './api';
+
+type Assert<T extends true> = T;
+
+/** Every member the app currently relies on. */
+type ApiMethodName =
+  | 'addTimelineEvent'
+  | 'addWorldCharacter'
+  | 'addWorldFaction'
+  | 'addWorldLocation'
+  | 'addWorldRelationship'
+  | 'analyzeSimilarity'
+  | 'archiveDraft'
+  | 'chat'
+  | 'createBlueprint'
+  | 'createDraft'
+  | 'createDraftSnapshot'
+  | 'createTemplate'
+  | 'createTheme'
+  | 'createTimeline'
+  | 'createWorld'
+  | 'deleteBlueprint'
+  | 'deleteDraft'
+  | 'deleteTemplate'
+  | 'deleteTheme'
+  | 'deleteTimeline'
+  | 'deleteTimelineEvent'
+  | 'deleteWorld'
+  | 'deleteWorldCharacter'
+  | 'deleteWorldFaction'
+  | 'deleteWorldLocation'
+  | 'deleteWorldRelationship'
+  | 'duplicateBlueprint'
+  | 'duplicateTemplate'
+  | 'duplicateTheme'
+  | 'exportDraft'
+  | 'exportTemplate'
+  | 'exportTheme'
+  | 'finalizeGeneration'
+  | 'generate'
+  | 'generateAsset'
+  | 'generateBatch'
+  | 'generateLorebook'
+  | 'generateOffspring'
+  | 'generateOffspringSeed'
+  | 'generateSeeds'
+  | 'getBlueprint'
+  | 'getBlueprints'
+  | 'getConfig'
+  | 'getConfigSnapshot'
+  | 'getDraft'
+  | 'getDrafts'
+  | 'getExportPresets'
+  | 'getLineage'
+  | 'getModels'
+  | 'getOriginalBlueprintContent'
+  | 'getTemplate'
+  | 'getTemplateBlueprintContents'
+  | 'getTemplates'
+  | 'getThemes'
+  | 'getThemesSnapshot'
+  | 'getTimeline'
+  | 'getWorld'
+  | 'getWorldCharacterDraftLinks'
+  | 'getWorldRelationshipAuditIssues'
+  | 'getWorlds'
+  | 'hasBlueprintOverride'
+  | 'importTemplate'
+  | 'importTheme'
+  | 'listDrafts'
+  | 'listTemplates'
+  | 'optimizeText'
+  | 'previewBlueprint'
+  | 'refine'
+  | 'refreshModels'
+  | 'renameTheme'
+  | 'resetBlueprint'
+  | 'restoreDraft'
+  | 'restoreDraftSnapshot'
+  | 'syncConfigFromServer'
+  | 'testConnection'
+  | 'updateAsset'
+  | 'updateBlueprint'
+  | 'updateConfig'
+  | 'updateMetadata'
+  | 'updateTemplate'
+  | 'updateTheme'
+  | 'updateTimeline'
+  | 'updateTimelineEvent'
+  | 'updateWorld'
+  | 'updateWorldCharacter'
+  | 'updateWorldFaction'
+  | 'updateWorldLocation'
+  | 'updateWorldRelationship'
+  | 'validateDraft'
+  | 'validatePath'
+  | 'validateTemplate';
+
+// Fails with "Type 'false' does not satisfy the constraint 'true'" when a listed
+// public method is removed or renamed on the class. Private members are excluded
+// from `keyof`, so they are deliberately not listed.
+type _NoMissingApiMethods = Assert<Exclude<ApiMethodName, keyof EidolonBrowserAPI> extends never ? true : false>;
