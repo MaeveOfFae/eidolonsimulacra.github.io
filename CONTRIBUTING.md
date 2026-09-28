@@ -78,6 +78,7 @@ Notes:
 - `@char-gen/shared` publishes from `dist/`, so rebuild it before validating web changes that depend on updated shared exports.
 - The root Turbo pipeline includes `test` and `lint` tasks; `lint` already covers `shared`, `web`, `mobile`, and `server`.
 - Each package owns its own suite: `pnpm test:web`, `pnpm test:shared`, `pnpm test:mobile` (logic only, no native modules), and `pnpm test:server`.
+- Web tests run under happy-dom with `fake-indexeddb` loaded from `packages/web/src/test/setup.ts`. Importing `@/lib/api` for real is supported and preferred over mocking it; the Dexie-backed draft store only works because of that polyfill.
 - `packages/mobile` has dedicated Expo and validation commands, but native release builds and store distribution stay outside CI. Type and lint coverage comes from `pnpm typecheck:mobile` and `pnpm lint:mobile`.
 - `packages/server` typechecks and lints in CI, but it has no build or test job and no client in this repo calls it. Validate changes with `pnpm typecheck:server` and `pnpm --filter @char-gen/server lint`.
 - Lint uses shared ignore rules at the repo root: Tauri build output (`src-tauri/target`, `src-tauri/gen`) is excluded, and `_`-prefixed bindings are treated as intentionally unused.

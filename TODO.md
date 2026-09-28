@@ -25,10 +25,12 @@ Stretch goals:
 Known gaps found while reviewing the codebase (not yet scheduled):
 
 - [ ] Decide the fate of `packages/server`: it builds, lints, typechecks and now has tests in CI, but nothing in the web/desktop/mobile apps calls it
-- [ ] Split the `EidolonBrowserAPI` class in `packages/web/src/lib/api.ts` into domain modules (draft/template/config/world/timeline). The file is down from 2,727 to 1,826 lines after the theme-data extraction, and `src/lib/api.surface.ts` now locks the public method set at compile time, but the remaining class body needs per-domain behaviour tests before it can be moved safely: most methods have no coverage and roughly 40 components depend on the `api` object shape
+- [ ] Split the `EidolonBrowserAPI` class in `packages/web/src/lib/api.ts` into domain modules (draft/template/config/world/timeline). The file is down from 2,727 to 1,826 lines after the theme-data extraction, and `src/lib/api.surface.ts` locks the public method set at compile time. The draft and theme domains now have characterization tests (`api.drafts.test.ts`, `api.themes.test.ts`, 19 tests); the template, config, export and world/timeline domains still need coverage before they can be moved safely, since roughly 40 components depend on the `api` object shape
 - [ ] Publish or drop `docs/index.html` (it is not built or published by CI)
 
 Recently completed hygiene work (kept here for context):
+
+- [X] Made the browser API runtime-testable: happy-dom has no `indexedDB`, which blocked the Dexie-backed draft store, so `fake-indexeddb` is now imported from `packages/web/src/test/setup.ts`. `test:web` went from 22 files / 78 tests to 24 files / 97 tests
 
 - [X] Deleted the dead `packages/shared/src/services/generation.ts` stub. It was not exported from `shared/src/index.ts` or `services/index.ts`, was absent from the built `dist/services/index.js`, and had zero importers — web's `GenerationService` is the live implementation and stays in web because it depends on web's `configManager`
 - [X] Extracted `builtinTheme()` and the `builtinThemes` array out of `packages/web/src/lib/api.ts` into `lib/themes/builtin-themes.ts` (901 lines, ~33% of the file) and added `lib/api.surface.ts`, a compile-time lock over the 91 public API methods that fails `pnpm typecheck:web` if one is removed or renamed
