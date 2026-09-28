@@ -201,6 +201,8 @@ export {
 
 export { applyPreset, formatExport, validatePreset } from './export/presets';
 
+export { buildTextPdfDocument, type PdfSection, type TextPdfOptions } from './export/pdf';
+
 // ============================================================================
 // Character Import
 // ============================================================================

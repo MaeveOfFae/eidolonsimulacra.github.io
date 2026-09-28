@@ -730,7 +730,7 @@ export interface OffspringRequest {
 // Export Types
 // ============================================================================
 
-export type ExportFormat = 'text' | 'json' | 'combined' | 'png';
+export type ExportFormat = 'text' | 'json' | 'combined' | 'png' | 'pdf';
 
 export interface FieldMapping {
   asset: string;

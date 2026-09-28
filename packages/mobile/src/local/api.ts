@@ -128,6 +128,12 @@ const EXPORT_PRESETS: ExportPresetSummary[] = [
     format: 'combined',
     description: 'Export a markdown bundle with metadata and assets.',
   },
+  {
+    name: 'Printable PDF',
+    path: 'pdf',
+    format: 'pdf',
+    description: 'Export a printable single-column PDF with metadata and every asset.',
+  },
 ];
 
 type CachedModelsEntry = {
@@ -1406,7 +1412,9 @@ export class MobileLocalAPI {
   async exportDraft(request: ExportRequest): Promise<DownloadResponse> {
     const draft = await this.getDraft(request.draft_id);
     const preset =
-      request.preset === 'text' || request.preset === 'combined' || request.preset === 'png' ? request.preset : 'json';
+      request.preset === 'text' || request.preset === 'combined' || request.preset === 'png' || request.preset === 'pdf'
+        ? request.preset
+        : 'json';
     const includeMetadata = request.include_metadata !== false;
     const fileBase = slugifyFileName(draft.metadata.character_name || draft.metadata.seed || draft.metadata.review_id);
     const artifact = buildDraftExportArtifact(draft, preset, includeMetadata);

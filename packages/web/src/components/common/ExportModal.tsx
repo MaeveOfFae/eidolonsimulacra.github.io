@@ -17,8 +17,10 @@ import { saveDownload } from '../../utils/download';
 import ExportPreviewPlaceholder from './ExportPreviewPlaceholder';
 import PublishingPlaceholder from './PublishingPlaceholder';
 
+// `ExportPresetSummary` already carries `format`. Do not re-declare it here: a local
+// copy silently drifts from `ExportFormat` whenever a new format is added, and the
+// narrower union then makes the shared type unassignable.
 type ExportPresetOption = ExportPresetSummary & {
-  format?: 'text' | 'json' | 'combined' | 'png';
   description?: string;
 };
 
@@ -88,7 +90,7 @@ export default function ExportModal({ draftId, characterName, onClose }: ExportM
 
       const result = await saveDownload(
         download,
-        `${characterName.replace(/[^a-z0-9]/gi, '_')}_export.${selectedPreset === 'png' ? 'png' : selectedPreset === 'json' ? 'json' : selectedPreset === 'combined' ? 'md' : 'txt'}`,
+        `${characterName.replace(/[^a-z0-9]/gi, '_')}_export.${selectedPreset === 'png' ? 'png' : selectedPreset === 'json' ? 'json' : selectedPreset === 'combined' ? 'md' : selectedPreset === 'pdf' ? 'pdf' : 'txt'}`,
       );
 
       if (result.saved) {

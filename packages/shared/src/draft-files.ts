@@ -1,6 +1,7 @@
 import { detectAndParseCharacter } from './import/character-parser';
 import { inferCharacterDisplayNameFromAssets } from './parse/parse-blocks';
 import { buildPngCardBytes, parseEmbeddedPngBytes } from './png-card';
+import { buildTextPdfDocument } from './export/pdf';
 import { normalizeAssetNameList, normalizeAssetRecord, OFFICIAL_TEMPLATE } from './templates';
 import type {
   CharacterCardMetadata,
@@ -977,7 +978,7 @@ export function escapeAssetContentForMarkdownBundle(content: string): string {
 export interface DraftExportArtifact {
   content: string | Uint8Array;
   contentType: string;
-  extension: 'json' | 'txt' | 'md' | 'png';
+  extension: 'json' | 'txt' | 'md' | 'png' | 'pdf';
 }
 
 function trimDraftText(value: string | undefined): string | undefined {
@@ -1383,6 +1384,24 @@ export function buildDraftExportArtifact(
       content: buildPngCardBytes(imageBytes, JSON.stringify(buildChubCompatibleCardExport(draft, includeMetadata))),
       contentType: 'image/png',
       extension: 'png',
+    };
+  }
+
+  if (format === 'pdf') {
+    const sections = [
+      ...(includeMetadata ? [{ heading: 'Metadata', body: JSON.stringify(draft.metadata, null, 2) }] : []),
+      ...Object.entries(draft.assets).map(([assetName, value]) => ({ heading: assetName, body: value })),
+    ];
+
+    return {
+      content: buildTextPdfDocument({
+        title: draft.metadata.character_name || draft.metadata.seed || draft.metadata.review_id,
+        subtitle: draft.metadata.seed,
+        generatedAt: new Date().toISOString(),
+        sections,
+      }),
+      contentType: 'application/pdf',
+      extension: 'pdf',
     };
   }
 

@@ -25,6 +25,7 @@ import {
   buildExportReadinessSummary,
   type DraftAssetReviewScore,
   type DraftMetadata,
+  type ExportFormat,
 } from '@char-gen/shared';
 import { api } from '../config/api';
 import CollapsibleTray from '../components/CollapsibleTray';
@@ -66,6 +67,23 @@ type AssetNoteMap = Record<string, string>;
 
 const SAVED_INTROS_BLOCK_PATTERN = /\[SAVED_INTROS\][\s\S]*?\[\/SAVED_INTROS\]/g;
 const SAVED_INTROS_CAPTURE_PATTERN = /\[SAVED_INTROS\]([\s\S]*?)\[\/SAVED_INTROS\]/;
+
+/** Keeps the export chips, filenames and labels aligned with `ExportFormat`. */
+const EXPORT_EXTENSIONS: Record<ExportFormat, string> = {
+  json: 'json',
+  text: 'txt',
+  combined: 'md',
+  png: 'png',
+  pdf: 'pdf',
+};
+
+const EXPORT_LABELS: Record<ExportFormat, string> = {
+  json: 'JSON',
+  text: 'TXT',
+  combined: 'Markdown bundle',
+  png: 'PNG character card',
+  pdf: 'PDF',
+};
 
 function formatAssetLabel(assetName: string): string {
   return assetName.replace(/_/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase());
@@ -655,7 +673,7 @@ export default function DraftDetailScreen() {
     setReviewSaveFeedback(null);
   };
 
-  const executeExportPreset = async (preset: 'text' | 'combined' | 'json' | 'png') => {
+  const executeExportPreset = async (preset: ExportFormat) => {
     try {
       if (!draft) {
         return;
@@ -668,15 +686,14 @@ export default function DraftDetailScreen() {
       });
       const result = await saveDownload(
         download,
-        `${draft.metadata.character_name || draft.metadata.review_id}.${preset === 'png' ? 'png' : preset === 'json' ? 'json' : preset === 'combined' ? 'md' : 'txt'}`,
+        `${draft.metadata.character_name || draft.metadata.review_id}.${EXPORT_EXTENSIONS[preset]}`,
       );
 
       if (!result.saved) {
         return;
       }
 
-      const label =
-        preset === 'combined' ? 'Markdown bundle' : preset === 'png' ? 'PNG character card' : preset.toUpperCase();
+      const label = EXPORT_LABELS[preset];
       Alert.alert(
         'Export ready',
         `${label} file prepared. Save it from the system share sheet to Files, Downloads, or another destination.`,
@@ -686,7 +703,7 @@ export default function DraftDetailScreen() {
     }
   };
 
-  const handleExportPreset = (preset: 'text' | 'combined' | 'json' | 'png') => {
+  const handleExportPreset = (preset: ExportFormat) => {
     if (exportReadiness.requiresAcknowledgement) {
       Alert.alert('Export warnings', exportReadiness.blockingWarnings.join('\n\n'), [
         { text: 'Cancel', style: 'cancel' },
@@ -1504,6 +1521,9 @@ export default function DraftDetailScreen() {
           </TouchableOpacity>
           <TouchableOpacity style={styles.exportChip} onPress={() => void handleExportPreset('json')}>
             <Text style={styles.exportChipText}>JSON</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.exportChip} onPress={() => void handleExportPreset('pdf')}>
+            <Text style={styles.exportChipText}>PDF</Text>
           </TouchableOpacity>
         </View>
       ) : null}

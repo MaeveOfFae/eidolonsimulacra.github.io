@@ -5,7 +5,7 @@ This directory stores TOML export preset definitions for character asset bundles
 There are two related realities in the repo today:
 
 - `packages/shared/src/export/presets.ts` contains the shared preset application and formatting helpers.
-- The shipping web and mobile apps currently expose three built-in export modes directly in their local API layers: `json`, `text`, and `combined`.
+- The shipping web and mobile apps currently expose five built-in export modes directly in their local API layers: `json`, `text`, `combined`, `png`, and `pdf`.
 
 So these preset files are still useful repository assets and reference definitions, but they are not the source of truth for the current browser export picker.
 
@@ -23,7 +23,7 @@ Create a `.toml` file with the following structure:
 ```toml
 [preset]
 name = "My Custom Format"
-format = "json"  # or "text" or "combined"
+format = "json"  # or "text", "combined", "png", "pdf"
 description = "Description of this export format"
 
 # Field mappings: map asset names to target fields
@@ -86,6 +86,8 @@ Use `{{user}}` for the user placeholder.
 - **text**: Multiple text files in a directory
 - **json**: Single JSON file with nested structure
 - **combined**: Single text file with all assets concatenated
+- **png**: Accepted by the validator, but rendering is delegated to `buildDraftExportArtifact()` in the app layer rather than `formatExport`
+- **pdf**: Same as `png`: accepted by the validator and delegated to `buildDraftExportArtifact()`
 
 ## Current Browser Export Behavior
 
@@ -94,5 +96,7 @@ The shipping web and mobile apps currently offer:
 - `json`: a Chub-compatible V2/V3 character card JSON with an `extensions.eidolon` payload for lossless round-tripping of internal assets and metadata
 - `text`: a plain text export with section headers per asset
 - `combined`: a markdown bundle with metadata and all assets
+- `png`: a standard PNG character card with the V2/V3 payload embedded (requires an attached card image)
+- `pdf`: a printable single-column PDF containing metadata and every asset, built by `packages/shared/src/export/pdf.ts`
 
 If you update the preset system and expect the browser UI to pick those changes up automatically, that is not true today. Update the browser export layer as well.

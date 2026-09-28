@@ -11,7 +11,7 @@ Status legend: **parity** (already works on mobile), **gap** (missing, portable)
 | Generate from seed / asset variants / batch / offspring / seed generator | `GenerateScreen`, `BatchGenerateScreen`, `OffspringScreen`, `SeedGeneratorScreen` |
 | Refine + chat on a draft | `ChatScreen`, `api.refine`, `api.chat` |
 | Character import (JSON + PNG card) | `GenerateScreen.handleImportCharacter` → shared `detectAndParseCharacter` |
-| Drafts: list, detail, metadata, assets, revision snapshots + restore, export, delete | `DraftsScreen`, `DraftDetailScreen`, `api.createDraftSnapshot` / `restoreDraftSnapshot` |
+| Drafts: list, detail, metadata, assets, revision snapshots + restore, export (json / text / combined / png / pdf), delete | `DraftsScreen`, `DraftDetailScreen`, `api.createDraftSnapshot` / `restoreDraftSnapshot` |
 | Templates: list, detail, create, update, delete, validate, export, import-from-text | `TemplatesScreen`, `api.*Template*` |
 | Blueprints: browse + edit | `BlueprintsScreen`, `BlueprintEditorScreen`, `api.updateBlueprint` |
 | Similarity, lineage, validation, token optimization | `SimilarityScreen`, `LineageScreen`, `ValidationScreen`, `TokenOptimizationScreen` |

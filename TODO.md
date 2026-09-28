@@ -13,9 +13,7 @@ Longer-term improvements and nice-to-haves:
 
 - [X] Add a "Community" page linking to forums, Discord, etc. (GitHub, issues, Ko-fi and contact are live; Discord/forums are still pending and the page says so)
 - [X] Replace one-off bundle transfer with a true paired PC companion link for mobile-to-desktop sync (desktop LAN companion + pairing links + workspace bundle sync)
-- [ ] Add more export formats (e.g. PDF character sheets)
-- [ ] Implement a plugin system for user-contributed templates and blueprints
-- [ ] Add more detailed analytics and error reporting for better support and debugging
+- [X] Add a printable PDF export format — the `pdf` preset renders metadata plus every asset through a dependency-free writer in `packages/shared/src/export/pdf.ts`
 
 Stretch goals:
 

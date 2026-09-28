@@ -37,6 +37,8 @@ describe('browser api: export', () => {
       expect(typeof preset.name).toBe('string');
       expect(typeof preset.path).toBe('string');
     }
+
+    expect(presets.map((preset) => preset.path)).toContain('pdf');
   });
 
   it('exports a draft as json using a slugified character name', async () => {
@@ -69,6 +71,19 @@ describe('browser api: export', () => {
     expect(combined.filename).toMatch(/^vesna_nova\.[a-z0-9]+$/);
     expect(text.blob.size).toBeGreaterThan(0);
     expect(combined.blob.size).toBeGreaterThan(0);
+  });
+
+  it('exports a printable pdf with the metadata and assets', async () => {
+    const reviewId = await seedDraft();
+
+    const download = await api.exportDraft({ draft_id: reviewId, preset: 'pdf' });
+
+    expect(download.filename).toBe('vesna_nova.pdf');
+    expect(download.contentType).toBe('application/pdf');
+    expect(download.blob.size).toBeGreaterThan(0);
+
+    const bytes = new Uint8Array(await download.blob.arrayBuffer());
+    expect(String.fromCharCode(...bytes.slice(0, 8))).toBe('%PDF-1.4');
   });
 
   it('404s when exporting an unknown draft', async () => {

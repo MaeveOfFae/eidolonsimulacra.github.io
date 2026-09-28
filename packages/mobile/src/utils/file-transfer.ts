@@ -197,10 +197,11 @@ async function writeBinaryFile(blob: Blob, filename: string): Promise<string> {
 export async function saveDownload(download: DownloadResponse, fallbackFilename: string): Promise<MobileSaveResult> {
   const filename = sanitizeFilename(download.filename ?? fallbackFilename);
   const mimeType = download.contentType ?? 'text/plain';
-  const uri =
-    mimeType === 'image/png'
-      ? await writeBinaryFile(download.blob, filename)
-      : await writeTextFile(await readBlobAsText(download.blob), filename);
+  // Binary payloads must never round-trip through UTF-8 text decoding.
+  const isBinary = mimeType === 'image/png' || mimeType === 'application/pdf';
+  const uri = isBinary
+    ? await writeBinaryFile(download.blob, filename)
+    : await writeTextFile(await readBlobAsText(download.blob), filename);
 
   return shareFile(uri, filename, mimeType);
 }
