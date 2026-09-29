@@ -1,16 +1,20 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, Alert, StyleSheet } from 'react-native';
 import { useRoute } from '@react-navigation/native';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { type ContentMode, type SimilarityResult } from '@char-gen/shared';
+import type { ThemeColors } from '@char-gen/shared';
 import { api } from '../config/api';
 import CollapsibleTray from '../components/CollapsibleTray';
 import { UsersIcon } from '../components/Icons';
+import { useTheme } from '../theme/ThemeProvider';
 import { clearMobileCompareSelection, setMobileCompareSelection } from '../lib/compare-selection';
 import type { CompareRouteProp } from '../types/navigation';
 import { getErrorMessage } from '../utils/errors';
 
 export default function SimilarityScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => buildStyles(colors), [colors]);
   const route = useRoute<CompareRouteProp>();
   const [char1, setChar1] = useState<string>('');
   const [char2, setChar2] = useState<string>('');
@@ -100,7 +104,7 @@ export default function SimilarityScreen() {
   if (isLoading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#7c3aed" />
+        <ActivityIndicator size="large" color={colors.accent} />
       </View>
     );
   }
@@ -126,7 +130,7 @@ export default function SimilarityScreen() {
         <View style={styles.selectionContainer}>
           <View style={styles.characterCard}>
             <View style={styles.characterHeader}>
-              <UsersIcon color="#7c3aed" size={20} />
+              <UsersIcon color={colors.accent} size={20} />
               <Text style={styles.characterLabel}>Character 1</Text>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -154,7 +158,7 @@ export default function SimilarityScreen() {
 
           <View style={styles.characterCard}>
             <View style={styles.characterHeader}>
-              <UsersIcon color="#a78bfa" size={20} />
+              <UsersIcon color={colors.accent_title} size={20} />
               <Text style={styles.characterLabel}>Character 2</Text>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -220,7 +224,7 @@ export default function SimilarityScreen() {
       >
         {compareMutation.isPending ? (
           <View style={styles.buttonContent}>
-            <ActivityIndicator color="#fff" size="small" />
+            <ActivityIndicator color={colors.button_text} size="small" />
             <Text style={styles.compareButtonText}>Analyzing...</Text>
           </View>
         ) : (
@@ -323,7 +327,7 @@ export default function SimilarityScreen() {
 
       {!char1 && !char2 && !compareMutation.isPending && (
         <View style={styles.emptyState}>
-          <UsersIcon color="#6b7280" size={48} />
+          <UsersIcon color={colors.muted_text} size={48} />
           <Text style={styles.emptyTitle}>Select Two Characters</Text>
           <Text style={styles.emptyText}>Choose two drafts to compare traits and overlap.</Text>
         </View>
@@ -332,271 +336,273 @@ export default function SimilarityScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0f0f0f',
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#0f0f0f',
-  },
-  content: {
-    padding: 16,
-    gap: 16,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#9ca3af',
-    marginBottom: 4,
-  },
-  trayPreviewText: {
-    color: '#9ca3af',
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  selectionContainer: {
-    gap: 16,
-  },
-  characterCard: {
-    backgroundColor: '#1f1f1f',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-  },
-  characterHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
-  },
-  characterLabel: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  chipContainer: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  chip: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    backgroundColor: '#2f2f2f',
-    borderRadius: 16,
-  },
-  chipActive: {
-    backgroundColor: '#7c3aed',
-  },
-  chipText: {
-    color: '#9ca3af',
-    fontSize: 13,
-  },
-  chipTextActive: {
-    color: '#fff',
-    fontWeight: '500',
-  },
-  selectedText: {
-    color: '#71717a',
-    fontSize: 12,
-    marginTop: 8,
-  },
-  section: {
-    marginBottom: 16,
-  },
-  sectionLabel: {
-    color: '#a1a1aa',
-    fontSize: 14,
-    marginBottom: 8,
-  },
-  modeContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  modeButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    backgroundColor: '#1f1f1f',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-  },
-  modeButtonActive: {
-    backgroundColor: '#7c3aed',
-    borderColor: '#7c3aed',
-  },
-  modeButtonText: {
-    color: '#9ca3af',
-    fontSize: 14,
-  },
-  modeButtonTextActive: {
-    color: '#fff',
-    fontWeight: '500',
-  },
-  toggleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 24,
-  },
-  toggleTrack: {
-    width: 44,
-    height: 24,
-    backgroundColor: '#2f2f2f',
-    borderRadius: 12,
-    padding: 2,
-  },
-  toggleTrackActive: {
-    backgroundColor: '#7c3aed',
-  },
-  toggleThumb: {
-    width: 20,
-    height: 20,
-    backgroundColor: '#fff',
-    borderRadius: 10,
-  },
-  toggleThumbActive: {
-    transform: [{ translateX: 20 }],
-  },
-  toggleLabel: {
-    color: '#a1a1aa',
-    fontSize: 14,
-  },
-  compareButton: {
-    backgroundColor: '#7c3aed',
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  compareButtonDisabled: {
-    backgroundColor: '#3f3f46',
-  },
-  compareButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  buttonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  resultCard: {
-    backgroundColor: '#1f1f1f',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#22c55e',
-    marginBottom: 24,
-  },
-  resultTitle: {
-    color: '#22c55e',
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 16,
-  },
-  scoreSection: {
-    marginBottom: 16,
-    alignItems: 'center',
-  },
-  scoreLabel: {
-    color: '#9ca3af',
-    fontSize: 12,
-    marginBottom: 4,
-  },
-  scoreValue: {
-    color: '#fff',
-    fontSize: 48,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  scoreBar: {
-    width: '100%',
-    height: 8,
-    backgroundColor: '#2f2f2f',
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  scoreBarFill: {
-    height: '100%',
-    backgroundColor: '#22c55e',
-    borderRadius: 4,
-  },
-  resultSection: {
-    marginBottom: 16,
-  },
-  resultSectionTitle: {
-    color: '#a1a1aa',
-    fontSize: 12,
-    marginBottom: 8,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  resultItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-    marginBottom: 6,
-  },
-  commonalityDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#22c55e',
-    marginTop: 6,
-  },
-  differenceDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#f59e0b',
-    marginTop: 6,
-  },
-  resultItemText: {
-    color: '#d1d5db',
-    fontSize: 14,
-    flex: 1,
-  },
-  llmSection: {
-    marginTop: 8,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#2f2f2f',
-  },
-  llmText: {
-    color: '#d4d4d8',
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  emptyState: {
-    backgroundColor: '#1f1f1f',
-    borderRadius: 12,
-    padding: 32,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-  },
-  emptyTitle: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyText: {
-    color: '#6b7280',
-    fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-});
+function buildStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    centered: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.background,
+    },
+    content: {
+      padding: 16,
+      gap: 16,
+    },
+    title: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: colors.text,
+      marginBottom: 4,
+    },
+    subtitle: {
+      fontSize: 14,
+      color: colors.muted_text,
+      marginBottom: 4,
+    },
+    trayPreviewText: {
+      color: colors.muted_text,
+      fontSize: 12,
+      lineHeight: 18,
+    },
+    selectionContainer: {
+      gap: 16,
+    },
+    characterCard: {
+      backgroundColor: colors.window,
+      borderRadius: 12,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    characterHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginBottom: 12,
+    },
+    characterLabel: {
+      color: colors.text,
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    chipContainer: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    chip: {
+      paddingVertical: 8,
+      paddingHorizontal: 14,
+      backgroundColor: colors.border,
+      borderRadius: 16,
+    },
+    chipActive: {
+      backgroundColor: colors.button,
+    },
+    chipText: {
+      color: colors.muted_text,
+      fontSize: 13,
+    },
+    chipTextActive: {
+      color: colors.button_text,
+      fontWeight: '500',
+    },
+    selectedText: {
+      color: colors.border,
+      fontSize: 12,
+      marginTop: 8,
+    },
+    section: {
+      marginBottom: 16,
+    },
+    sectionLabel: {
+      color: colors.muted_text,
+      fontSize: 14,
+      marginBottom: 8,
+    },
+    modeContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    modeButton: {
+      paddingVertical: 8,
+      paddingHorizontal: 16,
+      backgroundColor: colors.window,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    modeButtonActive: {
+      backgroundColor: colors.button,
+      borderColor: colors.button,
+    },
+    modeButtonText: {
+      color: colors.muted_text,
+      fontSize: 14,
+    },
+    modeButtonTextActive: {
+      color: colors.text,
+      fontWeight: '500',
+    },
+    toggleContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      marginBottom: 24,
+    },
+    toggleTrack: {
+      width: 44,
+      height: 24,
+      backgroundColor: colors.border,
+      borderRadius: 12,
+      padding: 2,
+    },
+    toggleTrackActive: {
+      backgroundColor: colors.button,
+    },
+    toggleThumb: {
+      width: 20,
+      height: 20,
+      backgroundColor: colors.button_text,
+      borderRadius: 10,
+    },
+    toggleThumbActive: {
+      transform: [{ translateX: 20 }],
+    },
+    toggleLabel: {
+      color: colors.muted_text,
+      fontSize: 14,
+    },
+    compareButton: {
+      backgroundColor: colors.button,
+      paddingVertical: 14,
+      borderRadius: 8,
+      alignItems: 'center',
+    },
+    compareButtonDisabled: {
+      backgroundColor: colors.border,
+    },
+    compareButtonText: {
+      color: colors.button_text,
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    buttonContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    resultCard: {
+      backgroundColor: colors.window,
+      borderRadius: 12,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: colors.success_text,
+      marginBottom: 24,
+    },
+    resultTitle: {
+      color: colors.success_text,
+      fontSize: 18,
+      fontWeight: '600',
+      marginBottom: 16,
+    },
+    scoreSection: {
+      marginBottom: 16,
+      alignItems: 'center',
+    },
+    scoreLabel: {
+      color: colors.muted_text,
+      fontSize: 12,
+      marginBottom: 4,
+    },
+    scoreValue: {
+      color: colors.text,
+      fontSize: 48,
+      fontWeight: 'bold',
+      marginBottom: 8,
+    },
+    scoreBar: {
+      width: '100%',
+      height: 8,
+      backgroundColor: colors.border,
+      borderRadius: 4,
+      overflow: 'hidden',
+    },
+    scoreBarFill: {
+      height: '100%',
+      backgroundColor: colors.success_bg,
+      borderRadius: 4,
+    },
+    resultSection: {
+      marginBottom: 16,
+    },
+    resultSectionTitle: {
+      color: colors.muted_text,
+      fontSize: 12,
+      marginBottom: 8,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    resultItem: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 8,
+      marginBottom: 6,
+    },
+    commonalityDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: colors.success_bg,
+      marginTop: 6,
+    },
+    differenceDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: colors.warning_text,
+      marginTop: 6,
+    },
+    resultItemText: {
+      color: colors.text,
+      fontSize: 14,
+      flex: 1,
+    },
+    llmSection: {
+      marginTop: 8,
+      paddingTop: 16,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    llmText: {
+      color: colors.text,
+      fontSize: 14,
+      lineHeight: 20,
+    },
+    emptyState: {
+      backgroundColor: colors.window,
+      borderRadius: 12,
+      padding: 32,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    emptyTitle: {
+      color: colors.text,
+      fontSize: 18,
+      fontWeight: '600',
+      marginTop: 16,
+      marginBottom: 8,
+    },
+    emptyText: {
+      color: colors.muted_text,
+      fontSize: 14,
+      textAlign: 'center',
+      lineHeight: 20,
+    },
+  });
+}

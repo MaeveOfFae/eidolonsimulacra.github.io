@@ -1,9 +1,12 @@
-import { useEffect } from 'react';
+﻿import { useEffect, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { releaseNotes } from '@char-gen/shared';
+import type { ThemeColors } from '@char-gen/shared';
 import { api } from '../config/api';
 import CollapsibleTray from '../components/CollapsibleTray';
+import { useTheme } from '../theme/ThemeProvider';
 import {
   SparklesIcon,
   FolderIcon,
@@ -12,7 +15,12 @@ import {
   GitCompareIcon,
   Cog6ToothIcon,
   BookOpenIcon,
+  ClockIcon,
+  QuestionMarkCircleIcon,
+  SwatchIcon,
 } from '../components/Icons';
+import { buildWhatsNewPreview } from '../lib/whats-new';
+import { buildHelpCenterSummary } from '../lib/help';
 import { DEFAULT_HELP_STATE, getStoredDeviceConfig, updateStoredDeviceConfig } from '../storage/device-config';
 import type { HomeScreenNavigationProp } from '../types/navigation';
 
@@ -67,6 +75,8 @@ const MOBILE_GETTING_STARTED_STEP_ID_SET = new Set(MOBILE_GETTING_STARTED_STEPS.
 export default function HomeScreen() {
   const navigation = useNavigation<HomeScreenNavigationProp>();
   const queryClient = useQueryClient();
+  const { colors } = useTheme();
+  const styles = useMemo(() => buildStyles(colors), [colors]);
 
   const { data: statsData } = useQuery({
     queryKey: ['drafts', 'stats'],
@@ -246,13 +256,13 @@ export default function HomeScreen() {
 
       <View style={styles.actionsGrid}>
         <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate('Generate')}>
-          <SparklesIcon color="#7c3aed" size={32} />
+          <SparklesIcon color={colors.accent} size={32} />
           <Text style={styles.actionTitle}>Generate</Text>
           <Text style={styles.actionDesc}>New character</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate('Drafts')}>
-          <FolderIcon color="#7c3aed" size={32} />
+          <FolderIcon color={colors.accent} size={32} />
           <Text style={styles.actionTitle}>Drafts</Text>
           <Text style={styles.actionDesc}>Saved work</Text>
         </TouchableOpacity>
@@ -260,7 +270,7 @@ export default function HomeScreen() {
 
       <TouchableOpacity style={styles.quickLinkCard} onPress={handleOpenPcLink}>
         <View style={styles.quickLinkIconWrap}>
-          <Cog6ToothIcon color="#c4b5fd" size={24} />
+          <Cog6ToothIcon color={colors.accent_title} size={24} />
         </View>
         <View style={styles.quickLinkCopy}>
           <Text style={styles.quickLinkTitle}>Open PC Link</Text>
@@ -271,55 +281,103 @@ export default function HomeScreen() {
         <Text style={styles.quickLinkAction}>Open</Text>
       </TouchableOpacity>
 
+      <TouchableOpacity style={styles.quickLinkCard} onPress={() => navigation.navigate('WhatsNew')}>
+        <View style={styles.quickLinkIconWrap}>
+          <ClockIcon color={colors.accent_title} size={24} />
+        </View>
+        <View style={styles.quickLinkCopy}>
+          <Text style={styles.quickLinkTitle}>What's New</Text>
+          <Text style={styles.quickLinkDescription}>
+            {buildWhatsNewPreview(releaseNotes)} — release notes shared with the web and desktop apps.
+          </Text>
+        </View>
+        <Text style={styles.quickLinkAction}>Open</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.quickLinkCard} onPress={() => navigation.navigate('HelpCenter')}>
+        <View style={styles.quickLinkIconWrap}>
+          <QuestionMarkCircleIcon color={colors.accent_title} size={24} />
+        </View>
+        <View style={styles.quickLinkCopy}>
+          <Text style={styles.quickLinkTitle}>Help Center</Text>
+          <Text style={styles.quickLinkDescription}>
+            {buildHelpCenterSummary(helpState.completed_tours)} — starter guide, topics, and walkable tours.
+          </Text>
+        </View>
+        <Text style={styles.quickLinkAction}>Open</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.quickLinkCard} onPress={() => navigation.navigate('About')}>
+        <View style={styles.quickLinkIconWrap}>
+          <BookOpenIcon color={colors.accent_title} size={24} />
+        </View>
+        <View style={styles.quickLinkCopy}>
+          <Text style={styles.quickLinkTitle}>About & Info</Text>
+          <Text style={styles.quickLinkDescription}>
+            What the app does, plus license, terms, privacy, security, and community links.
+          </Text>
+        </View>
+        <Text style={styles.quickLinkAction}>Open</Text>
+      </TouchableOpacity>
+
       <CollapsibleTray
         title="Tools"
         subtitle="Secondary generation flows"
-        preview={<Text style={styles.trayPreviewText}>Seeds • Lorebook • Optimize • Batch • Validation</Text>}
+        preview={<Text style={styles.trayPreviewText}>Seeds • Lorebook • Themes • Optimize • Batch • Validation</Text>}
       >
         <View style={styles.actionsGrid}>
           <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate('SeedGenerator')}>
-            <SparklesIcon color="#7c3aed" size={32} />
+            <SparklesIcon color={colors.accent} size={32} />
             <Text style={styles.actionTitle}>Seed Generator</Text>
             <Text style={styles.actionDesc}>Spin concepts</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate('Validation')}>
-            <DocumentTextIcon color="#7c3aed" size={32} />
+            <DocumentTextIcon color={colors.accent} size={32} />
             <Text style={styles.actionTitle}>Validation</Text>
             <Text style={styles.actionDesc}>Check packs</Text>
           </TouchableOpacity>
         </View>
         <View style={styles.actionsGrid}>
           <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate('TokenOptimization')}>
-            <DocumentTextIcon color="#7c3aed" size={32} />
+            <DocumentTextIcon color={colors.accent} size={32} />
             <Text style={styles.actionTitle}>Token Optimization</Text>
             <Text style={styles.actionDesc}>Tighten wording</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate('Lineage')}>
-            <GitCompareIcon color="#7c3aed" size={32} />
+            <GitCompareIcon color={colors.accent} size={32} />
             <Text style={styles.actionTitle}>Lineage</Text>
             <Text style={styles.actionDesc}>Family tree</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate('Blueprints')}>
-            <DocumentTextIcon color="#7c3aed" size={32} />
+            <DocumentTextIcon color={colors.accent} size={32} />
             <Text style={styles.actionTitle}>Blueprints</Text>
             <Text style={styles.actionDesc}>Templates</Text>
           </TouchableOpacity>
         </View>
         <View style={styles.actionsGrid}>
           <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate('BatchGenerate')}>
-            <FolderIcon color="#7c3aed" size={32} />
+            <FolderIcon color={colors.accent} size={32} />
             <Text style={styles.actionTitle}>Batch Generate</Text>
             <Text style={styles.actionDesc}>Multiple seeds</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate('LorebookGenerator')}>
-            <BookOpenIcon color="#7c3aed" size={32} />
+            <BookOpenIcon color={colors.accent} size={32} />
             <Text style={styles.actionTitle}>Lorebook</Text>
             <Text style={styles.actionDesc}>Shared canon</Text>
           </TouchableOpacity>
+        </View>
+        <View style={styles.actionsGrid}>
+          <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate('ThemePicker')}>
+            <SwatchIcon color={colors.accent} size={32} />
+            <Text style={styles.actionTitle}>Themes</Text>
+            <Text style={styles.actionDesc}>Pick a look</Text>
+          </TouchableOpacity>
+
+          <View style={styles.actionCardPlaceholder} />
         </View>
       </CollapsibleTray>
 
@@ -378,7 +436,7 @@ export default function HomeScreen() {
                   {draft.mode} • {draft.template_name || 'Default'}
                 </Text>
               </View>
-              {draft.favorite && <StarIcon color="#eab308" size={20} />}
+              {draft.favorite && <StarIcon color={colors.warning_text} size={20} />}
             </TouchableOpacity>
           ))}
         </CollapsibleTray>
@@ -387,301 +445,303 @@ export default function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0f0f0f',
-  },
-  content: {
-    padding: 16,
-    gap: 16,
-  },
-  header: {
-    marginBottom: 4,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#9ca3af',
-  },
-  actionsGrid: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 12,
-  },
-  trayPreviewText: {
-    color: '#9ca3af',
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  guideMetaChip: {
-    minWidth: 42,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: '#5b21b6',
-    backgroundColor: '#2e1065',
-    alignItems: 'center',
-  },
-  guideMetaText: {
-    color: '#ddd6fe',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  guideSummaryCard: {
-    backgroundColor: '#111827',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#312e81',
-    padding: 14,
-    gap: 10,
-  },
-  guideSummaryTitle: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  guideSummaryBody: {
-    color: '#cbd5e1',
-    fontSize: 13,
-    lineHeight: 20,
-  },
-  guideResetButton: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: '#374151',
-    backgroundColor: '#0f172a',
-  },
-  guideResetButtonText: {
-    color: '#d1d5db',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  guideStepCard: {
-    backgroundColor: '#171717',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-    padding: 14,
-    gap: 12,
-  },
-  guideStepCardCompleted: {
-    borderColor: '#14532d',
-    backgroundColor: '#111a14',
-  },
-  guideStepHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-  },
-  guideStepCopy: {
-    flex: 1,
-    gap: 4,
-  },
-  guideStepEyebrow: {
-    color: '#a78bfa',
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
-  },
-  guideStepTitle: {
-    color: '#ffffff',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  guideStepDescription: {
-    color: '#9ca3af',
-    fontSize: 13,
-    lineHeight: 20,
-  },
-  guideStatusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    borderWidth: 1,
-  },
-  guideStatusBadgeOpen: {
-    borderColor: '#4b5563',
-    backgroundColor: '#111827',
-  },
-  guideStatusBadgeDone: {
-    borderColor: '#166534',
-    backgroundColor: '#052e16',
-  },
-  guideStatusBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-  },
-  guideStatusBadgeTextOpen: {
-    color: '#cbd5e1',
-  },
-  guideStatusBadgeTextDone: {
-    color: '#bbf7d0',
-  },
-  guideStepActions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  guidePrimaryButton: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: '#7c3aed',
-  },
-  guidePrimaryButtonText: {
-    color: '#ffffff',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  guideSecondaryButton: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#3f3f46',
-    backgroundColor: '#1f1f1f',
-  },
-  guideSecondaryButtonText: {
-    color: '#d1d5db',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  toolsContainer: {
-    marginBottom: 8,
-  },
-  actionCard: {
-    flex: 1,
-    backgroundColor: '#1f1f1f',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-  },
-  actionCardPlaceholder: {
-    flex: 1,
-  },
-  actionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  actionDesc: {
-    fontSize: 12,
-    color: '#9ca3af',
-    textAlign: 'center',
-  },
-  quickLinkCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    backgroundColor: '#111827',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#312e81',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  quickLinkIconWrap: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#1e1b4b',
-    borderWidth: 1,
-    borderColor: '#4c1d95',
-  },
-  quickLinkCopy: {
-    flex: 1,
-    gap: 4,
-  },
-  quickLinkTitle: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  quickLinkDescription: {
-    color: '#cbd5e1',
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  quickLinkAction: {
-    color: '#ddd6fe',
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-  },
-  statsContainer: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#fff',
-    marginBottom: 12,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: '#1f1f1f',
-    borderRadius: 8,
-    padding: 12,
-    alignItems: 'center',
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#7c3aed',
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#9ca3af',
-    marginTop: 4,
-  },
-  recentContainer: {
-    marginBottom: 24,
-  },
-  recentItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1f1f1f',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-  },
-  recentInfo: {
-    flex: 1,
-  },
-  recentName: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#fff',
-  },
-  recentMeta: {
-    fontSize: 12,
-    color: '#9ca3af',
-    marginTop: 2,
-  },
-});
+function buildStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    content: {
+      padding: 16,
+      gap: 16,
+    },
+    header: {
+      marginBottom: 4,
+    },
+    title: {
+      fontSize: 28,
+      fontWeight: 'bold',
+      color: colors.text,
+      marginBottom: 4,
+    },
+    subtitle: {
+      fontSize: 16,
+      color: colors.muted_text,
+    },
+    actionsGrid: {
+      flexDirection: 'row',
+      gap: 12,
+      marginBottom: 12,
+    },
+    trayPreviewText: {
+      color: colors.muted_text,
+      fontSize: 12,
+      lineHeight: 18,
+    },
+    guideMetaChip: {
+      minWidth: 42,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: colors.accent,
+      backgroundColor: colors.accent_bg,
+      alignItems: 'center',
+    },
+    guideMetaText: {
+      color: colors.accent_title,
+      fontSize: 11,
+      fontWeight: '700',
+    },
+    guideSummaryCard: {
+      backgroundColor: colors.accent_bg,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.accent,
+      padding: 14,
+      gap: 10,
+    },
+    guideSummaryTitle: {
+      color: colors.text,
+      fontSize: 16,
+      fontWeight: '700',
+    },
+    guideSummaryBody: {
+      color: colors.text,
+      fontSize: 13,
+      lineHeight: 20,
+    },
+    guideResetButton: {
+      alignSelf: 'flex-start',
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.window,
+    },
+    guideResetButtonText: {
+      color: colors.text,
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    guideStepCard: {
+      backgroundColor: colors.window,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 14,
+      gap: 12,
+    },
+    guideStepCardCompleted: {
+      borderColor: colors.success_text,
+      backgroundColor: colors.success_bg,
+    },
+    guideStepHeader: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 12,
+    },
+    guideStepCopy: {
+      flex: 1,
+      gap: 4,
+    },
+    guideStepEyebrow: {
+      color: colors.accent_title,
+      fontSize: 11,
+      fontWeight: '700',
+      letterSpacing: 0.4,
+      textTransform: 'uppercase',
+    },
+    guideStepTitle: {
+      color: colors.text,
+      fontSize: 15,
+      fontWeight: '700',
+    },
+    guideStepDescription: {
+      color: colors.muted_text,
+      fontSize: 13,
+      lineHeight: 20,
+    },
+    guideStatusBadge: {
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 999,
+      borderWidth: 1,
+    },
+    guideStatusBadgeOpen: {
+      borderColor: colors.border,
+      backgroundColor: colors.window,
+    },
+    guideStatusBadgeDone: {
+      borderColor: colors.success_text,
+      backgroundColor: colors.success_bg,
+    },
+    guideStatusBadgeText: {
+      fontSize: 11,
+      fontWeight: '700',
+      textTransform: 'uppercase',
+      letterSpacing: 0.4,
+    },
+    guideStatusBadgeTextOpen: {
+      color: colors.text,
+    },
+    guideStatusBadgeTextDone: {
+      color: colors.success_text,
+    },
+    guideStepActions: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 10,
+    },
+    guidePrimaryButton: {
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      borderRadius: 10,
+      backgroundColor: colors.button,
+    },
+    guidePrimaryButtonText: {
+      color: colors.button_text,
+      fontSize: 13,
+      fontWeight: '700',
+    },
+    guideSecondaryButton: {
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.window,
+    },
+    guideSecondaryButtonText: {
+      color: colors.text,
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    toolsContainer: {
+      marginBottom: 8,
+    },
+    actionCard: {
+      flex: 1,
+      backgroundColor: colors.window,
+      borderRadius: 12,
+      padding: 16,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    actionCardPlaceholder: {
+      flex: 1,
+    },
+    actionTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+      marginTop: 8,
+      marginBottom: 4,
+    },
+    actionDesc: {
+      fontSize: 12,
+      color: colors.muted_text,
+      textAlign: 'center',
+    },
+    quickLinkCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 14,
+      backgroundColor: colors.accent_bg,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.accent,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+    },
+    quickLinkIconWrap: {
+      width: 42,
+      height: 42,
+      borderRadius: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.accent_bg,
+      borderWidth: 1,
+      borderColor: colors.accent,
+    },
+    quickLinkCopy: {
+      flex: 1,
+      gap: 4,
+    },
+    quickLinkTitle: {
+      color: colors.text,
+      fontSize: 15,
+      fontWeight: '700',
+    },
+    quickLinkDescription: {
+      color: colors.text,
+      fontSize: 12,
+      lineHeight: 18,
+    },
+    quickLinkAction: {
+      color: colors.accent_title,
+      fontSize: 12,
+      fontWeight: '700',
+      textTransform: 'uppercase',
+      letterSpacing: 0.4,
+    },
+    statsContainer: {
+      marginBottom: 24,
+    },
+    sectionTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 12,
+    },
+    statsGrid: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+    statCard: {
+      flex: 1,
+      backgroundColor: colors.window,
+      borderRadius: 8,
+      padding: 12,
+      alignItems: 'center',
+    },
+    statValue: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: colors.accent,
+    },
+    statLabel: {
+      fontSize: 12,
+      color: colors.muted_text,
+      marginTop: 4,
+    },
+    recentContainer: {
+      marginBottom: 24,
+    },
+    recentItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.window,
+      borderRadius: 8,
+      padding: 12,
+      marginBottom: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    recentInfo: {
+      flex: 1,
+    },
+    recentName: {
+      fontSize: 16,
+      fontWeight: '500',
+      color: colors.text,
+    },
+    recentMeta: {
+      fontSize: 12,
+      color: colors.muted_text,
+      marginTop: 2,
+    },
+  });
+}

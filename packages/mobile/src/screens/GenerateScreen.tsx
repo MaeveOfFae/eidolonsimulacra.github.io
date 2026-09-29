@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -21,6 +21,8 @@ import {
 import { api } from '../config/api';
 import CollapsibleTray from '../components/CollapsibleTray';
 import { SparklesIcon, DocumentTextIcon, TrashIcon } from '../components/Icons';
+import { useTheme } from '../theme/ThemeProvider';
+import type { ThemeColors } from '@char-gen/shared';
 import type { GenerateRouteProp, RootTabNavigationProp } from '../types/navigation';
 import { getErrorMessage } from '../utils/errors';
 import { pickCharacterImportFile } from '../utils/file-transfer';
@@ -68,6 +70,8 @@ function normalizeAssetSelection(selection: readonly string[], templateDefinitio
 }
 
 export default function GenerateScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => buildStyles(colors), [colors]);
   const navigation = useNavigation<RootTabNavigationProp<'Generate'>>();
   const route = useRoute<GenerateRouteProp>();
   const queryClient = useQueryClient();
@@ -275,7 +279,7 @@ export default function GenerateScreen() {
             value={seed}
             onChangeText={setSeed}
             placeholder="e.g., a lonely space pirate..."
-            placeholderTextColor="#6b7280"
+            placeholderTextColor={colors.muted_text}
             multiline
             numberOfLines={4}
           />
@@ -286,12 +290,12 @@ export default function GenerateScreen() {
           >
             {isGenerating ? (
               <View style={styles.buttonContent}>
-                <ActivityIndicator color="#fff" size="small" />
+                <ActivityIndicator color={colors.button_text} size="small" />
                 <Text style={styles.generateButtonText}>Generating...</Text>
               </View>
             ) : (
               <View style={styles.buttonContent}>
-                <SparklesIcon color="#fff" size={20} />
+                <SparklesIcon color={colors.button_text} size={20} />
                 <Text style={styles.generateButtonText}>Generate</Text>
               </View>
             )}
@@ -315,7 +319,7 @@ export default function GenerateScreen() {
             disabled={isGenerating || templatesLoading || !selectedTemplate}
           >
             <View style={styles.buttonContent}>
-              <DocumentTextIcon color="#d1d5db" size={18} />
+              <DocumentTextIcon color={colors.text} size={18} />
               <Text style={styles.secondaryActionButtonText}>
                 {templatesLoading ? 'Loading templates...' : 'Import source'}
               </Text>
@@ -340,7 +344,7 @@ export default function GenerateScreen() {
                   onPress={handleClearImportedCharacter}
                   disabled={isGenerating}
                 >
-                  <TrashIcon color="#fca5a5" size={18} />
+                  <TrashIcon color={colors.error_text} size={18} />
                 </TouchableOpacity>
               </View>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -371,7 +375,7 @@ export default function GenerateScreen() {
                     style={[styles.templateChip, template === t.name && styles.templateChipActive]}
                     onPress={() => setTemplate(t.name)}
                   >
-                    <DocumentTextIcon color={template === t.name ? '#fff' : '#9ca3af'} size={14} />
+                    <DocumentTextIcon color={template === t.name ? colors.button_text : colors.muted_text} size={14} />
                     <Text style={[styles.templateChipText, template === t.name && styles.templateChipTextActive]}>
                       {t.name}
                     </Text>
@@ -545,340 +549,342 @@ function describeGenerationStage(stage: string, progress?: number, asset?: strin
   }
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0f0f0f',
-  },
-  content: {
-    padding: 16,
-    gap: 16,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#9ca3af',
-    marginBottom: 4,
-  },
-  form: {
-    gap: 16,
-  },
-  heroCard: {
-    backgroundColor: '#171717',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-    padding: 16,
-  },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#fff',
-    marginBottom: 8,
-  },
-  helperText: {
-    color: '#9ca3af',
-    fontSize: 12,
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: '#1f1f1f',
-    borderRadius: 8,
-    padding: 12,
-    color: '#fff',
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-  },
-  textArea: {
-    minHeight: 100,
-    textAlignVertical: 'top',
-  },
-  secondaryActionButton: {
-    backgroundColor: '#1f1f1f',
-    borderRadius: 8,
-    padding: 14,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-  },
-  secondaryActionButtonText: {
-    color: '#d1d5db',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  setupPreviewText: {
-    color: '#9ca3af',
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  importedSourceCard: {
-    backgroundColor: '#111827',
-    borderRadius: 8,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#4f46e5',
-    gap: 10,
-  },
-  importedSourceHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: 12,
-  },
-  importedSourceInfo: {
-    flex: 1,
-  },
-  importedSourceTitle: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  importedSourceMeta: {
-    color: '#c4b5fd',
-    fontSize: 12,
-    marginBottom: 2,
-  },
-  clearImportedButton: {
-    padding: 6,
-    borderRadius: 8,
-    backgroundColor: '#3f1d1d',
-  },
-  importedAssetChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 16,
-    backgroundColor: '#1e1b4b',
-    borderWidth: 1,
-    borderColor: '#4338ca',
-  },
-  importedAssetChipText: {
-    color: '#ddd6fe',
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  templateChips: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  templateChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 16,
-    backgroundColor: '#1f1f1f',
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-  },
-  templateChipActive: {
-    backgroundColor: '#7c3aed',
-    borderColor: '#7c3aed',
-  },
-  templateChipText: {
-    color: '#9ca3af',
-    fontSize: 13,
-  },
-  templateChipTextActive: {
-    color: '#fff',
-    fontWeight: '500',
-  },
-  modeButtons: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  optionalAssetList: {
-    gap: 8,
-  },
-  optionalAssetRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-    backgroundColor: '#111111',
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-  },
-  optionalAssetRowEnabled: {
-    borderColor: '#7c3aed',
-    backgroundColor: '#2a1a45',
-  },
-  checkbox: {
-    width: 18,
-    height: 18,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: '#52525b',
-    marginTop: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkboxEnabled: {
-    borderColor: '#7c3aed',
-    backgroundColor: '#7c3aed',
-  },
-  checkboxMark: {
-    color: '#fff',
-    fontSize: 11,
-    fontWeight: '700',
-    lineHeight: 12,
-  },
-  optionalAssetTextWrap: {
-    flex: 1,
-    gap: 2,
-  },
-  optionalAssetName: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  optionalAssetDescription: {
-    color: '#9ca3af',
-    fontSize: 12,
-    lineHeight: 16,
-  },
-  modeButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: '#1f1f1f',
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-  },
-  modeButtonActive: {
-    backgroundColor: '#7c3aed',
-    borderColor: '#7c3aed',
-  },
-  modeButtonText: {
-    color: '#9ca3af',
-    fontSize: 14,
-  },
-  modeButtonTextActive: {
-    color: '#fff',
-    fontWeight: '500',
-  },
-  generateButton: {
-    backgroundColor: '#7c3aed',
-    borderRadius: 8,
-    padding: 16,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  generateButtonDisabled: {
-    backgroundColor: '#3f3f46',
-  },
-  generateButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  buttonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  errorBox: {
-    backgroundColor: '#7f1d1d',
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#dc2626',
-  },
-  errorTitle: {
-    color: '#fca5a5',
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  errorText: {
-    color: '#fecaca',
-    fontSize: 14,
-  },
-  successBox: {
-    backgroundColor: '#14532d',
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#22c55e',
-  },
-  successTitle: {
-    color: '#22c55e',
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 12,
-  },
-  successInfo: {
-    marginBottom: 8,
-  },
-  successLabel: {
-    color: '#86efac',
-    fontSize: 12,
-    marginBottom: 2,
-  },
-  successValue: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  viewButton: {
-    backgroundColor: '#22c55e',
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  viewButtonText: {
-    color: '#052e16',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  outputContainer: {
-    marginTop: 0,
-  },
-  outputBox: {
-    backgroundColor: '#1f1f1f',
-    borderRadius: 8,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-  },
-  outputText: {
-    color: '#d1d5db',
-    fontSize: 13,
-    fontFamily: 'monospace',
-    lineHeight: 18,
-  },
-  typingIndicator: {
-    flexDirection: 'row',
-    gap: 4,
-    marginTop: 8,
-    alignItems: 'center',
-  },
-  typingDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#7c3aed',
-  },
-  typingDot2: {
-    opacity: 0.7,
-  },
-  typingDot3: {
-    opacity: 0.4,
-  },
-});
+function buildStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    content: {
+      padding: 16,
+      gap: 16,
+    },
+    title: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: colors.text,
+      marginBottom: 4,
+    },
+    subtitle: {
+      fontSize: 14,
+      color: colors.muted_text,
+      marginBottom: 4,
+    },
+    form: {
+      gap: 16,
+    },
+    heroCard: {
+      backgroundColor: colors.window,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 16,
+    },
+    inputGroup: {
+      marginBottom: 16,
+    },
+    label: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: colors.text,
+      marginBottom: 8,
+    },
+    helperText: {
+      color: colors.muted_text,
+      fontSize: 12,
+      marginBottom: 8,
+    },
+    input: {
+      backgroundColor: colors.window,
+      borderRadius: 8,
+      padding: 12,
+      color: colors.text,
+      fontSize: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    textArea: {
+      minHeight: 100,
+      textAlignVertical: 'top',
+    },
+    secondaryActionButton: {
+      backgroundColor: colors.window,
+      borderRadius: 8,
+      padding: 14,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    secondaryActionButtonText: {
+      color: colors.text,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    setupPreviewText: {
+      color: colors.muted_text,
+      fontSize: 12,
+      lineHeight: 18,
+    },
+    importedSourceCard: {
+      backgroundColor: colors.accent_bg,
+      borderRadius: 8,
+      padding: 12,
+      borderWidth: 1,
+      borderColor: colors.accent,
+      gap: 10,
+    },
+    importedSourceHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      gap: 12,
+    },
+    importedSourceInfo: {
+      flex: 1,
+    },
+    importedSourceTitle: {
+      color: colors.text,
+      fontSize: 15,
+      fontWeight: '600',
+      marginBottom: 4,
+    },
+    importedSourceMeta: {
+      color: colors.accent_title,
+      fontSize: 12,
+      marginBottom: 2,
+    },
+    clearImportedButton: {
+      padding: 6,
+      borderRadius: 8,
+      backgroundColor: colors.danger_bg,
+    },
+    importedAssetChip: {
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 16,
+      backgroundColor: colors.accent_bg,
+      borderWidth: 1,
+      borderColor: colors.accent,
+    },
+    importedAssetChipText: {
+      color: colors.accent_title,
+      fontSize: 12,
+      fontWeight: '500',
+    },
+    templateChips: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    templateChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 16,
+      backgroundColor: colors.window,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    templateChipActive: {
+      backgroundColor: colors.button,
+      borderColor: colors.button,
+    },
+    templateChipText: {
+      color: colors.muted_text,
+      fontSize: 13,
+    },
+    templateChipTextActive: {
+      color: colors.button_text,
+      fontWeight: '500',
+    },
+    modeButtons: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    optionalAssetList: {
+      gap: 8,
+    },
+    optionalAssetRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.window,
+      borderRadius: 10,
+      paddingHorizontal: 10,
+      paddingVertical: 10,
+    },
+    optionalAssetRowEnabled: {
+      borderColor: colors.button,
+      backgroundColor: colors.accent_bg,
+    },
+    checkbox: {
+      width: 18,
+      height: 18,
+      borderRadius: 4,
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginTop: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    checkboxEnabled: {
+      borderColor: colors.button,
+      backgroundColor: colors.button,
+    },
+    checkboxMark: {
+      color: colors.text,
+      fontSize: 11,
+      fontWeight: '700',
+      lineHeight: 12,
+    },
+    optionalAssetTextWrap: {
+      flex: 1,
+      gap: 2,
+    },
+    optionalAssetName: {
+      color: colors.text,
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    optionalAssetDescription: {
+      color: colors.muted_text,
+      fontSize: 12,
+      lineHeight: 16,
+    },
+    modeButton: {
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      borderRadius: 8,
+      backgroundColor: colors.window,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    modeButtonActive: {
+      backgroundColor: colors.button,
+      borderColor: colors.button,
+    },
+    modeButtonText: {
+      color: colors.muted_text,
+      fontSize: 14,
+    },
+    modeButtonTextActive: {
+      color: colors.text,
+      fontWeight: '500',
+    },
+    generateButton: {
+      backgroundColor: colors.button,
+      borderRadius: 8,
+      padding: 16,
+      alignItems: 'center',
+      marginTop: 8,
+    },
+    generateButtonDisabled: {
+      backgroundColor: colors.border,
+    },
+    generateButtonText: {
+      color: colors.button_text,
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    buttonContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    errorBox: {
+      backgroundColor: colors.danger_bg,
+      borderRadius: 8,
+      padding: 16,
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor: colors.error_text,
+    },
+    errorTitle: {
+      color: colors.error_text,
+      fontSize: 14,
+      fontWeight: '600',
+      marginBottom: 4,
+    },
+    errorText: {
+      color: colors.error_text,
+      fontSize: 14,
+    },
+    successBox: {
+      backgroundColor: colors.success_bg,
+      borderRadius: 8,
+      padding: 16,
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor: colors.success_text,
+    },
+    successTitle: {
+      color: colors.success_text,
+      fontSize: 18,
+      fontWeight: '600',
+      marginBottom: 12,
+    },
+    successInfo: {
+      marginBottom: 8,
+    },
+    successLabel: {
+      color: colors.success_text,
+      fontSize: 12,
+      marginBottom: 2,
+    },
+    successValue: {
+      color: colors.text,
+      fontSize: 16,
+      fontWeight: '500',
+    },
+    viewButton: {
+      backgroundColor: colors.success_bg,
+      paddingVertical: 12,
+      borderRadius: 8,
+      alignItems: 'center',
+      marginTop: 8,
+    },
+    viewButtonText: {
+      color: colors.success_text,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    outputContainer: {
+      marginTop: 0,
+    },
+    outputBox: {
+      backgroundColor: colors.window,
+      borderRadius: 8,
+      padding: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    outputText: {
+      color: colors.text,
+      fontSize: 13,
+      fontFamily: 'monospace',
+      lineHeight: 18,
+    },
+    typingIndicator: {
+      flexDirection: 'row',
+      gap: 4,
+      marginTop: 8,
+      alignItems: 'center',
+    },
+    typingDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: colors.button,
+    },
+    typingDot2: {
+      opacity: 0.7,
+    },
+    typingDot3: {
+      opacity: 0.4,
+    },
+  });
+}

@@ -1,11 +1,15 @@
-import { useMemo, useState } from 'react';
+﻿import { useMemo, useState } from 'react';
 import { View, Text, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type { ValidationResponse } from '@char-gen/shared';
 import { api } from '../config/api';
 import CollapsibleTray from '../components/CollapsibleTray';
+import { useTheme } from '../theme/ThemeProvider';
+import type { ThemeColors } from '@char-gen/shared';
 
 export default function ValidationScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => buildStyles(colors), [colors]);
   const [path, setPath] = useState('');
   const [selectedDraftId, setSelectedDraftId] = useState('');
   const [result, setResult] = useState<ValidationResponse | null>(null);
@@ -42,7 +46,7 @@ export default function ValidationScreen() {
   if (isLoading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#7c3aed" />
+        <ActivityIndicator size="large" color={colors.accent} />
       </View>
     );
   }
@@ -63,7 +67,7 @@ export default function ValidationScreen() {
           value={path}
           onChangeText={setPath}
           placeholder="drafts/20260307_203638_unnamed_character"
-          placeholderTextColor="#6b7280"
+          placeholderTextColor={colors.muted_text}
           autoCapitalize="none"
         />
         <TouchableOpacity
@@ -71,7 +75,7 @@ export default function ValidationScreen() {
           onPress={() => validatePathMutation.mutate()}
           disabled={!path.trim() || isPending}
         >
-          {validatePathMutation.isPending ? <ActivityIndicator color="#fff" size="small" /> : null}
+          {validatePathMutation.isPending ? <ActivityIndicator color={colors.button_text} size="small" /> : null}
           <Text style={styles.primaryButtonText}>Validate Path</Text>
         </TouchableOpacity>
       </CollapsibleTray>
@@ -99,7 +103,7 @@ export default function ValidationScreen() {
           onPress={() => validateDraftMutation.mutate(selectedDraftId)}
           disabled={!selectedDraftId || isPending}
         >
-          {validateDraftMutation.isPending ? <ActivityIndicator color="#d1d5db" size="small" /> : null}
+          {validateDraftMutation.isPending ? <ActivityIndicator color={colors.text} size="small" /> : null}
           <Text style={styles.secondaryButtonText}>Validate Draft</Text>
         </TouchableOpacity>
       </CollapsibleTray>
@@ -167,213 +171,215 @@ export default function ValidationScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0f0f0f',
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#0f0f0f',
-  },
-  content: {
-    padding: 16,
-    gap: 16,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#9ca3af',
-    marginBottom: 8,
-  },
-  card: {
-    backgroundColor: '#1f1f1f',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-  },
-  trayPreviewText: {
-    color: '#9ca3af',
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#fff',
-    marginBottom: 6,
-  },
-  helperText: {
-    color: '#9ca3af',
-    fontSize: 12,
-    marginBottom: 12,
-  },
-  input: {
-    backgroundColor: '#111111',
-    borderRadius: 8,
-    padding: 12,
-    color: '#fff',
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-    fontSize: 14,
-    marginBottom: 12,
-  },
-  chipsContainer: {
-    gap: 8,
-    paddingBottom: 8,
-  },
-  chip: {
-    backgroundColor: '#27272a',
-    borderWidth: 1,
-    borderColor: '#3f3f46',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 999,
-  },
-  chipActive: {
-    backgroundColor: '#7c3aed',
-    borderColor: '#7c3aed',
-  },
-  chipText: {
-    color: '#d1d5db',
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  chipTextActive: {
-    color: '#fff',
-  },
-  primaryButton: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#7c3aed',
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  secondaryButton: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#27272a',
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#3f3f46',
-    marginTop: 8,
-  },
-  disabledButton: {
-    opacity: 0.5,
-  },
-  primaryButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  secondaryButtonText: {
-    color: '#d1d5db',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  errorCard: {
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#7f1d1d',
-    backgroundColor: '#450a0a',
-    padding: 14,
-  },
-  errorText: {
-    color: '#fca5a5',
-    fontSize: 13,
-  },
-  resultHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-    marginBottom: 12,
-  },
-  resultHeaderText: {
-    flex: 1,
-  },
-  resultPath: {
-    color: '#9ca3af',
-    fontSize: 12,
-  },
-  statusBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-  },
-  statusBadgeSuccess: {
-    backgroundColor: '#052e16',
-  },
-  statusBadgeFailure: {
-    backgroundColor: '#450a0a',
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  statusTextSuccess: {
-    color: '#86efac',
-  },
-  statusTextFailure: {
-    color: '#fca5a5',
-  },
-  outputCard: {
-    backgroundColor: '#111111',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-    padding: 14,
-    gap: 8,
-  },
-  outputLine: {
-    color: '#d1d5db',
-    fontSize: 13,
-    lineHeight: 20,
-  },
-  outputLineSuccess: {
-    color: '#86efac',
-  },
-  outputLineFailure: {
-    color: '#fca5a5',
-    fontWeight: '600',
-  },
-  outputLineWarning: {
-    color: '#fcd34d',
-  },
-  stderrCard: {
-    marginTop: 12,
-    backgroundColor: '#450a0a',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#7f1d1d',
-    padding: 14,
-  },
-  stderrTitle: {
-    color: '#fecaca',
-    fontSize: 13,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  stderrText: {
-    color: '#fca5a5',
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  emptyText: {
-    color: '#9ca3af',
-    fontSize: 13,
-  },
-});
+function buildStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    centered: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.background,
+    },
+    content: {
+      padding: 16,
+      gap: 16,
+    },
+    title: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: colors.text,
+      marginBottom: 4,
+    },
+    subtitle: {
+      fontSize: 14,
+      color: colors.muted_text,
+      marginBottom: 8,
+    },
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    trayPreviewText: {
+      color: colors.muted_text,
+      fontSize: 12,
+      lineHeight: 18,
+    },
+    sectionTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 6,
+    },
+    helperText: {
+      color: colors.muted_text,
+      fontSize: 12,
+      marginBottom: 12,
+    },
+    input: {
+      backgroundColor: colors.window,
+      borderRadius: 8,
+      padding: 12,
+      color: colors.text,
+      borderWidth: 1,
+      borderColor: colors.border,
+      fontSize: 14,
+      marginBottom: 12,
+    },
+    chipsContainer: {
+      gap: 8,
+      paddingBottom: 8,
+    },
+    chip: {
+      backgroundColor: colors.window,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      borderRadius: 999,
+    },
+    chipActive: {
+      backgroundColor: colors.button,
+      borderColor: colors.button,
+    },
+    chipText: {
+      color: colors.text,
+      fontSize: 13,
+      fontWeight: '500',
+    },
+    chipTextActive: {
+      color: colors.button_text,
+    },
+    primaryButton: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 8,
+      backgroundColor: colors.button,
+      paddingVertical: 12,
+      borderRadius: 8,
+    },
+    secondaryButton: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 8,
+      backgroundColor: colors.window,
+      paddingVertical: 12,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginTop: 8,
+    },
+    disabledButton: {
+      opacity: 0.5,
+    },
+    primaryButtonText: {
+      color: colors.button_text,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    secondaryButtonText: {
+      color: colors.text,
+      fontSize: 14,
+      fontWeight: '500',
+    },
+    errorCard: {
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.error_text,
+      backgroundColor: colors.danger_bg,
+      padding: 14,
+    },
+    errorText: {
+      color: colors.error_text,
+      fontSize: 13,
+    },
+    resultHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      gap: 12,
+      marginBottom: 12,
+    },
+    resultHeaderText: {
+      flex: 1,
+    },
+    resultPath: {
+      color: colors.muted_text,
+      fontSize: 12,
+    },
+    statusBadge: {
+      alignSelf: 'flex-start',
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      borderRadius: 999,
+    },
+    statusBadgeSuccess: {
+      backgroundColor: colors.success_bg,
+    },
+    statusBadgeFailure: {
+      backgroundColor: colors.danger_bg,
+    },
+    statusText: {
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    statusTextSuccess: {
+      color: colors.success_text,
+    },
+    statusTextFailure: {
+      color: colors.error_text,
+    },
+    outputCard: {
+      backgroundColor: colors.window,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 14,
+      gap: 8,
+    },
+    outputLine: {
+      color: colors.text,
+      fontSize: 13,
+      lineHeight: 20,
+    },
+    outputLineSuccess: {
+      color: colors.success_text,
+    },
+    outputLineFailure: {
+      color: colors.error_text,
+      fontWeight: '600',
+    },
+    outputLineWarning: {
+      color: colors.warning_text,
+    },
+    stderrCard: {
+      marginTop: 12,
+      backgroundColor: colors.danger_bg,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.error_text,
+      padding: 14,
+    },
+    stderrTitle: {
+      color: colors.error_text,
+      fontSize: 13,
+      fontWeight: '600',
+      marginBottom: 8,
+    },
+    stderrText: {
+      color: colors.error_text,
+      fontSize: 12,
+      lineHeight: 18,
+    },
+    emptyText: {
+      color: colors.muted_text,
+      fontSize: 13,
+    },
+  });
+}

@@ -60,6 +60,7 @@ export const DEFAULT_DEVICE_CONFIG: Config = {
     rate_limit_delay: 1,
   },
   help: DEFAULT_HELP_STATE,
+  theme_name: 'dark',
   feature_blueprints: {
     orchestration: 'blueprints/system/generator.md',
     seed_generation: 'blueprints/system/seed_generator.md',

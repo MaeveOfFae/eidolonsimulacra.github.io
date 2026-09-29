@@ -1,13 +1,17 @@
-import licenseText from '../../../../../LICENSE?raw';
+import { getInfoPage, getInfoPageDocument, getInfoPageSummary } from '@char-gen/shared';
+import { resolveInfoRuntimeScope } from '../../lib/info.js';
 import DocumentPage from './DocumentPage';
 
 export default function LicensePage() {
+  const scope = resolveInfoRuntimeScope();
+  const meta = getInfoPage('license');
+
   return (
     <DocumentPage
-      eyebrow="License"
-      title="License"
-      summary="This page mirrors the repository license shipped with the project."
-      markdown={licenseText}
+      eyebrow={meta.eyebrow}
+      title={meta.title}
+      summary={getInfoPageSummary('license', scope)}
+      markdown={getInfoPageDocument('license', scope)}
     />
   );
 }

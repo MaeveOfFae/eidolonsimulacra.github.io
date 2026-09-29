@@ -7,6 +7,16 @@ export type HomeStackParamList = {
   HomeRoot: undefined;
   SeedGenerator: undefined;
   LorebookGenerator: undefined;
+  WhatsNew: undefined;
+  HelpCenter: undefined;
+  About: undefined;
+  Community: undefined;
+  License: undefined;
+  Terms: undefined;
+  Privacy: undefined;
+  Security: undefined;
+  CodeOfConduct: undefined;
+  ThemePicker: undefined;
   Validation: undefined;
   TokenOptimization: { text?: string; draftId?: string; assetName?: string } | undefined;
   Lineage: undefined;

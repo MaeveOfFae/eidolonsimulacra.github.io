@@ -96,6 +96,13 @@ export {
   toBlueprintOptions,
 } from './blueprint-features';
 
+export { releaseNotes, type ReleaseNoteEntry, type ReleaseNoteLink } from './whats-new';
+
+export { builtinTheme, builtinThemes } from './themes/builtin-themes';
+
+export * from './help';
+export * from './info';
+
 export {
   buildDraftExportArtifact,
   buildDraftLibraryExport,

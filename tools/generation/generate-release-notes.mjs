@@ -11,7 +11,7 @@ const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, '../..');
 const rootPackageJsonPath = path.join(repoRoot, 'package.json');
 const webPackageJsonPath = path.join(repoRoot, 'packages/web/package.json');
-const releaseNotesPath = path.join(repoRoot, 'packages/web/src/lib/whats-new.ts');
+const releaseNotesPath = path.join(repoRoot, 'packages/shared/src/whats-new.ts');
 const changelogPath = path.join(repoRoot, 'CHANGELOG.md');
 const execFileAsync = promisify(execFile);
 

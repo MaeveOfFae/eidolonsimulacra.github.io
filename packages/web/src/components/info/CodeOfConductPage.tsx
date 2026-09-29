@@ -1,13 +1,17 @@
-import conductText from '../../../../../CODE_OF_CONDUCT.md?raw';
+import { getInfoPage, getInfoPageDocument, getInfoPageSummary } from '@char-gen/shared';
+import { resolveInfoRuntimeScope } from '../../lib/info.js';
 import DocumentPage from './DocumentPage';
 
 export default function CodeOfConductPage() {
+  const scope = resolveInfoRuntimeScope();
+  const meta = getInfoPage('code-of-conduct');
+
   return (
     <DocumentPage
-      eyebrow="Community"
-      title="Code of Conduct"
-      summary="Community participation standards and enforcement guidance for contributors and maintainers."
-      markdown={conductText}
+      eyebrow={meta.eyebrow}
+      title={meta.title}
+      summary={getInfoPageSummary('code-of-conduct', scope)}
+      markdown={getInfoPageDocument('code-of-conduct', scope)}
     />
   );
 }

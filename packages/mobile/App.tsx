@@ -3,7 +3,7 @@ import 'react-native-gesture-handler';
 import { useEffect, useRef } from 'react';
 import { Linking, StatusBar, View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { DarkTheme, NavigationContainer, createNavigationContainerRef, type Theme } from '@react-navigation/native';
+import { DarkTheme, NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,8 +15,20 @@ import DraftDetailScreen from './src/screens/DraftDetailScreen';
 import DraftsScreen from './src/screens/DraftsScreen';
 import GenerateScreen from './src/screens/GenerateScreen';
 import HomeScreen from './src/screens/HomeScreen';
+import HelpCenterScreen from './src/screens/HelpCenterScreen';
+import AboutScreen from './src/screens/AboutScreen';
+import CommunityScreen from './src/screens/CommunityScreen';
+import {
+  CodeOfConductScreen,
+  LicenseScreen,
+  PrivacyScreen,
+  SecurityScreen,
+  TermsScreen,
+} from './src/screens/InfoDocumentScreen';
 import LineageScreen from './src/screens/LineageScreen';
 import LorebookGeneratorScreen from './src/screens/LorebookGeneratorScreen';
+import WhatsNewScreen from './src/screens/WhatsNewScreen';
+import ThemePickerScreen from './src/screens/ThemePickerScreen';
 import OffspringScreen from './src/screens/OffspringScreen';
 import SeedGeneratorScreen from './src/screens/SeedGeneratorScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
@@ -25,7 +37,10 @@ import TemplatesScreen from './src/screens/TemplatesScreen';
 import TokenOptimizationScreen from './src/screens/TokenOptimizationScreen';
 import ValidationScreen from './src/screens/ValidationScreen';
 import { parseDesktopCompanionPairingLink } from '@char-gen/shared';
+import type { ThemeColors } from '@char-gen/shared';
 import type { DraftsStackParamList, HomeStackParamList, RootTabParamList } from './src/types/navigation';
+import { buildNavigationThemeColors, resolveNavigationDarkFlag } from './src/theme/theme';
+import { MobileThemeProvider, useTheme } from './src/theme/ThemeProvider';
 
 const queryClient = new QueryClient();
 const Tab = createBottomTabNavigator<RootTabParamList>();
@@ -33,35 +48,26 @@ const HomeStack = createNativeStackNavigator<HomeStackParamList>();
 const DraftsStack = createNativeStackNavigator<DraftsStackParamList>();
 const navigationRef = createNavigationContainerRef<RootTabParamList>();
 
-const navigationTheme = {
-  ...DarkTheme,
-  colors: {
-    ...DarkTheme.colors,
-    primary: '#7c3aed',
-    background: '#0f0f0f',
-    card: '#171717',
-    text: '#ffffff',
-    border: '#27272a',
-    notification: '#7c3aed',
-  },
-} satisfies Theme;
-
-const stackScreenOptions = {
-  headerStyle: {
-    backgroundColor: '#171717',
-  },
-  headerTintColor: '#ffffff',
-  headerTitleStyle: {
-    fontWeight: '600' as const,
-  },
-  contentStyle: {
-    backgroundColor: '#0f0f0f',
-  },
-};
+function buildStackScreenOptions(colors: ThemeColors) {
+  return {
+    headerStyle: {
+      backgroundColor: colors.surface,
+    },
+    headerTintColor: colors.text,
+    headerTitleStyle: {
+      fontWeight: '600' as const,
+    },
+    contentStyle: {
+      backgroundColor: colors.background,
+    },
+  };
+}
 
 function HomeStackNavigator() {
+  const { colors } = useTheme();
+
   return (
-    <HomeStack.Navigator screenOptions={stackScreenOptions}>
+    <HomeStack.Navigator screenOptions={buildStackScreenOptions(colors)}>
       <HomeStack.Screen name="HomeRoot" component={HomeScreen} options={{ title: 'Home', headerShown: false }} />
       <HomeStack.Screen
         name="SeedGenerator"
@@ -72,6 +78,40 @@ function HomeStackNavigator() {
         name="LorebookGenerator"
         component={LorebookGeneratorScreen}
         options={{ title: 'Lorebook Generator', headerShown: false }}
+      />
+      <HomeStack.Screen
+        name="WhatsNew"
+        component={WhatsNewScreen}
+        options={{ title: "What's New", headerShown: false }}
+      />
+      <HomeStack.Screen
+        name="HelpCenter"
+        component={HelpCenterScreen}
+        options={{ title: 'Help Center', headerShown: false }}
+      />
+      <HomeStack.Screen name="About" component={AboutScreen} options={{ title: 'About', headerShown: false }} />
+      <HomeStack.Screen
+        name="Community"
+        component={CommunityScreen}
+        options={{ title: 'Community', headerShown: false }}
+      />
+      <HomeStack.Screen name="License" component={LicenseScreen} options={{ title: 'License', headerShown: false }} />
+      <HomeStack.Screen name="Terms" component={TermsScreen} options={{ title: 'Terms of Use', headerShown: false }} />
+      <HomeStack.Screen name="Privacy" component={PrivacyScreen} options={{ title: 'Privacy', headerShown: false }} />
+      <HomeStack.Screen
+        name="Security"
+        component={SecurityScreen}
+        options={{ title: 'Security', headerShown: false }}
+      />
+      <HomeStack.Screen
+        name="CodeOfConduct"
+        component={CodeOfConductScreen}
+        options={{ title: 'Code of Conduct', headerShown: false }}
+      />
+      <HomeStack.Screen
+        name="ThemePicker"
+        component={ThemePickerScreen}
+        options={{ title: 'Themes', headerShown: false }}
       />
       <HomeStack.Screen
         name="Validation"
@@ -114,8 +154,10 @@ function HomeStackNavigator() {
 }
 
 function DraftsStackNavigator() {
+  const { colors } = useTheme();
+
   return (
-    <DraftsStack.Navigator screenOptions={stackScreenOptions}>
+    <DraftsStack.Navigator screenOptions={buildStackScreenOptions(colors)}>
       <DraftsStack.Screen
         name="DraftsList"
         component={DraftsScreen}
@@ -147,6 +189,7 @@ function renderTabIcon(routeName: keyof RootTabParamList, color: string, size: n
 
 function RootNavigation() {
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
   const pendingSettingsLinkRef = useRef<{ pairingLink: string; pairingNonce: string } | null>(null);
   const lastHandledUrlRef = useRef<string | null>(null);
 
@@ -203,7 +246,11 @@ function RootNavigation() {
   return (
     <NavigationContainer
       ref={navigationRef}
-      theme={navigationTheme}
+      theme={{
+        ...DarkTheme,
+        dark: resolveNavigationDarkFlag(colors),
+        colors: { ...DarkTheme.colors, ...buildNavigationThemeColors(colors) },
+      }}
       onReady={() => {
         if (pendingSettingsLinkRef.current) {
           navigationRef.navigate('Settings', pendingSettingsLinkRef.current);
@@ -211,7 +258,12 @@ function RootNavigation() {
         }
       }}
     >
-      <View style={{ flex: 1, backgroundColor: '#0f0f0f' }}>
+      <StatusBar
+        barStyle={resolveNavigationDarkFlag(colors) ? 'light-content' : 'dark-content'}
+        backgroundColor={colors.background}
+        translucent={false}
+      />
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
         <Tab.Navigator
           initialRouteName="Home"
           safeAreaInsets={{
@@ -223,14 +275,14 @@ function RootNavigation() {
           screenOptions={({ route }) => ({
             headerShown: false,
             sceneStyle: {
-              backgroundColor: '#0f0f0f',
+              backgroundColor: colors.background,
               paddingTop: insets.top,
             },
-            tabBarActiveTintColor: '#7c3aed',
-            tabBarInactiveTintColor: '#9ca3af',
+            tabBarActiveTintColor: colors.accent,
+            tabBarInactiveTintColor: colors.muted_text,
             tabBarStyle: {
-              backgroundColor: '#171717',
-              borderTopColor: '#27272a',
+              backgroundColor: colors.surface,
+              borderTopColor: colors.border,
             },
             tabBarLabelStyle: {
               fontSize: 12,
@@ -266,8 +318,9 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
-        <StatusBar barStyle="light-content" backgroundColor="#0f0f0f" translucent={false} />
-        <RootNavigation />
+        <MobileThemeProvider>
+          <RootNavigation />
+        </MobileThemeProvider>
       </QueryClientProvider>
     </SafeAreaProvider>
   );

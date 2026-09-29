@@ -17,3 +17,6 @@ packages/mobile/ios/
 
 # Generated source produced by tools/generation/generate-mobile-local-content.mjs
 packages/mobile/src/generated/
+
+# Generated source produced by tools/generation/generate-shared-info-documents.mjs
+packages/shared/src/generated/

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -29,6 +29,8 @@ import {
 } from '@char-gen/shared';
 import { api } from '../config/api';
 import CollapsibleTray from '../components/CollapsibleTray';
+import { useTheme } from '../theme/ThemeProvider';
+import type { ThemeColors } from '@char-gen/shared';
 import {
   StarIcon,
   ArrowLeftIcon,
@@ -239,6 +241,8 @@ export default function DraftDetailScreen() {
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
   const queryClient = useQueryClient();
+  const { colors } = useTheme();
+  const styles = useMemo(() => buildStyles(colors), [colors]);
   const { draftId, historySnapshotId } = route.params;
   const modalBottomPadding = 24 + insets.bottom + tabBarHeight;
 
@@ -1418,7 +1422,7 @@ export default function DraftDetailScreen() {
   if (isLoading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#7c3aed" />
+        <ActivityIndicator size="large" color={colors.accent} />
       </View>
     );
   }
@@ -1443,7 +1447,7 @@ export default function DraftDetailScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <ArrowLeftIcon color="#9ca3af" size={24} />
+          <ArrowLeftIcon color={colors.muted_text} size={24} />
         </TouchableOpacity>
         <View style={styles.headerContent}>
           <Text style={styles.title} numberOfLines={1}>
@@ -1451,13 +1455,13 @@ export default function DraftDetailScreen() {
           </Text>
           <View style={styles.headerActions}>
             <TouchableOpacity onPress={handleOpenEditModal} style={styles.editHeaderButton}>
-              <PencilIcon color="#7c3aed" size={20} />
+              <PencilIcon color={colors.accent} size={20} />
             </TouchableOpacity>
             <TouchableOpacity onPress={() => handleRefine()} style={styles.refineHeaderButton}>
-              <ChatBubbleIcon color="#7c3aed" size={20} />
+              <ChatBubbleIcon color={colors.accent} size={20} />
             </TouchableOpacity>
             <TouchableOpacity onPress={() => toggleFavorite.mutate()} style={styles.favoriteButton}>
-              <StarIcon color={draft.metadata.favorite ? '#eab308' : '#6b7280'} size={24} />
+              <StarIcon color={draft.metadata.favorite ? colors.warning_text : colors.muted_text} size={24} />
             </TouchableOpacity>
           </View>
         </View>
@@ -1496,23 +1500,23 @@ export default function DraftDetailScreen() {
       <View style={styles.actionsContainer}>
         <View style={styles.actionsContent}>
           <TouchableOpacity style={styles.actionButton} onPress={() => void handleAttachCardImage()}>
-            <DocumentTextIcon color="#7c3aed" size={18} />
+            <DocumentTextIcon color={colors.accent} size={18} />
             <Text style={styles.actionButtonText}>Attach PNG</Text>
           </TouchableOpacity>
           {draft.assets.card_image || draft.metadata.card_metadata?.avatar?.startsWith('data:image/png;base64,') ? (
             <TouchableOpacity style={styles.actionButton} onPress={() => void handleClearCardImage()}>
-              <TrashIcon color="#9ca3af" size={18} />
+              <TrashIcon color={colors.muted_text} size={18} />
               <Text style={styles.actionButtonText}>Clear PNG</Text>
             </TouchableOpacity>
           ) : null}
           {hasIntroScene ? (
             <TouchableOpacity style={styles.actionButton} onPress={handleOpenIntroModal}>
-              <SparklesIcon color="#7c3aed" size={18} />
+              <SparklesIcon color={colors.accent} size={18} />
               <Text style={styles.actionButtonText}>Intros</Text>
             </TouchableOpacity>
           ) : null}
           <TouchableOpacity style={styles.actionButton} onPress={handleCompareDraft}>
-            <UsersIcon color="#7c3aed" size={18} />
+            <UsersIcon color={colors.accent} size={18} />
             <Text style={styles.actionButtonText}>
               {pendingCompareSelection?.character1Id && pendingCompareSelection.character1Id !== draftId
                 ? 'Complete Compare'
@@ -1523,19 +1527,19 @@ export default function DraftDetailScreen() {
             style={[styles.actionButton, exportTrayExpanded && styles.actionButtonActive]}
             onPress={() => setExportTrayExpanded((current) => !current)}
           >
-            <DocumentTextIcon color="#7c3aed" size={18} />
+            <DocumentTextIcon color={colors.accent} size={18} />
             <Text style={styles.actionButtonText}>Export</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionButton} onPress={handleArchive} disabled={archiveMutation.isPending}>
             {isDraftArchived(draft.metadata) ? (
-              <ArrowUturnLeftIcon color="#7c3aed" size={18} />
+              <ArrowUturnLeftIcon color={colors.accent} size={18} />
             ) : (
-              <ArchiveBoxIcon color="#7c3aed" size={18} />
+              <ArchiveBoxIcon color={colors.accent} size={18} />
             )}
             <Text style={styles.actionButtonText}>{isDraftArchived(draft.metadata) ? 'Restore' : 'Archive'}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.actionButton, styles.deleteActionButton]} onPress={handleDelete}>
-            <TrashIcon color="#ef4444" size={18} />
+            <TrashIcon color={colors.error_text} size={18} />
             <Text style={[styles.actionButtonText, styles.deleteActionText]}>Delete</Text>
           </TouchableOpacity>
         </View>
@@ -1698,7 +1702,7 @@ export default function DraftDetailScreen() {
                   setReviewSaveFeedback(null);
                 }}
                 placeholder="Capture consistency concerns, export blockers, or follow-up edits worth revisiting later."
-                placeholderTextColor="#6b7280"
+                placeholderTextColor={colors.muted_text}
                 multiline
                 numberOfLines={4}
                 textAlignVertical="top"
@@ -1747,7 +1751,7 @@ export default function DraftDetailScreen() {
                           value={reviewAssetNotesDraft[assetName] ?? ''}
                           onChangeText={(value) => setReviewAssetNote(assetName, value)}
                           placeholder="Asset-specific follow-up, blocking issues, or rationale for the score."
-                          placeholderTextColor="#6b7280"
+                          placeholderTextColor={colors.muted_text}
                           multiline
                           numberOfLines={3}
                           textAlignVertical="top"
@@ -1774,7 +1778,7 @@ export default function DraftDetailScreen() {
                 disabled={saveReviewAnnotationsMutation.isPending}
               >
                 {saveReviewAnnotationsMutation.isPending ? (
-                  <ActivityIndicator size="small" color="#fff" />
+                  <ActivityIndicator size="small" color={colors.button_text} />
                 ) : (
                   <Text style={styles.primaryButtonText}>Save Review Notes</Text>
                 )}
@@ -1821,7 +1825,7 @@ export default function DraftDetailScreen() {
             disabled={createSnapshotMutation.isPending}
           >
             {createSnapshotMutation.isPending ? (
-              <ActivityIndicator size="small" color="#fff" />
+              <ActivityIndicator size="small" color={colors.button_text} />
             ) : (
               <Text style={styles.primaryButtonText}>Create Restore Point</Text>
             )}
@@ -2231,16 +2235,16 @@ export default function DraftDetailScreen() {
                     style={styles.assetActionButton}
                     onPress={() => handleCopyAsset(assetName, assetContent)}
                   >
-                    <ClipboardDocumentIcon color="#9ca3af" size={16} />
+                    <ClipboardDocumentIcon color={colors.muted_text} size={16} />
                     <Text style={styles.assetActionText}>Copy</Text>
                   </TouchableOpacity>
                 ) : null}
                 <TouchableOpacity style={styles.assetActionButton} onPress={() => handleOpenAssetEditor(assetName)}>
-                  <PencilIcon color={assetExists ? '#9ca3af' : '#7c3aed'} size={16} />
+                  <PencilIcon color={assetExists ? colors.muted_text : colors.accent} size={16} />
                   <Text style={[styles.assetActionText, !assetExists && styles.assetActionTextAccent]}>Edit</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.assetActionButton} onPress={() => handleRefine(assetName)}>
-                  <ChatBubbleIcon color="#7c3aed" size={16} />
+                  <ChatBubbleIcon color={colors.accent} size={16} />
                   <Text style={styles.assetActionTextAccent}>Refine</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -2256,12 +2260,12 @@ export default function DraftDetailScreen() {
                     })
                   }
                 >
-                  <SparklesIcon color="#7c3aed" size={16} />
+                  <SparklesIcon color={colors.accent} size={16} />
                   <Text style={styles.assetActionTextAccent}>Optimize</Text>
                 </TouchableOpacity>
                 {assetName === 'intro_scene' ? (
                   <TouchableOpacity style={styles.assetActionButton} onPress={handleOpenIntroModal}>
-                    <SparklesIcon color="#7c3aed" size={16} />
+                    <SparklesIcon color={colors.accent} size={16} />
                     <Text style={styles.assetActionTextAccent}>Intros</Text>
                   </TouchableOpacity>
                 ) : null}
@@ -2297,7 +2301,7 @@ export default function DraftDetailScreen() {
               <Text style={styles.modalTitle}>Edit Details</Text>
               <TouchableOpacity onPress={handleSaveMetadata} disabled={updateMetadataMutation.isPending}>
                 {updateMetadataMutation.isPending ? (
-                  <ActivityIndicator size="small" color="#7c3aed" />
+                  <ActivityIndicator size="small" color={colors.accent} />
                 ) : (
                   <Text style={styles.modalSaveText}>Save</Text>
                 )}
@@ -2316,7 +2320,7 @@ export default function DraftDetailScreen() {
                   value={editName}
                   onChangeText={setEditName}
                   placeholder="Enter character name"
-                  placeholderTextColor="#6b7280"
+                  placeholderTextColor={colors.muted_text}
                 />
               </View>
 
@@ -2328,7 +2332,7 @@ export default function DraftDetailScreen() {
                   value={editGenre}
                   onChangeText={setEditGenre}
                   placeholder="e.g., Fantasy, Sci-Fi, Romance"
-                  placeholderTextColor="#6b7280"
+                  placeholderTextColor={colors.muted_text}
                 />
               </View>
 
@@ -2340,7 +2344,7 @@ export default function DraftDetailScreen() {
                   value={editTags}
                   onChangeText={setEditTags}
                   placeholder="Comma-separated tags"
-                  placeholderTextColor="#6b7280"
+                  placeholderTextColor={colors.muted_text}
                 />
                 <Text style={styles.editHint}>Separate multiple tags with commas</Text>
               </View>
@@ -2353,7 +2357,7 @@ export default function DraftDetailScreen() {
                   value={editNotes}
                   onChangeText={setEditNotes}
                   placeholder="Add personal notes about this character..."
-                  placeholderTextColor="#6b7280"
+                  placeholderTextColor={colors.muted_text}
                   multiline
                   numberOfLines={4}
                   textAlignVertical="top"
@@ -2428,7 +2432,7 @@ export default function DraftDetailScreen() {
                       ? 'Describe the change you want to make'
                       : 'Describe the first version you want AI to draft for this asset'
                   }
-                  placeholderTextColor="#6b7280"
+                  placeholderTextColor={colors.muted_text}
                   multiline
                   numberOfLines={4}
                   textAlignVertical="top"
@@ -2464,7 +2468,7 @@ export default function DraftDetailScreen() {
                 disabled={!selectedRefineAsset || !refineRequest.trim() || isRefining || isApplyingRefinement}
               >
                 {isRefining ? (
-                  <ActivityIndicator size="small" color="#fff" />
+                  <ActivityIndicator size="small" color={colors.button_text} />
                 ) : (
                   <Text style={styles.primaryButtonText}>
                     {refinePreview
@@ -2517,7 +2521,7 @@ export default function DraftDetailScreen() {
                     disabled={isApplyingRefinement}
                   >
                     {isApplyingRefinement ? (
-                      <ActivityIndicator size="small" color="#fff" />
+                      <ActivityIndicator size="small" color={colors.button_text} />
                     ) : (
                       <Text style={styles.primaryButtonText}>Apply Changes</Text>
                     )}
@@ -2549,7 +2553,7 @@ export default function DraftDetailScreen() {
               </Text>
               <TouchableOpacity onPress={() => void handleSaveAssetEdit()} disabled={isSavingAsset}>
                 {isSavingAsset ? (
-                  <ActivityIndicator size="small" color="#7c3aed" />
+                  <ActivityIndicator size="small" color={colors.accent} />
                 ) : (
                   <Text style={styles.modalSaveText}>Save</Text>
                 )}
@@ -2571,7 +2575,7 @@ export default function DraftDetailScreen() {
                   value={editingAssetContent}
                   onChangeText={setEditingAssetContent}
                   placeholder="Enter asset content"
-                  placeholderTextColor="#6b7280"
+                  placeholderTextColor={colors.muted_text}
                   multiline
                   numberOfLines={14}
                   textAlignVertical="top"
@@ -2628,7 +2632,7 @@ export default function DraftDetailScreen() {
                   value={introInstructions}
                   onChangeText={setIntroInstructions}
                   placeholder="Optional guidance for the next intro scene"
-                  placeholderTextColor="#6b7280"
+                  placeholderTextColor={colors.muted_text}
                   multiline
                   numberOfLines={4}
                   textAlignVertical="top"
@@ -2648,7 +2652,7 @@ export default function DraftDetailScreen() {
                 disabled={isGeneratingIntro || isPersistingIntro || !draft.metadata.template_name}
               >
                 {isGeneratingIntro ? (
-                  <ActivityIndicator size="small" color="#fff" />
+                  <ActivityIndicator size="small" color={colors.button_text} />
                 ) : (
                   <Text style={styles.primaryButtonText}>Generate Additional Intro</Text>
                 )}
@@ -2694,7 +2698,7 @@ export default function DraftDetailScreen() {
                     disabled={isPersistingIntro}
                   >
                     {isPersistingIntro ? (
-                      <ActivityIndicator size="small" color="#d1d5db" />
+                      <ActivityIndicator size="small" color={colors.text} />
                     ) : (
                       <Text style={styles.secondaryModalButtonText}>Keep</Text>
                     )}
@@ -2766,921 +2770,923 @@ export default function DraftDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0f0f0f',
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#0f0f0f',
-  },
-  errorText: {
-    color: '#ef4444',
-    fontSize: 16,
-    marginBottom: 16,
-  },
-  backText: {
-    color: '#7c3aed',
-    fontSize: 16,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1f1f1f',
-  },
-  backButton: {
-    marginRight: 12,
-  },
-  headerContent: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  refineHeaderButton: {
-    padding: 8,
-  },
-  editHeaderButton: {
-    padding: 8,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
-    flex: 1,
-  },
-  favoriteButton: {
-    padding: 8,
-  },
-  tagsContainer: {
-    maxHeight: 50,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1f1f1f',
-  },
-  tagsContent: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    gap: 8,
-  },
-  tag: {
-    backgroundColor: '#1f1f1f',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    marginRight: 8,
-  },
-  tagPrimary: {
-    backgroundColor: '#7c3aed',
-  },
-  tagText: {
-    color: '#9ca3af',
-    fontSize: 12,
-  },
-  tagPrimaryText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  tagArchived: {
-    backgroundColor: '#3f2d18',
-    borderWidth: 1,
-    borderColor: '#78350f',
-  },
-  tagArchivedText: {
-    color: '#fbbf24',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  actionsContainer: {
-    paddingTop: 10,
-    paddingBottom: 8,
-    paddingHorizontal: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1f1f1f',
-  },
-  actionsContent: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  actionButton: {
-    minWidth: 64,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
-    backgroundColor: '#1f1f1f',
-    paddingHorizontal: 9,
-    paddingVertical: 7,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-  },
-  actionButtonActive: {
-    borderColor: '#4c1d95',
-    backgroundColor: '#241536',
-  },
-  deleteActionButton: {
-    borderColor: '#7f1d1d',
-    backgroundColor: 'transparent',
-  },
-  actionButtonText: {
-    color: '#7c3aed',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  deleteActionText: {
-    color: '#ef4444',
-  },
-  exportTrayRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1f1f1f',
-  },
-  cardImagePreviewWrap: {
-    paddingHorizontal: 12,
-    paddingBottom: 8,
-  },
-  cardImagePreviewLabel: {
-    color: '#9ca3af',
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 6,
-  },
-  cardImagePreviewCard: {
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-    backgroundColor: '#111111',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  cardImagePreviewMeta: {
-    color: '#d1d5db',
-    fontSize: 12,
-  },
-  exportChip: {
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: '#312e81',
-    backgroundColor: '#1b1b2f',
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-  },
-  exportChipText: {
-    color: '#c4b5fd',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  exportReadinessCard: {
-    width: '100%',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-    backgroundColor: '#111111',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    gap: 6,
-  },
-  exportReadinessCardWarning: {
-    borderColor: '#7c3aed55',
-    backgroundColor: '#1c1917',
-  },
-  exportReadinessTitle: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  exportReadinessText: {
-    color: '#d1d5db',
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  exportWarningList: {
-    gap: 4,
-  },
-  exportWarningText: {
-    color: '#f5d0fe',
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  metaContainer: {
-    flexDirection: 'row',
-    padding: 16,
-    gap: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1f1f1f',
-  },
-  metaItem: {
-    flex: 1,
-  },
-  metaLabel: {
-    color: '#6b7280',
-    fontSize: 11,
-    marginBottom: 2,
-  },
-  metaValue: {
-    color: '#d1d5db',
-    fontSize: 12,
-  },
-  content: {
-    flex: 1,
-  },
-  contentContainer: {
-    padding: 16,
-    gap: 16,
-  },
-  primaryTray: {
-    marginBottom: 0,
-  },
-  overviewPreviewRow: {
-    gap: 4,
-  },
-  overviewPreviewText: {
-    color: '#9ca3af',
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  metaGrid: {
-    gap: 10,
-  },
-  metaCard: {
-    backgroundColor: '#141414',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#2a2a2a',
-    padding: 12,
-  },
-  notesSection: {
-    backgroundColor: '#1f1f1f',
-    borderRadius: 8,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-  },
-  notesLabel: {
-    color: '#9ca3af',
-    fontSize: 12,
-    marginBottom: 4,
-  },
-  notesText: {
-    color: '#d1d5db',
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  reviewSummarySection: {
-    gap: 10,
-  },
-  reviewSummaryLabel: {
-    color: '#9ca3af',
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.3,
-  },
-  reviewTextArea: {
-    minHeight: 104,
-  },
-  reviewEditorList: {
-    gap: 12,
-  },
-  reviewEditorCard: {
-    backgroundColor: '#141414',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#2a2a2a',
-    padding: 12,
-    gap: 10,
-  },
-  reviewScoreList: {
-    gap: 8,
-  },
-  reviewScoreCard: {
-    backgroundColor: '#141414',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#2a2a2a',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  reviewScoreTitle: {
-    color: '#d1d5db',
-    fontSize: 13,
-    flex: 1,
-  },
-  reviewScoreValue: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  reviewScoreChipRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  reviewScoreChip: {
-    minWidth: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-    backgroundColor: '#1f1f1f',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-  },
-  reviewScoreChipActive: {
-    borderColor: '#7c3aed',
-    backgroundColor: '#2b1743',
-  },
-  reviewScoreChipText: {
-    color: '#d1d5db',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  reviewScoreChipTextActive: {
-    color: '#fff',
-  },
-  reviewAssetNoteInput: {
-    minHeight: 88,
-  },
-  reviewAssetNoteList: {
-    gap: 10,
-  },
-  reviewAssetNoteCard: {
-    backgroundColor: '#141414',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#2a2a2a',
-    padding: 12,
-    gap: 6,
-  },
-  reviewAssetNoteTitle: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  reviewAssetNoteText: {
-    color: '#d1d5db',
-    fontSize: 13,
-    lineHeight: 19,
-  },
-  reviewSaveRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 6,
-  },
-  reviewSaveButton: {
-    flex: 1,
-  },
-  reviewResetButton: {
-    flex: 1,
-  },
-  reviewSaveFeedback: {
-    color: '#9ca3af',
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  snapshotSection: {
-    gap: 12,
-  },
-  snapshotCardList: {
-    gap: 10,
-  },
-  snapshotCard: {
-    backgroundColor: '#141414',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#2a2a2a',
-    padding: 12,
-    gap: 8,
-  },
-  snapshotCardActive: {
-    borderColor: '#7c3aed',
-    backgroundColor: '#1c1330',
-  },
-  snapshotCardHeader: {
-    gap: 4,
-  },
-  snapshotCardTitle: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  snapshotCardMeta: {
-    color: '#9ca3af',
-    fontSize: 12,
-  },
-  snapshotCardReason: {
-    color: '#9ca3af',
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  snapshotCardActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 10,
-  },
-  snapshotCardActionText: {
-    color: '#a78bfa',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  snapshotRestoreButton: {
-    minWidth: 96,
-  },
-  snapshotPreviewPanel: {
-    gap: 12,
-  },
-  snapshotCompareChips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  snapshotCompareChip: {
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-    backgroundColor: '#1f1f1f',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  snapshotCompareChipActive: {
-    borderColor: '#7c3aed',
-    backgroundColor: '#2b1743',
-  },
-  snapshotCompareChipText: {
-    color: '#d1d5db',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  snapshotCompareChipTextActive: {
-    color: '#fff',
-  },
-  snapshotSummaryCard: {
-    backgroundColor: '#141414',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#2a2a2a',
-    padding: 12,
-    gap: 6,
-  },
-  snapshotSummaryText: {
-    color: '#d1d5db',
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  snapshotSummaryMetric: {
-    color: '#9ca3af',
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  snapshotDiffList: {
-    gap: 10,
-  },
-  snapshotDiffCard: {
-    backgroundColor: '#141414',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#2a2a2a',
-    padding: 12,
-    gap: 8,
-  },
-  snapshotDiffTitle: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  snapshotDiffMeta: {
-    color: '#9ca3af',
-    fontSize: 12,
-  },
-  snapshotDiffLineList: {
-    gap: 8,
-  },
-  snapshotDiffLinePair: {
-    gap: 8,
-  },
-  snapshotDiffLineCard: {
-    backgroundColor: '#1f1f1f',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-    padding: 10,
-    gap: 6,
-  },
-  snapshotDiffLineLabel: {
-    color: '#9ca3af',
-    fontSize: 10,
-    textTransform: 'uppercase',
-    letterSpacing: 0.3,
-  },
-  snapshotDiffLineText: {
-    color: '#d1d5db',
-    fontSize: 13,
-    lineHeight: 19,
-    fontFamily: 'monospace',
-  },
-  snapshotEmptyCard: {
-    backgroundColor: '#141414',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#2a2a2a',
-    padding: 12,
-  },
-  snapshotEmptyText: {
-    color: '#9ca3af',
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  savedIntroList: {
-    gap: 12,
-  },
-  savedIntroCard: {
-    backgroundColor: '#161616',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-    padding: 12,
-    gap: 12,
-  },
-  savedIntroCardActive: {
-    borderColor: '#7c3aed',
-  },
-  savedIntroHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 8,
-  },
-  savedIntroTitle: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  savedIntroMeta: {
-    color: '#6b7280',
-    fontSize: 11,
-    flex: 1,
-    textAlign: 'right',
-  },
-  savedIntroActions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  introActionButton: {
-    minWidth: 104,
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-    backgroundColor: '#1f1f1f',
-  },
-  introActionButtonPrimary: {
-    backgroundColor: '#7c3aed',
-    borderColor: '#7c3aed',
-  },
-  introActionButtonText: {
-    color: '#d1d5db',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  introActionButtonPrimaryText: {
-    color: '#fff',
-  },
-  missingSummaryCard: {
-    backgroundColor: '#1c1917',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#7c3aed55',
-    marginBottom: 0,
-  },
-  trayPreviewText: {
-    color: '#d1d5db',
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  trayPreviewTextMuted: {
-    color: '#8b8f98',
-  },
-  missingAssetList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  missingAssetPill: {
-    backgroundColor: '#3b1f42',
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-  },
-  missingAssetPillText: {
-    color: '#f5d0fe',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  missingSummaryTitle: {
-    color: '#ffffff',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  missingSummaryText: {
-    color: '#d4d4d8',
-    fontSize: 13,
-    lineHeight: 18,
-    marginTop: 6,
-  },
-  assetSection: {
-    marginBottom: 24,
-  },
-  assetStatusRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  assetHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  assetTitleBlock: {
-    flex: 1,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: 8,
-    marginRight: 12,
-  },
-  assetTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  requiredBadge: {
-    color: '#ffffff',
-    backgroundColor: '#27272a',
-    overflow: 'hidden',
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 999,
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  missingBadge: {
-    color: '#f5d0fe',
-    backgroundColor: '#581c87',
-    overflow: 'hidden',
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 999,
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  assetDescription: {
-    color: '#9ca3af',
-    fontSize: 13,
-    lineHeight: 18,
-    marginBottom: 8,
-  },
-  assetActions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  assetActionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#1b1b1b',
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-  },
-  assetActionText: {
-    color: '#d1d5db',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  assetActionTextAccent: {
-    color: '#a78bfa',
-  },
-  assetContent: {
-    backgroundColor: '#1f1f1f',
-    borderRadius: 8,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-  },
-  assetText: {
-    color: '#d1d5db',
-    fontSize: 14,
-    fontFamily: 'monospace',
-    lineHeight: 20,
-  },
-  assetPlaceholderText: {
-    color: '#9ca3af',
-    fontSize: 14,
-    lineHeight: 20,
-    fontStyle: 'italic',
-  },
-  // Modal styles
-  modalContainer: {
-    flex: 1,
-    backgroundColor: '#0f0f0f',
-  },
-  modalKeyboardContainer: {
-    flex: 1,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1f1f1f',
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  modalHeaderSpacer: {
-    width: 48,
-  },
-  modalCancelText: {
-    color: '#9ca3af',
-    fontSize: 16,
-  },
-  modalSaveText: {
-    color: '#7c3aed',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  modalContent: {
-    flex: 1,
-  },
-  modalContentContainer: {
-    padding: 16,
-  },
-  modalHelpText: {
-    color: '#9ca3af',
-    fontSize: 13,
-    lineHeight: 18,
-    marginBottom: 16,
-  },
-  editField: {
-    marginBottom: 20,
-  },
-  editLabel: {
-    color: '#9ca3af',
-    fontSize: 14,
-    fontWeight: '500',
-    marginBottom: 8,
-  },
-  editInput: {
-    backgroundColor: '#1f1f1f',
-    borderRadius: 8,
-    padding: 12,
-    color: '#fff',
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-  },
-  editTextArea: {
-    minHeight: 100,
-  },
-  assetEditorInput: {
-    minHeight: 280,
-    textAlignVertical: 'top',
-  },
-  editHint: {
-    color: '#6b7280',
-    fontSize: 12,
-    marginTop: 4,
-  },
-  modalStatusText: {
-    color: '#9ca3af',
-    fontSize: 13,
-    lineHeight: 18,
-    marginTop: 10,
-  },
-  assetPicker: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  assetChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: '#1f1f1f',
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-  },
-  assetChipActive: {
-    backgroundColor: '#7c3aed',
-    borderColor: '#7c3aed',
-  },
-  assetChipText: {
-    color: '#d1d5db',
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  assetChipTextActive: {
-    color: '#fff',
-  },
-  previewSection: {
-    marginTop: 20,
-  },
-  previewLabel: {
-    color: '#9ca3af',
-    fontSize: 14,
-    fontWeight: '500',
-    marginBottom: 8,
-  },
-  previewBox: {
-    backgroundColor: '#1f1f1f',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-    padding: 12,
-    maxHeight: 220,
-  },
-  previewText: {
-    color: '#d1d5db',
-    fontSize: 14,
-    fontFamily: 'monospace',
-    lineHeight: 20,
-  },
-  previewPlaceholder: {
-    color: '#6b7280',
-    fontSize: 14,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 16,
-  },
-  primaryButton: {
-    backgroundColor: '#7c3aed',
-    borderRadius: 8,
-    paddingVertical: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  fullWidthButton: {
-    marginTop: 20,
-  },
-  modalActionButton: {
-    flex: 1,
-  },
-  primaryButtonText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  secondaryModalButton: {
-    flex: 1,
-    backgroundColor: '#1f1f1f',
-    borderRadius: 8,
-    paddingVertical: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-  },
-  secondaryModalButtonText: {
-    color: '#d1d5db',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  disabledButton: {
-    opacity: 0.6,
-  },
-});
+function buildStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    centered: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.background,
+    },
+    errorText: {
+      color: colors.error_text,
+      fontSize: 16,
+      marginBottom: 16,
+    },
+    backText: {
+      color: colors.accent,
+      fontSize: 16,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    backButton: {
+      marginRight: 12,
+    },
+    headerContent: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    headerActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    refineHeaderButton: {
+      padding: 8,
+    },
+    editHeaderButton: {
+      padding: 8,
+    },
+    title: {
+      fontSize: 20,
+      fontWeight: 'bold',
+      color: colors.text,
+      flex: 1,
+    },
+    favoriteButton: {
+      padding: 8,
+    },
+    tagsContainer: {
+      maxHeight: 50,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    tagsContent: {
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      gap: 8,
+    },
+    tag: {
+      backgroundColor: colors.window,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 16,
+      marginRight: 8,
+    },
+    tagPrimary: {
+      backgroundColor: colors.button,
+    },
+    tagText: {
+      color: colors.muted_text,
+      fontSize: 12,
+    },
+    tagPrimaryText: {
+      color: colors.text,
+      fontSize: 12,
+      fontWeight: '500',
+    },
+    tagArchived: {
+      backgroundColor: colors.window,
+      borderWidth: 1,
+      borderColor: colors.warning_text,
+    },
+    tagArchivedText: {
+      color: colors.warning_text,
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    actionsContainer: {
+      paddingTop: 10,
+      paddingBottom: 8,
+      paddingHorizontal: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    actionsContent: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 6,
+    },
+    actionButton: {
+      minWidth: 64,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 5,
+      backgroundColor: colors.window,
+      paddingHorizontal: 9,
+      paddingVertical: 7,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    actionButtonActive: {
+      borderColor: colors.accent,
+      backgroundColor: colors.accent_bg,
+    },
+    deleteActionButton: {
+      borderColor: colors.error_text,
+      backgroundColor: 'transparent',
+    },
+    actionButtonText: {
+      color: colors.accent,
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    deleteActionText: {
+      color: colors.error_text,
+    },
+    exportTrayRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 6,
+      paddingHorizontal: 12,
+      paddingBottom: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    cardImagePreviewWrap: {
+      paddingHorizontal: 12,
+      paddingBottom: 8,
+    },
+    cardImagePreviewLabel: {
+      color: colors.muted_text,
+      fontSize: 12,
+      fontWeight: '600',
+      marginBottom: 6,
+    },
+    cardImagePreviewCard: {
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.window,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+    },
+    cardImagePreviewMeta: {
+      color: colors.text,
+      fontSize: 12,
+    },
+    exportChip: {
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: colors.accent,
+      backgroundColor: colors.accent_bg,
+      paddingHorizontal: 10,
+      paddingVertical: 7,
+    },
+    exportChipText: {
+      color: colors.accent_title,
+      fontSize: 11,
+      fontWeight: '700',
+    },
+    exportReadinessCard: {
+      width: '100%',
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.window,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      gap: 6,
+    },
+    exportReadinessCardWarning: {
+      borderColor: colors.accent,
+      backgroundColor: colors.window,
+    },
+    exportReadinessTitle: {
+      color: colors.text,
+      fontSize: 13,
+      fontWeight: '700',
+    },
+    exportReadinessText: {
+      color: colors.text,
+      fontSize: 12,
+      lineHeight: 18,
+    },
+    exportWarningList: {
+      gap: 4,
+    },
+    exportWarningText: {
+      color: colors.accent_title,
+      fontSize: 12,
+      lineHeight: 18,
+    },
+    metaContainer: {
+      flexDirection: 'row',
+      padding: 16,
+      gap: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    metaItem: {
+      flex: 1,
+    },
+    metaLabel: {
+      color: colors.muted_text,
+      fontSize: 11,
+      marginBottom: 2,
+    },
+    metaValue: {
+      color: colors.text,
+      fontSize: 12,
+    },
+    content: {
+      flex: 1,
+    },
+    contentContainer: {
+      padding: 16,
+      gap: 16,
+    },
+    primaryTray: {
+      marginBottom: 0,
+    },
+    overviewPreviewRow: {
+      gap: 4,
+    },
+    overviewPreviewText: {
+      color: colors.muted_text,
+      fontSize: 12,
+      lineHeight: 18,
+    },
+    metaGrid: {
+      gap: 10,
+    },
+    metaCard: {
+      backgroundColor: colors.window,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 12,
+    },
+    notesSection: {
+      backgroundColor: colors.window,
+      borderRadius: 8,
+      padding: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    notesLabel: {
+      color: colors.muted_text,
+      fontSize: 12,
+      marginBottom: 4,
+    },
+    notesText: {
+      color: colors.text,
+      fontSize: 14,
+      lineHeight: 20,
+    },
+    reviewSummarySection: {
+      gap: 10,
+    },
+    reviewSummaryLabel: {
+      color: colors.muted_text,
+      fontSize: 12,
+      fontWeight: '600',
+      textTransform: 'uppercase',
+      letterSpacing: 0.3,
+    },
+    reviewTextArea: {
+      minHeight: 104,
+    },
+    reviewEditorList: {
+      gap: 12,
+    },
+    reviewEditorCard: {
+      backgroundColor: colors.window,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 12,
+      gap: 10,
+    },
+    reviewScoreList: {
+      gap: 8,
+    },
+    reviewScoreCard: {
+      backgroundColor: colors.window,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+    },
+    reviewScoreTitle: {
+      color: colors.text,
+      fontSize: 13,
+      flex: 1,
+    },
+    reviewScoreValue: {
+      color: colors.text,
+      fontSize: 13,
+      fontWeight: '700',
+    },
+    reviewScoreChipRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    reviewScoreChip: {
+      minWidth: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.window,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+    },
+    reviewScoreChipActive: {
+      borderColor: colors.accent,
+      backgroundColor: colors.accent_bg,
+    },
+    reviewScoreChipText: {
+      color: colors.text,
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    reviewScoreChipTextActive: {
+      color: colors.text,
+    },
+    reviewAssetNoteInput: {
+      minHeight: 88,
+    },
+    reviewAssetNoteList: {
+      gap: 10,
+    },
+    reviewAssetNoteCard: {
+      backgroundColor: colors.window,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 12,
+      gap: 6,
+    },
+    reviewAssetNoteTitle: {
+      color: colors.text,
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    reviewAssetNoteText: {
+      color: colors.text,
+      fontSize: 13,
+      lineHeight: 19,
+    },
+    reviewSaveRow: {
+      flexDirection: 'row',
+      gap: 12,
+      marginTop: 6,
+    },
+    reviewSaveButton: {
+      flex: 1,
+    },
+    reviewResetButton: {
+      flex: 1,
+    },
+    reviewSaveFeedback: {
+      color: colors.muted_text,
+      fontSize: 12,
+      lineHeight: 18,
+    },
+    snapshotSection: {
+      gap: 12,
+    },
+    snapshotCardList: {
+      gap: 10,
+    },
+    snapshotCard: {
+      backgroundColor: colors.window,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 12,
+      gap: 8,
+    },
+    snapshotCardActive: {
+      borderColor: colors.accent,
+      backgroundColor: colors.accent_bg,
+    },
+    snapshotCardHeader: {
+      gap: 4,
+    },
+    snapshotCardTitle: {
+      color: colors.text,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    snapshotCardMeta: {
+      color: colors.muted_text,
+      fontSize: 12,
+    },
+    snapshotCardReason: {
+      color: colors.muted_text,
+      fontSize: 12,
+      lineHeight: 18,
+    },
+    snapshotCardActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 10,
+    },
+    snapshotCardActionText: {
+      color: colors.accent_title,
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    snapshotRestoreButton: {
+      minWidth: 96,
+    },
+    snapshotPreviewPanel: {
+      gap: 12,
+    },
+    snapshotCompareChips: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    snapshotCompareChip: {
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.window,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+    },
+    snapshotCompareChipActive: {
+      borderColor: colors.accent,
+      backgroundColor: colors.accent_bg,
+    },
+    snapshotCompareChipText: {
+      color: colors.text,
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    snapshotCompareChipTextActive: {
+      color: colors.text,
+    },
+    snapshotSummaryCard: {
+      backgroundColor: colors.window,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 12,
+      gap: 6,
+    },
+    snapshotSummaryText: {
+      color: colors.text,
+      fontSize: 13,
+      lineHeight: 18,
+    },
+    snapshotSummaryMetric: {
+      color: colors.muted_text,
+      fontSize: 12,
+      lineHeight: 18,
+    },
+    snapshotDiffList: {
+      gap: 10,
+    },
+    snapshotDiffCard: {
+      backgroundColor: colors.window,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 12,
+      gap: 8,
+    },
+    snapshotDiffTitle: {
+      color: colors.text,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    snapshotDiffMeta: {
+      color: colors.muted_text,
+      fontSize: 12,
+    },
+    snapshotDiffLineList: {
+      gap: 8,
+    },
+    snapshotDiffLinePair: {
+      gap: 8,
+    },
+    snapshotDiffLineCard: {
+      backgroundColor: colors.window,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 10,
+      gap: 6,
+    },
+    snapshotDiffLineLabel: {
+      color: colors.muted_text,
+      fontSize: 10,
+      textTransform: 'uppercase',
+      letterSpacing: 0.3,
+    },
+    snapshotDiffLineText: {
+      color: colors.text,
+      fontSize: 13,
+      lineHeight: 19,
+      fontFamily: 'monospace',
+    },
+    snapshotEmptyCard: {
+      backgroundColor: colors.window,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 12,
+    },
+    snapshotEmptyText: {
+      color: colors.muted_text,
+      fontSize: 13,
+      lineHeight: 18,
+    },
+    savedIntroList: {
+      gap: 12,
+    },
+    savedIntroCard: {
+      backgroundColor: colors.window,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 12,
+      gap: 12,
+    },
+    savedIntroCardActive: {
+      borderColor: colors.accent,
+    },
+    savedIntroHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      gap: 8,
+    },
+    savedIntroTitle: {
+      color: colors.text,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    savedIntroMeta: {
+      color: colors.muted_text,
+      fontSize: 11,
+      flex: 1,
+      textAlign: 'right',
+    },
+    savedIntroActions: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    introActionButton: {
+      minWidth: 104,
+      borderRadius: 8,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.window,
+    },
+    introActionButtonPrimary: {
+      backgroundColor: colors.button,
+      borderColor: colors.accent,
+    },
+    introActionButtonText: {
+      color: colors.text,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    introActionButtonPrimaryText: {
+      color: colors.text,
+    },
+    missingSummaryCard: {
+      backgroundColor: colors.window,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.accent,
+      marginBottom: 0,
+    },
+    trayPreviewText: {
+      color: colors.text,
+      fontSize: 12,
+      lineHeight: 18,
+    },
+    trayPreviewTextMuted: {
+      color: colors.muted_text,
+    },
+    missingAssetList: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    missingAssetPill: {
+      backgroundColor: colors.accent_bg,
+      borderRadius: 999,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+    },
+    missingAssetPillText: {
+      color: colors.accent_title,
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    missingSummaryTitle: {
+      color: colors.text,
+      fontSize: 15,
+      fontWeight: '700',
+    },
+    missingSummaryText: {
+      color: colors.text,
+      fontSize: 13,
+      lineHeight: 18,
+      marginTop: 6,
+    },
+    assetSection: {
+      marginBottom: 24,
+    },
+    assetStatusRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 6,
+    },
+    assetHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    assetTitleBlock: {
+      flex: 1,
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      alignItems: 'center',
+      gap: 8,
+      marginRight: 12,
+    },
+    assetTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    requiredBadge: {
+      color: colors.text,
+      backgroundColor: colors.window,
+      overflow: 'hidden',
+      paddingHorizontal: 7,
+      paddingVertical: 2,
+      borderRadius: 999,
+      fontSize: 10,
+      fontWeight: '700',
+    },
+    missingBadge: {
+      color: colors.accent_title,
+      backgroundColor: colors.accent,
+      overflow: 'hidden',
+      paddingHorizontal: 7,
+      paddingVertical: 2,
+      borderRadius: 999,
+      fontSize: 10,
+      fontWeight: '700',
+    },
+    assetDescription: {
+      color: colors.muted_text,
+      fontSize: 13,
+      lineHeight: 18,
+      marginBottom: 8,
+    },
+    assetActions: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    assetActionButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: colors.window,
+      borderRadius: 999,
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    assetActionText: {
+      color: colors.text,
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    assetActionTextAccent: {
+      color: colors.accent_title,
+    },
+    assetContent: {
+      backgroundColor: colors.window,
+      borderRadius: 8,
+      padding: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    assetText: {
+      color: colors.text,
+      fontSize: 14,
+      fontFamily: 'monospace',
+      lineHeight: 20,
+    },
+    assetPlaceholderText: {
+      color: colors.muted_text,
+      fontSize: 14,
+      lineHeight: 20,
+      fontStyle: 'italic',
+    },
+    // Modal styles
+    modalContainer: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    modalKeyboardContainer: {
+      flex: 1,
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    modalTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    modalHeaderSpacer: {
+      width: 48,
+    },
+    modalCancelText: {
+      color: colors.muted_text,
+      fontSize: 16,
+    },
+    modalSaveText: {
+      color: colors.accent,
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    modalContent: {
+      flex: 1,
+    },
+    modalContentContainer: {
+      padding: 16,
+    },
+    modalHelpText: {
+      color: colors.muted_text,
+      fontSize: 13,
+      lineHeight: 18,
+      marginBottom: 16,
+    },
+    editField: {
+      marginBottom: 20,
+    },
+    editLabel: {
+      color: colors.muted_text,
+      fontSize: 14,
+      fontWeight: '500',
+      marginBottom: 8,
+    },
+    editInput: {
+      backgroundColor: colors.window,
+      borderRadius: 8,
+      padding: 12,
+      color: colors.text,
+      fontSize: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    editTextArea: {
+      minHeight: 100,
+    },
+    assetEditorInput: {
+      minHeight: 280,
+      textAlignVertical: 'top',
+    },
+    editHint: {
+      color: colors.muted_text,
+      fontSize: 12,
+      marginTop: 4,
+    },
+    modalStatusText: {
+      color: colors.muted_text,
+      fontSize: 13,
+      lineHeight: 18,
+      marginTop: 10,
+    },
+    assetPicker: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    assetChip: {
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 999,
+      backgroundColor: colors.window,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    assetChipActive: {
+      backgroundColor: colors.button,
+      borderColor: colors.accent,
+    },
+    assetChipText: {
+      color: colors.text,
+      fontSize: 13,
+      fontWeight: '500',
+    },
+    assetChipTextActive: {
+      color: colors.text,
+    },
+    previewSection: {
+      marginTop: 20,
+    },
+    previewLabel: {
+      color: colors.muted_text,
+      fontSize: 14,
+      fontWeight: '500',
+      marginBottom: 8,
+    },
+    previewBox: {
+      backgroundColor: colors.window,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 12,
+      maxHeight: 220,
+    },
+    previewText: {
+      color: colors.text,
+      fontSize: 14,
+      fontFamily: 'monospace',
+      lineHeight: 20,
+    },
+    previewPlaceholder: {
+      color: colors.muted_text,
+      fontSize: 14,
+    },
+    modalActions: {
+      flexDirection: 'row',
+      gap: 12,
+      marginTop: 16,
+    },
+    primaryButton: {
+      backgroundColor: colors.button,
+      borderRadius: 8,
+      paddingVertical: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    fullWidthButton: {
+      marginTop: 20,
+    },
+    modalActionButton: {
+      flex: 1,
+    },
+    primaryButtonText: {
+      color: colors.button_text,
+      fontSize: 15,
+      fontWeight: '600',
+    },
+    secondaryModalButton: {
+      flex: 1,
+      backgroundColor: colors.window,
+      borderRadius: 8,
+      paddingVertical: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    secondaryModalButtonText: {
+      color: colors.text,
+      fontSize: 15,
+      fontWeight: '600',
+    },
+    disabledButton: {
+      opacity: 0.6,
+    },
+  });
+}

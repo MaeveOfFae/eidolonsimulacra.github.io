@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,8 @@ import * as Clipboard from 'expo-clipboard';
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
 import { api, applyStoredApiConfig } from '../config/api';
 import CollapsibleTray from '../components/CollapsibleTray';
+import { useTheme } from '../theme/ThemeProvider';
+import type { ThemeColors } from '@char-gen/shared';
 import { Cog6ToothIcon } from '../components/Icons';
 import {
   getSelectedDesktopCompanionSyncDomains,
@@ -91,6 +93,8 @@ interface SettingsScreenProps {
 
 export default function SettingsScreen({ navigation, route }: SettingsScreenProps) {
   const queryClient = useQueryClient();
+  const { colors } = useTheme();
+  const styles = useMemo(() => buildStyles(colors), [colors]);
   const scrollViewRef = useRef<ScrollView | null>(null);
   const storedDesktopCompanion = getStoredDesktopCompanionSettings();
   const storedMobileIdentity = getStoredMobileDeviceIdentity();
@@ -769,7 +773,7 @@ export default function SettingsScreen({ navigation, route }: SettingsScreenProp
         <View style={styles.statusHeader}>
           <Text style={styles.statusTitle}>Device ready</Text>
           {isLoading ? (
-            <ActivityIndicator size="small" color="#7c3aed" />
+            <ActivityIndicator size="small" color={colors.accent} />
           ) : (
             <View style={[styles.connectionDot, styles.connectionDotActive]} />
           )}
@@ -1114,7 +1118,7 @@ export default function SettingsScreen({ navigation, route }: SettingsScreenProp
               value={mobileDeviceName}
               onChangeText={handleMobileDeviceNameChange}
               placeholder="My Phone"
-              placeholderTextColor="#6b7280"
+              placeholderTextColor={colors.muted_text}
             />
             {rememberedCompanions.length > 0 && (
               <View style={styles.rememberedCompanionList}>
@@ -1149,7 +1153,7 @@ export default function SettingsScreen({ navigation, route }: SettingsScreenProp
               value={desktopCompanionUrl}
               onChangeText={updateDesktopCompanionUrl}
               placeholder="http://192.168.1.10:48231"
-              placeholderTextColor="#6b7280"
+              placeholderTextColor={colors.muted_text}
               autoCapitalize="none"
               autoCorrect={false}
             />
@@ -1159,7 +1163,7 @@ export default function SettingsScreen({ navigation, route }: SettingsScreenProp
               value={desktopCompanionPairCode}
               onChangeText={updateDesktopCompanionPairCode}
               placeholder="AB12CD34"
-              placeholderTextColor="#6b7280"
+              placeholderTextColor={colors.muted_text}
               autoCapitalize="characters"
               autoCorrect={false}
             />
@@ -1210,7 +1214,7 @@ export default function SettingsScreen({ navigation, route }: SettingsScreenProp
                 <View style={styles.companionPreviewCard}>
                   <View style={styles.companionPreviewHeader}>
                     <Text style={styles.companionPreviewTitle}>Pull preview</Text>
-                    {previewLoading ? <ActivityIndicator size="small" color="#7c3aed" /> : null}
+                    {previewLoading ? <ActivityIndicator size="small" color={colors.accent} /> : null}
                   </View>
                   {companionPreviewError ? (
                     <Text style={styles.companionPreviewError}>{companionPreviewError}</Text>
@@ -1487,7 +1491,7 @@ export default function SettingsScreen({ navigation, route }: SettingsScreenProp
         }
       >
         <View style={styles.aboutCard}>
-          <Cog6ToothIcon color="#7c3aed" size={32} />
+          <Cog6ToothIcon color={colors.accent} size={32} />
           <Text style={styles.aboutTitle}>Eidolon Simulacra</Text>
           <Text style={styles.aboutVersion}>Version 2.0.0</Text>
           <Text style={styles.aboutText}>Mobile companion for local character generation and review.</Text>
@@ -1539,7 +1543,7 @@ export default function SettingsScreen({ navigation, route }: SettingsScreenProp
               value={editorValue}
               onChangeText={setEditorValue}
               placeholder={editorMode === 'api-url' ? 'http://192.168.1.10:3001/api' : 'Enter value'}
-              placeholderTextColor="#6b7280"
+              placeholderTextColor={colors.muted_text}
               autoCapitalize="none"
               autoCorrect={false}
               secureTextEntry={editorMode === 'api-key'}
@@ -1555,7 +1559,7 @@ export default function SettingsScreen({ navigation, route }: SettingsScreenProp
                 disabled={saveConfigMutation.isPending}
               >
                 {saveConfigMutation.isPending ? (
-                  <ActivityIndicator size="small" color="#fff" />
+                  <ActivityIndicator size="small" color={colors.button_text} />
                 ) : (
                   <Text style={styles.primaryButtonText}>Save</Text>
                 )}
@@ -1613,830 +1617,833 @@ export default function SettingsScreen({ navigation, route }: SettingsScreenProp
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0f0f0f',
-  },
-  content: {
-    padding: 16,
-    gap: 16,
-    paddingBottom: 24,
-  },
-  input: {
-    backgroundColor: '#1f1f1f',
-    borderRadius: 8,
-    padding: 12,
-    color: '#fff',
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  companionLabel: {
-    color: '#d1d5db',
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 6,
-  },
-  companionInput: {
-    marginBottom: 10,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#9ca3af',
-    marginBottom: 4,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  statusCard: {
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-  },
-  statusCardReady: {
-    backgroundColor: '#111827',
-    borderColor: '#1d4ed8',
-  },
-  statusHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  statusTitle: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  statusDescription: {
-    color: '#d1d5db',
-    fontSize: 13,
-    lineHeight: 18,
-    marginBottom: 6,
-  },
-  trayPreviewText: {
-    color: '#9ca3af',
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  sectionDesc: {
-    fontSize: 12,
-    color: '#6b7280',
-    marginBottom: 12,
-  },
-  transferModeGrid: {
-    gap: 10,
-  },
-  transferModeCard: {
-    backgroundColor: '#111827',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#312e81',
-    padding: 12,
-  },
-  transferModeEyebrow: {
-    color: '#a78bfa',
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
-  },
-  transferModeTitle: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '700',
-    marginTop: 4,
-  },
-  transferModeText: {
-    color: '#cbd5e1',
-    fontSize: 12,
-    lineHeight: 17,
-    marginTop: 4,
-  },
-  transferCard: {
-    backgroundColor: '#1f1f1f',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-  },
-  transferTitle: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  transferDescription: {
-    color: '#9ca3af',
-    fontSize: 13,
-    lineHeight: 18,
-    marginTop: 4,
-  },
-  guideStatusCard: {
-    gap: 12,
-  },
-  guideStatusHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-  },
-  guideStatusCopy: {
-    flex: 1,
-  },
-  guideStatusBadge: {
-    borderRadius: 999,
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  guideStatusBadgeOpen: {
-    borderColor: '#374151',
-    backgroundColor: '#111827',
-  },
-  guideStatusBadgeComplete: {
-    borderColor: '#166534',
-    backgroundColor: '#052e16',
-  },
-  guideStatusBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-  },
-  guideStatusBadgeTextOpen: {
-    color: '#d1d5db',
-  },
-  guideStatusBadgeTextComplete: {
-    color: '#bbf7d0',
-  },
-  rememberedCompanionList: {
-    gap: 8,
-    marginBottom: 12,
-  },
-  rememberedCompanionCard: {
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-    backgroundColor: '#111827',
-    padding: 10,
-  },
-  rememberedCompanionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 12,
-  },
-  rememberedCompanionTextBlock: {
-    flex: 1,
-  },
-  rememberedCompanionName: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  rememberedCompanionMeta: {
-    color: '#9ca3af',
-    fontSize: 12,
-    marginTop: 2,
-  },
-  rememberedCompanionDelete: {
-    color: '#fca5a5',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  companionProbeCard: {
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-    backgroundColor: '#111827',
-    padding: 10,
-    marginTop: 12,
-  },
-  companionProbeCardReady: {
-    borderColor: '#10b981',
-    backgroundColor: '#052e2b',
-  },
-  companionProbeCardIssue: {
-    borderColor: '#f59e0b',
-    backgroundColor: '#2b2111',
-  },
-  companionProbeTitle: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  companionProbeText: {
-    color: '#d1d5db',
-    fontSize: 12,
-    lineHeight: 17,
-    marginTop: 4,
-  },
-  companionProbeMeta: {
-    color: '#9ca3af',
-    fontSize: 11,
-    marginTop: 6,
-  },
-  pendingDesktopApplyCard: {
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#f59e0b',
-    backgroundColor: 'rgba(245, 158, 11, 0.12)',
-    padding: 8,
-    marginTop: 10,
-  },
-  pendingDesktopApplyTitle: {
-    color: '#fde68a',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  pendingDesktopApplyText: {
-    color: '#fef3c7',
-    fontSize: 12,
-    lineHeight: 17,
-    marginTop: 3,
-  },
-  companionPreviewCard: {
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#374151',
-    backgroundColor: 'rgba(15, 23, 42, 0.7)',
-    padding: 10,
-    marginTop: 10,
-    gap: 8,
-  },
-  companionPreviewHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  companionPreviewTitle: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  companionPreviewText: {
-    color: '#d1d5db',
-    fontSize: 12,
-    lineHeight: 17,
-  },
-  companionPreviewMeta: {
-    color: '#9ca3af',
-    fontSize: 11,
-  },
-  companionPreviewError: {
-    color: '#fca5a5',
-    fontSize: 12,
-    lineHeight: 17,
-  },
-  companionPreviewGrid: {
-    gap: 6,
-  },
-  companionPreviewItem: {
-    borderRadius: 6,
-    backgroundColor: 'rgba(17, 24, 39, 0.9)',
-    paddingHorizontal: 8,
-    paddingVertical: 7,
-  },
-  companionPreviewItemTitle: {
-    color: '#e5e7eb',
-    fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-  },
-  companionPreviewItemText: {
-    color: '#d1d5db',
-    fontSize: 12,
-    marginTop: 2,
-  },
-  companionPreviewListCard: {
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-    backgroundColor: '#111827',
-    padding: 8,
-    gap: 4,
-  },
-  companionPreviewListTitle: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  companionPreviewListText: {
-    color: '#d1d5db',
-    fontSize: 12,
-    lineHeight: 17,
-  },
-  syncSelectionCard: {
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-    backgroundColor: '#111827',
-    padding: 10,
-    marginTop: 10,
-    gap: 8,
-  },
-  syncSelectionTitle: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-  },
-  syncSelectionDescription: {
-    color: '#9ca3af',
-    fontSize: 12,
-    lineHeight: 17,
-  },
-  syncSelectionGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  syncSelectionChip: {
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: '#374151',
-    backgroundColor: '#0f172a',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  syncSelectionChipActive: {
-    borderColor: '#7c3aed',
-    backgroundColor: 'rgba(124, 58, 237, 0.18)',
-  },
-  syncSelectionChipText: {
-    color: '#d1d5db',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  syncSelectionChipTextActive: {
-    color: '#ede9fe',
-  },
-  syncSelectionWarning: {
-    color: '#fbbf24',
-    fontSize: 12,
-  },
-  companionReliabilityGrid: {
-    gap: 6,
-    marginTop: 10,
-  },
-  companionReliabilityItem: {
-    borderRadius: 6,
-    backgroundColor: 'rgba(15, 23, 42, 0.55)',
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-  },
-  companionReliabilityLabel: {
-    color: '#9ca3af',
-    fontSize: 10,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-  },
-  companionReliabilityValue: {
-    color: '#e5e7eb',
-    fontSize: 11,
-    marginTop: 2,
-  },
-  transferActionsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 12,
-  },
-  transferPrimaryButton: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 8,
-    paddingVertical: 10,
-    backgroundColor: '#7c3aed',
-  },
-  transferPrimaryButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  transferSecondaryButton: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 8,
-    paddingVertical: 10,
-    backgroundColor: '#111827',
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-  },
-  transferButtonDisabled: {
-    opacity: 0.55,
-  },
-  transferSecondaryButtonText: {
-    color: '#d1d5db',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  apiKeyItem: {
-    backgroundColor: '#111111',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-  },
-  apiKeyItemActive: {
-    borderColor: '#7c3aed',
-    backgroundColor: '#1e1b4b',
-  },
-  apiKeyHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  apiKeyLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  apiKeyLabel: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  activeBadge: {
-    backgroundColor: '#7c3aed',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
-  },
-  activeBadgeText: {
-    color: '#fff',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  apiKeyActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  testButton: {
-    backgroundColor: '#2f2f2f',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-  },
-  testButtonLoading: {
-    opacity: 0.7,
-  },
-  testButtonText: {
-    color: '#7c3aed',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  modelsButton: {
-    backgroundColor: '#7c3aed',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-  },
-  modelsButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  apiKeyStatus: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 6,
-  },
-  statusDotActive: {
-    backgroundColor: '#22c55e',
-  },
-  statusDotInactive: {
-    backgroundColor: '#6b7280',
-  },
-  statusText: {
-    color: '#9ca3af',
-    fontSize: 12,
-  },
-  activeModelText: {
-    color: '#7c3aed',
-    fontSize: 12,
-    flex: 1,
-  },
-  currentModelCard: {
-    backgroundColor: '#1f1f1f',
-    borderRadius: 8,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-  },
-  currentModelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#2f2f2f',
-  },
-  currentModelRowLast: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  currentModelLabel: {
-    color: '#9ca3af',
-    fontSize: 14,
-  },
-  currentModelValue: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '500',
-    flex: 1,
-    textAlign: 'right',
-    marginLeft: 16,
-  },
-  currentModelActions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 8,
-  },
-  settingItem: {
-    backgroundColor: '#111111',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  settingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  settingLabel: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  settingValue: {
-    color: '#7c3aed',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  settingButtons: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  settingButton: {
-    backgroundColor: '#2f2f2f',
-    width: 32,
-    height: 32,
-    borderRadius: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  settingButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  engineModeContainer: {
-    gap: 8,
-  },
-  engineModeButton: {
-    backgroundColor: '#1f1f1f',
-    borderRadius: 8,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-  },
-  engineModeButtonActive: {
-    borderColor: '#7c3aed',
-    backgroundColor: '#1e1b4b',
-  },
-  engineModeText: {
-    color: '#9ca3af',
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  engineModeTextActive: {
-    color: '#a78bfa',
-  },
-  engineModeDesc: {
-    color: '#6b7280',
-    fontSize: 12,
-  },
-  aboutCard: {
-    backgroundColor: '#1f1f1f',
-    borderRadius: 8,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-    alignItems: 'center',
-  },
-  aboutTitle: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
-    marginTop: 12,
-    marginBottom: 4,
-  },
-  aboutVersion: {
-    color: '#7c3aed',
-    fontSize: 14,
-    marginBottom: 12,
-  },
-  aboutText: {
-    color: '#9ca3af',
-    fontSize: 13,
-    textAlign: 'center',
-    lineHeight: 18,
-  },
-  connectionCard: {
-    backgroundColor: '#1f1f1f',
-    borderRadius: 8,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#22c55e',
-    marginBottom: 24,
-  },
-  connectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  connectionTitle: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  connectionDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  connectionDotActive: {
-    backgroundColor: '#22c55e',
-  },
-  connectionUrl: {
-    color: '#d1d5db',
-    fontSize: 12,
-    marginBottom: 6,
-  },
-  connectionMeta: {
-    color: '#6b7280',
-    fontSize: 12,
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: '#0f0f0f',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1f1f1f',
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  modalCloseText: {
-    color: '#7c3aed',
-    fontSize: 16,
-  },
-  modalBody: {
-    padding: 16,
-  },
-  modalHelpText: {
-    color: '#9ca3af',
-    fontSize: 13,
-    lineHeight: 18,
-    marginBottom: 12,
-  },
-  modalInput: {
-    marginBottom: 16,
-  },
-  modalInputMonospace: {
-    fontFamily: 'monospace',
-  },
-  scannerContainer: {
-    flex: 1,
-    backgroundColor: '#0f0f0f',
-  },
-  scannerHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 18,
-    paddingBottom: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1f1f1f',
-  },
-  scannerTitle: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  scannerBody: {
-    flex: 1,
-    padding: 16,
-    gap: 16,
-  },
-  cameraFrame: {
-    flex: 1,
-    overflow: 'hidden',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-    backgroundColor: '#000',
-    minHeight: 360,
-  },
-  cameraOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.25)',
-  },
-  cameraTarget: {
-    width: 220,
-    height: 220,
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: '#7c3aed',
-    backgroundColor: 'transparent',
-  },
-  scannerFallbackCard: {
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-    backgroundColor: '#1f1f1f',
-    padding: 16,
-    gap: 12,
-  },
-  scannerFallbackText: {
-    color: '#d1d5db',
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  primaryButton: {
-    flex: 1,
-    backgroundColor: '#7c3aed',
-    borderRadius: 8,
-    paddingVertical: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  primaryButtonText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  secondaryModalButton: {
-    flex: 1,
-    backgroundColor: '#1f1f1f',
-    borderRadius: 8,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-  },
-  secondaryModalButtonText: {
-    color: '#d1d5db',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  disabledButton: {
-    opacity: 0.6,
-  },
-});
+function buildStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    content: {
+      padding: 16,
+      gap: 16,
+      paddingBottom: 24,
+    },
+    input: {
+      backgroundColor: colors.window,
+      borderRadius: 8,
+      padding: 12,
+      color: colors.text,
+      fontSize: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    title: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: colors.text,
+      marginBottom: 4,
+    },
+    companionLabel: {
+      color: colors.text,
+      fontSize: 12,
+      fontWeight: '600',
+      marginBottom: 6,
+    },
+    companionInput: {
+      marginBottom: 10,
+    },
+    subtitle: {
+      fontSize: 14,
+      color: colors.muted_text,
+      marginBottom: 4,
+    },
+    section: {
+      marginBottom: 24,
+    },
+    statusCard: {
+      borderRadius: 12,
+      padding: 16,
+      borderWidth: 1,
+    },
+    statusCardReady: {
+      backgroundColor: colors.window,
+      borderColor: colors.accent,
+    },
+    statusHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    statusTitle: {
+      color: colors.text,
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    statusDescription: {
+      color: colors.text,
+      fontSize: 13,
+      lineHeight: 18,
+      marginBottom: 6,
+    },
+    trayPreviewText: {
+      color: colors.muted_text,
+      fontSize: 12,
+      lineHeight: 18,
+    },
+    sectionTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 4,
+    },
+    sectionDesc: {
+      fontSize: 12,
+      color: colors.muted_text,
+      marginBottom: 12,
+    },
+    transferModeGrid: {
+      gap: 10,
+    },
+    transferModeCard: {
+      backgroundColor: colors.window,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.accent,
+      padding: 12,
+    },
+    transferModeEyebrow: {
+      color: colors.accent_title,
+      fontSize: 11,
+      fontWeight: '700',
+      letterSpacing: 0.4,
+      textTransform: 'uppercase',
+    },
+    transferModeTitle: {
+      color: colors.text,
+      fontSize: 14,
+      fontWeight: '700',
+      marginTop: 4,
+    },
+    transferModeText: {
+      color: colors.text,
+      fontSize: 12,
+      lineHeight: 17,
+      marginTop: 4,
+    },
+    transferCard: {
+      backgroundColor: colors.window,
+      borderRadius: 8,
+      padding: 12,
+      marginBottom: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    transferTitle: {
+      color: colors.text,
+      fontSize: 15,
+      fontWeight: '600',
+    },
+    transferDescription: {
+      color: colors.muted_text,
+      fontSize: 13,
+      lineHeight: 18,
+      marginTop: 4,
+    },
+    guideStatusCard: {
+      gap: 12,
+    },
+    guideStatusHeader: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 12,
+    },
+    guideStatusCopy: {
+      flex: 1,
+    },
+    guideStatusBadge: {
+      borderRadius: 999,
+      borderWidth: 1,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+    },
+    guideStatusBadgeOpen: {
+      borderColor: colors.border,
+      backgroundColor: colors.window,
+    },
+    guideStatusBadgeComplete: {
+      borderColor: colors.success_text,
+      backgroundColor: colors.success_bg,
+    },
+    guideStatusBadgeText: {
+      fontSize: 11,
+      fontWeight: '700',
+      textTransform: 'uppercase',
+      letterSpacing: 0.4,
+    },
+    guideStatusBadgeTextOpen: {
+      color: colors.text,
+    },
+    guideStatusBadgeTextComplete: {
+      color: colors.success_text,
+    },
+    rememberedCompanionList: {
+      gap: 8,
+      marginBottom: 12,
+    },
+    rememberedCompanionCard: {
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.window,
+      padding: 10,
+    },
+    rememberedCompanionHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      gap: 12,
+    },
+    rememberedCompanionTextBlock: {
+      flex: 1,
+    },
+    rememberedCompanionName: {
+      color: colors.text,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    rememberedCompanionMeta: {
+      color: colors.muted_text,
+      fontSize: 12,
+      marginTop: 2,
+    },
+    rememberedCompanionDelete: {
+      color: colors.error_text,
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    companionProbeCard: {
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.window,
+      padding: 10,
+      marginTop: 12,
+    },
+    companionProbeCardReady: {
+      borderColor: colors.success_text,
+      backgroundColor: colors.success_bg,
+    },
+    companionProbeCardIssue: {
+      borderColor: colors.warning_text,
+      backgroundColor: colors.window,
+    },
+    companionProbeTitle: {
+      color: colors.text,
+      fontSize: 13,
+      fontWeight: '700',
+    },
+    companionProbeText: {
+      color: colors.text,
+      fontSize: 12,
+      lineHeight: 17,
+      marginTop: 4,
+    },
+    companionProbeMeta: {
+      color: colors.muted_text,
+      fontSize: 11,
+      marginTop: 6,
+    },
+    pendingDesktopApplyCard: {
+      borderRadius: 6,
+      borderWidth: 1,
+      borderColor: colors.warning_text,
+      backgroundColor: colors.window,
+      padding: 8,
+      marginTop: 10,
+    },
+    pendingDesktopApplyTitle: {
+      color: colors.warning_text,
+      fontSize: 12,
+      fontWeight: '700',
+    },
+    pendingDesktopApplyText: {
+      color: colors.warning_text,
+      fontSize: 12,
+      lineHeight: 17,
+      marginTop: 3,
+    },
+    companionPreviewCard: {
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: 'rgba(15, 23, 42, 0.7)',
+      padding: 10,
+      marginTop: 10,
+      gap: 8,
+    },
+    companionPreviewHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    companionPreviewTitle: {
+      color: colors.text,
+      fontSize: 13,
+      fontWeight: '700',
+    },
+    companionPreviewText: {
+      color: colors.text,
+      fontSize: 12,
+      lineHeight: 17,
+    },
+    companionPreviewMeta: {
+      color: colors.muted_text,
+      fontSize: 11,
+    },
+    companionPreviewError: {
+      color: colors.error_text,
+      fontSize: 12,
+      lineHeight: 17,
+    },
+    companionPreviewGrid: {
+      gap: 6,
+    },
+    companionPreviewItem: {
+      borderRadius: 6,
+      backgroundColor: 'rgba(17, 24, 39, 0.9)',
+      paddingHorizontal: 8,
+      paddingVertical: 7,
+    },
+    companionPreviewItemTitle: {
+      color: colors.text,
+      fontSize: 11,
+      fontWeight: '700',
+      textTransform: 'uppercase',
+    },
+    companionPreviewItemText: {
+      color: colors.text,
+      fontSize: 12,
+      marginTop: 2,
+    },
+    companionPreviewListCard: {
+      borderRadius: 6,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.window,
+      padding: 8,
+      gap: 4,
+    },
+    companionPreviewListTitle: {
+      color: colors.text,
+      fontSize: 12,
+      fontWeight: '700',
+    },
+    companionPreviewListText: {
+      color: colors.text,
+      fontSize: 12,
+      lineHeight: 17,
+    },
+    syncSelectionCard: {
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.window,
+      padding: 10,
+      marginTop: 10,
+      gap: 8,
+    },
+    syncSelectionTitle: {
+      color: colors.text,
+      fontSize: 12,
+      fontWeight: '700',
+      textTransform: 'uppercase',
+    },
+    syncSelectionDescription: {
+      color: colors.muted_text,
+      fontSize: 12,
+      lineHeight: 17,
+    },
+    syncSelectionGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    syncSelectionChip: {
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.window,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+    },
+    syncSelectionChipActive: {
+      borderColor: colors.accent,
+      backgroundColor: 'rgba(124, 58, 237, 0.18)',
+    },
+    syncSelectionChipText: {
+      color: colors.text,
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    syncSelectionChipTextActive: {
+      color: colors.accent_title,
+    },
+    syncSelectionWarning: {
+      color: colors.warning_text,
+      fontSize: 12,
+    },
+    companionReliabilityGrid: {
+      gap: 6,
+      marginTop: 10,
+    },
+    companionReliabilityItem: {
+      borderRadius: 6,
+      backgroundColor: 'rgba(15, 23, 42, 0.55)',
+      paddingHorizontal: 8,
+      paddingVertical: 6,
+    },
+    companionReliabilityLabel: {
+      color: colors.muted_text,
+      fontSize: 10,
+      fontWeight: '700',
+      textTransform: 'uppercase',
+    },
+    companionReliabilityValue: {
+      color: colors.text,
+      fontSize: 11,
+      marginTop: 2,
+    },
+    transferActionsRow: {
+      flexDirection: 'row',
+      gap: 8,
+      marginTop: 12,
+    },
+    transferPrimaryButton: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: 8,
+      paddingVertical: 10,
+      backgroundColor: colors.button,
+    },
+    transferPrimaryButtonText: {
+      color: colors.button_text,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    transferSecondaryButton: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: 8,
+      paddingVertical: 10,
+      backgroundColor: colors.window,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    transferButtonDisabled: {
+      opacity: 0.55,
+    },
+    transferSecondaryButtonText: {
+      color: colors.text,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    apiKeyItem: {
+      backgroundColor: colors.window,
+      borderRadius: 8,
+      padding: 12,
+      marginBottom: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    apiKeyItemActive: {
+      borderColor: colors.accent,
+      backgroundColor: colors.accent_bg,
+    },
+    apiKeyHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    apiKeyLabelRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    apiKeyLabel: {
+      color: colors.text,
+      fontSize: 16,
+      fontWeight: '500',
+    },
+    activeBadge: {
+      backgroundColor: colors.button,
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      borderRadius: 8,
+    },
+    activeBadgeText: {
+      color: colors.button_text,
+      fontSize: 11,
+      fontWeight: '600',
+    },
+    apiKeyActions: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    testButton: {
+      backgroundColor: colors.window,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 6,
+    },
+    testButtonLoading: {
+      opacity: 0.7,
+    },
+    testButtonText: {
+      color: colors.accent,
+      fontSize: 14,
+      fontWeight: '500',
+    },
+    modelsButton: {
+      backgroundColor: colors.button,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 6,
+    },
+    modelsButtonText: {
+      color: colors.button_text,
+      fontSize: 14,
+      fontWeight: '500',
+    },
+    apiKeyStatus: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    statusDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      marginRight: 6,
+    },
+    statusDotActive: {
+      backgroundColor: colors.success_text,
+    },
+    statusDotInactive: {
+      backgroundColor: colors.muted_text,
+    },
+    statusText: {
+      color: colors.muted_text,
+      fontSize: 12,
+    },
+    activeModelText: {
+      color: colors.accent,
+      fontSize: 12,
+      flex: 1,
+    },
+    currentModelCard: {
+      backgroundColor: colors.window,
+      borderRadius: 8,
+      padding: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    currentModelRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    currentModelRowLast: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: 8,
+    },
+    currentModelLabel: {
+      color: colors.muted_text,
+      fontSize: 14,
+    },
+    currentModelValue: {
+      color: colors.text,
+      fontSize: 14,
+      fontWeight: '500',
+      flex: 1,
+      textAlign: 'right',
+      marginLeft: 16,
+    },
+    currentModelActions: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+      marginTop: 8,
+    },
+    settingItem: {
+      backgroundColor: colors.window,
+      borderRadius: 8,
+      padding: 12,
+      marginBottom: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    settingRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    settingLabel: {
+      color: colors.text,
+      fontSize: 14,
+      fontWeight: '500',
+    },
+    settingValue: {
+      color: colors.accent,
+      fontSize: 18,
+      fontWeight: '600',
+    },
+    settingButtons: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    settingButton: {
+      backgroundColor: colors.window,
+      width: 32,
+      height: 32,
+      borderRadius: 6,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    settingButtonText: {
+      color: colors.text,
+      fontSize: 18,
+      fontWeight: '600',
+    },
+    engineModeContainer: {
+      gap: 8,
+    },
+    engineModeButton: {
+      backgroundColor: colors.window,
+      borderRadius: 8,
+      padding: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    engineModeButtonActive: {
+      borderColor: colors.accent,
+      backgroundColor: colors.accent_bg,
+    },
+    engineModeText: {
+      color: colors.muted_text,
+      fontSize: 16,
+      fontWeight: '600',
+      marginBottom: 2,
+    },
+    engineModeTextActive: {
+      color: colors.accent_title,
+    },
+    engineModeDesc: {
+      color: colors.muted_text,
+      fontSize: 12,
+    },
+    aboutCard: {
+      backgroundColor: colors.window,
+      borderRadius: 8,
+      padding: 20,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: 'center',
+    },
+    aboutTitle: {
+      color: colors.text,
+      fontSize: 18,
+      fontWeight: '600',
+      marginTop: 12,
+      marginBottom: 4,
+    },
+    aboutVersion: {
+      color: colors.accent,
+      fontSize: 14,
+      marginBottom: 12,
+    },
+    aboutText: {
+      color: colors.muted_text,
+      fontSize: 13,
+      textAlign: 'center',
+      lineHeight: 18,
+    },
+    connectionCard: {
+      backgroundColor: colors.window,
+      borderRadius: 8,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: colors.success_text,
+      marginBottom: 24,
+    },
+    connectionHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    connectionTitle: {
+      color: colors.text,
+      fontSize: 14,
+      fontWeight: '500',
+    },
+    connectionDot: {
+      width: 10,
+      height: 10,
+      borderRadius: 5,
+    },
+    connectionDotActive: {
+      backgroundColor: colors.success_text,
+    },
+    connectionUrl: {
+      color: colors.text,
+      fontSize: 12,
+      marginBottom: 6,
+    },
+    connectionMeta: {
+      color: colors.muted_text,
+      fontSize: 12,
+    },
+    modalContainer: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    modalTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    modalCloseText: {
+      color: colors.accent,
+      fontSize: 16,
+    },
+    modalBody: {
+      padding: 16,
+    },
+    modalHelpText: {
+      color: colors.muted_text,
+      fontSize: 13,
+      lineHeight: 18,
+      marginBottom: 12,
+    },
+    modalInput: {
+      marginBottom: 16,
+    },
+    modalInputMonospace: {
+      fontFamily: 'monospace',
+    },
+    scannerContainer: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    scannerHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingTop: 18,
+      paddingBottom: 14,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    scannerTitle: {
+      color: colors.text,
+      fontSize: 18,
+      fontWeight: '600',
+    },
+    scannerBody: {
+      flex: 1,
+      padding: 16,
+      gap: 16,
+    },
+    cameraFrame: {
+      flex: 1,
+      overflow: 'hidden',
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      // Camera preview surface stays black regardless of theme.
+      backgroundColor: '#000',
+      minHeight: 360,
+    },
+    cameraOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: 'rgba(0, 0, 0, 0.25)',
+    },
+    cameraTarget: {
+      width: 220,
+      height: 220,
+      borderRadius: 20,
+      borderWidth: 2,
+      borderColor: colors.accent,
+      backgroundColor: 'transparent',
+    },
+    scannerFallbackCard: {
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.window,
+      padding: 16,
+      gap: 12,
+    },
+    scannerFallbackText: {
+      color: colors.text,
+      fontSize: 14,
+      lineHeight: 20,
+    },
+    modalActions: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+    primaryButton: {
+      flex: 1,
+      backgroundColor: colors.button,
+      borderRadius: 8,
+      paddingVertical: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    primaryButtonText: {
+      color: colors.button_text,
+      fontSize: 15,
+      fontWeight: '600',
+    },
+    secondaryModalButton: {
+      flex: 1,
+      backgroundColor: colors.window,
+      borderRadius: 8,
+      paddingVertical: 12,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    secondaryModalButtonText: {
+      color: colors.text,
+      fontSize: 15,
+      fontWeight: '600',
+    },
+    disabledButton: {
+      opacity: 0.6,
+    },
+  });
+}

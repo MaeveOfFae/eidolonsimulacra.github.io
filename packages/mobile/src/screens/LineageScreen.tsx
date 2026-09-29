@@ -1,10 +1,12 @@
-import { useCallback, useMemo, useState } from 'react';
+﻿import { useCallback, useMemo, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
 import type { LineageNode } from '@char-gen/shared';
+import type { ThemeColors } from '@char-gen/shared';
 import { api } from '../config/api';
 import CollapsibleTray from '../components/CollapsibleTray';
+import { useTheme } from '../theme/ThemeProvider';
 import {
   getMobileCompareSelection,
   setMobileCompareSelection,
@@ -23,6 +25,9 @@ function LineageRow({
   selected: boolean;
   onSelect: (node: LineageNode) => void;
 }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => buildStyles(colors), [colors]);
+
   return (
     <TouchableOpacity
       onPress={() => onSelect(node)}
@@ -46,6 +51,8 @@ function LineageRow({
 }
 
 export default function LineageScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => buildStyles(colors), [colors]);
   const navigation = useNavigation<HomeStackNavigationProp<'Lineage'>>();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [generationFilter, setGenerationFilter] = useState<string>('all');
@@ -126,7 +133,7 @@ export default function LineageScreen() {
   if (isLoading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#7c3aed" />
+        <ActivityIndicator size="large" color={colors.accent} />
       </View>
     );
   }
@@ -410,295 +417,297 @@ export default function LineageScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0f0f0f',
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#0f0f0f',
-    padding: 16,
-  },
-  content: {
-    padding: 16,
-    gap: 16,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  headerTextWrap: {
-    flex: 1,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  subtitle: {
-    color: '#9ca3af',
-    fontSize: 14,
-  },
-  trayPreviewText: {
-    color: '#9ca3af',
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  refreshButton: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#27272a',
-    borderWidth: 1,
-    borderColor: '#3f3f46',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  refreshButtonText: {
-    color: '#d1d5db',
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  statCard: {
-    minWidth: '47%',
-    flexGrow: 1,
-    backgroundColor: '#1f1f1f',
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-    borderRadius: 12,
-    padding: 14,
-  },
-  statValue: {
-    color: '#fff',
-    fontSize: 22,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  statLabel: {
-    color: '#9ca3af',
-    fontSize: 12,
-  },
-  card: {
-    backgroundColor: '#1f1f1f',
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-    borderRadius: 12,
-    padding: 16,
-  },
-  sectionTitle: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 12,
-  },
-  filterRow: {
-    gap: 8,
-    paddingBottom: 8,
-  },
-  toggleRow: {
-    marginTop: 8,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    alignItems: 'center',
-  },
-  chip: {
-    backgroundColor: '#27272a',
-    borderWidth: 1,
-    borderColor: '#3f3f46',
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  toggleChip: {
-    backgroundColor: '#27272a',
-    borderWidth: 1,
-    borderColor: '#3f3f46',
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  chipActive: {
-    backgroundColor: '#7c3aed',
-    borderColor: '#7c3aed',
-  },
-  chipText: {
-    color: '#d1d5db',
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  chipTextActive: {
-    color: '#fff',
-  },
-  depthControl: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginLeft: 'auto',
-  },
-  depthButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: '#27272a',
-    borderWidth: 1,
-    borderColor: '#3f3f46',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  depthButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  depthValue: {
-    color: '#d1d5db',
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  treeList: {
-    gap: 10,
-  },
-  nodeCard: {
-    backgroundColor: '#111111',
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-    borderRadius: 10,
-    padding: 12,
-  },
-  nodeCardSelected: {
-    borderColor: '#7c3aed',
-    backgroundColor: '#2a1a4a',
-  },
-  nodeHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 10,
-    alignItems: 'flex-start',
-  },
-  nodeTextWrap: {
-    flex: 1,
-  },
-  nodeTitle: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  nodeMeta: {
-    color: '#9ca3af',
-    fontSize: 12,
-    marginTop: 4,
-  },
-  badge: {
-    backgroundColor: '#27272a',
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-  },
-  badgeText: {
-    color: '#9ca3af',
-    fontSize: 11,
-    fontWeight: '500',
-  },
-  detailsWrap: {
-    gap: 12,
-  },
-  detailTitle: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  detailMeta: {
-    color: '#9ca3af',
-    fontSize: 13,
-  },
-  summaryGrid: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  summaryCard: {
-    flex: 1,
-    backgroundColor: '#111111',
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-    borderRadius: 10,
-    padding: 12,
-  },
-  summaryLabel: {
-    color: '#9ca3af',
-    fontSize: 12,
-    textTransform: 'uppercase',
-  },
-  summaryValue: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: '700',
-    marginTop: 4,
-  },
-  infoBlock: {
-    gap: 4,
-  },
-  infoLabel: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  infoValue: {
-    color: '#9ca3af',
-    fontSize: 13,
-    lineHeight: 20,
-  },
-  actionRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginTop: 4,
-  },
-  primaryAction: {
-    flexGrow: 1,
-    minWidth: '30%',
-    backgroundColor: '#7c3aed',
-    borderRadius: 8,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  primaryActionText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  secondaryAction: {
-    flexGrow: 1,
-    minWidth: '30%',
-    backgroundColor: '#27272a',
-    borderWidth: 1,
-    borderColor: '#3f3f46',
-    borderRadius: 8,
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  secondaryActionText: {
-    color: '#d1d5db',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  emptyText: {
-    color: '#9ca3af',
-    fontSize: 13,
-    lineHeight: 20,
-  },
-  errorText: {
-    color: '#fca5a5',
-    fontSize: 14,
-    textAlign: 'center',
-  },
-});
+function buildStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    centered: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.background,
+      padding: 16,
+    },
+    content: {
+      padding: 16,
+      gap: 16,
+    },
+    headerRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      gap: 12,
+    },
+    headerTextWrap: {
+      flex: 1,
+    },
+    title: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: colors.text,
+      marginBottom: 4,
+    },
+    subtitle: {
+      color: colors.muted_text,
+      fontSize: 14,
+    },
+    trayPreviewText: {
+      color: colors.muted_text,
+      fontSize: 12,
+      lineHeight: 18,
+    },
+    refreshButton: {
+      alignSelf: 'flex-start',
+      backgroundColor: colors.window,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+    },
+    refreshButtonText: {
+      color: colors.text,
+      fontSize: 13,
+      fontWeight: '500',
+    },
+    statsGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 12,
+    },
+    statCard: {
+      minWidth: '47%',
+      flexGrow: 1,
+      backgroundColor: colors.window,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 12,
+      padding: 14,
+    },
+    statValue: {
+      color: colors.text,
+      fontSize: 22,
+      fontWeight: '700',
+      marginBottom: 4,
+    },
+    statLabel: {
+      color: colors.muted_text,
+      fontSize: 12,
+    },
+    card: {
+      backgroundColor: colors.window,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 12,
+      padding: 16,
+    },
+    sectionTitle: {
+      color: colors.text,
+      fontSize: 18,
+      fontWeight: '600',
+      marginBottom: 12,
+    },
+    filterRow: {
+      gap: 8,
+      paddingBottom: 8,
+    },
+    toggleRow: {
+      marginTop: 8,
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+      alignItems: 'center',
+    },
+    chip: {
+      backgroundColor: colors.window,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 999,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+    },
+    toggleChip: {
+      backgroundColor: colors.window,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 999,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+    },
+    chipActive: {
+      backgroundColor: colors.button,
+      borderColor: colors.button,
+    },
+    chipText: {
+      color: colors.text,
+      fontSize: 13,
+      fontWeight: '500',
+    },
+    chipTextActive: {
+      color: colors.button_text,
+    },
+    depthControl: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginLeft: 'auto',
+    },
+    depthButton: {
+      width: 32,
+      height: 32,
+      borderRadius: 8,
+      backgroundColor: colors.window,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    depthButtonText: {
+      color: colors.text,
+      fontSize: 18,
+      fontWeight: '600',
+    },
+    depthValue: {
+      color: colors.text,
+      fontSize: 13,
+      fontWeight: '500',
+    },
+    treeList: {
+      gap: 10,
+    },
+    nodeCard: {
+      backgroundColor: colors.window,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 10,
+      padding: 12,
+    },
+    nodeCardSelected: {
+      borderColor: colors.accent,
+      backgroundColor: colors.accent_bg,
+    },
+    nodeHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      gap: 10,
+      alignItems: 'flex-start',
+    },
+    nodeTextWrap: {
+      flex: 1,
+    },
+    nodeTitle: {
+      color: colors.text,
+      fontSize: 15,
+      fontWeight: '600',
+    },
+    nodeMeta: {
+      color: colors.muted_text,
+      fontSize: 12,
+      marginTop: 4,
+    },
+    badge: {
+      backgroundColor: colors.window,
+      borderRadius: 999,
+      paddingHorizontal: 8,
+      paddingVertical: 6,
+    },
+    badgeText: {
+      color: colors.muted_text,
+      fontSize: 11,
+      fontWeight: '500',
+    },
+    detailsWrap: {
+      gap: 12,
+    },
+    detailTitle: {
+      color: colors.text,
+      fontSize: 20,
+      fontWeight: '700',
+    },
+    detailMeta: {
+      color: colors.muted_text,
+      fontSize: 13,
+    },
+    summaryGrid: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+    summaryCard: {
+      flex: 1,
+      backgroundColor: colors.window,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 10,
+      padding: 12,
+    },
+    summaryLabel: {
+      color: colors.muted_text,
+      fontSize: 12,
+      textTransform: 'uppercase',
+    },
+    summaryValue: {
+      color: colors.text,
+      fontSize: 20,
+      fontWeight: '700',
+      marginTop: 4,
+    },
+    infoBlock: {
+      gap: 4,
+    },
+    infoLabel: {
+      color: colors.text,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    infoValue: {
+      color: colors.muted_text,
+      fontSize: 13,
+      lineHeight: 20,
+    },
+    actionRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 10,
+      marginTop: 4,
+    },
+    primaryAction: {
+      flexGrow: 1,
+      minWidth: '30%',
+      backgroundColor: colors.button,
+      borderRadius: 8,
+      paddingVertical: 12,
+      alignItems: 'center',
+    },
+    primaryActionText: {
+      color: colors.button_text,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    secondaryAction: {
+      flexGrow: 1,
+      minWidth: '30%',
+      backgroundColor: colors.window,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 8,
+      paddingVertical: 12,
+      alignItems: 'center',
+    },
+    secondaryActionText: {
+      color: colors.text,
+      fontSize: 14,
+      fontWeight: '500',
+    },
+    emptyText: {
+      color: colors.muted_text,
+      fontSize: 13,
+      lineHeight: 20,
+    },
+    errorText: {
+      color: colors.error_text,
+      fontSize: 14,
+      textAlign: 'center',
+    },
+  });
+}

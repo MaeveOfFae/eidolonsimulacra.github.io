@@ -40,6 +40,9 @@ jobs:
       - name: Check release notes version parity
         run: pnpm release:notes:check
 
+      - name: Check info document parity
+        run: pnpm info:docs:check
+
       - name: Check placeholder wiring
         run: pnpm check:placeholders
 

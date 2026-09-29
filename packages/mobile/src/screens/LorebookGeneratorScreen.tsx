@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+﻿import { useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -12,8 +12,10 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import * as Clipboard from 'expo-clipboard';
 import { MAX_CONNECTED_DRAFT_REFERENCES, parseLorebookPacket } from '@char-gen/shared';
+import type { ThemeColors } from '@char-gen/shared';
 import { api } from '../config/api';
 import CollapsibleTray from '../components/CollapsibleTray';
+import { useTheme } from '../theme/ThemeProvider';
 import {
   BookOpenIcon,
   BookmarkSquareIcon,
@@ -40,6 +42,8 @@ import { pickTextFile, saveTextFile } from '../utils/file-transfer';
 import { getErrorMessage } from '../utils/errors';
 
 export default function LorebookGeneratorScreen() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => buildStyles(colors), [colors]);
   const [selectedDraftIds, setSelectedDraftIds] = useState<string[]>([]);
   const [focus, setFocus] = useState('');
   const [output, setOutput] = useState('');
@@ -239,7 +243,7 @@ export default function LorebookGeneratorScreen() {
   if (draftsLoading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#7c3aed" />
+        <ActivityIndicator size="large" color={colors.accent} />
       </View>
     );
   }
@@ -247,7 +251,7 @@ export default function LorebookGeneratorScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <BookOpenIcon color="#7c3aed" size={28} />
+        <BookOpenIcon color={colors.accent} size={28} />
         <Text style={styles.title}>Lorebook Generator</Text>
       </View>
       <Text style={styles.subtitle}>
@@ -285,7 +289,7 @@ export default function LorebookGeneratorScreen() {
                 <Text style={[styles.chipText, styles.chipTextActive]} numberOfLines={1}>
                   {getDraftName(draftId)}
                 </Text>
-                <TrashIcon color="#ddd6fe" size={13} />
+                <TrashIcon color={colors.accent_title} size={13} />
               </TouchableOpacity>
             ))}
           </View>
@@ -336,7 +340,7 @@ export default function LorebookGeneratorScreen() {
           value={focus}
           onChangeText={setFocus}
           placeholder="Extract faction pressure and recurring places."
-          placeholderTextColor="#6b7280"
+          placeholderTextColor={colors.muted_text}
           multiline
           textAlignVertical="top"
           editable={!isGenerating}
@@ -355,12 +359,12 @@ export default function LorebookGeneratorScreen() {
       >
         {isGenerating ? (
           <>
-            <ActivityIndicator color="#fff" size="small" />
+            <ActivityIndicator color={colors.button_text} size="small" />
             <Text style={styles.primaryButtonText}>Cancel</Text>
           </>
         ) : (
           <>
-            <SparklesIcon color="#fff" size={20} />
+            <SparklesIcon color={colors.button_text} size={20} />
             <Text style={styles.primaryButtonText}>Generate Lorebook Packet</Text>
           </>
         )}
@@ -403,24 +407,24 @@ export default function LorebookGeneratorScreen() {
 
             <View style={styles.actionRow}>
               <TouchableOpacity style={styles.smallSecondaryButton} onPress={() => void handleCopyOutput()}>
-                <ClipboardIcon color="#d1d5db" size={16} />
+                <ClipboardIcon color={colors.text} size={16} />
                 <Text style={styles.secondaryButtonText}>Copy</Text>
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.smallPrimaryButton} onPress={handleSavePacket}>
-                <BookmarkSquareIcon color="#fff" size={16} />
+                <BookmarkSquareIcon color={colors.button_text} size={16} />
                 <Text style={styles.primaryButtonText}>Save packet</Text>
               </TouchableOpacity>
             </View>
 
             <View style={styles.actionRow}>
               <TouchableOpacity style={styles.smallSecondaryButton} onPress={() => void handleDownloadPacket('md')}>
-                <SquareArrowDownIcon color="#d1d5db" size={16} />
+                <SquareArrowDownIcon color={colors.text} size={16} />
                 <Text style={styles.secondaryButtonText}>Export .md</Text>
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.smallSecondaryButton} onPress={() => void handleDownloadPacket('txt')}>
-                <SquareArrowDownIcon color="#d1d5db" size={16} />
+                <SquareArrowDownIcon color={colors.text} size={16} />
                 <Text style={styles.secondaryButtonText}>Export .txt</Text>
               </TouchableOpacity>
             </View>
@@ -439,7 +443,7 @@ export default function LorebookGeneratorScreen() {
         }
       >
         <TouchableOpacity style={styles.secondaryButton} onPress={() => void handleImportPacket()}>
-          <SquareArrowUpIcon color="#d1d5db" size={16} />
+          <SquareArrowUpIcon color={colors.text} size={16} />
           <Text style={styles.secondaryButtonText}>Import packet file</Text>
         </TouchableOpacity>
 
@@ -463,7 +467,7 @@ export default function LorebookGeneratorScreen() {
                     <Text style={styles.packetActionText}>Load</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.packetActionButton} onPress={() => handleDeletePacket(packet.id)}>
-                    <TrashIcon color="#fca5a5" size={14} />
+                    <TrashIcon color={colors.error_text} size={14} />
                     <Text style={[styles.packetActionText, styles.dangerText]}>Delete</Text>
                   </TouchableOpacity>
                 </View>
@@ -476,224 +480,226 @@ export default function LorebookGeneratorScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0f0f0f',
-  },
-  centered: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#0f0f0f',
-  },
-  content: {
-    padding: 16,
-    gap: 16,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  title: {
-    color: '#fff',
-    fontSize: 24,
-    fontWeight: '700',
-  },
-  subtitle: {
-    color: '#9ca3af',
-    fontSize: 13,
-  },
-  trayPreviewText: {
-    color: '#9ca3af',
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  label: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  helperText: {
-    color: '#9ca3af',
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  countBadge: {
-    backgroundColor: '#27272a',
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  countText: {
-    color: '#9ca3af',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  chipWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#27272a',
-    borderWidth: 1,
-    borderColor: '#3f3f46',
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    maxWidth: 220,
-  },
-  chipActive: {
-    backgroundColor: '#4c1d95',
-    borderColor: '#7c3aed',
-  },
-  chipText: {
-    color: '#d1d5db',
-    fontSize: 13,
-  },
-  chipTextActive: {
-    color: '#fff',
-  },
-  input: {
-    backgroundColor: '#111111',
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-    borderRadius: 10,
-    padding: 12,
-    color: '#fff',
-    fontSize: 14,
-  },
-  textArea: {
-    minHeight: 90,
-  },
-  outputArea: {
-    minHeight: 300,
-    fontFamily: 'monospace',
-    fontSize: 12,
-    lineHeight: 19,
-  },
-  primaryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#7c3aed',
-    borderRadius: 10,
-    paddingVertical: 14,
-  },
-  cancelButton: {
-    backgroundColor: '#b91c1c',
-  },
-  primaryButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  secondaryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: '#27272a',
-    borderWidth: 1,
-    borderColor: '#3f3f46',
-    borderRadius: 10,
-    paddingVertical: 12,
-  },
-  secondaryButtonText: {
-    color: '#d1d5db',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  smallPrimaryButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: '#7c3aed',
-    borderRadius: 8,
-    paddingVertical: 10,
-  },
-  smallSecondaryButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: '#27272a',
-    borderWidth: 1,
-    borderColor: '#3f3f46',
-    borderRadius: 8,
-    paddingVertical: 10,
-  },
-  disabledButton: {
-    opacity: 0.5,
-  },
-  actionRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  emptyState: {
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: '#3f3f46',
-    borderRadius: 12,
-    padding: 20,
-    alignItems: 'center',
-    gap: 6,
-  },
-  emptyTitle: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  emptyText: {
-    color: '#9ca3af',
-    fontSize: 13,
-    textAlign: 'center',
-  },
-  resultsList: {
-    gap: 10,
-  },
-  packetCard: {
-    backgroundColor: '#111111',
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-    borderRadius: 10,
-    padding: 12,
-    gap: 6,
-  },
-  packetTitle: {
-    color: '#f3f4f6',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  packetActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  packetActionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    borderWidth: 1,
-    borderColor: '#3f3f46',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  packetActionText: {
-    color: '#d1d5db',
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  dangerText: {
-    color: '#fca5a5',
-  },
-});
+function buildStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    centered: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.background,
+    },
+    content: {
+      padding: 16,
+      gap: 16,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    title: {
+      color: colors.text,
+      fontSize: 24,
+      fontWeight: '700',
+    },
+    subtitle: {
+      color: colors.muted_text,
+      fontSize: 13,
+    },
+    trayPreviewText: {
+      color: colors.muted_text,
+      fontSize: 12,
+      lineHeight: 18,
+    },
+    label: {
+      color: colors.text,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    helperText: {
+      color: colors.muted_text,
+      fontSize: 12,
+      lineHeight: 18,
+    },
+    countBadge: {
+      backgroundColor: colors.window,
+      borderRadius: 999,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+    },
+    countText: {
+      color: colors.muted_text,
+      fontSize: 11,
+      fontWeight: '600',
+    },
+    chipWrap: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    chip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      backgroundColor: colors.window,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 999,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      maxWidth: 220,
+    },
+    chipActive: {
+      backgroundColor: colors.accent_bg,
+      borderColor: colors.accent,
+    },
+    chipText: {
+      color: colors.text,
+      fontSize: 13,
+    },
+    chipTextActive: {
+      color: colors.accent_title,
+    },
+    input: {
+      backgroundColor: colors.window,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 10,
+      padding: 12,
+      color: colors.text,
+      fontSize: 14,
+    },
+    textArea: {
+      minHeight: 90,
+    },
+    outputArea: {
+      minHeight: 300,
+      fontFamily: 'monospace',
+      fontSize: 12,
+      lineHeight: 19,
+    },
+    primaryButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      backgroundColor: colors.button,
+      borderRadius: 10,
+      paddingVertical: 14,
+    },
+    cancelButton: {
+      backgroundColor: colors.danger_bg,
+    },
+    primaryButtonText: {
+      color: colors.button_text,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    secondaryButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      backgroundColor: colors.window,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 10,
+      paddingVertical: 12,
+    },
+    secondaryButtonText: {
+      color: colors.text,
+      fontSize: 14,
+      fontWeight: '500',
+    },
+    smallPrimaryButton: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      backgroundColor: colors.button,
+      borderRadius: 8,
+      paddingVertical: 10,
+    },
+    smallSecondaryButton: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      backgroundColor: colors.window,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 8,
+      paddingVertical: 10,
+    },
+    disabledButton: {
+      opacity: 0.5,
+    },
+    actionRow: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    emptyState: {
+      borderWidth: 1,
+      borderStyle: 'dashed',
+      borderColor: colors.border,
+      borderRadius: 12,
+      padding: 20,
+      alignItems: 'center',
+      gap: 6,
+    },
+    emptyTitle: {
+      color: colors.text,
+      fontSize: 15,
+      fontWeight: '600',
+    },
+    emptyText: {
+      color: colors.muted_text,
+      fontSize: 13,
+      textAlign: 'center',
+    },
+    resultsList: {
+      gap: 10,
+    },
+    packetCard: {
+      backgroundColor: colors.window,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 10,
+      padding: 12,
+      gap: 6,
+    },
+    packetTitle: {
+      color: colors.text,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    packetActions: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    packetActionButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+    },
+    packetActionText: {
+      color: colors.text,
+      fontSize: 13,
+      fontWeight: '500',
+    },
+    dangerText: {
+      color: colors.error_text,
+    },
+  });
+}

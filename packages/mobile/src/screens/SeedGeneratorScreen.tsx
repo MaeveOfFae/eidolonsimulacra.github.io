@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -15,12 +15,16 @@ import * as Clipboard from 'expo-clipboard';
 import { api } from '../config/api';
 import CollapsibleTray from '../components/CollapsibleTray';
 import { SparklesIcon, ClipboardIcon } from '../components/Icons';
+import { useTheme } from '../theme/ThemeProvider';
+import type { ThemeColors } from '@char-gen/shared';
 import type { HomeStackNavigationProp } from '../types/navigation';
 
 const defaultGenreLines = ['Noir detective', 'Cyberpunk mercenary', 'Fantasy sorceress'].join('\n');
 
 export default function SeedGeneratorScreen() {
   const navigation = useNavigation<HomeStackNavigationProp<'SeedGenerator'>>();
+  const { colors } = useTheme();
+  const styles = useMemo(() => buildStyles(colors), [colors]);
   const [genreLines, setGenreLines] = useState(defaultGenreLines);
   const [copiedSeed, setCopiedSeed] = useState<string | null>(null);
 
@@ -67,7 +71,7 @@ export default function SeedGeneratorScreen() {
           value={genreLines}
           onChangeText={setGenreLines}
           placeholder="fantasy&#10;cyberpunk noir&#10;Victorian horror"
-          placeholderTextColor="#6b7280"
+          placeholderTextColor={colors.muted_text}
           multiline
           textAlignVertical="top"
         />
@@ -79,9 +83,9 @@ export default function SeedGeneratorScreen() {
             disabled={!genreLines.trim() || seedMutation.isPending}
           >
             {seedMutation.isPending && !seedMutation.variables?.surprise_mode ? (
-              <ActivityIndicator color="#fff" size="small" />
+              <ActivityIndicator color={colors.button_text} size="small" />
             ) : (
-              <SparklesIcon color="#fff" size={18} />
+              <SparklesIcon color={colors.button_text} size={18} />
             )}
             <Text style={styles.primaryButtonText}>Generate Seeds</Text>
           </TouchableOpacity>
@@ -92,9 +96,9 @@ export default function SeedGeneratorScreen() {
             disabled={seedMutation.isPending}
           >
             {seedMutation.isPending && seedMutation.variables?.surprise_mode ? (
-              <ActivityIndicator color="#d1d5db" size="small" />
+              <ActivityIndicator color={colors.text} size="small" />
             ) : (
-              <SparklesIcon color="#d1d5db" size={18} />
+              <SparklesIcon color={colors.text} size={18} />
             )}
             <Text style={styles.secondaryButtonText}>Surprise Me</Text>
           </TouchableOpacity>
@@ -134,7 +138,7 @@ export default function SeedGeneratorScreen() {
                     <Text style={styles.primaryButtonText}>Use In Generate</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.secondaryButtonSmall} onPress={() => handleCopySeed(seed)}>
-                    <ClipboardIcon color="#d1d5db" size={16} />
+                    <ClipboardIcon color={colors.text} size={16} />
                     <Text style={styles.secondaryButtonText}>{copiedSeed === seed ? 'Copied' : 'Copy'}</Text>
                   </TouchableOpacity>
                 </View>
@@ -147,181 +151,183 @@ export default function SeedGeneratorScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0f0f0f',
-  },
-  content: {
-    padding: 16,
-    gap: 16,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#9ca3af',
-    marginBottom: 8,
-  },
-  card: {
-    backgroundColor: '#1f1f1f',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-  },
-  trayPreviewText: {
-    fontSize: 12,
-    color: '#9ca3af',
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#fff',
-    marginBottom: 6,
-  },
-  helperText: {
-    fontSize: 12,
-    color: '#9ca3af',
-    marginBottom: 12,
-  },
-  input: {
-    backgroundColor: '#111111',
-    borderRadius: 8,
-    padding: 12,
-    color: '#fff',
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-    fontSize: 15,
-  },
-  textArea: {
-    minHeight: 140,
-    marginBottom: 12,
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  primaryButton: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#7c3aed',
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  secondaryButton: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#27272a',
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#3f3f46',
-  },
-  disabledButton: {
-    opacity: 0.5,
-  },
-  primaryButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  secondaryButtonText: {
-    color: '#d1d5db',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  resultsHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  countBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#27272a',
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  countText: {
-    color: '#9ca3af',
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  emptyState: {
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: '#3f3f46',
-    borderRadius: 12,
-    padding: 24,
-    alignItems: 'center',
-  },
-  emptyTitle: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 6,
-  },
-  emptyText: {
-    color: '#9ca3af',
-    fontSize: 13,
-    textAlign: 'center',
-  },
-  resultsList: {
-    gap: 12,
-  },
-  seedCard: {
-    backgroundColor: '#111111',
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-    borderRadius: 10,
-    padding: 14,
-  },
-  seedText: {
-    color: '#f3f4f6',
-    fontSize: 14,
-    lineHeight: 22,
-    marginBottom: 12,
-  },
-  seedActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  primaryButtonSmall: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#7c3aed',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  secondaryButtonSmall: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: '#27272a',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#3f3f46',
-  },
-});
+function buildStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    content: {
+      padding: 16,
+      gap: 16,
+    },
+    title: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: colors.text,
+      marginBottom: 4,
+    },
+    subtitle: {
+      fontSize: 14,
+      color: colors.muted_text,
+      marginBottom: 8,
+    },
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    trayPreviewText: {
+      fontSize: 12,
+      color: colors.muted_text,
+    },
+    label: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 6,
+    },
+    helperText: {
+      fontSize: 12,
+      color: colors.muted_text,
+      marginBottom: 12,
+    },
+    input: {
+      backgroundColor: colors.window,
+      borderRadius: 8,
+      padding: 12,
+      color: colors.text,
+      borderWidth: 1,
+      borderColor: colors.border,
+      fontSize: 15,
+    },
+    textArea: {
+      minHeight: 140,
+      marginBottom: 12,
+    },
+    buttonRow: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+    primaryButton: {
+      flex: 1,
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 8,
+      backgroundColor: colors.button,
+      paddingVertical: 12,
+      borderRadius: 8,
+    },
+    secondaryButton: {
+      flex: 1,
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 8,
+      backgroundColor: colors.window,
+      paddingVertical: 12,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    disabledButton: {
+      opacity: 0.5,
+    },
+    primaryButtonText: {
+      color: colors.button_text,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    secondaryButtonText: {
+      color: colors.text,
+      fontSize: 14,
+      fontWeight: '500',
+    },
+    resultsHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      gap: 12,
+      marginBottom: 12,
+    },
+    sectionTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 4,
+    },
+    countBadge: {
+      alignSelf: 'flex-start',
+      backgroundColor: colors.window,
+      borderRadius: 999,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+    },
+    countText: {
+      color: colors.muted_text,
+      fontSize: 12,
+      fontWeight: '500',
+    },
+    emptyState: {
+      borderWidth: 1,
+      borderStyle: 'dashed',
+      borderColor: colors.border,
+      borderRadius: 12,
+      padding: 24,
+      alignItems: 'center',
+    },
+    emptyTitle: {
+      color: colors.text,
+      fontSize: 16,
+      fontWeight: '600',
+      marginBottom: 6,
+    },
+    emptyText: {
+      color: colors.muted_text,
+      fontSize: 13,
+      textAlign: 'center',
+    },
+    resultsList: {
+      gap: 12,
+    },
+    seedCard: {
+      backgroundColor: colors.window,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 10,
+      padding: 14,
+    },
+    seedText: {
+      color: colors.text,
+      fontSize: 14,
+      lineHeight: 22,
+      marginBottom: 12,
+    },
+    seedActions: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    primaryButtonSmall: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.button,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      borderRadius: 8,
+    },
+    secondaryButtonSmall: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      backgroundColor: colors.window,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+  });
+}

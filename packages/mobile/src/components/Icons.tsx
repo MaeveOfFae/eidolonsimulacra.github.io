@@ -496,3 +496,84 @@ export function BookmarkSquareIcon({ color, size = 24 }: IconProps) {
     </View>
   );
 }
+
+export function ClockIcon({ color, size = 24 }: IconProps) {
+  return (
+    <View style={{ width: size, height: size }}>
+      <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <Path d="M12 6v6l4.5 2.25" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+        <Path
+          d="M3.75 12a8.25 8.25 0 1 0 16.5 0 8.25 8.25 0 1 0-16.5 0Z"
+          stroke={color}
+          strokeWidth={1.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </Svg>
+    </View>
+  );
+}
+
+export function SwatchIcon({ color, size = 24 }: IconProps) {
+  return (
+    <View style={{ width: size, height: size }}>
+      <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <Path
+          d="M4.75 5.75C4.75 4.64543 5.64543 3.75 6.75 3.75H17.25C18.3546 3.75 19.25 4.64543 19.25 5.75V18.25C19.25 19.3546 18.3546 20.25 17.25 20.25H6.75C5.64543 20.25 4.75 19.3546 4.75 18.25V5.75Z"
+          stroke={color}
+          strokeWidth={1.5}
+          strokeLinejoin="round"
+        />
+        <Path d="M9.5 3.75V20.25" stroke={color} strokeWidth={1.5} />
+        <Path d="M14.5 3.75V20.25" stroke={color} strokeWidth={1.5} />
+      </Svg>
+    </View>
+  );
+}
+
+export function QuestionMarkCircleIcon({ color, size = 24 }: IconProps) {
+  return (
+    <View style={{ width: size, height: size }}>
+      <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <Path
+          d="M9.879 9.25a2.25 2.25 0 1 1 3.375 1.95c-.75.44-1.254.99-1.254 1.85v.45"
+          stroke={color}
+          strokeWidth={1.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <Path d="M12 16.5h.008v.008H12V16.5Z" fill={color} stroke={color} strokeWidth={1.5} strokeLinecap="round" />
+        <Path
+          d="M3.75 12a8.25 8.25 0 1 0 16.5 0 8.25 8.25 0 1 0-16.5 0Z"
+          stroke={color}
+          strokeWidth={1.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </Svg>
+    </View>
+  );
+}
+
+export function EnvelopeIcon({ color, size = 24 }: IconProps) {
+  return (
+    <View style={{ width: size, height: size }}>
+      <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <Path
+          d="M3.75 6.75C3.75 5.64543 4.64543 4.75 5.75 4.75H18.25C19.3546 4.75 20.25 5.64543 20.25 6.75V17.25C20.25 18.3546 19.3546 19.25 18.25 19.25H5.75C4.64543 19.25 3.75 18.3546 3.75 17.25V6.75Z"
+          stroke={color}
+          strokeWidth={1.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <Path
+          d="M4.5 6.5L12 12.25L19.5 6.5"
+          stroke={color}
+          strokeWidth={1.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </Svg>
+    </View>
+  );
+}

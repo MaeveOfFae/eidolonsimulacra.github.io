@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useMemo } from 'react';
+﻿import { useCallback, useEffect, useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -25,6 +25,8 @@ import {
 } from '@char-gen/shared';
 import { api } from '../config/api';
 import CollapsibleTray from '../components/CollapsibleTray';
+import { useTheme } from '../theme/ThemeProvider';
+import type { ThemeColors } from '@char-gen/shared';
 import { exportAllDrafts, importDrafts } from '../local/draft-store';
 import {
   ArrowUturnLeftIcon,
@@ -72,6 +74,8 @@ function formatTimestamp(value?: string): string {
 export default function DraftsScreen() {
   const navigation = useNavigation<DraftsStackNavigationProp<'DraftsList'>>();
   const queryClient = useQueryClient();
+  const { colors } = useTheme();
+  const styles = useMemo(() => buildStyles(colors), [colors]);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOption, setSortOption] = useState<SortOption>('created');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -360,7 +364,7 @@ export default function DraftsScreen() {
             <Text style={styles.draftName} numberOfLines={1}>
               {item.character_name || item.seed}
             </Text>
-            {item.favorite && <StarIcon color="#eab308" size={18} />}
+            {item.favorite && <StarIcon color={colors.warning_text} size={18} />}
           </View>
           <View style={styles.draftMeta}>
             {isDraftArchived(item) && (
@@ -433,7 +437,7 @@ export default function DraftsScreen() {
             </TouchableOpacity>
           ) : null}
           <TouchableOpacity style={styles.draftActionButton} onPress={handleCompareDraft}>
-            <UsersIcon color="#9ca3af" size={14} />
+            <UsersIcon color={colors.muted_text} size={14} />
             <Text style={styles.draftActionButtonText}>{canCompleteCompare ? 'Complete Compare' : 'Compare'}</Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -442,9 +446,9 @@ export default function DraftsScreen() {
             disabled={archiveDraftMutation.isPending}
           >
             {archiveAction.kind === 'restore' ? (
-              <ArrowUturnLeftIcon color="#9ca3af" size={14} />
+              <ArrowUturnLeftIcon color={colors.muted_text} size={14} />
             ) : (
-              <ArchiveBoxIcon color="#9ca3af" size={14} />
+              <ArchiveBoxIcon color={colors.muted_text} size={14} />
             )}
             <Text style={styles.draftActionButtonText}>{archiveAction.actionLabel}</Text>
           </TouchableOpacity>
@@ -456,7 +460,7 @@ export default function DraftsScreen() {
   if (isLoading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#7c3aed" />
+        <ActivityIndicator size="large" color={colors.accent} />
         <Text style={styles.loadingText}>Loading drafts...</Text>
       </View>
     );
@@ -488,7 +492,7 @@ export default function DraftsScreen() {
         showsHorizontalScrollIndicator={false}
       >
         <TouchableOpacity style={styles.toolbarButton} onPress={handleOpenCreateModal}>
-          <PlusIcon color="#ffffff" size={16} />
+          <PlusIcon color={colors.button_text} size={16} />
           <Text style={styles.toolbarButtonText}>Create draft</Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -505,13 +509,13 @@ export default function DraftsScreen() {
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <View style={styles.searchInputContainer}>
-          <MagnifyingGlassIcon color="#6b7280" size={18} />
+          <MagnifyingGlassIcon color={colors.muted_text} size={18} />
           <TextInput
             style={styles.searchInput}
             value={searchQuery}
             onChangeText={setSearchQuery}
             placeholder="Search characters..."
-            placeholderTextColor="#6b7280"
+            placeholderTextColor={colors.muted_text}
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => setSearchQuery('')}>
@@ -572,7 +576,7 @@ export default function DraftsScreen() {
                   style={[styles.filterChip, filterMode === 'favorites' && styles.filterChipActive]}
                   onPress={() => setFilterMode('favorites')}
                 >
-                  <StarIcon color={filterMode === 'favorites' ? '#fff' : '#9ca3af'} size={14} />
+                  <StarIcon color={filterMode === 'favorites' ? colors.button_text : colors.muted_text} size={14} />
                   <Text style={[styles.filterChipText, filterMode === 'favorites' && styles.filterChipTextActive]}>
                     Favorites
                   </Text>
@@ -581,7 +585,10 @@ export default function DraftsScreen() {
                   style={[styles.filterChip, filterMode === 'archived' && styles.filterChipActive]}
                   onPress={() => setFilterMode('archived')}
                 >
-                  <ArchiveBoxIcon color={filterMode === 'archived' ? '#fff' : '#9ca3af'} size={14} />
+                  <ArchiveBoxIcon
+                    color={filterMode === 'archived' ? colors.button_text : colors.muted_text}
+                    size={14}
+                  />
                   <Text style={[styles.filterChipText, filterMode === 'archived' && styles.filterChipTextActive]}>
                     Archived{archivedCount > 0 ? ` (${archivedCount})` : ''}
                   </Text>
@@ -666,11 +673,15 @@ export default function DraftsScreen() {
         renderItem={renderDraft}
         contentContainerStyle={styles.listContent}
         refreshControl={
-          <RefreshControl refreshing={isLoading || archivedLoading} onRefresh={refetch} tintColor="#7c3aed" />
+          <RefreshControl refreshing={isLoading || archivedLoading} onRefresh={refetch} tintColor={colors.accent} />
         }
         ListEmptyComponent={
           <View style={styles.empty}>
-            {showingArchived ? <ArchiveBoxIcon color="#6b7280" size={48} /> : <FolderIcon color="#6b7280" size={48} />}
+            {showingArchived ? (
+              <ArchiveBoxIcon color={colors.muted_text} size={48} />
+            ) : (
+              <FolderIcon color={colors.muted_text} size={48} />
+            )}
             <Text style={styles.emptyTitle}>
               {searchQuery || filterMode !== 'all' || filterContentMode !== 'all'
                 ? 'No matches found'
@@ -706,7 +717,7 @@ export default function DraftsScreen() {
             <Text style={styles.modalTitle}>Create Draft</Text>
             <TouchableOpacity onPress={handleCreateDraft} disabled={createDraftMutation.isPending}>
               {createDraftMutation.isPending ? (
-                <ActivityIndicator size="small" color="#7c3aed" />
+                <ActivityIndicator size="small" color={colors.accent} />
               ) : (
                 <Text style={styles.modalSaveText}>Create</Text>
               )}
@@ -723,7 +734,7 @@ export default function DraftsScreen() {
                 value={createName}
                 onChangeText={setCreateName}
                 placeholder="Optional display name"
-                placeholderTextColor="#6b7280"
+                placeholderTextColor={colors.muted_text}
               />
             </View>
 
@@ -757,7 +768,7 @@ export default function DraftsScreen() {
                 value={createSeed}
                 onChangeText={setCreateSeed}
                 placeholder="Describe the character concept or prompt"
-                placeholderTextColor="#6b7280"
+                placeholderTextColor={colors.muted_text}
                 multiline
                 numberOfLines={5}
                 textAlignVertical="top"
@@ -792,7 +803,7 @@ export default function DraftsScreen() {
                 value={createGenre}
                 onChangeText={setCreateGenre}
                 placeholder="Optional genre"
-                placeholderTextColor="#6b7280"
+                placeholderTextColor={colors.muted_text}
               />
             </View>
 
@@ -803,7 +814,7 @@ export default function DraftsScreen() {
                 value={createNotes}
                 onChangeText={setCreateNotes}
                 placeholder="Optional review notes or canon reminders"
-                placeholderTextColor="#6b7280"
+                placeholderTextColor={colors.muted_text}
                 multiline
                 numberOfLines={4}
                 textAlignVertical="top"
@@ -816,383 +827,385 @@ export default function DraftsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0f0f0f',
-  },
-  toolbar: {
-    paddingHorizontal: 12,
-    paddingTop: 12,
-  },
-  toolbarContent: {
-    gap: 8,
-    paddingRight: 12,
-  },
-  toolbarButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    minWidth: 118,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 8,
-    backgroundColor: '#7c3aed',
-  },
-  toolbarButtonSecondary: {
-    backgroundColor: '#1f1f1f',
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-  },
-  toolbarButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  toolbarButtonSecondaryText: {
-    color: '#d1d5db',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#0f0f0f',
-  },
-  loadingText: {
-    color: '#9ca3af',
-    fontSize: 14,
-    marginTop: 12,
-  },
-  errorText: {
-    color: '#ef4444',
-    fontSize: 16,
-    marginBottom: 16,
-  },
-  retryButton: {
-    backgroundColor: '#7c3aed',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  retryText: {
-    color: '#fff',
-    fontSize: 16,
-  },
-  searchContainer: {
-    padding: 12,
-  },
-  searchInputContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1f1f1f',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-  },
-  searchInput: {
-    flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 8,
-    color: '#fff',
-    fontSize: 14,
-  },
-  clearButton: {
-    color: '#6b7280',
-    fontSize: 16,
-    padding: 4,
-  },
-  filtersTrayWrap: {
-    paddingHorizontal: 12,
-    paddingBottom: 8,
-  },
-  filterSummaryText: {
-    color: '#9ca3af',
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  filtersPanel: {
-    padding: 0,
-  },
-  filterRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  filterLabel: {
-    color: '#9ca3af',
-    fontSize: 12,
-    width: 60,
-  },
-  filterChips: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  filterChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: '#2f2f2f',
-  },
-  filterChipActive: {
-    backgroundColor: '#7c3aed',
-  },
-  filterChipText: {
-    color: '#9ca3af',
-    fontSize: 12,
-  },
-  filterChipTextActive: {
-    color: '#fff',
-    fontWeight: '500',
-  },
-  statsBar: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1f1f1f',
-  },
-  statsText: {
-    color: '#9ca3af',
-    fontSize: 13,
-  },
-  listContent: {
-    padding: 16,
-  },
-  draftItem: {
-    backgroundColor: '#1f1f1f',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-  },
-  draftInfo: {
-    flex: 1,
-  },
-  draftHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  draftName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#fff',
-    flex: 1,
-  },
-  draftMeta: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 4,
-  },
-  draftTag: {
-    backgroundColor: '#2f2f2f',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-    color: '#9ca3af',
-    fontSize: 12,
-  },
-  archivedTag: {
-    backgroundColor: '#3f2d18',
-    borderWidth: 1,
-    borderColor: '#78350f',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  archivedTagText: {
-    color: '#fbbf24',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  readinessBadgeRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 6,
-  },
-  readinessBadge: {
-    borderRadius: 999,
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  readinessBadgeMuted: {
-    borderColor: '#2f2f2f',
-    backgroundColor: '#161616',
-  },
-  readinessBadgeWarning: {
-    borderColor: '#7c3aed55',
-    backgroundColor: '#3b1f42',
-  },
-  readinessBadgeSuccess: {
-    borderColor: '#065f4688',
-    backgroundColor: '#0f2d24',
-  },
-  readinessBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  readinessBadgeTextMuted: {
-    color: '#d1d5db',
-  },
-  readinessBadgeTextWarning: {
-    color: '#f5d0fe',
-  },
-  readinessBadgeTextSuccess: {
-    color: '#a7f3d0',
-  },
-  draftDate: {
-    color: '#6b7280',
-    fontSize: 12,
-  },
-  snapshotSummaryCard: {
-    marginTop: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-    backgroundColor: '#161616',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    gap: 4,
-  },
-  snapshotSummaryTitle: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  snapshotSummaryMeta: {
-    color: '#9ca3af',
-    fontSize: 12,
-    lineHeight: 17,
-  },
-  draftActions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 12,
-  },
-  draftActionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-    backgroundColor: '#161616',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  draftActionButtonAccent: {
-    borderColor: '#4c1d95',
-    backgroundColor: '#201235',
-  },
-  draftActionButtonText: {
-    color: '#d1d5db',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  draftActionButtonTextAccent: {
-    color: '#c4b5fd',
-  },
-  empty: {
-    alignItems: 'center',
-    paddingVertical: 48,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#fff',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyText: {
-    color: '#9ca3af',
-    fontSize: 14,
-    textAlign: 'center',
-  },
-  emptyActionButton: {
-    marginTop: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
-    backgroundColor: '#7c3aed',
-  },
-  emptyActionButtonText: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: '#0f0f0f',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#27272a',
-  },
-  modalTitle: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  modalCancelText: {
-    color: '#9ca3af',
-    fontSize: 16,
-  },
-  modalSaveText: {
-    color: '#7c3aed',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  modalContent: {
-    flex: 1,
-  },
-  modalContentContainer: {
-    padding: 20,
-    paddingBottom: 32,
-  },
-  modalHelpText: {
-    color: '#9ca3af',
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 20,
-  },
-  editField: {
-    marginBottom: 20,
-  },
-  editLabel: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  editInput: {
-    backgroundColor: '#18181b',
-    borderWidth: 1,
-    borderColor: '#27272a',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    color: '#ffffff',
-    fontSize: 16,
-  },
-  editTextArea: {
-    minHeight: 120,
-    textAlignVertical: 'top',
-  },
-});
+function buildStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    toolbar: {
+      paddingHorizontal: 12,
+      paddingTop: 12,
+    },
+    toolbarContent: {
+      gap: 8,
+      paddingRight: 12,
+    },
+    toolbarButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      minWidth: 118,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+      borderRadius: 8,
+      backgroundColor: colors.button,
+    },
+    toolbarButtonSecondary: {
+      backgroundColor: colors.window,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    toolbarButtonText: {
+      color: colors.button_text,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    toolbarButtonSecondaryText: {
+      color: colors.text,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    centered: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.background,
+    },
+    loadingText: {
+      color: colors.muted_text,
+      fontSize: 14,
+      marginTop: 12,
+    },
+    errorText: {
+      color: colors.error_text,
+      fontSize: 16,
+      marginBottom: 16,
+    },
+    retryButton: {
+      backgroundColor: colors.button,
+      paddingHorizontal: 24,
+      paddingVertical: 12,
+      borderRadius: 8,
+    },
+    retryText: {
+      color: colors.text,
+      fontSize: 16,
+    },
+    searchContainer: {
+      padding: 12,
+    },
+    searchInputContainer: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.window,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    searchInput: {
+      flex: 1,
+      paddingVertical: 8,
+      paddingHorizontal: 8,
+      color: colors.text,
+      fontSize: 14,
+    },
+    clearButton: {
+      color: colors.muted_text,
+      fontSize: 16,
+      padding: 4,
+    },
+    filtersTrayWrap: {
+      paddingHorizontal: 12,
+      paddingBottom: 8,
+    },
+    filterSummaryText: {
+      color: colors.muted_text,
+      fontSize: 12,
+      lineHeight: 18,
+    },
+    filtersPanel: {
+      padding: 0,
+    },
+    filterRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    filterLabel: {
+      color: colors.muted_text,
+      fontSize: 12,
+      width: 60,
+    },
+    filterChips: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    filterChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 16,
+      backgroundColor: colors.window,
+    },
+    filterChipActive: {
+      backgroundColor: colors.button,
+    },
+    filterChipText: {
+      color: colors.muted_text,
+      fontSize: 12,
+    },
+    filterChipTextActive: {
+      color: colors.button_text,
+      fontWeight: '500',
+    },
+    statsBar: {
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    statsText: {
+      color: colors.muted_text,
+      fontSize: 13,
+    },
+    listContent: {
+      padding: 16,
+    },
+    draftItem: {
+      backgroundColor: colors.window,
+      borderRadius: 12,
+      padding: 16,
+      marginBottom: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    draftInfo: {
+      flex: 1,
+    },
+    draftHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    draftName: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
+      flex: 1,
+    },
+    draftMeta: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+      marginBottom: 4,
+    },
+    draftTag: {
+      backgroundColor: colors.window,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 4,
+      color: colors.muted_text,
+      fontSize: 12,
+    },
+    archivedTag: {
+      backgroundColor: colors.window,
+      borderWidth: 1,
+      borderColor: colors.warning_text,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 4,
+    },
+    archivedTagText: {
+      color: colors.warning_text,
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    readinessBadgeRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+      marginBottom: 6,
+    },
+    readinessBadge: {
+      borderRadius: 999,
+      borderWidth: 1,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+    },
+    readinessBadgeMuted: {
+      borderColor: colors.border,
+      backgroundColor: colors.window,
+    },
+    readinessBadgeWarning: {
+      borderColor: colors.accent,
+      backgroundColor: colors.accent_bg,
+    },
+    readinessBadgeSuccess: {
+      borderColor: colors.success_text,
+      backgroundColor: colors.success_bg,
+    },
+    readinessBadgeText: {
+      fontSize: 11,
+      fontWeight: '600',
+    },
+    readinessBadgeTextMuted: {
+      color: colors.text,
+    },
+    readinessBadgeTextWarning: {
+      color: colors.accent_title,
+    },
+    readinessBadgeTextSuccess: {
+      color: colors.success_text,
+    },
+    draftDate: {
+      color: colors.muted_text,
+      fontSize: 12,
+    },
+    snapshotSummaryCard: {
+      marginTop: 10,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.window,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      gap: 4,
+    },
+    snapshotSummaryTitle: {
+      color: colors.text,
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    snapshotSummaryMeta: {
+      color: colors.muted_text,
+      fontSize: 12,
+      lineHeight: 17,
+    },
+    draftActions: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+      marginTop: 12,
+    },
+    draftActionButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.window,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+    },
+    draftActionButtonAccent: {
+      borderColor: colors.accent,
+      backgroundColor: colors.accent_bg,
+    },
+    draftActionButtonText: {
+      color: colors.text,
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    draftActionButtonTextAccent: {
+      color: colors.accent_title,
+    },
+    empty: {
+      alignItems: 'center',
+      paddingVertical: 48,
+    },
+    emptyTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
+      marginTop: 16,
+      marginBottom: 8,
+    },
+    emptyText: {
+      color: colors.muted_text,
+      fontSize: 14,
+      textAlign: 'center',
+    },
+    emptyActionButton: {
+      marginTop: 16,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      borderRadius: 8,
+      backgroundColor: colors.button,
+    },
+    emptyActionButtonText: {
+      color: colors.button_text,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    modalContainer: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    modalTitle: {
+      color: colors.text,
+      fontSize: 18,
+      fontWeight: '600',
+    },
+    modalCancelText: {
+      color: colors.muted_text,
+      fontSize: 16,
+    },
+    modalSaveText: {
+      color: colors.accent,
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    modalContent: {
+      flex: 1,
+    },
+    modalContentContainer: {
+      padding: 20,
+      paddingBottom: 32,
+    },
+    modalHelpText: {
+      color: colors.muted_text,
+      fontSize: 14,
+      lineHeight: 20,
+      marginBottom: 20,
+    },
+    editField: {
+      marginBottom: 20,
+    },
+    editLabel: {
+      color: colors.text,
+      fontSize: 14,
+      fontWeight: '600',
+      marginBottom: 8,
+    },
+    editInput: {
+      backgroundColor: colors.window,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 12,
+      color: colors.text,
+      fontSize: 16,
+    },
+    editTextArea: {
+      minHeight: 120,
+      textAlignVertical: 'top',
+    },
+  });
+}

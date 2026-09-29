@@ -1,13 +1,18 @@
+﻿import { useMemo } from 'react';
 import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Alert, StyleSheet } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import type { ThemeColors } from '@char-gen/shared';
 import { api } from '../config/api';
 import CollapsibleTray from '../components/CollapsibleTray';
 import { StarIcon, DocumentTextIcon } from '../components/Icons';
+import { useTheme } from '../theme/ThemeProvider';
 import { getErrorMessage } from '../utils/errors';
 import { pickTextFile, saveDownload } from '../utils/file-transfer';
 
 export default function TemplatesScreen() {
   const queryClient = useQueryClient();
+  const { colors } = useTheme();
+  const styles = useMemo(() => buildStyles(colors), [colors]);
 
   const {
     data: templates,
@@ -68,7 +73,7 @@ export default function TemplatesScreen() {
   if (isLoading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#7c3aed" />
+        <ActivityIndicator size="large" color={colors.accent} />
       </View>
     );
   }
@@ -109,7 +114,7 @@ export default function TemplatesScreen() {
         meta={
           item.is_default ? (
             <View style={styles.defaultBadge}>
-              <StarIcon color="#eab308" size={14} />
+              <StarIcon color={colors.warning_text} size={14} />
               <Text style={styles.defaultBadgeText}>Default</Text>
             </View>
           ) : undefined
@@ -160,7 +165,7 @@ export default function TemplatesScreen() {
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <DocumentTextIcon color="#6b7280" size={48} />
+            <DocumentTextIcon color={colors.muted_text} size={48} />
             <Text style={styles.emptyTitle}>No templates found</Text>
             <Text style={styles.emptyText}>Templates added on this device will appear here.</Text>
           </View>
@@ -170,196 +175,198 @@ export default function TemplatesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0f0f0f',
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#0f0f0f',
-  },
-  header: {
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1f1f1f',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#9ca3af',
-  },
-  headerActions: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 12,
-  },
-  headerActionSecondary: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#1f1f1f',
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  headerActionSecondaryText: {
-    color: '#d1d5db',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  listContent: {
-    padding: 16,
-  },
-  templateCard: {
-    marginBottom: 12,
-  },
-  templatePreview: {
-    color: '#9ca3af',
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  templateHeader: {
-    padding: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  templateInfo: {
-    flex: 1,
-  },
-  templateNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  templateName: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  defaultBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#422006',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 12,
-  },
-  defaultBadgeText: {
-    color: '#fbbf24',
-    fontSize: 11,
-    fontWeight: '500',
-  },
-  templateMeta: {
-    color: '#6b7280',
-    fontSize: 12,
-    marginTop: 4,
-  },
-  expandIcon: {
-    color: '#6b7280',
-    fontSize: 20,
-    fontWeight: '600',
-  },
-  templateContent: {
-    gap: 12,
-  },
-  assetsTitle: {
-    color: '#9ca3af',
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 12,
-    marginTop: 12,
-  },
-  assetList: {
-    gap: 8,
-  },
-  assetItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  assetDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#7c3aed',
-  },
-  assetName: {
-    color: '#d1d5db',
-    fontSize: 14,
-    textTransform: 'capitalize',
-  },
-  templateActions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  exportButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    backgroundColor: '#312e81',
-    borderRadius: 8,
-    alignSelf: 'flex-start',
-  },
-  exportButtonText: {
-    color: '#c4b5fd',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  deleteButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    backgroundColor: '#7f1d1d',
-    borderRadius: 8,
-    alignSelf: 'flex-start',
-  },
-  deleteButtonText: {
-    color: '#fca5a5',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  errorText: {
-    color: '#ef4444',
-    fontSize: 16,
-    marginBottom: 16,
-  },
-  retryButton: {
-    backgroundColor: '#7c3aed',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  retryText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 48,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#fff',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyText: {
-    color: '#6b7280',
-    fontSize: 14,
-    textAlign: 'center',
-    paddingHorizontal: 32,
-  },
-});
+function buildStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    centered: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.background,
+    },
+    header: {
+      padding: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    title: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: colors.text,
+      marginBottom: 4,
+    },
+    subtitle: {
+      fontSize: 14,
+      color: colors.muted_text,
+    },
+    headerActions: {
+      flexDirection: 'row',
+      gap: 8,
+      marginTop: 12,
+    },
+    headerActionSecondary: {
+      alignSelf: 'flex-start',
+      backgroundColor: colors.window,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 8,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+    },
+    headerActionSecondaryText: {
+      color: colors.text,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    listContent: {
+      padding: 16,
+    },
+    templateCard: {
+      marginBottom: 12,
+    },
+    templatePreview: {
+      color: colors.muted_text,
+      fontSize: 12,
+      lineHeight: 18,
+    },
+    templateHeader: {
+      padding: 16,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    templateInfo: {
+      flex: 1,
+    },
+    templateNameRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    templateName: {
+      color: colors.text,
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    defaultBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      backgroundColor: colors.window,
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      borderRadius: 12,
+    },
+    defaultBadgeText: {
+      color: colors.warning_text,
+      fontSize: 11,
+      fontWeight: '500',
+    },
+    templateMeta: {
+      color: colors.muted_text,
+      fontSize: 12,
+      marginTop: 4,
+    },
+    expandIcon: {
+      color: colors.muted_text,
+      fontSize: 20,
+      fontWeight: '600',
+    },
+    templateContent: {
+      gap: 12,
+    },
+    assetsTitle: {
+      color: colors.muted_text,
+      fontSize: 12,
+      fontWeight: '600',
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+      marginBottom: 12,
+      marginTop: 12,
+    },
+    assetList: {
+      gap: 8,
+    },
+    assetItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    assetDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: colors.button,
+    },
+    assetName: {
+      color: colors.text,
+      fontSize: 14,
+      textTransform: 'capitalize',
+    },
+    templateActions: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 10,
+    },
+    exportButton: {
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      backgroundColor: colors.accent_bg,
+      borderRadius: 8,
+      alignSelf: 'flex-start',
+    },
+    exportButtonText: {
+      color: colors.accent_title,
+      fontSize: 14,
+      fontWeight: '500',
+    },
+    deleteButton: {
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      backgroundColor: colors.danger_bg,
+      borderRadius: 8,
+      alignSelf: 'flex-start',
+    },
+    deleteButtonText: {
+      color: colors.error_text,
+      fontSize: 14,
+      fontWeight: '500',
+    },
+    errorText: {
+      color: colors.error_text,
+      fontSize: 16,
+      marginBottom: 16,
+    },
+    retryButton: {
+      backgroundColor: colors.button,
+      paddingHorizontal: 24,
+      paddingVertical: 12,
+      borderRadius: 8,
+    },
+    retryText: {
+      color: colors.button_text,
+      fontSize: 16,
+      fontWeight: '500',
+    },
+    emptyState: {
+      alignItems: 'center',
+      paddingVertical: 48,
+    },
+    emptyTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
+      marginTop: 16,
+      marginBottom: 8,
+    },
+    emptyText: {
+      color: colors.muted_text,
+      fontSize: 14,
+      textAlign: 'center',
+      paddingHorizontal: 32,
+    },
+  });
+}

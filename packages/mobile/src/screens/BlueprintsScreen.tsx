@@ -1,10 +1,12 @@
-import { useMemo, useState } from 'react';
+﻿import { useMemo, useState } from 'react';
 import { View, Text, ScrollView, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
 import type { Blueprint } from '@char-gen/shared';
+import type { ThemeColors } from '@char-gen/shared';
 import { api } from '../config/api';
 import CollapsibleTray from '../components/CollapsibleTray';
+import { useTheme } from '../theme/ThemeProvider';
 import type { HomeStackNavigationProp } from '../types/navigation';
 
 type Section = {
@@ -23,6 +25,8 @@ function summarizeText(content: string, maxLength = 420): string {
 
 export default function BlueprintsScreen() {
   const navigation = useNavigation<HomeStackNavigationProp<'Blueprints'>>();
+  const { colors } = useTheme();
+  const styles = useMemo(() => buildStyles(colors), [colors]);
   const [query, setQuery] = useState('');
 
   const { data, isLoading, error } = useQuery({
@@ -87,7 +91,7 @@ export default function BlueprintsScreen() {
         value={query}
         onChangeText={setQuery}
         placeholder="Search by name, description, or path"
-        placeholderTextColor="#6b7280"
+        placeholderTextColor={colors.muted_text}
         autoCapitalize="none"
       />
 
@@ -158,163 +162,165 @@ export default function BlueprintsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0f0f0f',
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#0f0f0f',
-    padding: 16,
-  },
-  content: {
-    padding: 16,
-    gap: 16,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  subtitle: {
-    color: '#9ca3af',
-    fontSize: 14,
-    marginBottom: 8,
-  },
-  searchInput: {
-    backgroundColor: '#111111',
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-    borderRadius: 10,
-    color: '#fff',
-    padding: 12,
-    fontSize: 14,
-  },
-  emptyCard: {
-    backgroundColor: '#1f1f1f',
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-    borderRadius: 12,
-    padding: 20,
-    alignItems: 'center',
-  },
-  emptyText: {
-    color: '#9ca3af',
-    fontSize: 13,
-    textAlign: 'center',
-  },
-  trayPreviewText: {
-    color: '#9ca3af',
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  section: {
-    gap: 10,
-  },
-  sectionTray: {
-    marginBottom: 0,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  sectionTitle: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  countBadge: {
-    backgroundColor: '#27272a',
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  countText: {
-    color: '#9ca3af',
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  blueprintList: {
-    gap: 10,
-  },
-  blueprintCard: {
-    marginBottom: 0,
-  },
-  blueprintHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  blueprintHeaderText: {
-    flex: 1,
-  },
-  blueprintName: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  blueprintDescription: {
-    color: '#9ca3af',
-    fontSize: 13,
-    lineHeight: 19,
-  },
-  expandText: {
-    color: '#c4b5fd',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  metaRow: {
-    marginTop: 12,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 10,
-  },
-  blueprintPreviewMeta: {
-    gap: 2,
-  },
-  metaText: {
-    color: '#6b7280',
-    fontSize: 11,
-    flexShrink: 1,
-  },
-  previewCard: {
-    backgroundColor: '#111111',
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-    borderRadius: 10,
-    padding: 12,
-  },
-  previewText: {
-    color: '#d1d5db',
-    fontSize: 12,
-    lineHeight: 18,
-    fontFamily: 'monospace',
-  },
-  editButton: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#7c3aed',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  editButtonText: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  statusText: {
-    color: '#9ca3af',
-    fontSize: 14,
-  },
-  errorText: {
-    color: '#fca5a5',
-    fontSize: 14,
-    textAlign: 'center',
-  },
-});
+function buildStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    centered: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.background,
+      padding: 16,
+    },
+    content: {
+      padding: 16,
+      gap: 16,
+    },
+    title: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: colors.text,
+      marginBottom: 4,
+    },
+    subtitle: {
+      color: colors.muted_text,
+      fontSize: 14,
+      marginBottom: 8,
+    },
+    searchInput: {
+      backgroundColor: colors.window,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 10,
+      color: colors.text,
+      padding: 12,
+      fontSize: 14,
+    },
+    emptyCard: {
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 12,
+      padding: 20,
+      alignItems: 'center',
+    },
+    emptyText: {
+      color: colors.muted_text,
+      fontSize: 13,
+      textAlign: 'center',
+    },
+    trayPreviewText: {
+      color: colors.muted_text,
+      fontSize: 12,
+      lineHeight: 18,
+    },
+    section: {
+      gap: 10,
+    },
+    sectionTray: {
+      marginBottom: 0,
+    },
+    sectionHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    sectionTitle: {
+      color: colors.text,
+      fontSize: 18,
+      fontWeight: '600',
+    },
+    countBadge: {
+      backgroundColor: colors.window,
+      borderRadius: 999,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+    },
+    countText: {
+      color: colors.muted_text,
+      fontSize: 12,
+      fontWeight: '500',
+    },
+    blueprintList: {
+      gap: 10,
+    },
+    blueprintCard: {
+      marginBottom: 0,
+    },
+    blueprintHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      gap: 12,
+    },
+    blueprintHeaderText: {
+      flex: 1,
+    },
+    blueprintName: {
+      color: colors.text,
+      fontSize: 15,
+      fontWeight: '600',
+      marginBottom: 4,
+    },
+    blueprintDescription: {
+      color: colors.muted_text,
+      fontSize: 13,
+      lineHeight: 19,
+    },
+    expandText: {
+      color: colors.accent_title,
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    metaRow: {
+      marginTop: 12,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      gap: 10,
+    },
+    blueprintPreviewMeta: {
+      gap: 2,
+    },
+    metaText: {
+      color: colors.muted_text,
+      fontSize: 11,
+      flexShrink: 1,
+    },
+    previewCard: {
+      backgroundColor: colors.window,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 10,
+      padding: 12,
+    },
+    previewText: {
+      color: colors.text,
+      fontSize: 12,
+      lineHeight: 18,
+      fontFamily: 'monospace',
+    },
+    editButton: {
+      alignSelf: 'flex-start',
+      backgroundColor: colors.button,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+    },
+    editButtonText: {
+      color: colors.button_text,
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    statusText: {
+      color: colors.muted_text,
+      fontSize: 14,
+    },
+    errorText: {
+      color: colors.error_text,
+      fontSize: 14,
+      textAlign: 'center',
+    },
+  });
+}

@@ -25,6 +25,8 @@
     "test:mobile": "pnpm --filter @char-gen/mobile test",
     "deploy:porkbun": "node ./tools/deploy/push-porkbun-dist.mjs",
     "release:notes": "node ./tools/generation/generate-release-notes.mjs",
+    "info:docs": "node ./tools/generation/generate-shared-info-documents.mjs",
+    "info:docs:check": "node ./tools/generation/generate-shared-info-documents.mjs --check",
     "release:notes:check": "node ./tools/generation/check-release-notes-version.mjs",
     "check:placeholders": "node ./tools/generation/check-placeholders.mjs",
     "build:shared": "pnpm --filter @char-gen/shared build",

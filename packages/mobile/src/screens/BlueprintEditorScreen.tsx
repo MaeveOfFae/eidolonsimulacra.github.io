@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { View, Text, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Blueprint } from '@char-gen/shared';
+import type { ThemeColors } from '@char-gen/shared';
 import { api } from '../config/api';
 import CollapsibleTray from '../components/CollapsibleTray';
+import { useTheme } from '../theme/ThemeProvider';
 import type { BlueprintEditorRouteProp, HomeStackNavigationProp } from '../types/navigation';
 
 interface BlueprintFormData {
@@ -33,6 +35,8 @@ export default function BlueprintEditorScreen() {
   const navigation = useNavigation<HomeStackNavigationProp<'BlueprintEditor'>>();
   const route = useRoute<BlueprintEditorRouteProp>();
   const queryClient = useQueryClient();
+  const { colors } = useTheme();
+  const styles = useMemo(() => buildStyles(colors), [colors]);
   const { path } = route.params;
 
   const [formData, setFormData] = useState<BlueprintFormData>({
@@ -110,7 +114,7 @@ export default function BlueprintEditorScreen() {
   if (isLoading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#7c3aed" />
+        <ActivityIndicator size="large" color={colors.accent} />
       </View>
     );
   }
@@ -168,7 +172,7 @@ export default function BlueprintEditorScreen() {
           value={formData.name}
           onChangeText={(name) => setFormData((current) => ({ ...current, name }))}
           placeholder="blueprint_name"
-          placeholderTextColor="#6b7280"
+          placeholderTextColor={colors.muted_text}
         />
 
         <Text style={styles.fieldLabel}>Description</Text>
@@ -177,7 +181,7 @@ export default function BlueprintEditorScreen() {
           value={formData.description}
           onChangeText={(description) => setFormData((current) => ({ ...current, description }))}
           placeholder="Brief description of this blueprint"
-          placeholderTextColor="#6b7280"
+          placeholderTextColor={colors.muted_text}
           multiline
           textAlignVertical="top"
         />
@@ -239,7 +243,7 @@ export default function BlueprintEditorScreen() {
             value={content}
             onChangeText={setContent}
             placeholder="Enter markdown content here..."
-            placeholderTextColor="#6b7280"
+            placeholderTextColor={colors.muted_text}
             multiline
             textAlignVertical="top"
           />
@@ -249,178 +253,180 @@ export default function BlueprintEditorScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0f0f0f',
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#0f0f0f',
-    padding: 16,
-  },
-  content: {
-    padding: 16,
-    gap: 16,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  headerTextWrap: {
-    flex: 1,
-  },
-  headerButtons: {
-    gap: 8,
-  },
-  title: {
-    color: '#fff',
-    fontSize: 24,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  subtitle: {
-    color: '#9ca3af',
-    fontSize: 13,
-    marginBottom: 2,
-    textTransform: 'capitalize',
-  },
-  pathText: {
-    color: '#6b7280',
-    fontSize: 12,
-  },
-  previewButton: {
-    backgroundColor: '#27272a',
-    borderWidth: 1,
-    borderColor: '#3f3f46',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  previewButtonText: {
-    color: '#d1d5db',
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  saveButton: {
-    backgroundColor: '#7c3aed',
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  disabledButton: {
-    opacity: 0.5,
-  },
-  modifiedBanner: {
-    color: '#fcd34d',
-    backgroundColor: '#422006',
-    borderWidth: 1,
-    borderColor: '#854d0e',
-    borderRadius: 10,
-    padding: 12,
-    fontSize: 13,
-  },
-  errorBanner: {
-    color: '#fca5a5',
-    backgroundColor: '#450a0a',
-    borderWidth: 1,
-    borderColor: '#7f1d1d',
-    borderRadius: 10,
-    padding: 12,
-    fontSize: 13,
-  },
-  card: {
-    marginBottom: 0,
-  },
-  trayPreviewText: {
-    color: '#9ca3af',
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  sectionTitle: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 12,
-  },
-  fieldLabel: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
-    marginTop: 6,
-  },
-  input: {
-    backgroundColor: '#111111',
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-    borderRadius: 10,
-    padding: 12,
-    color: '#fff',
-    fontSize: 14,
-  },
-  descriptionInput: {
-    minHeight: 90,
-  },
-  versionRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  versionField: {
-    flex: 1,
-  },
-  toggleChip: {
-    marginTop: 14,
-    alignSelf: 'flex-start',
-    backgroundColor: '#27272a',
-    borderWidth: 1,
-    borderColor: '#3f3f46',
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  toggleChipActive: {
-    backgroundColor: '#7c3aed',
-    borderColor: '#7c3aed',
-  },
-  toggleChipText: {
-    color: '#d1d5db',
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  toggleChipTextActive: {
-    color: '#fff',
-  },
-  previewCard: {
-    marginTop: 8,
-    backgroundColor: '#111111',
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-    borderRadius: 10,
-    padding: 12,
-  },
-  previewText: {
-    color: '#d1d5db',
-    fontSize: 12,
-    lineHeight: 19,
-    fontFamily: 'monospace',
-  },
-  contentInput: {
-    minHeight: 420,
-  },
-  errorText: {
-    color: '#fca5a5',
-    fontSize: 14,
-    textAlign: 'center',
-  },
-});
+function buildStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    centered: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.background,
+      padding: 16,
+    },
+    content: {
+      padding: 16,
+      gap: 16,
+    },
+    headerRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      gap: 12,
+    },
+    headerTextWrap: {
+      flex: 1,
+    },
+    headerButtons: {
+      gap: 8,
+    },
+    title: {
+      color: colors.text,
+      fontSize: 24,
+      fontWeight: '700',
+      marginBottom: 4,
+    },
+    subtitle: {
+      color: colors.muted_text,
+      fontSize: 13,
+      marginBottom: 2,
+      textTransform: 'capitalize',
+    },
+    pathText: {
+      color: colors.muted_text,
+      fontSize: 12,
+    },
+    previewButton: {
+      backgroundColor: colors.window,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      alignItems: 'center',
+    },
+    previewButtonText: {
+      color: colors.text,
+      fontSize: 13,
+      fontWeight: '500',
+    },
+    saveButton: {
+      backgroundColor: colors.button,
+      borderRadius: 8,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      alignItems: 'center',
+    },
+    saveButtonText: {
+      color: colors.button_text,
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    disabledButton: {
+      opacity: 0.5,
+    },
+    modifiedBanner: {
+      color: colors.warning_text,
+      backgroundColor: colors.window,
+      borderWidth: 1,
+      borderColor: colors.warning_text,
+      borderRadius: 10,
+      padding: 12,
+      fontSize: 13,
+    },
+    errorBanner: {
+      color: colors.error_text,
+      backgroundColor: colors.danger_bg,
+      borderWidth: 1,
+      borderColor: colors.error_text,
+      borderRadius: 10,
+      padding: 12,
+      fontSize: 13,
+    },
+    card: {
+      marginBottom: 0,
+    },
+    trayPreviewText: {
+      color: colors.muted_text,
+      fontSize: 12,
+      lineHeight: 18,
+    },
+    sectionTitle: {
+      color: colors.text,
+      fontSize: 18,
+      fontWeight: '600',
+      marginBottom: 12,
+    },
+    fieldLabel: {
+      color: colors.text,
+      fontSize: 14,
+      fontWeight: '600',
+      marginBottom: 8,
+      marginTop: 6,
+    },
+    input: {
+      backgroundColor: colors.window,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 10,
+      padding: 12,
+      color: colors.text,
+      fontSize: 14,
+    },
+    descriptionInput: {
+      minHeight: 90,
+    },
+    versionRow: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+    versionField: {
+      flex: 1,
+    },
+    toggleChip: {
+      marginTop: 14,
+      alignSelf: 'flex-start',
+      backgroundColor: colors.window,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 999,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+    },
+    toggleChipActive: {
+      backgroundColor: colors.button,
+      borderColor: colors.button,
+    },
+    toggleChipText: {
+      color: colors.text,
+      fontSize: 13,
+      fontWeight: '500',
+    },
+    toggleChipTextActive: {
+      color: colors.button_text,
+    },
+    previewCard: {
+      marginTop: 8,
+      backgroundColor: colors.window,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 10,
+      padding: 12,
+    },
+    previewText: {
+      color: colors.text,
+      fontSize: 12,
+      lineHeight: 19,
+      fontFamily: 'monospace',
+    },
+    contentInput: {
+      minHeight: 420,
+    },
+    errorText: {
+      color: colors.error_text,
+      fontSize: 14,
+      textAlign: 'center',
+    },
+  });
+}

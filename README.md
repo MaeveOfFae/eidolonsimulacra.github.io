@@ -84,7 +84,7 @@ Notes:
 - The current mobile flow stores drafts, templates, blueprint overrides, settings, and keys locally on-device.
 - Use the mobile Settings screen to import a workspace bundle exported from the PC app or browser workspace when you want to mirror data across devices, or pair with the desktop companion for LAN transfer.
 - Generation talks directly to the configured provider from the device; mobile has no backend dependency.
-- Parity status against the web app — what already matches, what is missing, and the recommended order — is scoped in [`docs/MOBILE_PARITY.md`](docs/MOBILE_PARITY.md). Draft archiving, lorebook generation and PNG card writing are already at parity; release notes are next.
+- Parity status against the web app — what already matches, what is missing, and the recommended order — is scoped in [`docs/MOBILE_PARITY.md`](docs/MOBILE_PARITY.md). Tiers 1 and 2 are complete: release notes, help, themes, and info/legal content all render from shared modules, so the mobile app — every screen — retints live from the selected theme and shows the same guidance, help center, and legal documents as the browser. Tier 3 (worlds, factions, locations, timelines) is closed by decision rather than pending — mobile worldbuilding is desktop-only, recorded in [`docs/WORLDBUILDING_DECISION.md`](docs/WORLDBUILDING_DECISION.md).
 
 ## Desktop App
 
@@ -193,7 +193,7 @@ pnpm format:check
 
 Notes:
 
-- The current CI path runs release-notes parity, placeholder-wiring checks, formatting checks, lint, web/mobile typechecking, tests for all three packages, the shared/web build, and a web preview smoke test.
+- The current CI path runs release-notes parity, info-document parity, placeholder-wiring checks, formatting checks, lint, web/mobile typechecking, tests for all three packages, the shared/web build, and a web preview smoke test.
 - Mobile native store/distribution builds stay outside the default CI path; mobile typecheck and lint do run.
 - Every package has a Vitest suite: `pnpm test:web` (components, prompting, config, templates, character import, help and tours), `pnpm test:shared`, and `pnpm test:mobile` (logic only).
 - Formatting is enforced in CI via `pnpm format:check`, and `.prettierignore` excludes build output plus generated native projects. `pnpm format` rewrites every matching file in `packages/`, so prefer scoping it to the files you touched (`pnpm exec prettier --write <paths>`).

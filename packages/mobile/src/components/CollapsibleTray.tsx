@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import {
   LayoutAnimation,
   Platform,
@@ -11,6 +11,8 @@ import {
   Text,
 } from 'react-native';
 import { ChevronDownIcon, ChevronUpIcon } from './Icons';
+import { useTheme } from '../theme/ThemeProvider';
+import type { ThemeColors } from '@char-gen/shared';
 
 type CollapsibleTrayProps = {
   title: string;
@@ -38,6 +40,89 @@ function enableLayoutAnimations() {
   layoutAnimationsEnabled = true;
 }
 
+function buildStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    tray: {
+      backgroundColor: colors.surface,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: colors.border,
+      overflow: 'hidden',
+      shadowColor: '#000000',
+      shadowOffset: { width: 0, height: 10 },
+      shadowOpacity: 0.12,
+      shadowRadius: 18,
+      elevation: 3,
+    },
+    trayExpanded: {
+      borderColor: colors.accent,
+      backgroundColor: colors.surface,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 14,
+      paddingHorizontal: 16,
+      paddingVertical: 15,
+    },
+    headerExpanded: {
+      backgroundColor: colors.window,
+    },
+    headerText: {
+      flex: 1,
+      gap: 4,
+    },
+    titleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    title: {
+      flex: 1,
+      color: colors.text,
+      fontSize: 15,
+      fontWeight: '700',
+    },
+    subtitle: {
+      color: colors.muted_text,
+      fontSize: 12,
+      lineHeight: 18,
+    },
+    meta: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    preview: {
+      marginTop: 4,
+    },
+    chevronWrap: {
+      width: 28,
+      height: 28,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.window,
+      marginTop: 1,
+    },
+    chevronWrapExpanded: {
+      borderColor: colors.accent,
+      backgroundColor: colors.accent_bg,
+    },
+    content: {
+      paddingHorizontal: 16,
+      paddingBottom: 16,
+      gap: 12,
+    },
+    contentExpanded: {
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+  });
+}
+
 export default function CollapsibleTray({
   title,
   subtitle,
@@ -49,6 +134,8 @@ export default function CollapsibleTray({
   style,
   contentStyle,
 }: CollapsibleTrayProps) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => buildStyles(colors), [colors]);
   const [expanded, setExpanded] = useState(initiallyExpanded);
 
   useEffect(() => {
@@ -89,7 +176,11 @@ export default function CollapsibleTray({
           {!expanded && preview ? <View style={styles.preview}>{preview}</View> : null}
         </View>
         <View style={[styles.chevronWrap, expanded && styles.chevronWrapExpanded]}>
-          {expanded ? <ChevronUpIcon color="#9ca3af" size={18} /> : <ChevronDownIcon color="#9ca3af" size={18} />}
+          {expanded ? (
+            <ChevronUpIcon color={colors.muted_text} size={18} />
+          ) : (
+            <ChevronDownIcon color={colors.muted_text} size={18} />
+          )}
         </View>
       </TouchableOpacity>
 
@@ -99,84 +190,3 @@ export default function CollapsibleTray({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  tray: {
-    backgroundColor: '#141414',
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#2a2a2a',
-    overflow: 'hidden',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.12,
-    shadowRadius: 18,
-    elevation: 3,
-  },
-  trayExpanded: {
-    borderColor: '#4c1d95',
-    backgroundColor: '#17161b',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 15,
-  },
-  headerExpanded: {
-    backgroundColor: '#111217',
-  },
-  headerText: {
-    flex: 1,
-    gap: 4,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  title: {
-    flex: 1,
-    color: '#ffffff',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  subtitle: {
-    color: '#98a2b3',
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  meta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  preview: {
-    marginTop: 4,
-  },
-  chevronWrap: {
-    width: 28,
-    height: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-    backgroundColor: '#1b1b1b',
-    marginTop: 1,
-  },
-  chevronWrapExpanded: {
-    borderColor: '#4c1d95',
-    backgroundColor: '#241536',
-  },
-  content: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    gap: 12,
-  },
-  contentExpanded: {
-    borderTopWidth: 1,
-    borderTopColor: '#23252b',
-  },
-});

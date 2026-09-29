@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -13,9 +13,11 @@ import { useRoute, type RouteProp } from '@react-navigation/native';
 import { useMutation } from '@tanstack/react-query';
 import * as Clipboard from 'expo-clipboard';
 import { estimateTextStats, type OptimizeTextRequest } from '@char-gen/shared';
+import type { ThemeColors } from '@char-gen/shared';
 import { api } from '../config/api';
 import CollapsibleTray from '../components/CollapsibleTray';
 import { DocumentTextIcon, SparklesIcon } from '../components/Icons';
+import { useTheme } from '../theme/ThemeProvider';
 import type { HomeStackParamList } from '../types/navigation';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -24,6 +26,8 @@ type TokenOptimizationRouteProp = RouteProp<HomeStackParamList, 'TokenOptimizati
 export default function TokenOptimizationScreen() {
   const route = useRoute<TokenOptimizationRouteProp>();
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
+  const styles = useMemo(() => buildStyles(colors), [colors]);
   const [input, setInput] = useState('');
   const [targetReduction, setTargetReduction] = useState(25);
   const [preserveFormat, setPreserveFormat] = useState(true);
@@ -190,9 +194,9 @@ export default function TokenOptimizationScreen() {
           disabled={!input.trim() || optimizeMutation.isPending}
         >
           {optimizeMutation.isPending ? (
-            <ActivityIndicator color="#fff" size="small" />
+            <ActivityIndicator color={colors.button_text} size="small" />
           ) : (
-            <SparklesIcon color="#fff" size={18} />
+            <SparklesIcon color={colors.button_text} size={18} />
           )}
           <Text style={styles.primaryButtonText}>{optimizeMutation.isPending ? 'Optimizing...' : 'Optimize Text'}</Text>
         </TouchableOpacity>
@@ -203,7 +207,7 @@ export default function TokenOptimizationScreen() {
             onPress={handleApplyToAsset}
             disabled={!output.trim() || applyMutation.isPending}
           >
-            {applyMutation.isPending ? <ActivityIndicator color="#d1d5db" size="small" /> : null}
+            {applyMutation.isPending ? <ActivityIndicator color={colors.text} size="small" /> : null}
             <Text style={styles.secondaryButtonText}>
               {applyMutation.isPending ? 'Applying...' : `Apply to ${sourceAssetName}`}
             </Text>
@@ -236,7 +240,7 @@ export default function TokenOptimizationScreen() {
           value={input}
           onChangeText={setInput}
           placeholder="Paste prompt, rules, blueprint text, scene text, or other content to tighten."
-          placeholderTextColor="#6b7280"
+          placeholderTextColor={colors.muted_text}
           multiline
           textAlignVertical="top"
           scrollEnabled
@@ -273,7 +277,7 @@ export default function TokenOptimizationScreen() {
           value={output}
           onChangeText={setOutput}
           placeholder="Optimized text will appear here."
-          placeholderTextColor="#6b7280"
+          placeholderTextColor={colors.muted_text}
           multiline
           textAlignVertical="top"
           scrollEnabled
@@ -291,14 +295,14 @@ export default function TokenOptimizationScreen() {
       >
         <View style={styles.summaryCard}>
           <View style={styles.summaryMetric}>
-            <DocumentTextIcon color="#7c3aed" size={20} />
+            <DocumentTextIcon color={colors.accent} size={20} />
             <View>
               <Text style={styles.summaryLabel}>Estimated tokens saved</Text>
               <Text style={styles.summaryValue}>{tokenDelta}</Text>
             </View>
           </View>
           <View style={styles.summaryMetric}>
-            <DocumentTextIcon color="#7c3aed" size={20} />
+            <DocumentTextIcon color={colors.accent} size={20} />
             <View>
               <Text style={styles.summaryLabel}>Reduction</Text>
               <Text style={styles.summaryValue}>{output ? `${tokenReductionPercent}%` : '--'}</Text>
@@ -313,183 +317,185 @@ export default function TokenOptimizationScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0f0f0f',
-  },
-  content: {
-    padding: 16,
-    gap: 16,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#9ca3af',
-    marginBottom: 8,
-  },
-  trayPreviewText: {
-    color: '#9ca3af',
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#fff',
-    marginBottom: 6,
-  },
-  helperText: {
-    color: '#9ca3af',
-    fontSize: 12,
-    marginBottom: 12,
-  },
-  fieldLabel: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  rangeRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 12,
-  },
-  presetChip: {
-    backgroundColor: '#27272a',
-    borderWidth: 1,
-    borderColor: '#3f3f46',
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  presetChipActive: {
-    backgroundColor: '#7c3aed',
-    borderColor: '#7c3aed',
-  },
-  presetChipText: {
-    color: '#d1d5db',
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  presetChipTextActive: {
-    color: '#fff',
-  },
-  toggleChip: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#27272a',
-    borderWidth: 1,
-    borderColor: '#3f3f46',
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 12,
-  },
-  toggleChipActive: {
-    backgroundColor: '#2a1a45',
-    borderColor: '#7c3aed',
-  },
-  toggleChipText: {
-    color: '#d1d5db',
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  toggleChipTextActive: {
-    color: '#fff',
-  },
-  primaryButton: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#7c3aed',
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  primaryButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  disabledButton: {
-    opacity: 0.5,
-  },
-  input: {
-    backgroundColor: '#111111',
-    borderRadius: 8,
-    padding: 12,
-    color: '#fff',
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-    fontSize: 14,
-  },
-  textArea: {
-    minHeight: 220,
-    maxHeight: 420,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-    alignItems: 'center',
-  },
-  inlineActionRow: {
-    flexDirection: 'row',
-    gap: 12,
-    alignItems: 'center',
-  },
-  secondaryButton: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#27272a',
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#3f3f46',
-    marginTop: 10,
-  },
-  secondaryButtonText: {
-    color: '#d1d5db',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  linkText: {
-    color: '#c4b5fd',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  disabledText: {
-    opacity: 0.5,
-  },
-  summaryCard: {
-    backgroundColor: '#111111',
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-    borderRadius: 12,
-    padding: 12,
-    gap: 12,
-    marginBottom: 12,
-  },
-  summaryMetric: {
-    flexDirection: 'row',
-    gap: 10,
-    alignItems: 'center',
-  },
-  summaryLabel: {
-    color: '#9ca3af',
-    fontSize: 12,
-  },
-  summaryValue: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-});
+function buildStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    content: {
+      padding: 16,
+      gap: 16,
+    },
+    title: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: colors.text,
+      marginBottom: 4,
+    },
+    subtitle: {
+      fontSize: 14,
+      color: colors.muted_text,
+      marginBottom: 8,
+    },
+    trayPreviewText: {
+      color: colors.muted_text,
+      fontSize: 12,
+      lineHeight: 18,
+    },
+    sectionTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 6,
+    },
+    helperText: {
+      color: colors.muted_text,
+      fontSize: 12,
+      marginBottom: 12,
+    },
+    fieldLabel: {
+      color: colors.text,
+      fontSize: 14,
+      fontWeight: '600',
+      marginBottom: 8,
+    },
+    rangeRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+      marginBottom: 12,
+    },
+    presetChip: {
+      backgroundColor: colors.window,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 999,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+    },
+    presetChipActive: {
+      backgroundColor: colors.button,
+      borderColor: colors.button,
+    },
+    presetChipText: {
+      color: colors.text,
+      fontSize: 13,
+      fontWeight: '500',
+    },
+    presetChipTextActive: {
+      color: colors.button_text,
+    },
+    toggleChip: {
+      alignSelf: 'flex-start',
+      backgroundColor: colors.window,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 999,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      marginBottom: 12,
+    },
+    toggleChipActive: {
+      backgroundColor: colors.accent_bg,
+      borderColor: colors.button,
+    },
+    toggleChipText: {
+      color: colors.text,
+      fontSize: 13,
+      fontWeight: '500',
+    },
+    toggleChipTextActive: {
+      color: colors.accent_title,
+    },
+    primaryButton: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 8,
+      backgroundColor: colors.button,
+      paddingVertical: 12,
+      borderRadius: 8,
+    },
+    primaryButtonText: {
+      color: colors.button_text,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    disabledButton: {
+      opacity: 0.5,
+    },
+    input: {
+      backgroundColor: colors.window,
+      borderRadius: 8,
+      padding: 12,
+      color: colors.text,
+      borderWidth: 1,
+      borderColor: colors.border,
+      fontSize: 14,
+    },
+    textArea: {
+      minHeight: 220,
+      maxHeight: 420,
+    },
+    statsRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      gap: 12,
+      alignItems: 'center',
+    },
+    inlineActionRow: {
+      flexDirection: 'row',
+      gap: 12,
+      alignItems: 'center',
+    },
+    secondaryButton: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 8,
+      backgroundColor: colors.window,
+      paddingVertical: 12,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginTop: 10,
+    },
+    secondaryButtonText: {
+      color: colors.text,
+      fontSize: 14,
+      fontWeight: '500',
+    },
+    linkText: {
+      color: colors.accent_title,
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    disabledText: {
+      opacity: 0.5,
+    },
+    summaryCard: {
+      backgroundColor: colors.window,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 12,
+      padding: 12,
+      gap: 12,
+      marginBottom: 12,
+    },
+    summaryMetric: {
+      flexDirection: 'row',
+      gap: 10,
+      alignItems: 'center',
+    },
+    summaryLabel: {
+      color: colors.muted_text,
+      fontSize: 12,
+    },
+    summaryValue: {
+      color: colors.text,
+      fontSize: 18,
+      fontWeight: '700',
+    },
+  });
+}

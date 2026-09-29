@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+﻿import { useState, useRef, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -14,14 +14,18 @@ import {
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { type ChatMessage } from '@char-gen/shared';
+import type { ThemeColors } from '@char-gen/shared';
 import { api } from '../config/api';
 import { ArrowLeftIcon, ChatBubbleIcon, PaperAirplaneIcon } from '../components/Icons';
+import { useTheme } from '../theme/ThemeProvider';
 import type { ChatRouteProp, DraftsStackNavigationProp } from '../types/navigation';
 
 export default function ChatScreen() {
   const navigation = useNavigation<DraftsStackNavigationProp<'Chat'>>();
   const route = useRoute<ChatRouteProp>();
   const queryClient = useQueryClient();
+  const { colors } = useTheme();
+  const styles = useMemo(() => buildStyles(colors), [colors]);
   const { draftId, asset } = route.params;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
@@ -127,7 +131,7 @@ export default function ChatScreen() {
   if (isLoading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#7c3aed" />
+        <ActivityIndicator size="large" color={colors.accent} />
       </View>
     );
   }
@@ -143,10 +147,10 @@ export default function ChatScreen() {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <ArrowLeftIcon color="#9ca3af" size={24} />
+          <ArrowLeftIcon color={colors.muted_text} size={24} />
         </TouchableOpacity>
         <View style={styles.headerContent}>
-          <ChatBubbleIcon color="#7c3aed" size={20} />
+          <ChatBubbleIcon color={colors.accent} size={20} />
           <View style={styles.headerText}>
             <Text style={styles.title} numberOfLines={1}>
               {draft?.metadata.character_name || 'Chat'}
@@ -166,7 +170,7 @@ export default function ChatScreen() {
         onContentSizeChange={() => flatListRef.current?.scrollToEnd()}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <ChatBubbleIcon color="#6b7280" size={48} />
+            <ChatBubbleIcon color={colors.muted_text} size={48} />
             <Text style={styles.emptyTitle}>Start a conversation</Text>
             <Text style={styles.emptyText}>Ask for changes, additions, or refinements to your character</Text>
           </View>
@@ -180,7 +184,7 @@ export default function ChatScreen() {
           value={inputText}
           onChangeText={setInputText}
           placeholder="Ask for changes..."
-          placeholderTextColor="#6b7280"
+          placeholderTextColor={colors.muted_text}
           multiline
           maxLength={1000}
           editable={!isGenerating}
@@ -191,9 +195,9 @@ export default function ChatScreen() {
           disabled={!inputText.trim() || isGenerating}
         >
           {isGenerating ? (
-            <ActivityIndicator size="small" color="#fff" />
+            <ActivityIndicator size="small" color={colors.button_text} />
           ) : (
-            <PaperAirplaneIcon color="#fff" size={20} />
+            <PaperAirplaneIcon color={colors.button_text} size={20} />
           )}
         </TouchableOpacity>
       </View>
@@ -201,121 +205,123 @@ export default function ChatScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0f0f0f',
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#0f0f0f',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1f1f1f',
-  },
-  backButton: {
-    marginRight: 12,
-  },
-  headerContent: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  headerText: {
-    flex: 1,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#fff',
-  },
-  subtitle: {
-    fontSize: 12,
-    color: '#9ca3af',
-  },
-  messagesList: {
-    padding: 16,
-    paddingBottom: 8,
-  },
-  messageBubble: {
-    maxWidth: '85%',
-    padding: 12,
-    borderRadius: 16,
-    marginBottom: 12,
-  },
-  userBubble: {
-    backgroundColor: '#7c3aed',
-    alignSelf: 'flex-end',
-    borderBottomRightRadius: 4,
-  },
-  assistantBubble: {
-    backgroundColor: '#1f1f1f',
-    alignSelf: 'flex-start',
-    borderBottomLeftRadius: 4,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-  },
-  messageText: {
-    color: '#d1d5db',
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  userMessageText: {
-    color: '#fff',
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 48,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#fff',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyText: {
-    color: '#6b7280',
-    fontSize: 14,
-    textAlign: 'center',
-    paddingHorizontal: 32,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    padding: 12,
-    gap: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#1f1f1f',
-    backgroundColor: '#0f0f0f',
-  },
-  input: {
-    flex: 1,
-    backgroundColor: '#1f1f1f',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    color: '#fff',
-    fontSize: 14,
-    maxHeight: 100,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-  },
-  sendButton: {
-    backgroundColor: '#7c3aed',
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sendButtonDisabled: {
-    backgroundColor: '#3f3f46',
-  },
-});
+function buildStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    centered: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.background,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    backButton: {
+      marginRight: 12,
+    },
+    headerContent: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    headerText: {
+      flex: 1,
+    },
+    title: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    subtitle: {
+      fontSize: 12,
+      color: colors.muted_text,
+    },
+    messagesList: {
+      padding: 16,
+      paddingBottom: 8,
+    },
+    messageBubble: {
+      maxWidth: '85%',
+      padding: 12,
+      borderRadius: 16,
+      marginBottom: 12,
+    },
+    userBubble: {
+      backgroundColor: colors.button,
+      alignSelf: 'flex-end',
+      borderBottomRightRadius: 4,
+    },
+    assistantBubble: {
+      backgroundColor: colors.surface,
+      alignSelf: 'flex-start',
+      borderBottomLeftRadius: 4,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    messageText: {
+      color: colors.text,
+      fontSize: 14,
+      lineHeight: 20,
+    },
+    userMessageText: {
+      color: colors.button_text,
+    },
+    emptyState: {
+      alignItems: 'center',
+      paddingVertical: 48,
+    },
+    emptyTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
+      marginTop: 16,
+      marginBottom: 8,
+    },
+    emptyText: {
+      color: colors.muted_text,
+      fontSize: 14,
+      textAlign: 'center',
+      paddingHorizontal: 32,
+    },
+    inputContainer: {
+      flexDirection: 'row',
+      padding: 12,
+      gap: 8,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      backgroundColor: colors.background,
+    },
+    input: {
+      flex: 1,
+      backgroundColor: colors.window,
+      borderRadius: 20,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      color: colors.text,
+      fontSize: 14,
+      maxHeight: 100,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    sendButton: {
+      backgroundColor: colors.button,
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    sendButtonDisabled: {
+      backgroundColor: colors.border,
+    },
+  });
+}

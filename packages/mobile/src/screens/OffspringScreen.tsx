@@ -1,11 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+﻿import { useEffect, useRef, useState, useMemo } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, Alert, StyleSheet } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { type ContentMode } from '@char-gen/shared';
+import type { ThemeColors } from '@char-gen/shared';
 import { api } from '../config/api';
 import CollapsibleTray from '../components/CollapsibleTray';
 import { BabyIcon, UsersIcon } from '../components/Icons';
+import { useTheme } from '../theme/ThemeProvider';
 import type { HomeStackNavigationProp, OffspringRouteProp } from '../types/navigation';
 
 function summarizeText(content: string, maxLength = 160): string {
@@ -21,6 +23,8 @@ export default function OffspringScreen() {
   const navigation = useNavigation<HomeStackNavigationProp<'Lineage'>>();
   const route = useRoute<OffspringRouteProp>();
   const queryClient = useQueryClient();
+  const { colors } = useTheme();
+  const styles = useMemo(() => buildStyles(colors), [colors]);
   const [parent1, setParent1] = useState<string>('');
   const [parent2, setParent2] = useState<string>('');
   const [mode, setMode] = useState<ContentMode>('SFW');
@@ -125,7 +129,7 @@ export default function OffspringScreen() {
   if (isLoading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#7c3aed" />
+        <ActivityIndicator size="large" color={colors.accent} />
       </View>
     );
   }
@@ -136,7 +140,7 @@ export default function OffspringScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <BabyIcon color="#7c3aed" size={28} />
+        <BabyIcon color={colors.accent} size={28} />
         <Text style={styles.title}>Offspring</Text>
       </View>
       <Text style={styles.subtitle}>Blend two drafts into a new character.</Text>
@@ -154,7 +158,7 @@ export default function OffspringScreen() {
         <View style={styles.selectionContainer}>
           <View style={styles.parentCard}>
             <View style={styles.parentHeader}>
-              <UsersIcon color="#7c3aed" size={20} />
+              <UsersIcon color={colors.accent} size={20} />
               <Text style={styles.parentLabel}>Parent 1</Text>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -182,13 +186,13 @@ export default function OffspringScreen() {
 
           <View style={styles.connector}>
             <View style={styles.connectorLine} />
-            <BabyIcon color="#7c3aed" size={20} />
+            <BabyIcon color={colors.accent} size={20} />
             <View style={styles.connectorLine} />
           </View>
 
           <View style={styles.parentCard}>
             <View style={styles.parentHeader}>
-              <UsersIcon color="#a78bfa" size={20} />
+              <UsersIcon color={colors.accent_title} size={20} />
               <Text style={styles.parentLabel}>Parent 2</Text>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -246,12 +250,12 @@ export default function OffspringScreen() {
       >
         {isGenerating ? (
           <View style={styles.buttonContent}>
-            <ActivityIndicator color="#fff" size="small" />
+            <ActivityIndicator color={colors.button_text} size="small" />
             <Text style={styles.generateButtonText}>Cancel</Text>
           </View>
         ) : (
           <View style={styles.buttonContent}>
-            <BabyIcon color="#fff" size={20} />
+            <BabyIcon color={colors.button_text} size={20} />
             <Text style={styles.generateButtonText}>Generate Offspring</Text>
           </View>
         )}
@@ -309,7 +313,7 @@ export default function OffspringScreen() {
 
       {!parent1 && !parent2 && !isGenerating && (
         <View style={styles.emptyState}>
-          <BabyIcon color="#6b7280" size={48} />
+          <BabyIcon color={colors.muted_text} size={48} />
           <Text style={styles.emptyTitle}>Select Two Parents</Text>
           <Text style={styles.emptyText}>Choose two drafts to blend into a new character.</Text>
         </View>
@@ -318,232 +322,234 @@ export default function OffspringScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0f0f0f',
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#0f0f0f',
-  },
-  content: {
-    padding: 16,
-    gap: 16,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 8,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#9ca3af',
-    marginBottom: 4,
-  },
-  trayPreviewText: {
-    color: '#9ca3af',
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  selectionContainer: {
-    gap: 0,
-  },
-  parentCard: {
-    backgroundColor: '#1f1f1f',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-  },
-  parentHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
-  },
-  parentLabel: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  chipContainer: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  chip: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    backgroundColor: '#2f2f2f',
-    borderRadius: 16,
-  },
-  chipActive: {
-    backgroundColor: '#7c3aed',
-  },
-  chipText: {
-    color: '#9ca3af',
-    fontSize: 13,
-  },
-  chipTextActive: {
-    color: '#fff',
-    fontWeight: '500',
-  },
-  selectedText: {
-    color: '#71717a',
-    fontSize: 12,
-    marginTop: 8,
-  },
-  connector: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    justifyContent: 'center',
-  },
-  connectorLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#2f2f2f',
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionLabel: {
-    color: '#a1a1aa',
-    fontSize: 14,
-    marginBottom: 8,
-  },
-  modeContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  modeButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    backgroundColor: '#1f1f1f',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-  },
-  modeButtonActive: {
-    backgroundColor: '#7c3aed',
-    borderColor: '#7c3aed',
-  },
-  modeButtonText: {
-    color: '#9ca3af',
-    fontSize: 14,
-  },
-  modeButtonTextActive: {
-    color: '#fff',
-    fontWeight: '500',
-  },
-  generateButton: {
-    backgroundColor: '#7c3aed',
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  generateButtonDisabled: {
-    backgroundColor: '#3f3f46',
-  },
-  generateButtonCancel: {
-    backgroundColor: '#dc2626',
-  },
-  generateButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  buttonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  resultCard: {
-    backgroundColor: '#14532d',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#22c55e',
-    marginBottom: 24,
-  },
-  resultTitle: {
-    color: '#22c55e',
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 12,
-  },
-  resultInfo: {
-    marginBottom: 8,
-  },
-  resultLabel: {
-    color: '#86efac',
-    fontSize: 12,
-    marginBottom: 2,
-  },
-  resultValue: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  viewButton: {
-    backgroundColor: '#22c55e',
-    paddingVertical: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  viewButtonText: {
-    color: '#052e16',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  outputCard: {
-    backgroundColor: '#1f1f1f',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-    marginBottom: 24,
-  },
-  outputTitle: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  outputText: {
-    color: '#a1a1aa',
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  emptyState: {
-    backgroundColor: '#1f1f1f',
-    borderRadius: 12,
-    padding: 32,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#2f2f2f',
-  },
-  emptyTitle: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyText: {
-    color: '#6b7280',
-    fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-});
+function buildStyles(colors: ThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    centered: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.background,
+    },
+    content: {
+      padding: 16,
+      gap: 16,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      marginBottom: 8,
+    },
+    title: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: colors.text,
+    },
+    subtitle: {
+      fontSize: 14,
+      color: colors.muted_text,
+      marginBottom: 4,
+    },
+    trayPreviewText: {
+      color: colors.muted_text,
+      fontSize: 12,
+      lineHeight: 18,
+    },
+    selectionContainer: {
+      gap: 0,
+    },
+    parentCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    parentHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginBottom: 12,
+    },
+    parentLabel: {
+      color: colors.text,
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    chipContainer: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    chip: {
+      paddingVertical: 8,
+      paddingHorizontal: 14,
+      backgroundColor: colors.border,
+      borderRadius: 16,
+    },
+    chipActive: {
+      backgroundColor: colors.button,
+    },
+    chipText: {
+      color: colors.muted_text,
+      fontSize: 13,
+    },
+    chipTextActive: {
+      color: colors.button_text,
+      fontWeight: '500',
+    },
+    selectedText: {
+      color: colors.border,
+      fontSize: 12,
+      marginTop: 8,
+    },
+    connector: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 8,
+      justifyContent: 'center',
+    },
+    connectorLine: {
+      flex: 1,
+      height: 1,
+      backgroundColor: colors.border,
+    },
+    section: {
+      marginBottom: 24,
+    },
+    sectionLabel: {
+      color: colors.muted_text,
+      fontSize: 14,
+      marginBottom: 8,
+    },
+    modeContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    modeButton: {
+      paddingVertical: 8,
+      paddingHorizontal: 16,
+      backgroundColor: colors.window,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    modeButtonActive: {
+      backgroundColor: colors.button,
+      borderColor: colors.button,
+    },
+    modeButtonText: {
+      color: colors.muted_text,
+      fontSize: 14,
+    },
+    modeButtonTextActive: {
+      color: colors.text,
+      fontWeight: '500',
+    },
+    generateButton: {
+      backgroundColor: colors.button,
+      paddingVertical: 14,
+      borderRadius: 8,
+      alignItems: 'center',
+    },
+    generateButtonDisabled: {
+      backgroundColor: colors.border,
+    },
+    generateButtonCancel: {
+      backgroundColor: colors.danger_bg,
+    },
+    generateButtonText: {
+      color: colors.button_text,
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    buttonContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    resultCard: {
+      backgroundColor: colors.success_bg,
+      borderRadius: 12,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: colors.success_text,
+      marginBottom: 24,
+    },
+    resultTitle: {
+      color: colors.success_text,
+      fontSize: 18,
+      fontWeight: '600',
+      marginBottom: 12,
+    },
+    resultInfo: {
+      marginBottom: 8,
+    },
+    resultLabel: {
+      color: colors.success_text,
+      fontSize: 12,
+      marginBottom: 2,
+    },
+    resultValue: {
+      color: colors.text,
+      fontSize: 14,
+      fontWeight: '500',
+    },
+    viewButton: {
+      backgroundColor: colors.success_bg,
+      paddingVertical: 10,
+      borderRadius: 8,
+      alignItems: 'center',
+      marginTop: 8,
+    },
+    viewButtonText: {
+      color: colors.success_text,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    outputCard: {
+      backgroundColor: colors.window,
+      borderRadius: 12,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginBottom: 24,
+    },
+    outputTitle: {
+      color: colors.text,
+      fontSize: 14,
+      fontWeight: '600',
+      marginBottom: 8,
+    },
+    outputText: {
+      color: colors.muted_text,
+      fontSize: 12,
+      lineHeight: 18,
+    },
+    emptyState: {
+      backgroundColor: colors.window,
+      borderRadius: 12,
+      padding: 32,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    emptyTitle: {
+      color: colors.text,
+      fontSize: 18,
+      fontWeight: '600',
+      marginTop: 16,
+      marginBottom: 8,
+    },
+    emptyText: {
+      color: colors.muted_text,
+      fontSize: 14,
+      textAlign: 'center',
+      lineHeight: 20,
+    },
+  });
+}
