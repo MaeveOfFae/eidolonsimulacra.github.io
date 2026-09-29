@@ -1,5 +1,12 @@
-const CACHE_NAME = 'eidolon-simulacra-v1';
-const STATIC_ASSETS = ['/', '/index.html', '/manifest.json'];
+const CACHE_NAME = 'eidolon-simulacra-v2';
+const STATIC_ASSETS = [
+  '/',
+  '/index.html',
+  '/manifest.json',
+  '/favicon.ico',
+  '/icons/icon-192x192.png',
+  '/icons/icon-512x512.png',
+];
 
 // Install event - cache static assets
 self.addEventListener('install', (event) => {
