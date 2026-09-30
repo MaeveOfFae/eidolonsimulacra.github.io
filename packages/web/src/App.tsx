@@ -32,6 +32,7 @@ const TokenizerThemeStudio = lazy(() => import('./components/themes/TokenizerThe
 const DataManager = lazy(() => import('./components/common/DataManager'));
 const BatchGenerate = lazy(() => import('./components/batch/BatchGenerate'));
 const About = lazy(() => import('./components/info/About'));
+const DownloadPage = lazy(() => import('./components/info/DownloadPage'));
 const HelpCenterPage = lazy(() => import('./components/info/HelpCenterPage'));
 const CommunityPage = lazy(() => import('./components/info/CommunityPage'));
 const WhatsNewPage = lazy(() => import('./components/info/WhatsNewPage'));
@@ -115,6 +116,7 @@ export default function App() {
           <Route path="/settings" element={<Settings />} />
           <Route path="/data" element={<DataManager />} />
           <Route path="/about" element={<About />} />
+          <Route path="/download" element={<DownloadPage />} />
           <Route path="/help" element={<HelpCenterPage />} />
           <Route path="/community" element={<CommunityPage />} />
           <Route path="/whats-new" element={<WhatsNewPage />} />

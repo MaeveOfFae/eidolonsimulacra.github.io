@@ -1,8 +1,8 @@
 ﻿import { useEffect, useMemo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { Linking, View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { releaseNotes } from '@char-gen/shared';
+import { releaseNotes, PROJECT_SUPPORT_URL, supportGuidance } from '@char-gen/shared';
 import type { ThemeColors } from '@char-gen/shared';
 import { api } from '../config/api';
 import CollapsibleTray from '../components/CollapsibleTray';
@@ -169,6 +169,10 @@ export default function HomeScreen() {
       focusSection: 'pc-link',
       focusNonce: `${Date.now()}`,
     });
+  };
+
+  const handleOpenSupport = () => {
+    void Linking.openURL(PROJECT_SUPPORT_URL);
   };
 
   return (
@@ -441,6 +445,15 @@ export default function HomeScreen() {
           ))}
         </CollapsibleTray>
       )}
+
+      <TouchableOpacity style={styles.supportCard} onPress={handleOpenSupport}>
+        <StarIcon color={colors.accent} size={20} />
+        <View style={styles.supportCopy}>
+          <Text style={styles.supportTitle}>Support the project</Text>
+          <Text style={styles.supportText}>{supportGuidance[0]}</Text>
+          <Text style={styles.supportAction}>Support me on Ko-fi</Text>
+        </View>
+      </TouchableOpacity>
     </ScrollView>
   );
 }
@@ -742,6 +755,38 @@ function buildStyles(colors: ThemeColors) {
       fontSize: 12,
       color: colors.muted_text,
       marginTop: 2,
+    },
+    supportCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 14,
+      backgroundColor: colors.accent_bg,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.accent,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+    },
+    supportCopy: {
+      flex: 1,
+      gap: 4,
+    },
+    supportTitle: {
+      color: colors.text,
+      fontSize: 15,
+      fontWeight: '700',
+    },
+    supportText: {
+      color: colors.text,
+      fontSize: 12,
+      lineHeight: 18,
+    },
+    supportAction: {
+      color: colors.accent_title,
+      fontSize: 12,
+      fontWeight: '700',
+      textTransform: 'uppercase',
+      letterSpacing: 0.4,
     },
   });
 }

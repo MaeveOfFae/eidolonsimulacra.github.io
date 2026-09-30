@@ -79,9 +79,10 @@ export const communityGuidance: string[] = [
 export const supportGuidance: string[] = [
   'If Eidolon Simulacra is useful to you, Ko-fi is the cleanest way to back ongoing blueprint work, browser tooling, and release upkeep.',
   'Support helps fund template updates, validation improvements, UI polish, and the less glamorous maintenance work that keeps the compiler stack stable.',
-  // The browser page carries a third paragraph about why the Ko-fi panel sits in
-  // the page body instead of the sidebar. That is browser-layout copy, so it
-  // deliberately stays in the web component rather than here.
+  // The browser page adds a third paragraph pointing at the sidebar Support
+  // link while keeping the embedded Ko-fi panel on the About page. That is
+  // browser-layout copy, so it deliberately stays in the web component rather
+  // than here.
 ];
 
 export const contactGuidance = {

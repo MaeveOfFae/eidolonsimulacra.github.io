@@ -5,6 +5,7 @@ This directory contains repo-tracked non-code assets and reference files.
 ## Subdirectories
 
 - **themes/** - theme palette metadata `.toml` files tracked in the repo
+- **images/** - tiered app icon source art (`ico-xsmall` … `ico-large-x`); every icon surface in web/desktop/mobile is generated from it via `pnpm icons:generate`
 
 ## Current State
 

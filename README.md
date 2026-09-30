@@ -57,6 +57,8 @@ The web app currently exposes the main workflows directly in the browser:
 - Browse and edit templates and blueprint source
 - Run offspring and similarity workflows
 - Manage themes, browser-stored data, and app settings
+- Read release notes, the Help Center, and the info/legal documents, all rendered from `packages/shared`
+- Reach the `/download` page, which offers the desktop installers and the Android APK with their file names, sizes, requirements and caveats — the visitor-facing view of the same shared data the mobile app renders (build-from-source steps stay in this README and `docs/DOWNLOADS.md`)
 
 The home screen also calls out the current browser-first operating mode explicitly: no backend or local API server is involved.
 
@@ -151,17 +153,46 @@ To stop both containers:
 pnpm docker:web:down
 ```
 
+## Build Pipeline
+
+`pnpm build` runs the targets in dependency order and then verifies the result:
+
+```text
+build:shared  ->  web  ->  desktop  ->  mobile  ->  build:verify
+```
+
+- **`build:shared` runs first** in the top-level pipeline, and each consumer rebuilds it defensively (`packages/web`'s `build` script, and the mobile package's `prepare:android:release` hook). Shared builds in ~50 ms, so the belt-and-braces approach costs nothing and removes a whole class of confusing failures: every target imports `@char-gen/shared` from `packages/shared/dist`, so a stale `dist` shows up as "module has no exported member" rather than an obvious error.
+- **Each `build:<target>` script is self-sufficient**, so running one directly works. The `build:<target>:only` variants skip the top-level prerequisite for when the pipeline already built it.
+- **The desktop step bundles the web app** through Tauri's `beforeBuildCommand`, so it needs a fresh `packages/web/dist`; shared must exist before it starts.
+- **The mobile step regenerates bundled content first** (`packages/mobile/src/generated/local-content.ts` from `blueprints/`) via the package's `prepare:android:release` hook, then runs Gradle.
+- **`build:verify` closes the pipeline.** It asserts the shared bundle and declarations, the web `dist` (including that everything in `public/downloads/` survived the copy), an installer for the current version under the Tauri bundle, and the release APK — failing with the exact missing path instead of leaving a silent no-op.
+
+`pnpm content:check` and `pnpm info:docs:check` guard the generated sources those builds depend on, so a stale generation step fails CI rather than shipping.
+
 ## Common Commands
 
 ```bash
 # Start all configured dev tasks through Turbo
 pnpm dev
 
-# Build shared package only
+# Build the shared package only (every other target depends on it)
 pnpm build:shared
 
-# Build the web app and its shared dependency
+# Build the web app: builds shared first, then Vite
 pnpm build:web
+
+# Build the desktop app (Tauri): builds shared, then bundles for this platform
+pnpm build:desktop
+
+# Build the Android APK: builds shared, regenerates mobile content, then Gradle
+pnpm build:mobile
+
+# Everything, in dependency order, then verify the artifacts
+pnpm build
+
+# Verify artifacts without rebuilding (add --target to check one target)
+pnpm build:verify
+pnpm build:verify --target web
 
 # Typecheck the web app
 pnpm typecheck:web
@@ -174,9 +205,6 @@ pnpm test:web
 
 # Check the shared package test suite
 pnpm --filter @char-gen/shared test
-
-# Build the current workspace graph
-pnpm build
 
 # Lint packages that participate in CI
 pnpm lint

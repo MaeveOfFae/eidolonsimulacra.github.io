@@ -43,6 +43,15 @@ jobs:
       - name: Check info document parity
         run: pnpm info:docs:check
 
+      - name: Check download artifacts
+        run: pnpm downloads:check
+
+      - name: Check app icons
+        run: pnpm icons:check
+
+      - name: Check mobile content parity
+        run: pnpm content:check
+
       - name: Check placeholder wiring
         run: pnpm check:placeholders
 
@@ -87,6 +96,9 @@ jobs:
 
       - name: Build
         run: pnpm build:web
+
+      - name: Verify build artifacts
+        run: pnpm build:verify --target shared --target web
 
       - name: Launch web preview and smoke test
         run: |

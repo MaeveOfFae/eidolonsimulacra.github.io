@@ -9,8 +9,6 @@ import {
   buildAboutSummary,
   contactGuidance,
   getInfoPage,
-  PROJECT_SUPPORT_URL,
-  supportGuidance,
   type ThemeColors,
 } from '@char-gen/shared';
 import CollapsibleTray from '../components/CollapsibleTray';
@@ -106,19 +104,6 @@ export default function AboutScreen() {
         <TouchableOpacity style={styles.primaryButton} onPress={() => openExternal(contactGuidance.actionHref)}>
           <EnvelopeIcon color={colors.accent_title} size={18} />
           <Text style={styles.primaryButtonText}>{contactGuidance.actionLabel}</Text>
-        </TouchableOpacity>
-      </CollapsibleTray>
-
-      <CollapsibleTray title="Support the Project" subtitle="Ko-fi backs blueprint and release upkeep">
-        <View style={styles.paragraphList}>
-          {supportGuidance.map((paragraph) => (
-            <Text key={paragraph} style={styles.paragraph}>
-              {paragraph}
-            </Text>
-          ))}
-        </View>
-        <TouchableOpacity style={styles.secondaryButton} onPress={() => openExternal(PROJECT_SUPPORT_URL)}>
-          <Text style={styles.secondaryButtonText}>Open Ko-fi</Text>
         </TouchableOpacity>
       </CollapsibleTray>
 
@@ -244,20 +229,6 @@ export default function AboutScreen() {
         color: colors.accent_title,
         fontSize: 13,
         fontWeight: '700',
-      },
-      secondaryButton: {
-        borderWidth: 1,
-        borderColor: colors.accent,
-        backgroundColor: colors.window,
-        borderRadius: 10,
-        paddingHorizontal: 14,
-        paddingVertical: 11,
-        alignItems: 'center',
-      },
-      secondaryButtonText: {
-        color: colors.text,
-        fontSize: 13,
-        fontWeight: '600',
       },
       footerNote: {
         color: colors.muted_text,

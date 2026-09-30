@@ -4,11 +4,11 @@ import { buildWhatsNewPreview, formatReleaseDate, getCurrentReleaseNote, mapRele
 
 function buildEntry(overrides: Partial<ReleaseNoteEntry> = {}): ReleaseNoteEntry {
   return {
-    version: '3.3.5',
-    releasedOn: '2026-04-20',
+    version: '9.9.9',
+    releasedOn: '2026-01-01',
     badge: 'Current release',
-    headline: 'Platform and UI update',
-    summary: 'This release packages recent commits.',
+    headline: 'Synthetic test entry',
+    summary: 'Fixture data, not a real release.',
     highlights: ['One highlight'],
     links: [{ label: 'Open generation', to: '/generate' }],
     ...overrides,
@@ -17,9 +17,9 @@ function buildEntry(overrides: Partial<ReleaseNoteEntry> = {}): ReleaseNoteEntry
 
 describe('getCurrentReleaseNote', () => {
   it('returns the newest entry', () => {
-    const notes = [buildEntry({ version: '3.3.5' }), buildEntry({ version: '3.3.4', badge: 'Previous release' })];
+    const notes = [buildEntry({ version: '9.9.9' }), buildEntry({ version: '9.9.8', badge: 'Previous release' })];
 
-    expect(getCurrentReleaseNote(notes)?.version).toBe('3.3.5');
+    expect(getCurrentReleaseNote(notes)?.version).toBe('9.9.9');
   });
 
   it('returns null when there are no notes', () => {
@@ -40,9 +40,16 @@ describe('mapReleaseNoteRoute', () => {
     expect(mapReleaseNoteRoute('/home')).toBe('Home');
   });
 
+  it('maps routes onto Home-stack screens mobile now ships', () => {
+    expect(mapReleaseNoteRoute('/help')).toBe('HelpCenter');
+    expect(mapReleaseNoteRoute('/themes')).toBe('ThemePicker');
+    expect(mapReleaseNoteRoute('/about')).toBe('About');
+  });
+
   it('returns null for routes mobile cannot deep-link into', () => {
     expect(mapReleaseNoteRoute('/worlds')).toBeNull();
     expect(mapReleaseNoteRoute('/help/tours')).toBeNull();
+    expect(mapReleaseNoteRoute('/data')).toBeNull();
     expect(mapReleaseNoteRoute('')).toBeNull();
     expect(mapReleaseNoteRoute('https://example.com')).toBeNull();
   });
@@ -51,7 +58,7 @@ describe('mapReleaseNoteRoute', () => {
     expect(mapReleaseNoteRoute(' /Generate ')).toBe('Generate');
   });
 
-  it('maps every route currently present in the shared data to a known tab', () => {
+  it('maps every route currently present in the shared data to a reachable destination', () => {
     // If tooling ever introduces a route mobile cannot reach, this fails before
     // the change ships so the screen never renders a dead link.
     releaseNotes.forEach((entry) => {
@@ -75,7 +82,18 @@ describe('formatReleaseDate', () => {
 
 describe('buildWhatsNewPreview', () => {
   it('summarizes the current version for the home entry point', () => {
-    expect(buildWhatsNewPreview([buildEntry()])).toBe('v3.3.5 • Current release');
+    const entry = buildEntry();
+
+    // Derived from the fixture rather than pinned to a literal so a version bump
+    // cannot break this test.
+    expect(buildWhatsNewPreview([entry])).toBe(`v${entry.version} • ${entry.badge}`);
+  });
+
+  it('previews the real shared release line without hardcoding it', () => {
+    const current = getCurrentReleaseNote(releaseNotes);
+
+    expect(current).not.toBeNull();
+    expect(buildWhatsNewPreview(releaseNotes)).toBe(`v${current?.version} • ${current?.badge}`);
   });
 
   it('falls back to a placeholder when there are no notes', () => {

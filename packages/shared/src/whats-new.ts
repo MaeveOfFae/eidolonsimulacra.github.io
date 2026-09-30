@@ -16,9 +16,33 @@ export interface ReleaseNoteEntry {
 // Generated and maintained by tools/generation/generate-release-notes.mjs.
 export const releaseNotes: ReleaseNoteEntry[] = [
   {
+    version: '4.0.0',
+    releasedOn: '2026-09-29',
+    badge: 'Current release',
+    headline: 'Mobile parity tiers 1 and 2, on a shared content layer',
+    summary:
+      'This release completes every scoped mobile parity item and moves the content behind them into shared modules. The phone app now ships draft archiving, lorebook generation, PNG card export, release notes, live theming from the builtin preset catalogue, a Help Center with guided tours, and the full info and legal document set, all rendering from the same data the browser and desktop apps use.',
+    highlights: [
+      'Mobile draft archiving, including archived filters and safeguard restore points',
+      'Lorebook generation on mobile, with the packet format shared across surfaces',
+      'PNG character-card export and import on mobile through the shared card helpers',
+      "Release notes and What's New rendering from one shared source on every surface",
+      'Themes: the 27 builtin presets extracted to shared, with every mobile screen retinting live',
+      'Help Center on mobile with shared topics, walkable tours, and persisted tour progress',
+      'Info and legal pages on mobile, generated from the repository documents with a CI drift check',
+      'Worldbuilding recorded as desktop-only, closing parity Tier 3 by decision',
+    ],
+    links: [
+      { label: 'Open generation', to: '/generate' },
+      { label: 'Review templates', to: '/templates' },
+      { label: 'Open the Help Center', to: '/help' },
+      { label: 'Browse themes', to: '/themes' },
+    ],
+  },
+  {
     version: '3.3.5',
     releasedOn: '2026-04-20',
-    badge: 'Current release',
+    badge: 'Previous release',
     headline: 'Platform and UI update',
     summary: 'This release packages 12 recent commits focused on platform, UI, and runtime.',
     highlights: [

@@ -6,6 +6,7 @@
  * here so the two surfaces cannot describe the app differently.
  */
 
+export * from './download';
 export * from './legal';
 export * from './pages';
 export * from './project-links';

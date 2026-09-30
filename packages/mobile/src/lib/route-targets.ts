@@ -15,6 +15,7 @@ export type MobileTabDestination = 'Home' | 'Generate' | 'Drafts' | 'Templates' 
 export type MobileHomeStackDestination =
   | 'HelpCenter'
   | 'About'
+  | 'Download'
   | 'Community'
   | 'License'
   | 'Terms'
@@ -58,6 +59,7 @@ const EXACT_ROUTE_TARGETS: Record<string, MobileDestination> = {
   '/settings': 'Settings',
   '/help': 'HelpCenter',
   '/about': 'About',
+  '/download': 'Download',
   '/community': 'Community',
   '/license': 'License',
   '/terms': 'Terms',

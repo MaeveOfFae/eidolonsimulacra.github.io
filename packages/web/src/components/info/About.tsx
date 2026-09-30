@@ -8,7 +8,19 @@ import {
   contactGuidance,
   supportGuidance,
 } from '@char-gen/shared';
-import { BookOpen, FileLock2, ShieldCheck, Scale, Info, Sparkles, Mail, Bug, Shield, Users } from 'lucide-react';
+import {
+  BookOpen,
+  Download,
+  FileLock2,
+  ShieldCheck,
+  Scale,
+  Info,
+  Sparkles,
+  Mail,
+  Bug,
+  Shield,
+  Users,
+} from 'lucide-react';
 import type { ComponentType } from 'react';
 import { Link } from 'react-router-dom';
 import { resolveInfoRuntimeScope } from '../../lib/info.js';
@@ -16,6 +28,7 @@ import DocumentPage from './DocumentPage';
 
 /** The shared card list carries routes; the browser maps each route to its icon. */
 const infoCardIcons: Record<string, ComponentType<{ className?: string }>> = {
+  '/download': Download,
   '/whats-new': Sparkles,
   '/terms': Scale,
   '/privacy': FileLock2,
@@ -138,8 +151,8 @@ export default function About() {
               <p key={paragraph}>{paragraph}</p>
             ))}
             <p>
-              The full Ko-fi panel lives here instead of the sidebar so it has enough room to stay usable without
-              crushing navigation.
+              A quick <span className="font-medium text-foreground">Support me</span> link lives in the sidebar on every
+              page; the full Ko-fi panel stays here, where it has room to stay usable.
             </p>
           </div>
         </div>

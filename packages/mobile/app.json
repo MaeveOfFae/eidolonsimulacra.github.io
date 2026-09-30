@@ -2,15 +2,25 @@
   "expo": {
     "name": "Eidolon Simulacra",
     "slug": "eidolon-simulacra",
-    "version": "0.1.0",
+    "version": "4.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0f0f0f"
+    },
     "scheme": "eidolon-simulacra",
     "platforms": ["ios", "android"],
     "android": {
       "package": "io.github.maeveoffae.eidolonsimulacra",
-      "versionCode": 1,
-      "usesCleartextTraffic": true
+      "versionCode": 2,
+      "usesCleartextTraffic": true,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0f0f0f"
+      }
     },
     "jsEngine": "hermes",
     "plugins": [

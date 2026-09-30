@@ -7,6 +7,7 @@ const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, '../..');
 const blueprintsRoot = path.join(repoRoot, 'blueprints');
 const outputPath = path.join(repoRoot, 'packages/mobile/src/generated/local-content.ts');
+const isCheckMode = process.argv.includes('--check');
 
 async function collectFiles(rootDir, predicate) {
   const entries = await fs.readdir(rootDir, { withFileTypes: true });
@@ -49,6 +50,36 @@ export const bundledTemplateManifestContents = ${JSON.stringify(templateManifest
 `;
 
 await fs.mkdir(path.dirname(outputPath), { recursive: true });
-await fs.writeFile(outputPath, generated, 'utf8');
 
-console.log(`Wrote ${Object.keys(blueprintContents).length} blueprint files and ${Object.keys(templateManifestContents).length} template manifests to ${toRepoRelative(outputPath)}`);
+if (isCheckMode) {
+  /**
+   * Comparison normalises line endings: blueprint files are CRLF on Windows and
+   * LF on a Linux checkout, and without this the check would fail on CI purely
+   * because of the host. Real drift — edited blueprints, new files, deleted
+   * files — still shows up.
+   */
+  const normalizeEol = (text) => text.replace(/\r\n/g, '\n');
+  let existing = null;
+
+  try {
+    existing = await fs.readFile(outputPath, 'utf8');
+  } catch {
+    throw new Error(`${toRepoRelative(outputPath)} is missing. Run \`pnpm content:generate\` and commit the result.`);
+  }
+
+  if (normalizeEol(existing) !== normalizeEol(generated)) {
+    throw new Error(
+      `${toRepoRelative(outputPath)} is out of date with the files under blueprints/. Run \`pnpm content:generate\` and commit the result.`,
+    );
+  }
+
+  console.log(
+    `Mobile content check passed: ${Object.keys(blueprintContents).length} blueprint files and ${Object.keys(templateManifestContents).length} template manifests are in sync.`,
+  );
+} else {
+  await fs.writeFile(outputPath, generated, 'utf8');
+
+  console.log(
+    `Wrote ${Object.keys(blueprintContents).length} blueprint files and ${Object.keys(templateManifestContents).length} template manifests to ${toRepoRelative(outputPath)}`,
+  );
+}

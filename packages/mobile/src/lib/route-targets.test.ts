@@ -46,6 +46,7 @@ describe('mapWebRouteToMobileDestination', () => {
 
   it('maps every browser info route onto its mobile info screen', () => {
     expect(mapWebRouteToMobileDestination('/about')).toBe('About');
+    expect(mapWebRouteToMobileDestination('/download')).toBe('Download');
     expect(mapWebRouteToMobileDestination('/community')).toBe('Community');
     expect(mapWebRouteToMobileDestination('/license')).toBe('License');
     expect(mapWebRouteToMobileDestination('/terms')).toBe('Terms');

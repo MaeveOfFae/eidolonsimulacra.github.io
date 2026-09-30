@@ -19,7 +19,10 @@ import {
   Globe,
   Calendar,
   Palette,
+  Download,
+  Heart,
 } from 'lucide-react';
+import { PROJECT_SUPPORT_URL } from '@char-gen/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { helpTopics, resolvePageHelp } from '../lib/help';
 import { api, DRAFTS_SYNCED_EVENT } from '../lib/api';
@@ -36,16 +39,6 @@ interface LayoutProps {
   children: ReactNode;
 }
 
-type KofiWidgetOverlay = {
-  draw: (username: string, options: Record<string, string>) => void;
-};
-
-type KofiWindow = Window &
-  typeof globalThis & {
-    kofiWidgetOverlay?: KofiWidgetOverlay;
-    __eidolonKofiOverlayInitialized?: boolean;
-  };
-
 const navItems = [
   { path: '/', label: 'Home', icon: Home },
   { path: '/generate', label: 'Generate', icon: Sparkles },
@@ -55,114 +48,9 @@ const navItems = [
   { path: '/blueprints', label: 'Blueprints', icon: FileJson },
   { path: '/themes', label: 'Themes', icon: Palette },
   { path: '/tokenizer', label: 'Tokenizer', icon: Palette },
+  { path: '/download', label: 'Download', icon: Download },
   { path: '/settings', label: 'Settings', icon: Settings },
 ];
-
-const KOFI_SCRIPT_ID = 'kofi-overlay-widget-script';
-const KOFI_SCRIPT_SRC = 'https://storage.ko-fi.com/cdn/scripts/overlay-widget.js';
-const KOFI_STYLE_ID = 'kofi-overlay-position-style';
-
-function shouldShowSupportOverlay(pathname: string): boolean {
-  return (
-    pathname.startsWith('/about') ||
-    pathname.startsWith('/help') ||
-    pathname.startsWith('/whats-new') ||
-    pathname.startsWith('/license') ||
-    pathname.startsWith('/terms') ||
-    pathname.startsWith('/privacy') ||
-    pathname.startsWith('/security') ||
-    pathname.startsWith('/code-of-conduct')
-  );
-}
-
-function ensureKofiTopRightStyles() {
-  const existingStyle = document.getElementById(KOFI_STYLE_ID) as HTMLStyleElement | null;
-  if (existingStyle) {
-    return;
-  }
-
-  const style = document.createElement('style');
-  style.id = KOFI_STYLE_ID;
-  style.textContent = `
-    :root {
-      --kofi-overlay-top: 16px;
-      --kofi-overlay-popup-top: 92px;
-      --kofi-overlay-right: 16px;
-    }
-
-    .floatingchat-container-wrap,
-    .floatingchat-container-wrap-mobi {
-      top: var(--kofi-overlay-top) !important;
-      right: var(--kofi-overlay-right) !important;
-      bottom: auto !important;
-      left: auto !important;
-    }
-
-    .floating-chat-kofi-popup-iframe,
-    .floating-chat-kofi-popup-iframe-mobi {
-      top: var(--kofi-overlay-popup-top) !important;
-      right: var(--kofi-overlay-right) !important;
-      bottom: auto !important;
-      left: auto !important;
-      max-width: calc(100vw - 32px) !important;
-    }
-
-    body[data-support-overlay='hidden'] .floatingchat-container-wrap,
-    body[data-support-overlay='hidden'] .floatingchat-container-wrap-mobi,
-    body[data-support-overlay='hidden'] .floating-chat-kofi-popup-iframe,
-    body[data-support-overlay='hidden'] .floating-chat-kofi-popup-iframe-mobi {
-      display: none !important;
-    }
-
-    @media (max-width: 1023px) {
-      :root {
-        --kofi-overlay-top: 80px;
-        --kofi-overlay-popup-top: 156px;
-        --kofi-overlay-right: 12px;
-      }
-    }
-  `;
-
-  document.head.appendChild(style);
-}
-
-function initializeKofiOverlay() {
-  const kofiWindow = window as KofiWindow;
-  if (kofiWindow.__eidolonKofiOverlayInitialized || !kofiWindow.kofiWidgetOverlay) {
-    return;
-  }
-
-  ensureKofiTopRightStyles();
-
-  kofiWindow.kofiWidgetOverlay.draw('maeveoffae', {
-    type: 'floating-chat',
-    'floating-chat.donateButton.text': 'Support me',
-    'floating-chat.donateButton.background-color': '#ff38b8',
-    'floating-chat.donateButton.text-color': '#fff',
-  });
-
-  kofiWindow.__eidolonKofiOverlayInitialized = true;
-}
-
-function removeKofiOverlay() {
-  const selectors = [
-    '.floatingchat-container-wrap',
-    '.floatingchat-container-wrap-mobi',
-    '.floating-chat-kofi-iframe',
-    '.floating-chat-kofi-iframe-mobi',
-    '.floating-chat-kofi-popup-iframe',
-    '.floating-chat-kofi-popup-iframe-mobi',
-  ];
-
-  for (const selector of selectors) {
-    document.querySelectorAll(selector).forEach((element) => element.remove());
-  }
-
-  document.getElementById(KOFI_SCRIPT_ID)?.remove();
-
-  const kofiWindow = window as KofiWindow;
-  kofiWindow.__eidolonKofiOverlayInitialized = false;
-}
 
 function isNavItemActive(currentPath: string, itemPath: string): boolean {
   if (itemPath === '/') {
@@ -384,47 +272,6 @@ export default function Layout({ children }: LayoutProps) {
     };
   }, [queryClient]);
 
-  useEffect(() => {
-    if (!shouldShowSupportOverlay(location.pathname)) {
-      removeKofiOverlay();
-      return;
-    }
-
-    const existingScript = document.getElementById(KOFI_SCRIPT_ID) as HTMLScriptElement | null;
-
-    if ((window as KofiWindow).kofiWidgetOverlay) {
-      initializeKofiOverlay();
-      return;
-    }
-
-    const script = existingScript ?? document.createElement('script');
-    script.id = KOFI_SCRIPT_ID;
-    script.src = KOFI_SCRIPT_SRC;
-    script.async = true;
-
-    const handleLoad = () => {
-      initializeKofiOverlay();
-    };
-
-    script.addEventListener('load', handleLoad);
-
-    if (!existingScript) {
-      document.head.appendChild(script);
-    }
-
-    return () => {
-      script.removeEventListener('load', handleLoad);
-    };
-  }, [location.pathname]);
-
-  useEffect(() => {
-    document.body.dataset.supportOverlay = shouldShowSupportOverlay(location.pathname) ? 'visible' : 'hidden';
-
-    return () => {
-      delete document.body.dataset.supportOverlay;
-    };
-  }, [location.pathname]);
-
   // Check if any characters submenu item is active
   const charactersPaths = charactersSubmenuItems.map((item) => item.path);
   const isCharactersActive = charactersPaths.includes(location.pathname);
@@ -558,6 +405,23 @@ export default function Layout({ children }: LayoutProps) {
                     />
                   );
                 })}
+
+                {/* Support link (external, always visible in the sidebar) */}
+                <div className="mt-2 border-t border-border/60 pt-2">
+                  <a
+                    href={PROJECT_SUPPORT_URL}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={() => setSidebarOpen(false)}
+                    className="group flex items-center gap-2.5 rounded-lg border border-transparent px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all duration-200 hover:border-border/70 hover:bg-background/50 hover:text-foreground"
+                  >
+                    <Heart
+                      className="h-5 w-5 text-[#ff38b8] transition-transform duration-200 group-hover:scale-105"
+                      aria-hidden="true"
+                    />
+                    <span>Support me</span>
+                  </a>
+                </div>
               </nav>
 
               <div className="border-t border-border/50 px-4 py-3">

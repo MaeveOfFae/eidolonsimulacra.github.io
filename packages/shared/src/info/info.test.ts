@@ -48,10 +48,19 @@ describe('info page metadata', () => {
     });
   });
 
-  it('covers the seven browser info routes', () => {
+  it('covers every browser info route, including the download page', () => {
     const paths = infoPages.map((page) => page.webPath).sort();
 
-    expect(paths).toEqual(['/about', '/code-of-conduct', '/community', '/license', '/privacy', '/security', '/terms']);
+    expect(paths).toEqual([
+      '/about',
+      '/code-of-conduct',
+      '/community',
+      '/download',
+      '/license',
+      '/privacy',
+      '/security',
+      '/terms',
+    ]);
   });
 
   it('looks pages up by id and by path, and rejects neither silently', () => {

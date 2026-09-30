@@ -12,6 +12,7 @@ import {
   type ReleaseNoteDestination,
 } from '../lib/whats-new';
 import { useTheme } from '../theme/ThemeProvider';
+import { navigateToMobileDestination } from '../lib/route-targets';
 import type { HomeStackNavigationProp } from '../types/navigation';
 
 export default function WhatsNewScreen() {
@@ -24,7 +25,7 @@ export default function WhatsNewScreen() {
   const handleOpenDestination = (to: string) => {
     const destination: ReleaseNoteDestination | null = mapReleaseNoteRoute(to);
     if (destination) {
-      navigation.navigate(destination);
+      navigateToMobileDestination(navigation, destination);
     }
   };
 

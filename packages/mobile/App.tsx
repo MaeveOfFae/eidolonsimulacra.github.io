@@ -17,6 +17,7 @@ import GenerateScreen from './src/screens/GenerateScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import HelpCenterScreen from './src/screens/HelpCenterScreen';
 import AboutScreen from './src/screens/AboutScreen';
+import DownloadScreen from './src/screens/DownloadScreen';
 import CommunityScreen from './src/screens/CommunityScreen';
 import {
   CodeOfConductScreen,
@@ -90,6 +91,11 @@ function HomeStackNavigator() {
         options={{ title: 'Help Center', headerShown: false }}
       />
       <HomeStack.Screen name="About" component={AboutScreen} options={{ title: 'About', headerShown: false }} />
+      <HomeStack.Screen
+        name="Download"
+        component={DownloadScreen}
+        options={{ title: 'Download', headerShown: false }}
+      />
       <HomeStack.Screen
         name="Community"
         component={CommunityScreen}

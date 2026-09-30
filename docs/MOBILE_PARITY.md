@@ -23,6 +23,7 @@ Status legend: **parity** (already works on mobile), **gap** (missing, portable)
 | Basic first-run guide + help state | `HomeScreen`, `HelpState` in `src/storage/device-config.ts` |
 | Help Center: starter guide, topic library, walkable guided tours | `HelpCenterScreen`, shared `helpTopics` / `gettingStartedSteps` / `guidedTours` in `packages/shared/src/help.ts` |
 | Info / legal: About hub, Community, License, Terms, Privacy, Security, Code of Conduct | `AboutScreen`, `CommunityScreen`, `InfoDocumentScreen`, shared content in `packages/shared/src/info/` |
+| Download page: desktop installers and the Android APK (iOS pending), with sizes and caveats | `DownloadScreen`, shared `downloadChannels` in `packages/shared/src/info/download.ts` |
 
 That is the majority of the day-to-day loop. The gaps below are the remainder.
 
@@ -137,4 +138,5 @@ These are staged or explicitly "planned" on web, so they must not be built for p
 - `packages/shared/src/themes/builtin-themes.ts` and `packages/mobile/src/theme/` — the shared builtin catalogue and the mobile theme layer (Tier 2 item 5)
 - `packages/shared/src/help.ts` — the shared guide/topic/tour configuration, and `packages/mobile/src/lib/route-targets.ts` + `src/screens/HelpCenterScreen.tsx` — the mobile Help Center and the single web-route → destination table (Tier 2 item 6)
 - `packages/shared/src/info/` and `tools/generation/generate-shared-info-documents.mjs` — the shared info/legal content, the generated repository documents, and the generator CI checks with `pnpm info:docs:check`; `packages/mobile/src/lib/markdown.ts` + `src/components/MarkdownDocument.tsx` — the mobile document reader (Tier 2 item 7)
+- `packages/shared/src/info/download.ts` — the build/download facts behind `/download` on both surfaces (Tier 2 item 7 follow-up); `packages/web/src/components/info/DownloadPage.tsx` and `packages/mobile/src/screens/DownloadScreen.tsx` render them
 - `docs/WORLDBUILDING_DECISION.md` — the written Tier 3 decision (desktop-only ownership) with its evidence, rejected options, and revisit triggers

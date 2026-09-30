@@ -6,27 +6,23 @@
  */
 
 import type { ReleaseNoteEntry } from '@char-gen/shared';
-import { isMobileTabDestination, mapWebRouteToMobileDestination, type MobileTabDestination } from './route-targets';
+import { mapWebRouteToMobileDestination, type MobileDestination } from './route-targets';
 
-/** Mobile tabs a release-note link can deep-link into (mirrors `RootTabParamList`). */
-export type ReleaseNoteDestination = MobileTabDestination;
+/**
+ * Any mobile destination a release-note link can deep-link into: the five tabs
+ * and the Home-stack screens (Help Center, themes, info pages, …). Release notes
+ * are allowed to point at screens now that mobile has them; routes with no
+ * mobile equivalent still resolve to null and render as inert text.
+ */
+export type ReleaseNoteDestination = MobileDestination;
 
 export function getCurrentReleaseNote(notes: readonly ReleaseNoteEntry[]): ReleaseNoteEntry | null {
   return notes[0] ?? null;
 }
 
-/**
- * Maps a shared release-note link target (a web route) onto a mobile tab.
- * Release notes only offer tab destinations, so Home-stack screens are treated
- * as unreachable here and the screen renders those links as inert text.
- */
+/** Maps a shared release-note link target (a web route) onto a mobile destination. */
 export function mapReleaseNoteRoute(to: string): ReleaseNoteDestination | null {
-  const destination = mapWebRouteToMobileDestination(to);
-  if (destination && isMobileTabDestination(destination)) {
-    return destination;
-  }
-
-  return null;
+  return mapWebRouteToMobileDestination(to);
 }
 
 export function formatReleaseDate(value: string): string {

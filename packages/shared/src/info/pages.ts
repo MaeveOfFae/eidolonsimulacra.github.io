@@ -17,7 +17,15 @@ import {
   type InfoRuntimeScope,
 } from './legal';
 
-export type InfoPageId = 'about' | 'community' | 'license' | 'terms' | 'privacy' | 'security' | 'code-of-conduct';
+export type InfoPageId =
+  | 'about'
+  | 'download'
+  | 'community'
+  | 'license'
+  | 'terms'
+  | 'privacy'
+  | 'security'
+  | 'code-of-conduct';
 
 export interface InfoPageMeta {
   id: InfoPageId;
@@ -31,6 +39,7 @@ export interface InfoPageMeta {
 
 export const infoPages: InfoPageMeta[] = [
   { id: 'about', webPath: '/about', eyebrow: 'About', title: 'About Eidolon Simulacra', kind: 'composed' },
+  { id: 'download', webPath: '/download', eyebrow: 'Download', title: 'Download', kind: 'composed' },
   { id: 'community', webPath: '/community', eyebrow: 'Community', title: 'Community', kind: 'composed' },
   { id: 'license', webPath: '/license', eyebrow: 'License', title: 'License', kind: 'markdown' },
   { id: 'terms', webPath: '/terms', eyebrow: 'Legal', title: 'Terms of Use', kind: 'markdown' },
@@ -46,6 +55,8 @@ export const infoPages: InfoPageMeta[] = [
 ];
 
 const STATIC_SUMMARIES: Record<Exclude<InfoPageId, 'about' | 'privacy'>, string> = {
+  download:
+    'The desktop, Android, and iOS builds: what each one gives you, what it needs, and exactly how to produce it from this repository today.',
   community:
     'The public-facing project spaces that already exist today: repository, issue tracking, support, and the contributor ground rules that keep those spaces usable.',
   license: 'This page mirrors the repository license shipped with the project.',
@@ -167,6 +178,11 @@ export function buildAboutQuickFacts({
 
 /** Cards linking the other info pages, mirroring the browser About page. */
 export const aboutInfoCards: { to: string; title: string; description: string }[] = [
+  {
+    to: '/download',
+    title: 'Download',
+    description: 'Desktop installers, the Android release APK, and the iOS build options.',
+  },
   {
     to: '/whats-new',
     title: "What's New",

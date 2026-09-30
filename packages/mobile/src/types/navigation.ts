@@ -10,6 +10,7 @@ export type HomeStackParamList = {
   WhatsNew: undefined;
   HelpCenter: undefined;
   About: undefined;
+  Download: undefined;
   Community: undefined;
   License: undefined;
   Terms: undefined;

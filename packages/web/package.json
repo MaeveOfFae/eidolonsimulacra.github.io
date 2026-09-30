@@ -1,12 +1,12 @@
 {
   "name": "@char-gen/web",
-  "version": "3.3.5",
+  "version": "4.0.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
     "desktop:dev": "tauri dev",
-    "build": "vite build",
+    "build": "pnpm --filter @char-gen/shared build && vite build",
     "desktop:build": "tauri build",
     "build:check": "tsc -b",
     "preview": "vite preview",

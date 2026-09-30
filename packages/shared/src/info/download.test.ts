@@ -1,0 +1,148 @@
+import { describe, expect, it } from 'vitest';
+import {
+  downloadChannels,
+  downloadRepositoryUrl,
+  formatArtifactFilename,
+  getDownloadChannel,
+  isAnyDownloadPublished,
+  isSiteRelativeDownload,
+  listChannelDownloadUrls,
+  listPublishedDownloads,
+  resolveDownloadUrl,
+  toAbsoluteDownloadUrl,
+  unpublishedDownloadNotice,
+  type DownloadChannelId,
+} from './download';
+import { getInfoPage, getInfoPageByPath, getInfoPageSummary } from './pages';
+
+describe('download channels', () => {
+  it('describes each channel with the copy the pages render', () => {
+    expect(downloadChannels.length).toBeGreaterThanOrEqual(3);
+
+    const ids = downloadChannels.map((channel) => channel.id);
+    expect(new Set(ids).size).toBe(ids.length);
+
+    downloadChannels.forEach((channel) => {
+      expect(channel.name.trim().length).toBeGreaterThan(0);
+      expect(channel.summary.trim().length).toBeGreaterThan(0);
+
+      channel.requirements.forEach((requirement) => expect(requirement.trim().length).toBeGreaterThan(0));
+      channel.artifacts.forEach((artifact) => {
+        expect(artifact.label.trim().length).toBeGreaterThan(0);
+        expect(artifact.filename.trim().length).toBeGreaterThan(0);
+      });
+    });
+  });
+
+  it('never exposes build instructions, because the page is for visitors', () => {
+    // Build-from-source steps belong in the repository docs. If any of these
+    // words turn up in channel copy, developer instructions have leaked back
+    // into the public download page.
+    const developerTerms = ['pnpm', 'npm install', 'npx', 'gradle', 'cargo', 'JAVA_HOME', 'ANDROID_SDK_ROOT', 'JDK'];
+
+    downloadChannels.forEach((channel) => {
+      const rendered = [
+        channel.name,
+        channel.summary,
+        ...channel.requirements,
+        ...channel.notes,
+        ...channel.artifacts.flatMap((artifact) => [artifact.label, artifact.filename]),
+      ].join(' ');
+
+      developerTerms.forEach((term) => expect(rendered.toLowerCase()).not.toContain(term.toLowerCase()));
+    });
+  });
+
+  it('never claims a download that is not a real link', () => {
+    // The page renders a download button only when a URL is set, so a non-null
+    // value must either be an absolute https URL or a site-relative path under
+    // the /downloads/ prefix that the published site serves.
+    downloadChannels.forEach((channel) => {
+      listChannelDownloadUrls(channel).forEach((url) => {
+        const isAbsolute = /^https:\/\//.test(url);
+        const isSiteRelative = isSiteRelativeDownload(url);
+
+        expect(isAbsolute || isSiteRelative).toBe(true);
+        expect(url).not.toContain(' '); // spaces must be encoded or avoided
+      });
+    });
+
+    expect(listPublishedDownloads()).toHaveLength(
+      downloadChannels.filter((channel) => channel.downloadUrl !== null).length,
+    );
+    // The two published-state helpers must agree with each other.
+    expect(isAnyDownloadPublished()).toBe(listPublishedDownloads().length > 0);
+  });
+
+  it('collects every download link a channel exposes, primary and per-artifact', () => {
+    const desktop = getDownloadChannel('desktop');
+
+    expect(listChannelDownloadUrls(desktop)).toHaveLength(3);
+    expect(listChannelDownloadUrls(getDownloadChannel('ios'))).toHaveLength(0);
+  });
+
+  it('resolves site-hosted downloads against a caller-supplied origin', () => {
+    const channel = { ...downloadChannels[0]!, downloadUrl: '/downloads/setup.exe' };
+    const external = { ...downloadChannels[0]!, downloadUrl: 'https://example.com/setup.exe' };
+    const unpublished = { ...downloadChannels[0]!, downloadUrl: null };
+
+    expect(resolveDownloadUrl(channel, 'https://site.example')).toBe('https://site.example/downloads/setup.exe');
+    expect(resolveDownloadUrl(channel, 'https://site.example/')).toBe('https://site.example/downloads/setup.exe');
+    expect(resolveDownloadUrl(channel)).toBe('/downloads/setup.exe');
+    expect(resolveDownloadUrl(external, 'https://site.example')).toBe('https://example.com/setup.exe');
+    expect(resolveDownloadUrl(unpublished, 'https://site.example')).toBeNull();
+    expect(isSiteRelativeDownload('/downloads/x.exe')).toBe(true);
+    expect(isSiteRelativeDownload('https://example.com/x.exe')).toBe(false);
+    // Per-artifact links resolve through the same helper.
+    expect(toAbsoluteDownloadUrl('/downloads/x.apk', 'https://site.example')).toBe(
+      'https://site.example/downloads/x.apk',
+    );
+    expect(toAbsoluteDownloadUrl('https://cdn.example/x.apk', 'https://site.example')).toBe(
+      'https://cdn.example/x.apk',
+    );
+    expect(toAbsoluteDownloadUrl('/downloads/x.apk')).toBe('/downloads/x.apk');
+  });
+
+  it('gives every downloadable channel at least one artifact and a link', () => {
+    // A channel with a download URL but no artifact would render a button that
+    // promises something the page never names.
+    downloadChannels.forEach((channel) => {
+      if (channel.downloadUrl !== null) {
+        expect(channel.artifacts.length).toBeGreaterThan(0);
+        expect(channel.artifacts.every((artifact) => artifact.downloadUrl)).toBe(true);
+      }
+    });
+  });
+
+  it('substitutes the build version into artifact filenames', () => {
+    const desktop = getDownloadChannel('desktop');
+    const setup = desktop.artifacts.find((artifact) => artifact.filename.includes('{version}'));
+
+    expect(setup).toBeDefined();
+    expect(formatArtifactFilename(setup?.filename ?? '', '4.0.0')).toContain('4.0.0');
+    expect(formatArtifactFilename(setup?.filename ?? '', '4.0.0')).not.toContain('{version}');
+    expect(formatArtifactFilename('app-release.apk', '4.0.0')).toBe('app-release.apk');
+  });
+
+  it('exposes the download page metadata and lookup', () => {
+    expect(getInfoPage('download').webPath).toBe('/download');
+    expect(getInfoPageByPath('/download')?.kind).toBe('composed');
+    expect(getInfoPageSummary('download', 'mobile').trim().length).toBeGreaterThan(0);
+    expect(() => getDownloadChannel('nope' as DownloadChannelId)).toThrow(/Unknown download channel/);
+  });
+
+  it('marks the Android build as debug-signed instead of store-ready', () => {
+    // Verified in packages/mobile/android/app/build.gradle: the release variant
+    // uses the debug keystore, so the page must not imply a store-ready release.
+    const android = getDownloadChannel('android');
+    const notes = android.notes.join(' ').toLowerCase();
+
+    expect(notes).toContain('debug keystore');
+    expect(notes).toContain('store-ready');
+  });
+
+  it('keeps a repository pointer and an honest notice for the unpublished state', () => {
+    expect(downloadRepositoryUrl.startsWith('https://github.com/')).toBe(true);
+    expect(unpublishedDownloadNotice.trim().length).toBeGreaterThan(0);
+  });
+});
