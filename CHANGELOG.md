@@ -3,6 +3,23 @@
 Generated release history for the browser app.
 
 
+## v4.1.0 - 2026-09-30
+
+### Usage insights: every LLM call, measured locally
+
+This release turns per-call engine telemetry into an owned local record. Every LLM call the app makes now writes its tokens, duration, provider, model, and outcome to device storage, streaming responses included, and the new Insights page rolls that history up by provider, model, asset, template, draft, and day.
+
+### Highlights
+- Every LLM call now writes a local usage record with tokens, duration, provider, model, and outcome
+- Streaming responses report real token usage from OpenAI, OpenRouter, DeepSeek, Anthropic, and Google
+- New Insights page rolls usage up by provider, model, asset, template, draft, and day
+- Usage history survives restarts in the browser (IndexedDB) and desktop (SQLite) apps
+- Records stay on your device, capped at the newest 5,000 calls, with a one-click clear
+
+### Links
+- [Open the Help Center](/help)
+- [Open generation](/generate)
+- [Review templates](/templates)
 ## v4.0.0 - 2026-09-29
 
 ### Mobile parity tiers 1 and 2, on a shared content layer
@@ -86,6 +103,7 @@ This release packages recent commits focused on platform, templates, and themes.
 ### Links
 - [Open generation](/generate)
 - [Review templates](/templates)
+
 
 
 

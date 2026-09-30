@@ -16,9 +16,29 @@ export interface ReleaseNoteEntry {
 // Generated and maintained by tools/generation/generate-release-notes.mjs.
 export const releaseNotes: ReleaseNoteEntry[] = [
   {
+    version: '4.1.0',
+    releasedOn: '2026-09-30',
+    badge: 'Current release',
+    headline: 'Usage insights: every LLM call, measured locally',
+    summary:
+      'This release turns per-call engine telemetry into an owned local record. Every LLM call the app makes now writes its tokens, duration, provider, model, and outcome to device storage, streaming responses included, and the new Insights page rolls that history up by provider, model, asset, template, draft, and day.',
+    highlights: [
+      'Every LLM call now writes a local usage record with tokens, duration, provider, model, and outcome',
+      'Streaming responses report real token usage from OpenAI, OpenRouter, DeepSeek, Anthropic, and Google',
+      'New Insights page rolls usage up by provider, model, asset, template, draft, and day',
+      'Usage history survives restarts in the browser (IndexedDB) and desktop (SQLite) apps',
+      'Records stay on your device, capped at the newest 5,000 calls, with a one-click clear',
+    ],
+    links: [
+      { label: 'Open the Help Center', to: '/help' },
+      { label: 'Open generation', to: '/generate' },
+      { label: 'Review templates', to: '/templates' },
+    ],
+  },
+  {
     version: '4.0.0',
     releasedOn: '2026-09-29',
-    badge: 'Current release',
+    badge: 'Previous release',
     headline: 'Mobile parity tiers 1 and 2, on a shared content layer',
     summary:
       'This release completes every scoped mobile parity item and moves the content behind them into shared modules. The phone app now ships draft archiving, lorebook generation, PNG card export, release notes, live theming from the builtin preset catalogue, a Help Center with guided tours, and the full info and legal document set, all rendering from the same data the browser and desktop apps use.',

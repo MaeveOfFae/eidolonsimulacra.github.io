@@ -511,7 +511,11 @@ async function main() {
   await fs.writeFile(changelogPath, updatedChangelog, 'utf8');
   // The generated entry must satisfy the same Prettier gate CI runs, so format
   // it in place; a generated release is then format-clean by construction.
-  await execFileAsync('npx', ['prettier', '--write', releaseNotesPath], { cwd: repoRoot });
+  // Run the workspace-local Prettier through node so this works on Windows
+  // (where `npx` is a .cmd shim execFile cannot spawn) and in CI alike.
+  await execFileAsync(process.execPath, [path.join(repoRoot, 'node_modules/prettier/bin/prettier.cjs'), '--write', releaseNotesPath], {
+    cwd: repoRoot,
+  });
   console.log(`Bumped package versions to ${targetVersion}`);
   console.log(`Added release note ${entry.version} to ${path.relative(repoRoot, releaseNotesPath)}`);
   console.log(`Updated ${path.relative(repoRoot, changelogPath)}`);
