@@ -509,6 +509,9 @@ async function main() {
   await fs.writeFile(rootPackageJsonPath, `${JSON.stringify(rootPackageJson, null, 2)}\n`, 'utf8');
   await fs.writeFile(releaseNotesPath, updatedSource, 'utf8');
   await fs.writeFile(changelogPath, updatedChangelog, 'utf8');
+  // The generated entry must satisfy the same Prettier gate CI runs, so format
+  // it in place; a generated release is then format-clean by construction.
+  await execFileAsync('npx', ['prettier', '--write', releaseNotesPath], { cwd: repoRoot });
   console.log(`Bumped package versions to ${targetVersion}`);
   console.log(`Added release note ${entry.version} to ${path.relative(repoRoot, releaseNotesPath)}`);
   console.log(`Updated ${path.relative(repoRoot, changelogPath)}`);

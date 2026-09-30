@@ -72,9 +72,9 @@ Outstanding: preset preview; platform capability matrix; publishing flow; export
 
 ### Analysis and Evaluation — `partial`
 
-Shipped: validation by path and by draft, token optimization, pairwise similarity with optional LLM read. Instrumentation already exists too: every provider engine normalises per-call token usage (`promptTokens` / `completionTokens` / `totalTokens`), `testConnection` reports `latencyMs` per provider, the generation progress panel tracks elapsed time, and token estimation plus structured `APIError`s cover the text and error paths.
+Shipped: validation by path and by draft, token optimization, pairwise similarity with optional LLM read. Every provider engine normalises per-call token usage — streaming responses included — and every LLM call the web and desktop apps make (orchestrator runs, per-asset regeneration, batch, seeds, offspring seeds, lorebook packets, chat/refine, similarity reads) now writes a durable local usage record (provider, model, tokens, duration, outcome, asset/template/draft attribution) to IndexedDB in the browser or SQLite on desktop, capped at the newest 5,000 calls. The `/insights` page rolls those records up by provider, model, call type, asset, template, draft, and day with failure rates and durations.
 
-Outstanding — all aggregation and presentation rather than new instrumentation: golden sample packs; an evaluation dashboard that rolls the captured usage and latency up by asset, draft, template and provider; usage history; quality trend tracking; provider scorecards; regression benchmarks; review analytics; library-wide similarity clustering. Note the per-call `usage` figures are captured but no UI consumes them yet.
+Outstanding: golden sample packs; quality trend tracking across model changes and template revisions; provider scorecards beyond raw rollups; regression benchmarks; review analytics; library-wide similarity clustering; cost figures in currency; usage-record export.
 
 ### Collaboration and Sharing — `planned`
 

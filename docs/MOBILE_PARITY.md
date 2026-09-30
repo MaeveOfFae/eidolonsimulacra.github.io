@@ -104,6 +104,7 @@ These are staged or explicitly "planned" on web, so they must not be built for p
 - World canon / worldbook / universe-notes / canon-lock modules
 - Timeline event editing and the continuity assistant/checker
 - Theme Studio and Tokenizer authoring surfaces (web-only by design)
+- Usage Insights (`/insights`, shipped in the 4.1 web/desktop line): mobile records no usage and ships no Insights screen. The shared record contract in `packages/shared/src/usage/records.ts` is runtime-free, so a mobile store could adopt the same format later without forking it
 
 ## Recommended sequence
 

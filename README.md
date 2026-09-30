@@ -11,6 +11,7 @@ The repo is centered on a strict blueprint contract: start from one seed, genera
 - The mobile app now ships as an Expo workspace package with native navigation for generation, drafts, templates, settings, lineage, validation, blueprint browsing, comparison, and offspring flows.
 - Cross-device movement between mobile and PC uses the paired desktop companion link or local workspace bundles exported from the PC app or web workspace and imported on mobile.
 - Direct LLM provider integration from the client via the shared engine layer.
+- Usage Insights: every LLM call (generation, per-asset regeneration, seeds, offspring, lorebook, chat/refine, similarity) writes a local usage record — IndexedDB in the browser, SQLite on desktop — and the Insights page rolls tokens, durations, and failure rates up by provider, model, asset, template, draft, and day.
 - One built-in runtime template is currently loaded from `blueprints/templates/`:
   - `V2/V3 Card` with `system_prompt`, `post_history`, `character_sheet`, `intro_scene`, `creator_notes`, and `a1111`
 - Aksho reference material is checked in under `dev/official_aksho/`, but it is not currently loaded as a built-in browser template manifest. (`dev/` is git-ignored, so it only exists in checkouts that have it locally.)
