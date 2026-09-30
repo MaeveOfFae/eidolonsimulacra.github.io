@@ -25,6 +25,7 @@ export function buildDraftRevisionSnapshotState(draft: Draft): DraftRevisionSnap
     parent_drafts: draft.metadata.parent_drafts ? [...draft.metadata.parent_drafts] : undefined,
     connected_drafts: draft.metadata.connected_drafts ? [...draft.metadata.connected_drafts] : undefined,
     offspring_type: draft.metadata.offspring_type,
+    comparison_group: draft.metadata.comparison_group,
     custom_instructions: draft.metadata.custom_instructions,
     component_send_order: draft.metadata.component_send_order ? [...draft.metadata.component_send_order] : undefined,
     card_metadata: draft.metadata.card_metadata ? cloneSnapshotValue(draft.metadata.card_metadata) : undefined,

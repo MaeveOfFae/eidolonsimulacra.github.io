@@ -13,6 +13,7 @@ import type { TokenUsage } from '../llm/types';
 
 export type UsageCallKind =
   | 'orchestrator'
+  | 'comparison'
   | 'asset'
   | 'seed'
   | 'offspring-seed'
@@ -26,6 +27,7 @@ export type UsageCallStatus = 'ok' | 'error' | 'aborted';
 
 export const USAGE_CALL_KINDS: readonly UsageCallKind[] = [
   'orchestrator',
+  'comparison',
   'asset',
   'seed',
   'offspring-seed',

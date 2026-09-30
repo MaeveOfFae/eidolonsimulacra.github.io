@@ -198,6 +198,10 @@ function normalizeDraftRevisionSnapshotState(
   if (connectedDrafts) state.connected_drafts = connectedDrafts;
   if (typeof value.offspring_type === 'string') state.offspring_type = value.offspring_type;
   else if (typeof value.offspringType === 'string') state.offspring_type = value.offspringType;
+  const comparisonGroupSource = value.comparison_group ?? value.comparisonGroup;
+  if (typeof comparisonGroupSource === 'string' && comparisonGroupSource.trim()) {
+    state.comparison_group = comparisonGroupSource.trim();
+  }
   if (typeof value.custom_instructions === 'string') state.custom_instructions = value.custom_instructions;
   else if (typeof value.customInstructions === 'string') state.custom_instructions = value.customInstructions;
   const componentSendOrder =
@@ -663,6 +667,10 @@ export function coerceDraftMetadata(raw: unknown, fallbackSeed: string): DraftMe
   }
   if (typeof source.offspring_type === 'string') metadata.offspring_type = source.offspring_type;
   else if (typeof source.offspringType === 'string') metadata.offspring_type = source.offspringType;
+  const comparisonGroupSource = source.comparison_group ?? source.comparisonGroup;
+  if (typeof comparisonGroupSource === 'string' && comparisonGroupSource.trim()) {
+    metadata.comparison_group = comparisonGroupSource.trim();
+  }
   const cardMetadata = normalizeCardMetadata(source.card_metadata ?? source.cardMetadata);
   if (cardMetadata) {
     metadata.card_metadata = cardMetadata;

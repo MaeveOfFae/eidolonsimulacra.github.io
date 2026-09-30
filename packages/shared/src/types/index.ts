@@ -285,6 +285,7 @@ export interface DraftRevisionSnapshotState {
   review_annotations?: DraftReviewAnnotations;
   merge_provenance?: DraftMergeProvenance;
   merge_history?: DraftMergeHistoryEvent[];
+  comparison_group?: string;
   assets: Record<string, string>;
 }
 
@@ -320,6 +321,8 @@ export interface DraftMetadata {
   merge_provenance?: DraftMergeProvenance;
   merge_history?: DraftMergeHistoryEvent[];
   revision_snapshots?: DraftRevisionSnapshot[];
+  /** Shared id linking drafts produced by one multi-model comparison run. */
+  comparison_group?: string;
 }
 
 export interface Draft {

@@ -969,6 +969,7 @@ export class EidolonBrowserAPI {
         parent_drafts: state.parent_drafts,
         connected_drafts: state.connected_drafts,
         offspring_type: state.offspring_type,
+        comparison_group: state.comparison_group,
         custom_instructions: state.custom_instructions,
         component_send_order: state.component_send_order,
         card_metadata: state.card_metadata ? JSON.parse(JSON.stringify(state.card_metadata)) : undefined,

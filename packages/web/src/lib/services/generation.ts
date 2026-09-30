@@ -61,6 +61,10 @@ export interface ExtendedGenerateRequest extends GenerateRequest {
   blueprint_override?: string;
   additional_instructions?: string[];
   imported_source?: ImportedSourceContext;
+  /** Comparison runs override the configured model per candidate. */
+  model_override?: string;
+  /** Links candidate drafts from one comparison run. */
+  comparison_group?: string;
 }
 
 /**
@@ -135,13 +139,16 @@ export class GenerationService {
     );
   }
 
-  private static createConfiguredEngine() {
+  private static createConfiguredEngine(override?: { model: string }) {
     const apiKeys = configManager.getApiKeys();
     const config = configManager.getConfig();
-    const provider = this.resolveConfiguredProvider(config);
+    const model = override?.model ?? config.model;
+    // Comparison candidates resolve their provider from the model string so a
+    // single run can span providers without touching the global config.
+    const provider = override ? detectProviderFromModel(model) : this.resolveConfiguredProvider(config);
 
     return createEngine({
-      model: config.model,
+      model,
       apiKey: provider ? apiKeys[provider] : this.getFallbackApiKey(apiKeys),
       apiKeys,
       provider,
@@ -180,12 +187,14 @@ export class GenerationService {
       additional_instructions = [],
       connected_draft_ids = [],
       imported_source,
+      model_override,
+      comparison_group,
     } = request;
 
     yield { type: 'status', stage: 'initializing' };
 
     const config = configManager.getConfig();
-    const engine = this.createConfiguredEngine();
+    const engine = this.createConfiguredEngine(model_override ? { model: model_override } : undefined);
 
     // Get template assets
     const templateDefinition = template ? resolveTemplateDefinition(template) : undefined;
@@ -213,7 +222,10 @@ export class GenerationService {
     // Generate response
     const messages = formatMessages(systemPrompt, userPrompt);
     let fullContent = '';
-    const usageCapture = beginUsageCapture(engine, { kind: 'orchestrator', templateName: template });
+    const usageCapture = beginUsageCapture(engine, {
+      kind: comparison_group ? 'comparison' : 'orchestrator',
+      templateName: template,
+    });
     let engineUsage: TokenUsage | undefined;
 
     try {
@@ -284,13 +296,14 @@ export class GenerationService {
         review_id: reviewId,
         seed,
         mode,
-        model: config.model,
+        model: engine.getModel(),
         created: new Date().toISOString(),
         modified: new Date().toISOString(),
         favorite: false,
         template_name: template,
         character_name: characterName,
         connected_drafts: connectedDraftIds.length > 0 ? connectedDraftIds : undefined,
+        ...(comparison_group ? { comparison_group } : {}),
       },
       assets,
     };
