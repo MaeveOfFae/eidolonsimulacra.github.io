@@ -3,6 +3,23 @@
 Generated release history for the browser app.
 
 
+## v4.2.0 - 2026-09-30
+
+### Multi-model comparison runs
+
+This release adds a Compare page that sends one seed and template through up to four candidate models, saves each result as a linked draft, and lines the candidates up with their token and time cost from the local usage records introduced in 4.1.
+
+### Highlights
+- New Compare page runs one seed and template through 2-4 candidate models
+- Each candidate saves a normal draft linked by a comparison group
+- Results show status, tokens, and duration per candidate, drawn from local usage records
+- Any two candidates open in the existing side-by-side diff
+- Comparison calls appear as their own call type in Insights
+
+### Links
+- [Open generation](/generate)
+- [Review templates](/templates)
+- [Open the Help Center](/help)
 ## v4.1.0 - 2026-09-30
 
 ### Usage insights: every LLM call, measured locally
@@ -103,6 +120,7 @@ This release packages recent commits focused on platform, templates, and themes.
 ### Links
 - [Open generation](/generate)
 - [Review templates](/templates)
+
 
 
 

@@ -16,9 +16,29 @@ export interface ReleaseNoteEntry {
 // Generated and maintained by tools/generation/generate-release-notes.mjs.
 export const releaseNotes: ReleaseNoteEntry[] = [
   {
-    version: '4.1.0',
+    version: '4.2.0',
     releasedOn: '2026-09-30',
     badge: 'Current release',
+    headline: 'Multi-model comparison runs',
+    summary:
+      'This release adds a Compare page that sends one seed and template through up to four candidate models, saves each result as a linked draft, and lines the candidates up with their token and time cost from the local usage records introduced in 4.1.',
+    highlights: [
+      'New Compare page runs one seed and template through 2-4 candidate models',
+      'Each candidate saves a normal draft linked by a comparison group',
+      'Results show status, tokens, and duration per candidate, drawn from local usage records',
+      'Any two candidates open in the existing side-by-side diff',
+      'Comparison calls appear as their own call type in Insights',
+    ],
+    links: [
+      { label: 'Open generation', to: '/generate' },
+      { label: 'Review templates', to: '/templates' },
+      { label: 'Open the Help Center', to: '/help' },
+    ],
+  },
+  {
+    version: '4.1.0',
+    releasedOn: '2026-09-30',
+    badge: 'Previous release',
     headline: 'Usage insights: every LLM call, measured locally',
     summary:
       'This release turns per-call engine telemetry into an owned local record. Every LLM call the app makes now writes its tokens, duration, provider, model, and outcome to device storage, streaming responses included, and the new Insights page rolls that history up by provider, model, asset, template, draft, and day.',
