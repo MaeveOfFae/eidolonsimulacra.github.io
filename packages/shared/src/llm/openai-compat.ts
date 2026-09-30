@@ -9,6 +9,7 @@ import type {
   GenerateOptions,
   GenerateResult,
   StreamChunk,
+  TokenUsage,
   StreamGenerateOptions,
   LLMConnectionTestResult,
   LLMProvider,
@@ -217,6 +218,15 @@ function normalizeUsage(usage?: OpenAICompatUsage): GenerateResult['usage'] {
   };
 }
 
+/**
+ * Providers confirmed to accept OpenAI's `stream_options.include_usage`
+ * streaming parameter. Other OpenAI-compatible servers may reject the field,
+ * so it is not sent to them; usage is still parsed from any chunk that
+ * happens to carry it, and a 400 that names the parameter triggers one retry
+ * without it.
+ */
+const STREAM_USAGE_PROVIDERS = new Set<LLMProvider>(['openai', 'openrouter', 'deepseek']);
+
 export interface OpenAICompatConfig {
   provider: LLMProvider;
   model: string;
@@ -338,27 +348,42 @@ export class OpenAICompatEngine implements LLMEngine {
   async *generateStream(messages: LLMChatMessage[], options?: StreamGenerateOptions): AsyncIterable<StreamChunk> {
     const temperature = options?.temperature ?? this.config.temperature;
     const maxTokens = options?.maxTokens ?? this.config.maxTokens;
+    const requestStreamUsage = STREAM_USAGE_PROVIDERS.has(this.config.provider);
 
-    const response = await this.fetchWithTimeout(
-      this.config.baseUrl + '/chat/completions',
-      {
-        method: 'POST',
-        headers: this.buildHeaders(),
-        body: JSON.stringify({
-          model: this.config.model,
-          messages,
-          temperature,
-          max_tokens: maxTokens,
-          stream: true,
-          ...this.buildExtraParams(options),
-        }),
-      },
-      options?.signal,
-    );
+    const sendRequest = (includeUsage: boolean) =>
+      this.fetchWithTimeout(
+        this.config.baseUrl + '/chat/completions',
+        {
+          method: 'POST',
+          headers: this.buildHeaders(),
+          body: JSON.stringify({
+            model: this.config.model,
+            messages,
+            temperature,
+            max_tokens: maxTokens,
+            stream: true,
+            ...(includeUsage ? { stream_options: { include_usage: true } } : {}),
+            ...this.buildExtraParams(options),
+          }),
+        },
+        options?.signal,
+      );
+
+    let response = await sendRequest(requestStreamUsage);
 
     if (!response.ok) {
       const error = await this.parseErrorResponse(response);
-      throw new Error(error);
+
+      if (requestStreamUsage && response.status === 400 && /stream_options/i.test(error)) {
+        // Some OpenAI-compatible servers reject the usage parameter outright.
+        // Retry once without it so streaming still works there.
+        response = await sendRequest(false);
+        if (!response.ok) {
+          throw new Error(await this.parseErrorResponse(response));
+        }
+      } else {
+        throw new Error(error);
+      }
     }
 
     if (!response.body) {
@@ -368,6 +393,7 @@ export class OpenAICompatEngine implements LLMEngine {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
+    let streamUsage: TokenUsage | undefined;
 
     try {
       while (true) {
@@ -382,13 +408,20 @@ export class OpenAICompatEngine implements LLMEngine {
           if (line.startsWith('data: ')) {
             const dataStr = line.slice(6);
             if (dataStr.trim() === '[DONE]') {
-              yield { content: '', done: true };
+              yield { content: '', done: true, ...(streamUsage ? { usage: streamUsage } : {}) };
               return;
             }
 
             try {
-              const data = JSON.parse(dataStr);
-              const choice = data.choices?.[0] as OpenAICompatChoice | undefined;
+              const data = JSON.parse(dataStr) as OpenAICompatChatCompletionResponse;
+              // With usage-enabled streaming the final data chunk carries
+              // `usage` and empty `choices`; capture it so it can ride the
+              // DONE chunk.
+              const chunkUsage = normalizeUsage(data.usage);
+              if (chunkUsage) {
+                streamUsage = chunkUsage;
+              }
+              const choice = data.choices?.[0];
               const content = extractChoiceDeltaContent(choice);
               if (content) {
                 yield { content, done: false };

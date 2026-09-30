@@ -233,3 +233,86 @@ describe('openai-compatible engine testConnection', () => {
     expect(result).toMatchObject({ success: false, error: 'nope' });
   });
 });
+
+describe('openai-compatible engine streaming usage', () => {
+  it('requests usage for supported providers and surfaces it on the done chunk', async () => {
+    const calls = stubFetch(
+      sseResponse([
+        'data: {"choices":[{"delta":{"content":"Hi"}}]}\n\n',
+        'data: {"choices":[],"usage":{"prompt_tokens":5,"completion_tokens":6,"total_tokens":11}}\n\n',
+        'data: [DONE]\n\n',
+      ]),
+    );
+
+    const chunks: StreamChunk[] = [];
+    for await (const chunk of openAiEngine().generateStream(MESSAGES)) {
+      chunks.push(chunk);
+    }
+
+    expect(bodyOf(calls[0]!).stream_options).toEqual({ include_usage: true });
+    expect(chunks).toEqual([
+      { content: 'Hi', done: false },
+      { content: '', done: true, usage: { promptTokens: 5, completionTokens: 6, totalTokens: 11 } },
+    ]);
+  });
+
+  it('omits stream_options for providers without confirmed support but still parses usage', async () => {
+    const calls = stubFetch(
+      sseResponse([
+        'data: {"choices":[{"delta":{"content":"Hi"}}]}\n\n',
+        'data: {"choices":[],"usage":{"prompt_tokens":2,"completion_tokens":3,"total_tokens":5}}\n\n',
+        'data: [DONE]\n\n',
+      ]),
+    );
+
+    const chunks: StreamChunk[] = [];
+    for await (const chunk of createEngine({ provider: 'zai', model: 'glm-4-plus', apiKey: 'zk-test' }).generateStream(
+      MESSAGES,
+    )) {
+      chunks.push(chunk);
+    }
+
+    expect(bodyOf(calls[0]!).stream_options).toBeUndefined();
+    expect(chunks.at(-1)).toEqual({
+      content: '',
+      done: true,
+      usage: { promptTokens: 2, completionTokens: 3, totalTokens: 5 },
+    });
+  });
+
+  it('retries once without stream_options when the provider rejects the parameter', async () => {
+    let callIndex = 0;
+    const calls = stubFetch(() => {
+      callIndex += 1;
+      return callIndex === 1
+        ? jsonResponse({ error: { message: 'stream_options is not supported' } }, 400)
+        : sseResponse(['data: {"choices":[{"delta":{"content":"Hi"}}]}\n\n', 'data: [DONE]\n\n']);
+    });
+
+    const chunks: StreamChunk[] = [];
+    for await (const chunk of openAiEngine().generateStream(MESSAGES)) {
+      chunks.push(chunk);
+    }
+
+    expect(calls).toHaveLength(2);
+    expect(bodyOf(calls[0]!).stream_options).toEqual({ include_usage: true });
+    expect(bodyOf(calls[1]!).stream_options).toBeUndefined();
+    expect(chunks.at(-1)).toEqual({ content: '', done: true });
+  });
+
+  it('does not retry when the failure is unrelated to stream_options', async () => {
+    const calls = stubFetch(jsonResponse({ error: { message: 'invalid model' } }, 400));
+
+    const chunks: StreamChunk[] = [];
+    await expect(
+      (async () => {
+        for await (const chunk of openAiEngine().generateStream(MESSAGES)) {
+          chunks.push(chunk);
+        }
+      })(),
+    ).rejects.toThrow('invalid model');
+
+    expect(chunks).toEqual([]);
+    expect(calls).toHaveLength(1);
+  });
+});

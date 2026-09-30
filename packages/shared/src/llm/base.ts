@@ -41,6 +41,7 @@ export abstract class BaseLLMEngine {
       content: result.content,
       done: true,
       finishReason: result.finishReason,
+      usage: result.usage,
     };
   }
 

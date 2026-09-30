@@ -36,7 +36,6 @@
     "content:check": "node ./tools/generation/generate-mobile-local-content.mjs --check",
     "release:notes:check": "node ./tools/generation/check-release-notes-version.mjs",
     "check:placeholders": "node ./tools/generation/check-placeholders.mjs",
-    "build:shared": "pnpm --filter @char-gen/shared build",
     "docker:web": "docker compose -f docker-compose.web.yml up -d --build",
     "docker:web:down": "docker compose -f docker-compose.web.yml down",
     "lint": "turbo run lint",

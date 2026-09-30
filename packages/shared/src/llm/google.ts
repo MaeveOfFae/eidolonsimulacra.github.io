@@ -222,6 +222,16 @@ export class GoogleEngine extends BaseLLMEngine {
 
     const decoder = new TextDecoder();
     let buffer = '';
+    let lastUsageMetadata: GeminiUsageMetadata | undefined;
+
+    const streamUsage = () =>
+      lastUsageMetadata
+        ? {
+            promptTokens: lastUsageMetadata.promptTokenCount || 0,
+            completionTokens: lastUsageMetadata.candidatesTokenCount || 0,
+            totalTokens: lastUsageMetadata.totalTokenCount || 0,
+          }
+        : undefined;
 
     try {
       while (true) {
@@ -238,6 +248,13 @@ export class GoogleEngine extends BaseLLMEngine {
 
           try {
             const data = JSON.parse(trimmed.slice(6)) as GeminiStreamResponse;
+            // Gemini streams cumulative usage metadata, sometimes on chunks
+            // with no candidates at all; keep the latest so it can ride the
+            // finish chunk.
+            if (data.usageMetadata) {
+              lastUsageMetadata = data.usageMetadata;
+            }
+
             const candidate = data.candidates?.[0];
             if (!candidate) continue;
 
@@ -250,10 +267,12 @@ export class GoogleEngine extends BaseLLMEngine {
             }
 
             if (candidate.finishReason) {
+              const usage = streamUsage();
               yield {
                 content: '',
                 done: true,
                 finishReason: candidate.finishReason,
+                ...(usage ? { usage } : {}),
               };
             }
           } catch {

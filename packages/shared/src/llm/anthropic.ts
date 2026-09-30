@@ -25,13 +25,21 @@ interface AnthropicDelta {
   stop_reason?: string;
 }
 
+interface AnthropicStreamUsage {
+  input_tokens?: number;
+  output_tokens?: number;
+}
+
 interface AnthropicEvent {
   type: string;
   delta?: AnthropicDelta;
   message?: {
     content: Array<{ type: string; text: string }>;
     stop_reason?: string;
+    usage?: AnthropicStreamUsage;
   };
+  /** Present on `message_delta` events; carries the final output token count. */
+  usage?: AnthropicStreamUsage;
 }
 
 interface AnthropicResponse {
@@ -181,6 +189,17 @@ export class AnthropicEngine extends BaseLLMEngine {
 
     const decoder = new TextDecoder();
     let buffer = '';
+    let inputTokens: number | undefined;
+    let outputTokens: number | undefined;
+
+    const streamUsage = () =>
+      inputTokens !== undefined || outputTokens !== undefined
+        ? {
+            promptTokens: inputTokens ?? 0,
+            completionTokens: outputTokens ?? 0,
+            totalTokens: (inputTokens ?? 0) + (outputTokens ?? 0),
+          }
+        : undefined;
 
     try {
       while (true) {
@@ -198,6 +217,17 @@ export class AnthropicEngine extends BaseLLMEngine {
           try {
             const event = JSON.parse(trimmed.slice(6)) as AnthropicEvent;
 
+            // Input tokens only arrive in `message_start`; keep them until the
+            // final events so they can ride the done chunk.
+            if (event.type === 'message_start' && event.message?.usage) {
+              if (typeof event.message.usage.input_tokens === 'number') {
+                inputTokens = event.message.usage.input_tokens;
+              }
+              if (typeof event.message.usage.output_tokens === 'number') {
+                outputTokens = event.message.usage.output_tokens;
+              }
+            }
+
             if (event.type === 'content_block_delta' && event.delta?.type === 'text_delta' && event.delta.text) {
               yield {
                 content: event.delta.text,
@@ -205,18 +235,28 @@ export class AnthropicEngine extends BaseLLMEngine {
               };
             }
 
-            if (event.type === 'message_delta' && event.delta?.stop_reason) {
-              yield {
-                content: '',
-                done: true,
-                finishReason: event.delta.stop_reason,
-              };
+            if (event.type === 'message_delta') {
+              if (typeof event.usage?.output_tokens === 'number') {
+                outputTokens = event.usage.output_tokens;
+              }
+
+              if (event.delta?.stop_reason) {
+                const usage = streamUsage();
+                yield {
+                  content: '',
+                  done: true,
+                  finishReason: event.delta.stop_reason,
+                  ...(usage ? { usage } : {}),
+                };
+              }
             }
 
             if (event.type === 'message_stop') {
+              const usage = streamUsage();
               yield {
                 content: '',
                 done: true,
+                ...(usage ? { usage } : {}),
               };
             }
           } catch {

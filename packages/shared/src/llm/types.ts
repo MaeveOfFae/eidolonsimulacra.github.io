@@ -31,20 +31,30 @@ export interface GenerateOptions {
   signal?: AbortSignal;
 }
 
+/**
+ * Normalised token usage reported by the provider for a single call.
+ */
+export interface TokenUsage {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+}
+
 export interface GenerateResult {
   content: string;
   finishReason?: string;
-  usage?: {
-    promptTokens: number;
-    completionTokens: number;
-    totalTokens: number;
-  };
+  usage?: TokenUsage;
 }
 
 export interface StreamChunk {
   content: string;
   done: boolean;
   finishReason?: string;
+  /**
+   * Present on the final (`done: true`) chunk when the provider reports usage
+   * during streaming. Providers that do not report it leave this undefined.
+   */
+  usage?: TokenUsage;
 }
 
 export interface StreamGenerateOptions extends GenerateOptions {
