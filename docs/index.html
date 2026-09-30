@@ -845,7 +845,7 @@ footer {
     issues:  'https://github.com/MaeveOfFae/eidolonsimulacra.github.io/issues',
     support: 'https://ko-fi.com/maeveoffae',
     contact: 'mailto:[EMAIL]',
-    version: 'v4.0.0'
+    version: 'v4.1.0'
   };
 </script>
 
@@ -862,7 +862,7 @@ footer {
         <circle cx="7.5" cy="16" r="1.7" fill="var(--accent)"/>
       </svg>
       <span class="brand-name">Eidolon Simulacra</span>
-      <span class="brand-version">v4.0.0</span>
+      <span class="brand-version">v4.1.0</span>
     </a>
 
     <div class="nav-links">
@@ -1171,16 +1171,15 @@ pnpm dev:web">Copy</button>
     <div class="wrap release">
       <div>
         <p class="kicker">Current build</p>
-        <h2>v4.0.0 — Mobile parity tiers 1 and 2, on a shared content layer</h2>
+        <h2>v4.1.0 — Usage insights: every LLM call, measured locally</h2>
         <p class="date">2026-09-29 · release notes live in the app under About → What's New</p>
       </div>
       <ul class="rel-list">
-        <li>Mobile draft archiving, lorebook generation, and PNG card export</li>
-        <li>Release notes and the starter guide rendering from shared data on every surface</li>
-        <li>27 builtin themes extracted to shared; every mobile screen retints live</li>
-        <li>Help Center and guided tours on mobile, with persisted tour progress</li>
-        <li>Info and legal pages on mobile, generated from the repository documents</li>
-        <li>Worldbuilding recorded as desktop-only, closing parity Tier 3</li>
+        <li>Every LLM call — generation, regeneration, seeds, lorebook, chat, similarity — writes a local usage record</li>
+        <li>Streaming responses report real token usage from OpenAI, OpenRouter, DeepSeek, Anthropic, and Google</li>
+        <li>New Insights page rolls usage up by provider, model, asset, template, draft, and day</li>
+        <li>Usage history survives restarts in the browser (IndexedDB) and desktop (SQLite) apps</li>
+        <li>Records stay on-device, capped at the newest 5,000 calls, with a one-click clear</li>
       </ul>
     </div>
   </section>
