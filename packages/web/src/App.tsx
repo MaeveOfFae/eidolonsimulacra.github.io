@@ -23,6 +23,7 @@ const Templates = lazy(() => import('./components/templates/Templates'));
 const Lineage = lazy(() => import('./components/lineage/Lineage'));
 const Similarity = lazy(() => import('./components/similarity/Similarity'));
 const Insights = lazy(() => import('./components/insights/Insights'));
+const Compare = lazy(() => import('./components/compare/Compare'));
 const Offspring = lazy(() => import('./components/offspring/Offspring'));
 const Worlds = lazy(() => import('./components/worlds/Worlds'));
 const Timelines = lazy(() => import('./components/timelines/Timelines'));
@@ -109,6 +110,7 @@ export default function App() {
           <Route path="/lineage" element={<Lineage />} />
           <Route path="/similarity" element={<Similarity />} />
           <Route path="/insights" element={<Insights />} />
+          <Route path="/compare" element={<Compare />} />
           <Route path="/offspring" element={<Offspring />} />
           <Route path="/worlds" element={<Worlds />} />
           <Route path="/timelines" element={<Timelines />} />

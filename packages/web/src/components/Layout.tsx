@@ -22,6 +22,7 @@ import {
   Download,
   Heart,
   BarChart3,
+  GitCompare,
 } from 'lucide-react';
 import { PROJECT_SUPPORT_URL } from '@char-gen/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -43,6 +44,7 @@ interface LayoutProps {
 const navItems = [
   { path: '/', label: 'Home', icon: Home },
   { path: '/generate', label: 'Generate', icon: Sparkles },
+  { path: '/compare', label: 'Compare', icon: GitCompare },
   { path: '/drafts', label: 'Library', icon: FolderOpen },
   { path: '/templates', label: 'Templates', icon: FileText },
   { path: '/optimize', label: 'Optimize', icon: ScissorsLineDashed },
@@ -73,6 +75,7 @@ function resolveWorkspaceTitle(pathname: string, helpTitle?: string): string {
       ['/drafts', 'Library'],
       ['/seed-generator', 'Seed Generator'],
       ['/generate', 'Generate'],
+      ['/compare', 'Compare'],
       ['/validation', 'Validation'],
       ['/optimize', 'Token Optimization'],
       ['/batch', 'Batch'],

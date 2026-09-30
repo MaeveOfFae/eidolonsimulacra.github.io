@@ -1108,6 +1108,28 @@ export const pageHelpEntries: PageHelpEntry[] = [
     ],
     relatedTopicIds: ['api-key-setup', 'common-blockers'],
   },
+  {
+    id: 'compare',
+    match: '/compare',
+    matchMode: 'exact',
+    title: 'Compare models help',
+    summary:
+      'Compare runs one seed and template through up to four candidate models and lines the resulting drafts up with their token and time cost.',
+    keyActions: [
+      'Configure an API key for every candidate model provider in Settings before starting a run.',
+      'Pick between two and four candidate models; each becomes a normal draft linked to the comparison group.',
+      'Use the results table and the side-by-side diff to choose which candidate to keep refining.',
+    ],
+    pitfalls: [
+      'Candidates without a configured provider key fail individually; the rest of the run continues.',
+      'Comparison runs are not resumable yet — closing the page stops the remaining candidates.',
+    ],
+    actions: [
+      { label: 'Open Settings', to: '/settings' },
+      { label: 'Open Generate', to: '/generate' },
+    ],
+    relatedTopicIds: ['api-key-setup', 'common-blockers'],
+  },
 ];
 
 export const routeCoverageManifest: RouteCoverageManifestEntry[] = [
@@ -1129,6 +1151,7 @@ export const routeCoverageManifest: RouteCoverageManifestEntry[] = [
   { route: '/themes', pageHelpId: 'themes', coverage: 'complete' },
   { route: '/tokenizer', pageHelpId: 'tokenizer-theme', coverage: 'complete' },
   { route: '/insights', pageHelpId: 'insights', coverage: 'complete' },
+  { route: '/compare', pageHelpId: 'compare', coverage: 'complete' },
   { route: '/settings', pageHelpId: 'settings', coverage: 'complete' },
   { route: '/data', pageHelpId: 'data', coverage: 'complete' },
   { route: '/about', pageHelpId: 'about', coverage: 'complete' },
