@@ -1840,6 +1840,10 @@ export class EidolonBrowserAPI {
     return UsageStorage.summarize(options);
   }
 
+  getComparisonGroupDrafts(groupId: string): Promise<DraftMetadata[]> {
+    return DraftStorage.getComparisonGroupDrafts(groupId);
+  }
+
   getUsageRecords(filter: UsageFilter = {}): Promise<UsageRecord[]> {
     return UsageStorage.list(filter);
   }

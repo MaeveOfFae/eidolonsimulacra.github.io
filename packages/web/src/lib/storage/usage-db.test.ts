@@ -111,7 +111,7 @@ describe('usage store schema upgrade', () => {
     const upgraded = new DraftDatabase(dbName);
     await upgraded.open();
 
-    expect(upgraded.verno).toBe(2);
+    expect(upgraded.verno).toBeGreaterThanOrEqual(2);
     expect(await upgraded.table('drafts').count()).toBe(1);
     expect(await upgraded.table('usageRecords').count()).toBe(0);
 

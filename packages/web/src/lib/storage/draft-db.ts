@@ -21,6 +21,7 @@ import {
   normalizeAssetRecord,
   coerceDraftMetadata as coerceSharedDraftMetadata,
   MAX_CONNECTED_DRAFT_REFERENCES,
+  normalizeComparisonGroupId,
   parseDraftImportText,
 } from '@char-gen/shared';
 import { isDesktopRuntime } from '../runtime.js';
@@ -105,6 +106,14 @@ export const DRAFT_DB_SCHEMA = {
  */
 export const USAGE_DB_SCHEMA = {
   usageRecords: '++id, timestamp, provider, model, kind, status, draftId, templateName, assetName',
+} as const;
+
+/**
+ * version 3 (additive): index for multi-model comparison groups.
+ */
+export const COMPARISON_DB_SCHEMA = {
+  drafts:
+    '++id, reviewId, [metadata.character_name], createdAt, updatedAt, metadata.favorite, metadata.mode, metadata.genre, metadata.comparison_group',
 } as const;
 
 interface DesktopDraftStore {
@@ -289,6 +298,7 @@ interface SqlDraftRecordRow {
   characterName?: string | null;
   templateName?: string | null;
   offspringType?: string | null;
+  comparisonGroup?: string | null;
   cardMetadataJson?: string | null;
   reviewAnnotationsJson?: string | null;
   mergeProvenanceJson?: string | null;
@@ -488,6 +498,7 @@ async function ensureDesktopDraftSchema(database: DraftSqlDatabase): Promise<voi
       character_name TEXT,
       template_name TEXT,
       offspring_type TEXT,
+      comparison_group TEXT,
       card_metadata_json TEXT,
       review_annotations_json TEXT,
       merge_provenance_json TEXT,
@@ -571,6 +582,7 @@ async function ensureDesktopDraftSchema(database: DraftSqlDatabase): Promise<voi
   await ensureDesktopDraftColumn(database, 'merge_provenance_json', 'TEXT');
   await ensureDesktopDraftColumn(database, 'merge_history_json', 'TEXT');
   await ensureDesktopDraftColumn(database, 'revision_snapshots_json', 'TEXT');
+  await ensureDesktopDraftColumn(database, 'comparison_group', 'TEXT');
 }
 
 async function getDesktopDraftDatabase(): Promise<DraftSqlDatabase> {
@@ -746,6 +758,8 @@ function normalizeSqlDraftRecordRow(
   if (typeof row.templateName === 'string' && row.templateName.length > 0) metadata.template_name = row.templateName;
   if (typeof row.offspringType === 'string' && row.offspringType.length > 0)
     metadata.offspring_type = row.offspringType;
+  if (typeof row.comparisonGroup === 'string' && row.comparisonGroup.length > 0)
+    metadata.comparison_group = row.comparisonGroup;
   const cardMetadata = parseCardMetadataJson(row.cardMetadataJson);
   if (cardMetadata) metadata.card_metadata = cardMetadata;
   const reviewAnnotations = parseReviewAnnotationsJson(row.reviewAnnotationsJson);
@@ -826,7 +840,7 @@ async function persistDesktopDraftStore(store: DesktopDraftStore): Promise<void>
 
     for (const draft of store.drafts) {
       await database.execute(
-        'INSERT INTO draft_records (review_id, seed, favorite, mode, model, created_iso, modified_iso, genre, notes, custom_instructions, character_name, template_name, offspring_type, card_metadata_json, review_annotations_json, merge_provenance_json, merge_history_json, revision_snapshots_json, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)',
+        'INSERT INTO draft_records (review_id, seed, favorite, mode, model, created_iso, modified_iso, genre, notes, custom_instructions, character_name, template_name, offspring_type, card_metadata_json, review_annotations_json, merge_provenance_json, merge_history_json, revision_snapshots_json, comparison_group, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)',
         [
           draft.reviewId,
           draft.metadata.seed,
@@ -852,6 +866,7 @@ async function persistDesktopDraftStore(store: DesktopDraftStore): Promise<void>
           draft.metadata.revision_snapshots
             ? JSON.stringify(cloneRevisionSnapshots(draft.metadata.revision_snapshots))
             : null,
+          draft.metadata.comparison_group ?? null,
           draft.createdAt,
           draft.updatedAt,
         ],
@@ -923,7 +938,7 @@ async function initializeDesktopDraftStore(): Promise<void> {
 
   try {
     const draftRows = await database.select<SqlDraftRecordRow>(
-      'SELECT review_id AS reviewId, seed, favorite, mode, model, created_iso AS createdIso, modified_iso AS modifiedIso, genre, notes, custom_instructions AS customInstructions, character_name AS characterName, template_name AS templateName, offspring_type AS offspringType, card_metadata_json AS cardMetadataJson, review_annotations_json AS reviewAnnotationsJson, merge_provenance_json AS mergeProvenanceJson, merge_history_json AS mergeHistoryJson, revision_snapshots_json AS revisionSnapshotsJson, created_at AS createdAt, updated_at AS updatedAt FROM draft_records',
+      'SELECT review_id AS reviewId, seed, favorite, mode, model, created_iso AS createdIso, modified_iso AS modifiedIso, genre, notes, custom_instructions AS customInstructions, character_name AS characterName, template_name AS templateName, offspring_type AS offspringType, comparison_group AS comparisonGroup, card_metadata_json AS cardMetadataJson, review_annotations_json AS reviewAnnotationsJson, merge_provenance_json AS mergeProvenanceJson, merge_history_json AS mergeHistoryJson, revision_snapshots_json AS revisionSnapshotsJson, created_at AS createdAt, updated_at AS updatedAt FROM draft_records',
     );
     const assetRowsForDrafts = await database.select<SqlDraftAssetRow>(
       'SELECT review_id AS reviewId, asset_name AS assetName, content, updated_at AS updatedAt FROM draft_assets',
@@ -1130,6 +1145,8 @@ export class DraftDatabase extends Dexie {
     this.version(1).stores(DRAFT_DB_SCHEMA);
     // version 2: usage telemetry (Insights surface)
     this.version(2).stores(USAGE_DB_SCHEMA);
+    // version 3: comparison-group index (multi-model runs)
+    this.version(3).stores(COMPARISON_DB_SCHEMA);
   }
 }
 
@@ -1235,6 +1252,36 @@ async function migrateLegacyDraftDatabase(): Promise<void> {
 export class DraftStorage {
   private static async ensureReady(): Promise<void> {
     await ensureDraftStorageReady();
+  }
+
+  /**
+   * Drafts that belong to one multi-model comparison group, oldest first.
+   */
+  static async getComparisonGroupDrafts(groupId: string): Promise<DraftMetadata[]> {
+    const normalized = normalizeComparisonGroupId(groupId);
+    if (!normalized) {
+      return [];
+    }
+
+    if (isDesktopDraftStoreEnabled()) {
+      try {
+        return await withDesktopDraftStore((store) =>
+          store.drafts
+            .filter((entry) => entry.metadata.comparison_group === normalized)
+            .sort((left, right) => left.createdAt - right.createdAt)
+            .map((entry) => draftEntityToDraft(entry).metadata),
+        );
+      } catch (error) {
+        throw toDraftStorageError(error, 'desktop-app-data');
+      }
+    }
+
+    await this.ensureReady();
+    const entities = await db.drafts.where('metadata.comparison_group').equals(normalized).toArray();
+
+    return entities
+      .sort((left, right) => left.createdAt - right.createdAt)
+      .map((entry) => draftEntityToDraft(entry).metadata);
   }
 
   /**

@@ -56,6 +56,7 @@ type ApiMethodName =
   | 'generateSeeds'
   | 'getBlueprint'
   | 'getBlueprints'
+  | 'getComparisonGroupDrafts'
   | 'getConfig'
   | 'getConfigSnapshot'
   | 'getDraft'
