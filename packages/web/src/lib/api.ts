@@ -57,6 +57,10 @@ import {
   type TimelineEventRecord,
   type TimelineRecord,
   type UpdateTemplateRequest,
+  type UsageFilter,
+  type UsageRecord,
+  type UsageSummarizeOptions,
+  type UsageSummary,
   type ValidatePathRequest,
   type ValidationResponse,
   type WorldCharacterDraftLinkRecord,
@@ -101,6 +105,7 @@ import {
   updateLocalWorldRelationship,
 } from './storage/desktop-lore-db.js';
 import { DraftStorage, type AssetWriteOptions } from './storage/draft-db.js';
+import { UsageStorage } from './storage/usage-db.js';
 import { GenerationService } from './services/generation.js';
 import { appendDraftRevisionSnapshot, buildDraftRevisionSnapshot } from './drafts/revision-snapshots.js';
 import {
@@ -1828,6 +1833,18 @@ export class EidolonBrowserAPI {
       }
       emit('complete', { content: fullContent });
     });
+  }
+
+  getUsageSummary(options: UsageSummarizeOptions = {}): Promise<UsageSummary> {
+    return UsageStorage.summarize(options);
+  }
+
+  getUsageRecords(filter: UsageFilter = {}): Promise<UsageRecord[]> {
+    return UsageStorage.list(filter);
+  }
+
+  clearUsageRecords(): Promise<void> {
+    return UsageStorage.clear();
   }
 }
 

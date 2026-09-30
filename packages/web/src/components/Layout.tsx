@@ -21,6 +21,7 @@ import {
   Palette,
   Download,
   Heart,
+  BarChart3,
 } from 'lucide-react';
 import { PROJECT_SUPPORT_URL } from '@char-gen/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -48,6 +49,7 @@ const navItems = [
   { path: '/blueprints', label: 'Blueprints', icon: FileJson },
   { path: '/themes', label: 'Themes', icon: Palette },
   { path: '/tokenizer', label: 'Tokenizer', icon: Palette },
+  { path: '/insights', label: 'Insights', icon: BarChart3 },
   { path: '/download', label: 'Download', icon: Download },
   { path: '/settings', label: 'Settings', icon: Settings },
 ];
@@ -85,6 +87,7 @@ function resolveWorkspaceTitle(pathname: string, helpTitle?: string): string {
       ['/events', 'Events'],
       ['/lineage', 'Lineage'],
       ['/similarity', 'Similarity'],
+      ['/insights', 'Insights'],
       ['/offspring', 'Offspring'],
       ['/data', 'Data Manager'],
       ['/about', 'About'],

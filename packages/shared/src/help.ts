@@ -1086,6 +1086,28 @@ export const pageHelpEntries: PageHelpEntry[] = [
     ],
     relatedTopicIds: ['common-blockers'],
   },
+  {
+    id: 'insights',
+    match: '/insights',
+    matchMode: 'exact',
+    title: 'Insights help',
+    summary:
+      'Insights shows what your LLM calls cost in tokens and time, grouped by provider, model, call type, asset, template, draft, and day, from records stored locally on this device.',
+    keyActions: [
+      'Check provider and model groups first to spot expensive or slow combinations.',
+      'Use asset and template groups to find which generation steps consume the most tokens.',
+      'Clear the local record history when you no longer need it; records never leave this device.',
+    ],
+    pitfalls: [
+      'Token counts only appear when the provider reports usage for the call.',
+      'Records are capped at the most recent 5,000 calls on this device and are not synced across devices.',
+    ],
+    actions: [
+      { label: 'Open Settings', to: '/settings' },
+      { label: 'Open Help Center', to: '/help' },
+    ],
+    relatedTopicIds: ['api-key-setup', 'common-blockers'],
+  },
 ];
 
 export const routeCoverageManifest: RouteCoverageManifestEntry[] = [
@@ -1106,6 +1128,7 @@ export const routeCoverageManifest: RouteCoverageManifestEntry[] = [
   { route: '/offspring', pageHelpId: 'offspring', coverage: 'complete' },
   { route: '/themes', pageHelpId: 'themes', coverage: 'complete' },
   { route: '/tokenizer', pageHelpId: 'tokenizer-theme', coverage: 'complete' },
+  { route: '/insights', pageHelpId: 'insights', coverage: 'complete' },
   { route: '/settings', pageHelpId: 'settings', coverage: 'complete' },
   { route: '/data', pageHelpId: 'data', coverage: 'complete' },
   { route: '/about', pageHelpId: 'about', coverage: 'complete' },
