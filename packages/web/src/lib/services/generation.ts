@@ -14,12 +14,14 @@ import type {
   SeedGenerationRequest,
   ChatMessage,
   LLMProvider,
+  TokenUsage,
 } from '@char-gen/shared';
 import { detectProviderFromModel, parseBlueprintOutput as parseGeneratedBlueprintOutput } from '@char-gen/shared';
 import { createEngine } from '../llm/factory.js';
 import { stripReasoningArtifacts, unwrapSingleCodeFence } from '../content-format.js';
 import { configManager } from '../config/manager.js';
 import { DraftStorage } from '../storage/draft-db.js';
+import { beginUsageCapture, errorMessageOf } from './usage-capture.js';
 import {
   buildOrchestratorPrompt,
   buildAssetPrompt,
@@ -211,38 +213,52 @@ export class GenerationService {
     // Generate response
     const messages = formatMessages(systemPrompt, userPrompt);
     let fullContent = '';
+    const usageCapture = beginUsageCapture(engine, { kind: 'orchestrator', templateName: template });
+    let engineUsage: TokenUsage | undefined;
 
-    if (stream) {
-      const streamState = this.createStreamDisplayState();
-      for await (const chunk of engine.generateStream(messages, { signal: options.signal })) {
-        if (chunk.content) {
-          const visibleChunk = this.appendVisibleChunk(streamState, chunk.content);
-          fullContent = streamState.visibleContent;
-          if (visibleChunk) {
+    try {
+      if (stream) {
+        const streamState = this.createStreamDisplayState();
+        for await (const chunk of engine.generateStream(messages, { signal: options.signal })) {
+          if (chunk.content) {
+            const visibleChunk = this.appendVisibleChunk(streamState, chunk.content);
+            fullContent = streamState.visibleContent;
+            if (visibleChunk) {
+              yield {
+                type: 'chunk',
+                content: visibleChunk,
+              };
+            }
+          }
+          if (chunk.done) {
+            engineUsage = chunk.usage;
+            break;
+          }
+        }
+
+        if (!fullContent.trim() && !options.signal?.aborted) {
+          const fallbackResult = await engine.generate(messages, { signal: options.signal });
+          fullContent = this.sanitizeModelContent(fallbackResult.content);
+          engineUsage = fallbackResult.usage ?? engineUsage;
+          if (fullContent) {
             yield {
               type: 'chunk',
-              content: visibleChunk,
+              content: fullContent,
             };
           }
         }
-        if (chunk.done) {
-          break;
-        }
+      } else {
+        const result = await engine.generate(messages, { signal: options.signal });
+        fullContent = this.sanitizeModelContent(result.content);
+        engineUsage = result.usage;
       }
-
-      if (!fullContent.trim() && !options.signal?.aborted) {
-        const fallbackResult = await engine.generate(messages, { signal: options.signal });
-        fullContent = this.sanitizeModelContent(fallbackResult.content);
-        if (fullContent) {
-          yield {
-            type: 'chunk',
-            content: fullContent,
-          };
-        }
-      }
-    } else {
-      const result = await engine.generate(messages, { signal: options.signal });
-      fullContent = this.sanitizeModelContent(result.content);
+    } catch (error) {
+      usageCapture.finish({
+        status: options.signal?.aborted ? 'aborted' : 'error',
+        usage: engineUsage,
+        errorMessage: errorMessageOf(error),
+      });
+      throw error;
     }
 
     yield { type: 'status', stage: 'parsing' };
@@ -280,6 +296,12 @@ export class GenerationService {
     };
 
     await DraftStorage.saveDraft(draft);
+
+    usageCapture.finish({
+      status: options.signal?.aborted ? 'aborted' : 'ok',
+      usage: engineUsage,
+      draftId: reviewId,
+    });
 
     yield {
       type: 'complete',
@@ -356,34 +378,57 @@ export class GenerationService {
     // Generate response
     const messages = formatMessages(systemPrompt, userPrompt);
     let fullContent = '';
+    const usageCapture = beginUsageCapture(engine, {
+      kind: 'asset',
+      templateName: request.template,
+      assetName: asset_name,
+    });
+    let engineUsage: TokenUsage | undefined;
 
-    if (stream) {
-      const streamState = this.createStreamDisplayState();
-      for await (const chunk of engine.generateStream(messages, { signal: options.signal })) {
-        if (chunk.content) {
-          const visibleChunk = this.appendVisibleChunk(streamState, chunk.content);
-          fullContent = streamState.visibleContent;
-          if (visibleChunk) {
-            yield {
-              type: 'chunk',
-              content: visibleChunk,
-              asset: asset_name,
-            };
+    try {
+      if (stream) {
+        const streamState = this.createStreamDisplayState();
+        for await (const chunk of engine.generateStream(messages, { signal: options.signal })) {
+          if (chunk.content) {
+            const visibleChunk = this.appendVisibleChunk(streamState, chunk.content);
+            fullContent = streamState.visibleContent;
+            if (visibleChunk) {
+              yield {
+                type: 'chunk',
+                content: visibleChunk,
+                asset: asset_name,
+              };
+            }
+          }
+          if (chunk.done) {
+            engineUsage = chunk.usage;
+            break;
           }
         }
-        if (chunk.done) {
-          break;
-        }
-      }
 
-      if (!fullContent.trim() && !options.signal?.aborted) {
-        const fallbackResult = await engine.generate(messages, { signal: options.signal });
-        fullContent = this.sanitizeModelContent(fallbackResult.content);
+        if (!fullContent.trim() && !options.signal?.aborted) {
+          const fallbackResult = await engine.generate(messages, { signal: options.signal });
+          fullContent = this.sanitizeModelContent(fallbackResult.content);
+          engineUsage = fallbackResult.usage ?? engineUsage;
+        }
+      } else {
+        const result = await engine.generate(messages, { signal: options.signal });
+        fullContent = this.sanitizeModelContent(result.content);
+        engineUsage = result.usage;
       }
-    } else {
-      const result = await engine.generate(messages, { signal: options.signal });
-      fullContent = this.sanitizeModelContent(result.content);
+    } catch (error) {
+      usageCapture.finish({
+        status: options.signal?.aborted ? 'aborted' : 'error',
+        usage: engineUsage,
+        errorMessage: errorMessageOf(error),
+      });
+      throw error;
     }
+
+    usageCapture.finish({
+      status: options.signal?.aborted ? 'aborted' : 'ok',
+      usage: engineUsage,
+    });
 
     yield {
       type: 'asset',
@@ -440,33 +485,51 @@ export class GenerationService {
     const messages = formatMessages(systemPrompt, userPrompt);
     let fullContent = '';
     const streamState = this.createStreamDisplayState();
+    const usageCapture = beginUsageCapture(engine, { kind: 'offspring-seed', templateName: request.template });
+    let engineUsage: TokenUsage | undefined;
 
-    for await (const chunk of engine.generateStream(messages, { signal: options.signal })) {
-      if (chunk.content) {
-        const visibleChunk = this.appendVisibleChunk(streamState, chunk.content);
-        fullContent = streamState.visibleContent;
-        if (visibleChunk) {
+    try {
+      for await (const chunk of engine.generateStream(messages, { signal: options.signal })) {
+        if (chunk.content) {
+          const visibleChunk = this.appendVisibleChunk(streamState, chunk.content);
+          fullContent = streamState.visibleContent;
+          if (visibleChunk) {
+            yield {
+              type: 'chunk',
+              content: visibleChunk,
+            };
+          }
+        }
+        if (chunk.done) {
+          engineUsage = chunk.usage;
+          break;
+        }
+      }
+
+      if (!fullContent.trim() && !options.signal?.aborted) {
+        const fallbackResult = await engine.generate(messages, { signal: options.signal });
+        fullContent = this.sanitizeModelContent(fallbackResult.content);
+        engineUsage = fallbackResult.usage ?? engineUsage;
+        if (fullContent) {
           yield {
             type: 'chunk',
-            content: visibleChunk,
+            content: fullContent,
           };
         }
       }
-      if (chunk.done) {
-        break;
-      }
+    } catch (error) {
+      usageCapture.finish({
+        status: options.signal?.aborted ? 'aborted' : 'error',
+        usage: engineUsage,
+        errorMessage: errorMessageOf(error),
+      });
+      throw error;
     }
 
-    if (!fullContent.trim() && !options.signal?.aborted) {
-      const fallbackResult = await engine.generate(messages, { signal: options.signal });
-      fullContent = this.sanitizeModelContent(fallbackResult.content);
-      if (fullContent) {
-        yield {
-          type: 'chunk',
-          content: fullContent,
-        };
-      }
-    }
+    usageCapture.finish({
+      status: options.signal?.aborted ? 'aborted' : 'ok',
+      usage: engineUsage,
+    });
 
     const offspringSeed = this.sanitizeGeneratedSeed(fullContent);
 
@@ -608,33 +671,51 @@ export class GenerationService {
     const messages = formatMessages(systemPrompt, userPrompt);
     let fullContent = '';
     const streamState = this.createStreamDisplayState();
+    const usageCapture = beginUsageCapture(engine, { kind: 'lorebook' });
+    let engineUsage: TokenUsage | undefined;
 
-    for await (const chunk of engine.generateStream(messages, { signal: options.signal })) {
-      if (chunk.content) {
-        const visibleChunk = this.appendVisibleChunk(streamState, chunk.content);
-        fullContent = streamState.visibleContent;
-        if (visibleChunk) {
+    try {
+      for await (const chunk of engine.generateStream(messages, { signal: options.signal })) {
+        if (chunk.content) {
+          const visibleChunk = this.appendVisibleChunk(streamState, chunk.content);
+          fullContent = streamState.visibleContent;
+          if (visibleChunk) {
+            yield {
+              type: 'chunk',
+              content: visibleChunk,
+            };
+          }
+        }
+        if (chunk.done) {
+          engineUsage = chunk.usage;
+          break;
+        }
+      }
+
+      if (!fullContent.trim() && !options.signal?.aborted) {
+        const fallbackResult = await engine.generate(messages, { signal: options.signal });
+        fullContent = this.sanitizeModelContent(fallbackResult.content);
+        engineUsage = fallbackResult.usage ?? engineUsage;
+        if (fullContent) {
           yield {
             type: 'chunk',
-            content: visibleChunk,
+            content: fullContent,
           };
         }
       }
-      if (chunk.done) {
-        break;
-      }
+    } catch (error) {
+      usageCapture.finish({
+        status: options.signal?.aborted ? 'aborted' : 'error',
+        usage: engineUsage,
+        errorMessage: errorMessageOf(error),
+      });
+      throw error;
     }
 
-    if (!fullContent.trim() && !options.signal?.aborted) {
-      const fallbackResult = await engine.generate(messages, { signal: options.signal });
-      fullContent = this.sanitizeModelContent(fallbackResult.content);
-      if (fullContent) {
-        yield {
-          type: 'chunk',
-          content: fullContent,
-        };
-      }
-    }
+    usageCapture.finish({
+      status: options.signal?.aborted ? 'aborted' : 'ok',
+      usage: engineUsage,
+    });
 
     yield {
       type: 'complete',
@@ -677,15 +758,23 @@ export class GenerationService {
 
     // Generate seeds
     const messages = formatMessages(systemPrompt, userPrompt);
-    const result = await engine.generate(messages);
+    const usageCapture = beginUsageCapture(engine, { kind: 'seed' });
 
-    // Parse seeds (one per line)
-    const seeds = parseSeedGenerationResponse(this.sanitizeModelContent(result.content));
+    try {
+      const result = await engine.generate(messages);
+      usageCapture.finish({ status: 'ok', usage: result.usage });
 
-    yield {
-      type: 'complete',
-      content: seeds.join('\n'),
-    };
+      // Parse seeds (one per line)
+      const seeds = parseSeedGenerationResponse(this.sanitizeModelContent(result.content));
+
+      yield {
+        type: 'complete',
+        content: seeds.join('\n'),
+      };
+    } catch (error) {
+      usageCapture.finish({ status: 'error', errorMessage: errorMessageOf(error) });
+      throw error;
+    }
   }
 
   /**
@@ -697,8 +786,6 @@ export class GenerationService {
     contextAsset?: string,
   ): AsyncIterable<GenerationProgress> {
     yield { type: 'status', stage: 'initializing' };
-    void draftId;
-    void contextAsset;
 
     // Get API keys and config
     const apiKeys = configManager.getApiKeys();
@@ -724,34 +811,46 @@ export class GenerationService {
 
     // Generate response
     let fullContent = '';
-    const streamState = this.createStreamDisplayState();
+    const usageCapture = beginUsageCapture(engine, { kind: 'chat', draftId, assetName: contextAsset });
+    let engineUsage: TokenUsage | undefined;
 
-    for await (const chunk of engine.generateStream(chatMessages)) {
-      if (chunk.content) {
-        const visibleChunk = this.appendVisibleChunk(streamState, chunk.content);
-        fullContent = streamState.visibleContent;
-        if (visibleChunk) {
+    try {
+      const streamState = this.createStreamDisplayState();
+
+      for await (const chunk of engine.generateStream(chatMessages)) {
+        if (chunk.content) {
+          const visibleChunk = this.appendVisibleChunk(streamState, chunk.content);
+          fullContent = streamState.visibleContent;
+          if (visibleChunk) {
+            yield {
+              type: 'chunk',
+              content: visibleChunk,
+            };
+          }
+        }
+        if (chunk.done) {
+          engineUsage = chunk.usage;
+          break;
+        }
+      }
+
+      if (!fullContent.trim()) {
+        const fallbackResult = await engine.generate(chatMessages);
+        fullContent = this.sanitizeModelContent(fallbackResult.content);
+        engineUsage = fallbackResult.usage ?? engineUsage;
+        if (fullContent) {
           yield {
             type: 'chunk',
-            content: visibleChunk,
+            content: fullContent,
           };
         }
       }
-      if (chunk.done) {
-        break;
-      }
+    } catch (error) {
+      usageCapture.finish({ status: 'error', usage: engineUsage, errorMessage: errorMessageOf(error) });
+      throw error;
     }
 
-    if (!fullContent.trim()) {
-      const fallbackResult = await engine.generate(chatMessages);
-      fullContent = this.sanitizeModelContent(fallbackResult.content);
-      if (fullContent) {
-        yield {
-          type: 'chunk',
-          content: fullContent,
-        };
-      }
-    }
+    usageCapture.finish({ status: 'ok', usage: engineUsage });
 
     yield {
       type: 'complete',
@@ -796,15 +895,24 @@ export class GenerationService {
     const messages = formatMessages(systemPrompt, userPrompt);
 
     // Generate analysis
-    const result = await engine.generate(messages);
-    const sanitizedContent = this.sanitizeModelContent(result.content);
+    const usageCapture = beginUsageCapture(engine, { kind: 'similarity' });
 
-    // Parse JSON response
     try {
-      return JSON.parse(sanitizedContent);
-    } catch {
-      // Return text if JSON parsing fails
-      return { raw: sanitizedContent };
+      const result = await engine.generate(messages);
+      usageCapture.finish({ status: 'ok', usage: result.usage });
+
+      const sanitizedContent = this.sanitizeModelContent(result.content);
+
+      // Parse JSON response
+      try {
+        return JSON.parse(sanitizedContent);
+      } catch {
+        // Return text if JSON parsing fails
+        return { raw: sanitizedContent };
+      }
+    } catch (error) {
+      usageCapture.finish({ status: 'error', errorMessage: errorMessageOf(error) });
+      throw error;
     }
   }
 
