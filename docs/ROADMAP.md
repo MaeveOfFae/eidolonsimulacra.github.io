@@ -34,9 +34,9 @@ These areas currently have visible UI that is explicitly labelled as staged rath
 
 ### Generation Workflow — `partial`
 
-Shipped: seed → dependency-ordered draft generation, content modes, streaming progress, resume, per-asset regeneration, chat refinement, live batch queue.
+Shipped: seed → dependency-ordered draft generation, content modes, streaming progress, resume, per-asset regeneration, chat refinement, live batch queue, and multi-model comparison runs: `/compare` sends one seed and template through 2–4 candidate models with per-candidate provider detection, saves each result as a normal draft linked by a comparison group, and lines candidates up with their token, duration, and outcome from the usage records.
 
-Outstanding: asset-by-asset approval workflow; checkpointed sessions; multi-model comparison runs; batch run history with priorities/retry; scenario presets; constraint builder; seed remix; seed idea board; assistant seed suggestions; offline/local-model presets.
+Outstanding: asset-by-asset approval workflow; checkpointed sessions; batch comparison across multiple seeds; batch run history with priorities/retry; scenario presets; constraint builder; seed remix; seed idea board; assistant seed suggestions; offline/local-model presets.
 
 ### Review and Editing — `partial`
 
