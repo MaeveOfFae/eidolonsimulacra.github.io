@@ -13,6 +13,7 @@ import type {
   DraftMetadata,
   DraftReviewAnnotations,
   DraftRevisionSnapshot,
+  UsageRecord,
 } from '@char-gen/shared';
 import {
   buildDraftLibraryExport,
@@ -92,11 +93,18 @@ const DESKTOP_DRAFT_STORE_FILE = 'eidolon-drafts.db';
 const DESKTOP_DRAFT_STORE_CONNECTION = `sqlite:${DESKTOP_DRAFT_STORE_FILE}`;
 const LEGACY_DESKTOP_DRAFT_STORE_FILE = 'eidolon-drafts.json';
 const DESKTOP_DRAFT_SNAPSHOT_FILE = 'eidolon-drafts-sqlite-snapshot.json';
-const DRAFT_DB_SCHEMA = {
+export const DRAFT_DB_SCHEMA = {
   drafts:
     '++id, reviewId, [metadata.character_name], createdAt, updatedAt, metadata.favorite, metadata.mode, metadata.genre',
   assets: '++id, draftId, assetName, createdAt',
   tags: '++id, tag, draftId',
+} as const;
+
+/**
+ * version 2 (additive): per-call LLM usage telemetry for the Insights surface.
+ */
+export const USAGE_DB_SCHEMA = {
+  usageRecords: '++id, timestamp, provider, model, kind, status, draftId, templateName, assetName',
 } as const;
 
 interface DesktopDraftStore {
@@ -251,7 +259,7 @@ function getUniqueReviewId(usedIds: Set<string>): string {
   return candidate;
 }
 
-function isDesktopDraftStoreEnabled(): boolean {
+export function isDesktopDraftStoreEnabled(): boolean {
   return typeof window !== 'undefined' && isDesktopRuntime();
 }
 
@@ -262,7 +270,7 @@ let draftFsModulePromise: Promise<typeof import('@tauri-apps/plugin-fs')> | null
 let draftSqlModulePromise: Promise<typeof import('@tauri-apps/plugin-sql')> | null = null;
 let desktopDatabasePromise: Promise<DraftSqlDatabase> | null = null;
 
-interface DraftSqlDatabase {
+export interface DraftSqlDatabase {
   execute(query: string, bindValues?: unknown[]): Promise<unknown>;
   select<T>(query: string, bindValues?: unknown[]): Promise<T[]>;
 }
@@ -535,6 +543,23 @@ async function ensureDesktopDraftSchema(database: DraftSqlDatabase): Promise<voi
     'CREATE INDEX IF NOT EXISTS idx_draft_component_send_order_review_id ON draft_component_send_order(review_id)',
     'CREATE INDEX IF NOT EXISTS idx_draft_parent_links_review_id ON draft_parent_links(review_id)',
     'CREATE INDEX IF NOT EXISTS idx_draft_connected_links_review_id ON draft_connected_links(review_id)',
+    `CREATE TABLE IF NOT EXISTS usage_records (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      timestamp INTEGER NOT NULL,
+      kind TEXT NOT NULL,
+      status TEXT NOT NULL,
+      provider TEXT NOT NULL,
+      model TEXT NOT NULL,
+      duration_ms INTEGER NOT NULL,
+      prompt_tokens INTEGER,
+      completion_tokens INTEGER,
+      total_tokens INTEGER,
+      draft_id TEXT,
+      template_name TEXT,
+      asset_name TEXT,
+      error_message TEXT
+    )`,
+    'CREATE INDEX IF NOT EXISTS idx_usage_records_timestamp ON usage_records(timestamp)',
   ];
 
   for (const statement of statements) {
@@ -563,6 +588,14 @@ async function getDesktopDraftDatabase(): Promise<DraftSqlDatabase> {
   }
 
   return desktopDatabasePromise;
+}
+
+/**
+ * Raw SQL access to the desktop draft database (schema ensured). Sibling
+ * storage modules (usage records) keep their own tables in the same file.
+ */
+export async function openDesktopDraftDatabase(): Promise<DraftSqlDatabase> {
+  return getDesktopDraftDatabase();
 }
 
 function coerceDraftMetadata(raw: unknown, fallbackSeed: string): DraftMetadata {
@@ -1083,10 +1116,11 @@ async function withDesktopDraftStore<T>(
 /**
  * Draft database
  */
-class DraftDatabase extends Dexie {
+export class DraftDatabase extends Dexie {
   drafts!: Table<DraftEntity>;
   assets!: Table<AssetEntity>;
   tags!: Table<TagEntity>;
+  usageRecords!: Table<UsageRecord>;
 
   constructor(name: string) {
     super(name);
@@ -1094,6 +1128,8 @@ class DraftDatabase extends Dexie {
     // Define schema
     // version 1: initial schema
     this.version(1).stores(DRAFT_DB_SCHEMA);
+    // version 2: usage telemetry (Insights surface)
+    this.version(2).stores(USAGE_DB_SCHEMA);
   }
 }
 

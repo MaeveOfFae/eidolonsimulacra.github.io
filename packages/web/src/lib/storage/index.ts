@@ -4,3 +4,4 @@
  */
 
 export * from './draft-db.js';
+export * from './usage-db.js';
