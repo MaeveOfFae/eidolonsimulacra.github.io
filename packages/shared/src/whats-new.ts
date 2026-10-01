@@ -16,9 +16,29 @@ export interface ReleaseNoteEntry {
 // Generated and maintained by tools/generation/generate-release-notes.mjs.
 export const releaseNotes: ReleaseNoteEntry[] = [
   {
-    version: '4.4.0',
+    version: '4.5.0',
     releasedOn: '2026-09-30',
     badge: 'Current release',
+    headline: 'Analysis round 2: scorecards, costs, and export',
+    summary:
+      'This release builds on the usage records introduced in 4.1: the Insights page now ranks every model in a provider scorecard, estimates cost in your own currency from per-model pricing you enter (Eidolon ships no price tables), and exports the raw usage history as CSV or JSON so it can leave the device it was recorded on.',
+    highlights: [
+      'Provider scorecard ranks every model by calls, failure rate, tokens, and average duration',
+      'Enter your own per-1K-token rates per model and see estimated costs in your currency',
+      'Model matching resolves dated model ids to one pricing entry through exact and prefix matches',
+      'Export the full usage history as CSV or JSON from the Insights page',
+      'Pricing and scorecard contracts are runtime-free and shared, so mobile can adopt them later',
+    ],
+    links: [
+      { label: 'Open generation', to: '/generate' },
+      { label: 'Open the library', to: '/drafts' },
+      { label: 'Open the Help Center', to: '/help' },
+    ],
+  },
+  {
+    version: '4.4.0',
+    releasedOn: '2026-09-30',
+    badge: 'Previous release',
     headline: 'Generation launcher polish',
     summary:
       "This release polishes the input side of generation: save the launcher's template, mode, and instructions as named scenario presets that apply in one click; compose additional-instruction lines from a pickable constraint catalog covering tone, pacing, style, content handling, and framing; fold two to four favorite seeds into one premise line; and keep tagged inspiration fragments on the seed generator's idea board.",

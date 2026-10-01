@@ -3,6 +3,23 @@
 Generated release history for the browser app.
 
 
+## v4.5.0 - 2026-09-30
+
+### Analysis round 2: scorecards, costs, and export
+
+This release builds on the usage records introduced in 4.1: the Insights page now ranks every model in a provider scorecard, estimates cost in your own currency from per-model pricing you enter (Eidolon ships no price tables), and exports the raw usage history as CSV or JSON so it can leave the device it was recorded on.
+
+### Highlights
+- Provider scorecard ranks every model by calls, failure rate, tokens, and average duration
+- Enter your own per-1K-token rates per model and see estimated costs in your currency
+- Model matching resolves dated model ids to one pricing entry through exact and prefix matches
+- Export the full usage history as CSV or JSON from the Insights page
+- Pricing and scorecard contracts are runtime-free and shared, so mobile can adopt them later
+
+### Links
+- [Open generation](/generate)
+- [Open the library](/drafts)
+- [Open the Help Center](/help)
 ## v4.4.0 - 2026-09-30
 
 ### Generation launcher polish
@@ -153,6 +170,7 @@ This release packages recent commits focused on platform, templates, and themes.
 ### Links
 - [Open generation](/generate)
 - [Review templates](/templates)
+
 
 
 
