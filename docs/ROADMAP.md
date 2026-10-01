@@ -52,9 +52,9 @@ Outstanding: template migration assistant; visual dependency graph; marketplace/
 
 ### Draft Library and Organization — `partial`
 
-Shipped: search/sort/filter library, import/export, manual creation, archive/restore, revision history.
+Shipped: search/sort/filter library, import/export, manual creation, archive/restore, revision history, draft favourites (filter on web, toggle on mobile), named saved searches persisting the full filter set, multi-select bulk editing (favourite, archive/restore, genre, tags) in one batched write, and a duplicate scan that pre-filters by seed or character name and scores each pair with the similarity engine.
 
-Outstanding: saved searches and smart collections; bulk metadata editing; favourites/pins; semantic search; auto-tagging; custom foldering; recently viewed; duplicate detection; custom metadata fields; library summary dashboard.
+Outstanding: semantic search; auto-tagging; custom foldering beyond saved searches; recently viewed; pinning templates and presets; custom metadata fields; library summary dashboard.
 
 ### Canon, Worldbuilding, and Relationships — `partial`
 

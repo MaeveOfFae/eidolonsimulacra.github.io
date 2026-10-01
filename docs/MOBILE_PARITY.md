@@ -106,6 +106,7 @@ These are staged or explicitly "planned" on web, so they must not be built for p
 - Theme Studio and Tokenizer authoring surfaces (web-only by design)
 - Usage Insights (`/insights`, shipped in the 4.1 web/desktop line): mobile records no usage and ships no Insights screen. The shared record contract in `packages/shared/src/usage/records.ts` is runtime-free, so a mobile store could adopt the same format later without forking it
 - Multi-model comparison runs (`/compare`, shipped in the 4.2 web/desktop line): mobile ships no Compare screen. The shared comparison contract in `packages/shared/src/comparison.ts` is runtime-free, so a mobile surface can adopt it without forking
+- Saved searches, bulk metadata editing, and the duplicate scan (shipped in the 4.3 web/desktop line): mobile keeps its simple inline filters. The shared filter contract in `packages/shared/src/draft-library.ts` is runtime-free, so the formats cannot fork
 
 ## Recommended sequence
 
