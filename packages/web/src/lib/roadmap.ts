@@ -157,10 +157,7 @@ export const roadmapGroups: RoadmapGroup[] = [
     items: [
       'Golden sample packs for template quality benchmarking',
       'Evaluation dashboard for model quality and format success rate beyond the shipped token and latency rollups',
-      'Cost figures in currency alongside the token counts the Insights page already reports',
-      'Usage-record export so history can leave the device it was recorded on',
       'Quality trend tracking across model changes and template revisions',
-      'Scorecards for comparing provider performance on specific templates',
       'Regression benchmark suite for measuring structural compliance over time',
       'Review analytics showing which assets most often need human edits',
       'Generation time breakdown by pipeline stage beyond the per-provider and per-asset averages',

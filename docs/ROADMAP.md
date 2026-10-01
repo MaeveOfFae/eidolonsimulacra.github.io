@@ -72,9 +72,9 @@ Outstanding: preset preview; platform capability matrix; publishing flow; export
 
 ### Analysis and Evaluation — `partial`
 
-Shipped: validation by path and by draft, token optimization, pairwise similarity with optional LLM read. Every provider engine normalises per-call token usage — streaming responses included — and every LLM call the web and desktop apps make (orchestrator runs, per-asset regeneration, batch, seeds, offspring seeds, lorebook packets, chat/refine, similarity reads) now writes a durable local usage record (provider, model, tokens, duration, outcome, asset/template/draft attribution) to IndexedDB in the browser or SQLite on desktop, capped at the newest 5,000 calls. The `/insights` page rolls those records up by provider, model, call type, asset, template, draft, and day with failure rates and durations.
+Shipped: validation by path and by draft, token optimization, pairwise similarity with optional LLM read. Every provider engine normalises per-call token usage — streaming responses included — and every LLM call the web and desktop apps make (orchestrator runs, per-asset regeneration, batch, seeds, offspring seeds, lorebook packets, chat/refine, similarity reads) now writes a durable local usage record (provider, model, tokens, duration, outcome, asset/template/draft attribution) to IndexedDB in the browser or SQLite on desktop, capped at the newest 5,000 calls. The `/insights` page rolls those records up by provider, model, call type, asset, template, draft, and day with failure rates and durations, ranks models in a provider scorecard, estimates cost in the user's currency from user-entered per-model per-1K-token pricing (no bundled price tables), and exports the raw records as CSV or JSON.
 
-Outstanding: golden sample packs; quality trend tracking across model changes and template revisions; provider scorecards beyond raw rollups; regression benchmarks; review analytics; library-wide similarity clustering; cost figures in currency; usage-record export.
+Outstanding: golden sample packs; quality trend tracking across model changes and template revisions; regression benchmarks; review analytics; library-wide similarity clustering.
 
 ### Collaboration and Sharing — `planned`
 
