@@ -193,7 +193,6 @@ export class GenerationService {
 
     yield { type: 'status', stage: 'initializing' };
 
-    const config = configManager.getConfig();
     const engine = this.createConfiguredEngine(model_override ? { model: model_override } : undefined);
 
     // Get template assets

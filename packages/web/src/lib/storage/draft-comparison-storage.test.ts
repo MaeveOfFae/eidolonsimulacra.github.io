@@ -1,7 +1,7 @@
 import Dexie from 'dexie';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Draft } from '@char-gen/shared';
-import { COMPARISON_DB_SCHEMA, db, DRAFT_DB_SCHEMA, DraftDatabase, DraftStorage, USAGE_DB_SCHEMA } from './draft-db.js';
+import { db, DRAFT_DB_SCHEMA, DraftDatabase, DraftStorage, USAGE_DB_SCHEMA } from './draft-db.js';
 
 function draft(overrides: Partial<Draft['metadata']> & { review_id: string }): Draft {
   return {
