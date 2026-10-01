@@ -1,7 +1,37 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Globe, Search, Star, X, Filter, SortAsc, SortDesc, Clock, Heart, FileText, Layers } from 'lucide-react';
-import type { DraftMetadata, WorldCharacterDraftLinkRecord } from '@char-gen/shared';
+import {
+  Archive,
+  Bookmark,
+  BookmarkPlus,
+  Clock,
+  FileText,
+  Filter,
+  Globe,
+  Heart,
+  Layers,
+  RotateCcw,
+  Search,
+  SortAsc,
+  SortDesc,
+  Star,
+  X,
+} from 'lucide-react';
+import {
+  applyDraftLibraryFilter,
+  type DraftLibraryFilter,
+  type DraftMetadata,
+  type SavedSearchRecord,
+  type WorldCharacterDraftLinkRecord,
+} from '@char-gen/shared';
+import { api } from '@/lib/api';
+import type { BulkDraftMetadataPatch } from '@/lib/storage/draft-db';
+import {
+  SAVED_SEARCHES_CHANGED_EVENT,
+  deleteSavedSearch,
+  getSavedSearches,
+  saveSavedSearch,
+} from '@/lib/drafts/saved-searches';
 import { buildDraftLibraryBadges } from '@/lib/drafts/export-readiness';
 import { getLatestDraftSnapshotSummary } from '@/lib/drafts/revision-snapshots';
 import { cn } from '@/utils/cn';
@@ -12,6 +42,7 @@ export interface DraftListSidebarProps {
   draftWorldLinksByDraftId?: Map<string, WorldCharacterDraftLinkRecord>;
   activeSnapshotPreviewId?: string;
   onSelectSnapshotPreview?: (draftId: string, snapshotId: string) => void;
+  onDraftsChanged?: () => void;
 }
 
 type SortField = 'created' | 'modified' | 'name';
@@ -28,6 +59,7 @@ export function DraftListSidebar({
   draftWorldLinksByDraftId,
   activeSnapshotPreviewId,
   onSelectSnapshotPreview,
+  onDraftsChanged,
 }: DraftListSidebarProps) {
   const location = useLocation();
   const reviewMatch = location.pathname.match(/^\/drafts\/([^/]+)$/);
@@ -43,6 +75,18 @@ export function DraftListSidebar({
   const [selectedGenre, setSelectedGenre] = useState<string>('');
   const [sortField, setSortField] = useState<SortField>('modified');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [savedSearches, setSavedSearches] = useState<SavedSearchRecord[]>(() => getSavedSearches());
+  const [saveName, setSaveName] = useState('');
+  const [showBulkEdit, setShowBulkEdit] = useState(false);
+  const [bulkGenre, setBulkGenre] = useState('');
+  const [bulkTags, setBulkTags] = useState('');
+
+  useEffect(() => {
+    const handleSavedSearchesChanged = () => setSavedSearches(getSavedSearches());
+    window.addEventListener(SAVED_SEARCHES_CHANGED_EVENT, handleSavedSearchesChanged);
+    return () => window.removeEventListener(SAVED_SEARCHES_CHANGED_EVENT, handleSavedSearchesChanged);
+  }, []);
 
   // Extract unique genres and modes from drafts
   const { genres, modes } = useMemo(() => {
@@ -60,98 +104,34 @@ export function DraftListSidebar({
     };
   }, [drafts]);
 
-  // Filter and sort drafts
-  const filteredDrafts = useMemo(() => {
-    let result = [...drafts];
+  // Filter and sort through the shared contract (characterized against the
+  // previous inline behavior) so saved searches and the sidebar cannot drift.
+  const currentFilter = useMemo<DraftLibraryFilter>(
+    () => ({
+      search,
+      favoritesOnly,
+      mergedOnly,
+      undoableOnly,
+      mergeStrategy: selectedMergeStrategy,
+      mode: selectedMode,
+      genre: selectedGenre,
+      sortField,
+      sortOrder,
+    }),
+    [
+      search,
+      favoritesOnly,
+      mergedOnly,
+      undoableOnly,
+      selectedMergeStrategy,
+      selectedMode,
+      selectedGenre,
+      sortField,
+      sortOrder,
+    ],
+  );
 
-    // Search filter
-    if (search) {
-      const searchLower = search.toLowerCase();
-      result = result.filter(
-        (draft) =>
-          draft.character_name?.toLowerCase().includes(searchLower) ||
-          draft.seed.toLowerCase().includes(searchLower) ||
-          draft.template_name?.toLowerCase().includes(searchLower) ||
-          draft.notes?.toLowerCase().includes(searchLower),
-      );
-    }
-
-    // Favorites filter
-    if (favoritesOnly) {
-      result = result.filter((draft) => draft.favorite);
-    }
-
-    if (mergedOnly) {
-      result = result.filter((draft) => Boolean((draft.merge_history?.length ?? 0) > 0 || draft.merge_provenance));
-    }
-
-    if (undoableOnly) {
-      result = result.filter((draft) => Boolean(draft.merge_history?.some((entry) => Boolean(entry.undo_snapshot_id))));
-    }
-
-    if (selectedMergeStrategy) {
-      result = result.filter((draft) => {
-        const mergeStrategies = draft.merge_history?.length
-          ? draft.merge_history.map((entry) => entry.strategy)
-          : draft.merge_provenance
-            ? [draft.merge_provenance.strategy]
-            : [];
-
-        return mergeStrategies.includes(selectedMergeStrategy);
-      });
-    }
-
-    // Mode filter
-    if (selectedMode) {
-      result = result.filter((draft) => draft.mode === selectedMode);
-    }
-
-    // Genre filter
-    if (selectedGenre) {
-      result = result.filter((draft) => draft.genre === selectedGenre);
-    }
-
-    // Sort
-    result.sort((a, b) => {
-      let comparison = 0;
-
-      switch (sortField) {
-        case 'created': {
-          const aDate = a.created ? new Date(a.created).getTime() : 0;
-          const bDate = b.created ? new Date(b.created).getTime() : 0;
-          comparison = aDate - bDate;
-          break;
-        }
-        case 'modified': {
-          const aDate = a.modified ? new Date(a.modified).getTime() : a.created ? new Date(a.created).getTime() : 0;
-          const bDate = b.modified ? new Date(b.modified).getTime() : b.created ? new Date(b.created).getTime() : 0;
-          comparison = aDate - bDate;
-          break;
-        }
-        case 'name': {
-          const aName = a.character_name || a.seed;
-          const bName = b.character_name || b.seed;
-          comparison = aName.localeCompare(bName);
-          break;
-        }
-      }
-
-      return sortOrder === 'asc' ? comparison : -comparison;
-    });
-
-    return result;
-  }, [
-    drafts,
-    search,
-    favoritesOnly,
-    mergedOnly,
-    undoableOnly,
-    selectedMergeStrategy,
-    selectedMode,
-    selectedGenre,
-    sortField,
-    sortOrder,
-  ]);
+  const filteredDrafts = useMemo(() => applyDraftLibraryFilter(drafts, currentFilter), [drafts, currentFilter]);
 
   const hasMergeRecords = useMemo(
     () => drafts.some((draft) => Boolean((draft.merge_history?.length ?? 0) > 0 || draft.merge_provenance)),
@@ -180,6 +160,56 @@ export function DraftListSidebar({
     setSelectedMergeStrategy('');
     setSelectedMode('');
     setSelectedGenre('');
+  };
+
+  const applySavedSearch = (record: SavedSearchRecord) => {
+    const filter = record.filter;
+    setSearch(filter.search ?? '');
+    setFavoritesOnly(Boolean(filter.favoritesOnly));
+    setMergedOnly(Boolean(filter.mergedOnly));
+    setUndoableOnly(Boolean(filter.undoableOnly));
+    setSelectedMergeStrategy(filter.mergeStrategy ?? '');
+    setSelectedMode(filter.mode ?? '');
+    setSelectedGenre(filter.genre ?? '');
+    setSortField(filter.sortField ?? 'modified');
+    setSortOrder(filter.sortOrder ?? 'desc');
+  };
+
+  const toggleSelected = (reviewId: string) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(reviewId)) {
+        next.delete(reviewId);
+      } else {
+        next.add(reviewId);
+      }
+      return next;
+    });
+  };
+
+  const allFilteredSelected =
+    filteredDrafts.length > 0 && filteredDrafts.every((draft) => selectedIds.has(draft.review_id));
+
+  const toggleSelectAllFiltered = () => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (allFilteredSelected) {
+        filteredDrafts.forEach((draft) => next.delete(draft.review_id));
+      } else {
+        filteredDrafts.forEach((draft) => next.add(draft.review_id));
+      }
+      return next;
+    });
+  };
+
+  const runBulk = async (updates: BulkDraftMetadataPatch) => {
+    if (selectedIds.size === 0) {
+      return;
+    }
+    await api.updateDraftsMetadata([...selectedIds], updates);
+    setSelectedIds(new Set());
+    setShowBulkEdit(false);
+    onDraftsChanged?.();
   };
 
   const stats = useMemo(() => {
@@ -228,6 +258,66 @@ export function DraftListSidebar({
             </button>
           )}
         </div>
+      </div>
+
+      {/* Saved searches */}
+      <div className="border-b border-border/40 px-3 py-2">
+        <div className="flex items-center gap-2">
+          <BookmarkPlus className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="Name this search…"
+            value={saveName}
+            onChange={(event) => setSaveName(event.target.value)}
+            aria-label="Saved search name"
+            className="min-w-0 flex-1 rounded-md border border-input bg-background px-2 py-1 text-xs placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+          />
+          <button
+            type="button"
+            disabled={!saveName.trim()}
+            onClick={() => {
+              saveSavedSearch(saveName, currentFilter);
+              setSaveName('');
+            }}
+            className="shrink-0 rounded-md border border-border px-2 py-1 text-xs font-medium transition-colors hover:bg-accent/50 disabled:opacity-50"
+          >
+            Save
+          </button>
+        </div>
+        {savedSearches.length > 0 && (
+          <ul className="mt-2 flex flex-wrap gap-1.5">
+            {savedSearches.map((record) => (
+              <li
+                key={record.id}
+                className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs"
+              >
+                <button
+                  type="button"
+                  onClick={() => applySavedSearch(record)}
+                  title={`Apply "${record.name}"`}
+                  className="text-muted-foreground transition-colors hover:text-primary"
+                >
+                  <Bookmark className="h-3 w-3" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applySavedSearch(record)}
+                  className="max-w-32 truncate text-foreground transition-colors hover:text-primary"
+                >
+                  {record.name}
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Delete saved search ${record.name}`}
+                  onClick={() => deleteSavedSearch(record.id)}
+                  className="text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       {/* Filter toggle and sort */}
@@ -392,6 +482,98 @@ export function DraftListSidebar({
         </div>
       )}
 
+      {/* Bulk actions */}
+      {selectedIds.size > 0 && (
+        <div className="border-b border-border/40 bg-accent/30 px-3 py-2">
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="font-medium">{selectedIds.size} selected</span>
+            <button
+              type="button"
+              onClick={toggleSelectAllFiltered}
+              className="rounded-md border border-border px-2 py-1 transition-colors hover:bg-accent/50"
+            >
+              {allFilteredSelected ? 'Deselect filtered' : 'Select filtered'}
+            </button>
+            <button
+              type="button"
+              onClick={() => void runBulk({ favorite: true })}
+              className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 transition-colors hover:bg-accent/50"
+            >
+              <Heart className="h-3 w-3" /> Favorite
+            </button>
+            <button
+              type="button"
+              onClick={() => void runBulk({ favorite: false })}
+              className="rounded-md border border-border px-2 py-1 transition-colors hover:bg-accent/50"
+            >
+              Unfavorite
+            </button>
+            <button
+              type="button"
+              onClick={() => void runBulk({ archived_at: new Date().toISOString() })}
+              className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 transition-colors hover:bg-accent/50"
+            >
+              <Archive className="h-3 w-3" /> Archive
+            </button>
+            <button
+              type="button"
+              onClick={() => void runBulk({ unarchive: true })}
+              className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 transition-colors hover:bg-accent/50"
+            >
+              <RotateCcw className="h-3 w-3" /> Restore
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowBulkEdit((current) => !current)}
+              className="rounded-md border border-border px-2 py-1 transition-colors hover:bg-accent/50"
+            >
+              Label…
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedIds(new Set())}
+              className="ml-auto text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Clear
+            </button>
+          </div>
+          {showBulkEdit && (
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <input
+                value={bulkGenre}
+                onChange={(event) => setBulkGenre(event.target.value)}
+                placeholder="Genre"
+                aria-label="Bulk genre"
+                className="w-28 rounded-md border border-input bg-background px-2 py-1 text-xs"
+              />
+              <input
+                value={bulkTags}
+                onChange={(event) => setBulkTags(event.target.value)}
+                placeholder="tags, comma separated"
+                aria-label="Bulk tags"
+                className="min-w-40 flex-1 rounded-md border border-input bg-background px-2 py-1 text-xs"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  const tags = bulkTags
+                    .split(',')
+                    .map((tag) => tag.trim())
+                    .filter(Boolean);
+                  void runBulk({
+                    ...(bulkGenre.trim() ? { genre: bulkGenre.trim() } : {}),
+                    ...(bulkTags.trim() || tags.length > 0 ? { tags } : {}),
+                  });
+                }}
+                className="rounded-md border border-border px-2 py-1 font-medium transition-colors hover:bg-accent/50"
+              >
+                Apply labels
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Draft list */}
       <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
         {isLoading ? (
@@ -436,6 +618,13 @@ export function DraftListSidebar({
                   )}
                 >
                   <div className="flex min-w-0 items-start justify-between gap-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(draft.review_id)}
+                      onChange={() => toggleSelected(draft.review_id)}
+                      aria-label={`Select ${draft.character_name || draft.seed}`}
+                      className="mt-1 h-3.5 w-3.5 shrink-0 accent-primary"
+                    />
                     <Link to={`/drafts/${encodeURIComponent(draft.review_id)}`} className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
                         <span className="truncate text-sm font-medium">{draft.character_name || draft.seed}</span>

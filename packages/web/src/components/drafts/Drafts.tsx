@@ -53,6 +53,7 @@ import {
 import { pickFile } from '@/utils/download';
 import CollapsibleSection from '../common/CollapsibleSection';
 import { DraftListSidebar } from './DraftListSidebar';
+import { DraftDuplicatesPanel } from './DraftDuplicatesPanel';
 import { DraftComparisonPanel } from './DraftComparisonPanel';
 import ManualDraftCreateModal from './ManualDraftCreateModal';
 import { ReviewChecklistPanel } from './ReviewChecklistPanel';
@@ -147,6 +148,10 @@ export default function Drafts() {
     queryKey: ['drafts'],
     queryFn: () => api.getDrafts(),
   });
+
+  const refreshDrafts = () => {
+    void queryClient.invalidateQueries({ queryKey: ['drafts'] });
+  };
 
   const { data: templates = [] } = useQuery({
     queryKey: ['templates'],
@@ -1022,10 +1027,13 @@ export default function Drafts() {
               draftWorldLinksByDraftId={draftWorldLinksByDraftId}
               activeSnapshotPreviewId={selectedSnapshotPreviewId}
               onSelectSnapshotPreview={handleSelectSnapshotPreview}
+              onDraftsChanged={refreshDrafts}
             />
           </section>
 
           <div className="min-w-0 space-y-4">
+            <DraftDuplicatesPanel drafts={data?.drafts ?? []} onDraftsChanged={refreshDrafts} />
+
             <section className="app-panel p-5">
               <div className="flex items-start justify-between gap-4">
                 <div>
