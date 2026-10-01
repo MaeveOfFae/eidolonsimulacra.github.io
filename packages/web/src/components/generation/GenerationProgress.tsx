@@ -20,6 +20,7 @@ interface GenerationProgressProps {
   template?: string;
   selectedAssets?: string[];
   connectedDraftIds?: string[];
+  additionalInstructions?: string[];
   importedCharacter?: Pick<ImportedCharacter, 'name' | 'sourceFormat' | 'sourcePreset' | 'assets'> | null;
   importedCharacterTemplateName?: string | null;
   templates: Template[];
@@ -88,6 +89,7 @@ export default function GenerationProgress({
   template,
   selectedAssets = [],
   connectedDraftIds = [],
+  additionalInstructions = [],
   importedCharacter = null,
   importedCharacterTemplateName = null,
   templates,
@@ -242,6 +244,7 @@ export default function GenerationProgress({
             template,
             asset_name: assetName,
             prior_assets: approvedAssets,
+            additional_instructions: additionalInstructions,
             reference_suites: referenceSuites,
             imported_source: importedSourceContext,
           },

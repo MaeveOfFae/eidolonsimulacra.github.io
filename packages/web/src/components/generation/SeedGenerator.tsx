@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
-import { Sparkles, Loader2, ArrowRight, Copy, Check, RefreshCcw, Wand2, Star, Archive } from 'lucide-react';
+import { Sparkles, Loader2, ArrowRight, Copy, Check, RefreshCcw, Wand2, Star, Archive, Lightbulb, Shuffle } from 'lucide-react';
+import { buildRemixedSeed, type SeedIdeaRecord } from '@char-gen/shared';
 import type { FeatureCategory, SeedGenerationRequest } from '@char-gen/shared';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
 import { api } from '@/lib/api';
@@ -35,6 +36,12 @@ import {
 } from '@/lib/blueprints/featureSelection';
 import { configManager } from '@/lib/config/manager';
 import {
+  SEED_IDEAS_CHANGED_EVENT,
+  deleteSeedIdea,
+  getSeedIdeas,
+  saveSeedIdea,
+} from '@/lib/generation/seed-ideas';
+import {
   clearActiveSeedGeneratorSession,
   loadActiveSeedGeneratorSession,
   saveActiveSeedGeneratorSession,
@@ -67,6 +74,24 @@ export default function SeedGenerator() {
   const [resumeNotice, setResumeNotice] = useState<string | null>(null);
   const [history, setHistory] = useState<SeedRunRecord[]>(() => getSeedRunHistory());
   const [favorites, setFavorites] = useState<FavoriteSeedRecord[]>(() => getFavoriteSeeds());
+  const [remixSelection, setRemixSelection] = useState<string[]>([]);
+  const [ideas, setIdeas] = useState<SeedIdeaRecord[]>(() => getSeedIdeas());
+  const [ideaText, setIdeaText] = useState('');
+  const [ideaTags, setIdeaTags] = useState('');
+
+  useEffect(() => {
+    const handleIdeasChanged = () => setIdeas(getSeedIdeas());
+    window.addEventListener(SEED_IDEAS_CHANGED_EVENT, handleIdeasChanged);
+    return () => window.removeEventListener(SEED_IDEAS_CHANGED_EVENT, handleIdeasChanged);
+  }, []);
+
+  const remixedSeed = useMemo(() => buildRemixedSeed(remixSelection), [remixSelection]);
+
+  const toggleRemixSeed = (seed: string) => {
+    setRemixSelection((current) =>
+      current.includes(seed) ? current.filter((entry) => entry !== seed) : [...current, seed],
+    );
+  };
   const [restoredSeeds, setRestoredSeeds] = useState<string[]>(() => loadActiveSeedGeneratorSession()?.seeds ?? []);
   const restoredSessionRef = useRef(loadActiveSeedGeneratorSession());
   const presets = useMemo(() => getSeedSuggestionPresets(), []);
@@ -651,6 +676,122 @@ export default function SeedGenerator() {
           </CollapsibleSection>
         </section>
       )}
+
+      {/* Seed Remix */}
+      {favorites.length >= 2 && (
+        <CollapsibleSection
+          title="Seed remix"
+          subtitle="Fold two to four favorite seeds into one premise line"
+          preview={remixedSeed ? remixedSeed.slice(0, 60) + (remixedSeed.length > 60 ? '…' : '') : 'Select seeds to remix'}
+          className="app-panel"
+          bodyClassName="space-y-3"
+        >
+          <div className="space-y-2">
+            {favorites.slice(0, 8).map((entry) => {
+              const selected = remixSelection.includes(entry.seed);
+              return (
+                <button
+                  key={entry.seed}
+                  type="button"
+                  onClick={() => toggleRemixSeed(entry.seed)}
+                  className={`block w-full rounded-xl border p-3 text-left text-sm transition-colors ${
+                    selected ? 'border-primary bg-primary/10 text-foreground' : 'border-border/60 bg-background/35 text-foreground hover:border-primary/40'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Shuffle className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                    <span className="min-w-0 truncate">{entry.seed}</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          {remixedSeed && (
+            <div className="rounded-xl border border-primary/30 bg-primary/5 p-3">
+              <p className="text-sm leading-6 text-foreground">{remixedSeed}</p>
+              <button
+                onClick={() => handleUseSeed(remixedSeed)}
+                className="app-button app-button-primary mt-2 !px-3 !py-2 !text-xs"
+              >
+                Use remixed seed
+              </button>
+            </div>
+          )}
+        </CollapsibleSection>
+      )}
+
+      {/* Idea Board */}
+      <CollapsibleSection
+        title="Idea board"
+        subtitle="Save tagged inspiration fragments that can flow into generation"
+        preview={`${ideas.length} idea${ideas.length === 1 ? '' : 's'}`}
+        className="app-panel"
+        bodyClassName="space-y-3"
+      >
+        <div className="flex flex-wrap gap-2">
+          <input
+            type="text"
+            placeholder="A duelist who fears mirrors…"
+            value={ideaText}
+            onChange={(event) => setIdeaText(event.target.value)}
+            aria-label="Seed idea text"
+            className="min-w-48 flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+          />
+          <input
+            type="text"
+            placeholder="tags, comma separated"
+            value={ideaTags}
+            onChange={(event) => setIdeaTags(event.target.value)}
+            aria-label="Seed idea tags"
+            className="w-44 rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+          />
+          <button
+            type="button"
+            disabled={!ideaText.trim()}
+            onClick={() => {
+              saveSeedIdea({ text: ideaText, tags: ideaTags.split(',').map((tag) => tag.trim()).filter(Boolean) });
+              setIdeaText('');
+              setIdeaTags('');
+            }}
+            className="shrink-0 rounded-md border border-border px-3 py-2 text-sm font-medium transition-colors hover:bg-accent/50 disabled:opacity-50"
+          >
+            <Lightbulb className="mr-1.5 inline h-3.5 w-3.5" />
+            Save idea
+          </button>
+        </div>
+        {ideas.length > 0 && (
+          <ul className="space-y-2">
+            {ideas.slice(0, 12).map((idea) => (
+              <li key={idea.id} className="rounded-xl border border-border/60 bg-background/35 p-3">
+                <p className="text-sm leading-6 text-foreground">{idea.text}</p>
+                {idea.tags.length > 0 && (
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    {idea.tags.map((tag) => (
+                      <span key={tag} className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <div className="mt-2 flex gap-2">
+                  <button
+                    onClick={() => handleUseSeed(idea.text)}
+                    className="app-button app-button-primary !px-3 !py-2 !text-xs"
+                  >
+                    Use
+                  </button>
+                  <button
+                    onClick={() => deleteSeedIdea(idea.id)}
+                    className="app-button app-button-secondary !px-3 !py-2 !text-xs"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </CollapsibleSection>
 
       <CollapsibleSection
         title="Blueprint override"

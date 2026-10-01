@@ -4,14 +4,24 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Sparkles, BookOpen, XCircle, Loader2, Edit3, FileText, Upload, Users, Plus, X } from 'lucide-react';
 import {
   MAX_CONNECTED_DRAFT_REFERENCES,
+  CONSTRAINT_CATEGORIES,
+  applyScenarioPreset,
+  buildConstraintInstructions,
   type ContentMode,
   type FeatureCategory,
   type GenerationComplete,
   type ImportedCharacter,
+  type ScenarioPresetRecord,
   type Template,
 } from '@char-gen/shared';
 import { api } from '@/lib/api';
 import type { Blueprint } from '@char-gen/shared';
+import {
+  SCENARIO_PRESETS_CHANGED_EVENT,
+  deleteScenarioPreset,
+  getScenarioPresets,
+  saveScenarioPreset,
+} from '@/lib/generation/scenario-presets';
 import { clearActiveGenerationSession, loadActiveGenerationSession } from '@/lib/services/generation-session';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
 import GenerationProgress from './GenerationProgress';
@@ -124,6 +134,45 @@ export default function Generation() {
   const [availableBlueprints, setAvailableBlueprints] = useState<Array<{ name: string; label: string }>>([]);
   const [showImportModal, setShowImportModal] = useState(false);
   const [selectedTemplateAssets, setSelectedTemplateAssets] = useState<string[]>([]);
+  const [presets, setPresets] = useState<ScenarioPresetRecord[]>(() => getScenarioPresets());
+  const [presetName, setPresetName] = useState('');
+  const [showConstraints, setShowConstraints] = useState(false);
+  const [constraintSelections, setConstraintSelections] = useState<Record<string, string[]>>({});
+
+  useEffect(() => {
+    const handlePresetsChanged = () => setPresets(getScenarioPresets());
+    window.addEventListener(SCENARIO_PRESETS_CHANGED_EVENT, handlePresetsChanged);
+    return () => window.removeEventListener(SCENARIO_PRESETS_CHANGED_EVENT, handlePresetsChanged);
+  }, []);
+
+  const constraintInstructions = useMemo(
+    () => buildConstraintInstructions(constraintSelections),
+    [constraintSelections],
+  );
+
+  const toggleConstraint = (categoryId: string, optionId: string) => {
+    setConstraintSelections((current) => {
+      const selected = current[categoryId] ?? [];
+      const next = selected.includes(optionId)
+        ? selected.filter((id) => id !== optionId)
+        : [...selected, optionId];
+      return { ...current, [categoryId]: next };
+    });
+  };
+
+  const applyPreset = (preset: ScenarioPresetRecord) => {
+    const next = applyScenarioPreset(preset, {
+      templateName: template,
+      mode,
+      additionalInstructions: constraintInstructions,
+    });
+    if (next.templateName !== undefined) {
+      setTemplate(next.templateName);
+    }
+    if (next.mode !== undefined) {
+      setMode(next.mode);
+    }
+  };
 
   const activeFeatureCategory = useMemo<FeatureCategory | null>(() => {
     if (activeTab === 'generate') {
@@ -789,6 +838,118 @@ export default function Generation() {
                   )}
                 </div>
 
+                {/* Scenario Presets */}
+                <div className="mt-4 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      placeholder="Name this scenario…"
+                      value={presetName}
+                      onChange={(event) => setPresetName(event.target.value)}
+                      aria-label="Scenario preset name"
+                      className="min-w-0 flex-1 rounded-md border border-input bg-background px-2 py-1.5 text-xs placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      disabled={!presetName.trim()}
+                      onClick={() => {
+                        saveScenarioPreset({
+                          name: presetName,
+                          templateName: template,
+                          mode,
+                          additionalInstructions: constraintInstructions,
+                        });
+                        setPresetName('');
+                      }}
+                      className="shrink-0 rounded-md border border-border px-2 py-1.5 text-xs font-medium transition-colors hover:bg-accent/50 disabled:opacity-50"
+                    >
+                      Save preset
+                    </button>
+                  </div>
+                  {presets.length > 0 && (
+                    <ul className="flex flex-wrap gap-1.5">
+                      {presets.map((preset) => (
+                        <li
+                          key={preset.id}
+                          className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => applyPreset(preset)}
+                            title={preset.description || preset.name}
+                            className="max-w-40 truncate text-foreground transition-colors hover:text-primary"
+                          >
+                            {preset.name}
+                          </button>
+                          <button
+                            type="button"
+                            aria-label={`Delete preset ${preset.name}`}
+                            onClick={() => deleteScenarioPreset(preset.id)}
+                            className="text-muted-foreground transition-colors hover:text-foreground"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                {/* Constraint Builder */}
+                <div className="mt-4 space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowConstraints((current) => !current)}
+                    className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    <Edit3 className="h-3.5 w-3.5" />
+                    Constraints
+                    {constraintInstructions.length > 0 && (
+                      <span className="rounded-full bg-primary px-1.5 text-[10px] text-primary-foreground">
+                        {constraintInstructions.length}
+                      </span>
+                    )}
+                  </button>
+                  {showConstraints && (
+                    <div className="space-y-3 rounded-lg border border-border bg-background/60 p-3">
+                      {CONSTRAINT_CATEGORIES.map((category) => (
+                        <div key={category.id} className="space-y-1.5">
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                            {category.label}
+                          </p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {category.options.map((option) => {
+                              const selected = (constraintSelections[category.id] ?? []).includes(option.id);
+                              return (
+                                <button
+                                  key={option.id}
+                                  type="button"
+                                  title={option.instruction}
+                                  onClick={() => toggleConstraint(category.id, option.id)}
+                                  className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
+                                    selected
+                                      ? 'border-primary bg-primary/10 text-primary'
+                                      : 'border-border text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                                  }`}
+                                >
+                                  {option.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                      {constraintInstructions.length > 0 && (
+                        <div className="rounded-md border border-border/60 bg-muted/30 p-2">
+                          <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                            Applied as {constraintInstructions.length} instruction{constraintInstructions.length === 1 ? '' : 's'}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 {/* Generate Button */}
                 <button
                   onClick={handleGenerate}
@@ -811,6 +972,7 @@ export default function Generation() {
               template={template}
               selectedAssets={selectedTemplateAssets}
               connectedDraftIds={selectedConnectedDraftIds}
+              additionalInstructions={constraintInstructions}
               importedCharacter={importedCharacter}
               importedCharacterTemplateName={importedTemplateName}
               templates={templates}
