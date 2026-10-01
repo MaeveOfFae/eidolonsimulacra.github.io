@@ -3,6 +3,23 @@
 Generated release history for the browser app.
 
 
+## v4.4.0 - 2026-09-30
+
+### Generation launcher polish
+
+This release polishes the input side of generation: save the launcher's template, mode, and instructions as named scenario presets that apply in one click; compose additional-instruction lines from a pickable constraint catalog covering tone, pacing, style, content handling, and framing; fold two to four favorite seeds into one premise line; and keep tagged inspiration fragments on the seed generator's idea board.
+
+### Highlights
+- Named scenario presets bundle the launcher's template, mode, and instructions for one-click reuse
+- A constraint builder composes deterministic instruction lines from a catalog of tone, pacing, style, content-handling, and framing options
+- Seed remix deterministically folds 2-4 favorite seeds into a single premise line, no LLM required
+- The idea board stores tagged inspiration fragments that flow into generation
+- All contracts live in runtime-free shared modules so mobile can adopt them later
+
+### Links
+- [Open generation](/generate)
+- [Open the seed generator](/seed-generator)
+- [Open the Help Center](/help)
 ## v4.3.0 - 2026-09-30
 
 ### Draft library at scale
@@ -136,6 +153,7 @@ This release packages recent commits focused on platform, templates, and themes.
 ### Links
 - [Open generation](/generate)
 - [Review templates](/templates)
+
 
 
 

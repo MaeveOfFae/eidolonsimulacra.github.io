@@ -16,9 +16,29 @@ export interface ReleaseNoteEntry {
 // Generated and maintained by tools/generation/generate-release-notes.mjs.
 export const releaseNotes: ReleaseNoteEntry[] = [
   {
-    version: '4.3.0',
+    version: '4.4.0',
     releasedOn: '2026-09-30',
     badge: 'Current release',
+    headline: 'Generation launcher polish',
+    summary:
+      "This release polishes the input side of generation: save the launcher's template, mode, and instructions as named scenario presets that apply in one click; compose additional-instruction lines from a pickable constraint catalog covering tone, pacing, style, content handling, and framing; fold two to four favorite seeds into one premise line; and keep tagged inspiration fragments on the seed generator's idea board.",
+    highlights: [
+      "Named scenario presets bundle the launcher's template, mode, and instructions for one-click reuse",
+      'A constraint builder composes deterministic instruction lines from a catalog of tone, pacing, style, content-handling, and framing options',
+      'Seed remix deterministically folds 2-4 favorite seeds into a single premise line, no LLM required',
+      'The idea board stores tagged inspiration fragments that flow into generation',
+      'All contracts live in runtime-free shared modules so mobile can adopt them later',
+    ],
+    links: [
+      { label: 'Open generation', to: '/generate' },
+      { label: 'Open the seed generator', to: '/seed-generator' },
+      { label: 'Open the Help Center', to: '/help' },
+    ],
+  },
+  {
+    version: '4.3.0',
+    releasedOn: '2026-09-30',
+    badge: 'Previous release',
     headline: 'Draft library at scale',
     summary:
       "This release makes the draft library manageable as it grows: the library's filter set can be saved as named searches, selected drafts can be edited in bulk through one batched write, and a duplicate scan pairs matching seeds and names then scores each pair with the similarity engine.",
