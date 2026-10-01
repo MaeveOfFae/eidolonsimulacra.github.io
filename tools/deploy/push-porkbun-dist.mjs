@@ -35,8 +35,14 @@ function getExecutable(name) {
 }
 
 function run(command, args, options = {}) {
-  const result = spawnSync(getExecutable(command), args, {
+  const executable = getExecutable(command);
+  const result = spawnSync(executable, args, {
     cwd: options.cwd,
+    // Windows: Node (>= 18.20 / 20.12, CVE-2024-27980) refuses to spawn
+    // `.cmd`/`.bat` shims such as pnpm.cmd without a shell. Only the pnpm
+    // invocation goes through this path, and its arguments are fixed by this
+    // script, so shell mode is safe here.
+    shell: process.platform === 'win32' && executable.endsWith('.cmd'),
     stdio: options.capture ? ['ignore', 'pipe', 'pipe'] : (options.stdio ?? 'inherit'),
     encoding: 'utf8',
   });

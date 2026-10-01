@@ -27,6 +27,19 @@ The APK keeps its fixed `app-release.apk` name on purpose: each release uploads 
 3. Update `packages/shared/src/info/download.ts`: bump `RELEASE_VERSION` and the `approxSize` labels. `buildReleaseAssetUrl` handles space encoding and the tag.
 4. Run `pnpm test:shared` — the URL-shape test pins the repository, the `vX.Y.Z` tag, and space encoding, because `pnpm downloads:check` deliberately cannot verify absolute URLs (they are GitHub's uptime, not this repository's). `pnpm downloads:check` still guards the (currently empty) set of site-relative downloads should any return.
 
+## The custom domain (Porkbun) — separate from Pages
+
+CI deploys the web build to GitHub Pages automatically (`maeveoffae.github.io/eidolonsimulacra.github.io/`). The custom domain `eidolonsimulacra.com` is **not** GitHub Pages: it is Porkbun static hosting, which serves whatever is on this repository's `porkbun-deploy` branch. That branch is only updated when a maintainer runs:
+
+```powershell
+pnpm deploy:porkbun --build   # builds web dist, then pushes it to origin/porkbun-deploy
+```
+
+- Run it as the last step of the release recipe (after the GitHub release exists), or the custom domain will keep serving the previous build while Pages moves ahead — which looks exactly like a broken deploy.
+- `--build` rebuilds `packages/web/dist` first (shared package included); without it, the script publishes whatever dist is currently on disk, which may be stale.
+- Hashed `assets/` accumulate on the branch on purpose, so an index.html cached in a browser never references a missing chunk. The branch grows over time; that is the accepted trade.
+- SPA deep links fall back to `index.html` through `packages/web/public/.htaccess`, which is part of the published dist.
+
 ## Why GitHub Releases, not the repository
 
 Recorded because the trade-offs were weighed when the binaries moved (after 4.5.0), not because anything blocks:
