@@ -1,7 +1,13 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import Insights from './Insights';
+
+const apiMocks = vi.hoisted(() => ({
+  getModelPricing: vi.fn(() => [] as Array<Record<string, unknown>>),
+  saveModelPricing: vi.fn(),
+  deleteModelPricing: vi.fn(),
+}));
 
 vi.mock('@/lib/api', () => ({
   api: {
@@ -50,8 +56,14 @@ vi.mock('@/lib/api', () => ({
       },
     ]),
     clearUsageRecords: vi.fn(async () => undefined),
+    getModelPricing: apiMocks.getModelPricing,
+    saveModelPricing: apiMocks.saveModelPricing,
+    deleteModelPricing: apiMocks.deleteModelPricing,
   },
 }));
+
+const saveBlobDownload = vi.hoisted(() => vi.fn(async () => ({ saved: true, method: 'download' as const })));
+vi.mock('@/utils/download', () => ({ saveBlobDownload: saveBlobDownload }));
 
 function renderInsights() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -76,5 +88,53 @@ describe('Insights page', () => {
     });
     expect(screen.getByText('openai')).toBeInTheDocument();
     expect(screen.getByText('chat')).toBeInTheDocument();
+  });
+
+  it('shows estimated cost in the scorecard when pricing is configured', async () => {
+    apiMocks.getModelPricing.mockReturnValue([
+      {
+        id: 'p1',
+        model: 'gpt-4o',
+        inputCostPer1kTokens: 1,
+        outputCostPer1kTokens: 1,
+        currency: 'USD',
+        createdAt: '2026-09-01T00:00:00.000Z',
+      },
+    ]);
+
+    renderInsights();
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Provider scorecard' })).toBeInTheDocument();
+    });
+    // 10 prompt + 8 completion tokens at 1 per 1K = USD 0.018
+    expect(await screen.findByText('USD 0.018')).toBeInTheDocument();
+    expect(screen.getByText('Model pricing (1 entry)')).toBeInTheDocument();
+  });
+
+  it('exports usage records as CSV and JSON downloads', async () => {
+    renderInsights();
+
+    // Wait for the queries to resolve so the export buttons are enabled.
+    await waitFor(() => {
+      expect(screen.getByText('45')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Export CSV' }));
+    await waitFor(() => {
+      expect(saveBlobDownload).toHaveBeenCalledTimes(1);
+    });
+    const [csvBlob, csvName] = saveBlobDownload.mock.calls[0] as unknown as [Blob, string];
+    expect(csvName).toMatch(/^eidolon-usage-\d{4}-\d{2}-\d{2}\.csv$/);
+    expect(csvBlob.type).toBe('text/csv');
+    expect(await csvBlob.text()).toContain('gpt-4o');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Export JSON' }));
+    await waitFor(() => {
+      expect(saveBlobDownload).toHaveBeenCalledTimes(2);
+    });
+    const [jsonBlob, jsonName] = saveBlobDownload.mock.calls[1] as unknown as [Blob, string];
+    expect(jsonName).toMatch(/\.json$/);
+    expect(await jsonBlob.text()).toContain('"record_count": 1');
   });
 });

@@ -37,6 +37,7 @@ import {
   type LorebookGenerationRequest,
   type LLMProvider,
   type LineageResponse,
+  type ModelPricing,
   type ModelsResponse,
   type OffspringRequest,
   type OptimizeTextRequest,
@@ -106,6 +107,12 @@ import {
 } from './storage/desktop-lore-db.js';
 import { DraftStorage, type AssetWriteOptions, type BulkDraftMetadataPatch } from './storage/draft-db.js';
 import { UsageStorage } from './storage/usage-db.js';
+import {
+  deleteModelPricing,
+  getModelPricing,
+  saveModelPricing,
+  type SaveModelPricingInput,
+} from './usage/pricing-store.js';
 import { GenerationService } from './services/generation.js';
 import { appendDraftRevisionSnapshot, buildDraftRevisionSnapshot } from './drafts/revision-snapshots.js';
 import {
@@ -1854,6 +1861,18 @@ export class EidolonBrowserAPI {
 
   clearUsageRecords(): Promise<void> {
     return UsageStorage.clear();
+  }
+
+  getModelPricing(): ModelPricing[] {
+    return getModelPricing();
+  }
+
+  saveModelPricing(input: SaveModelPricingInput): ModelPricing | null {
+    return saveModelPricing(input);
+  }
+
+  deleteModelPricing(id: string): void {
+    deleteModelPricing(id);
   }
 }
 
