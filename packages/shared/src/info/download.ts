@@ -55,25 +55,47 @@ export const downloadPathPrefix = '/downloads/';
 
 export const downloadRepositoryUrl = PROJECT_REPOSITORY_URL;
 
+/**
+ * Version of the GitHub release that carries the published artifacts. Bump
+ * this (and the `approxSize` labels) as part of the release recipe in
+ * `docs/DOWNLOADS.md`.
+ */
+const RELEASE_VERSION = '4.5.0';
+const RELEASE_TAG = `v${RELEASE_VERSION}`;
+
+/**
+ * Download URL for an artifact uploaded as an asset on this repository's
+ * current release. Binaries live on GitHub Releases instead of the repository:
+ * no ~190 MB of installers added to git history per release, nothing against
+ * the Pages site size or bandwidth budget, and a far higher per-file limit.
+ * The trade is that `pnpm downloads:check` cannot verify absolute URLs (they
+ * are GitHub's uptime, not this repository's), so the release-upload step in
+ * `docs/DOWNLOADS.md` and the URL-shape test in `download.test.ts` carry the
+ * honesty burden instead.
+ */
+function buildReleaseAssetUrl(filename: string): string {
+  return `${PROJECT_REPOSITORY_URL}/releases/download/${RELEASE_TAG}/${encodeURIComponent(filename)}`;
+}
+
 export const downloadChannels: DownloadChannel[] = [
   {
     id: 'desktop',
     name: 'Desktop app',
     summary:
       'The same browser app wrapped in a Tauri shell, so it runs offline with local SQLite-backed draft and lore storage, and can host a LAN companion endpoint for paired mobile devices.',
-    downloadUrl: '/downloads/Eidolon%20Simulacra_4.5.0_x64-setup.exe',
+    downloadUrl: buildReleaseAssetUrl(`Eidolon Simulacra_${RELEASE_VERSION}_x64-setup.exe`),
     artifacts: [
       {
         label: 'Windows installer (recommended)',
         filename: 'Eidolon Simulacra_{version}_x64-setup.exe',
         approxSize: '≈51 MB',
-        downloadUrl: '/downloads/Eidolon%20Simulacra_4.5.0_x64-setup.exe',
+        downloadUrl: buildReleaseAssetUrl(`Eidolon Simulacra_${RELEASE_VERSION}_x64-setup.exe`),
       },
       {
         label: 'Windows installer (MSI)',
         filename: 'Eidolon Simulacra_{version}_x64_en-US.msi',
         approxSize: '≈53 MB',
-        downloadUrl: '/downloads/Eidolon%20Simulacra_4.5.0_x64_en-US.msi',
+        downloadUrl: buildReleaseAssetUrl(`Eidolon Simulacra_${RELEASE_VERSION}_x64_en-US.msi`),
       },
     ],
     requirements: ['Windows 10 or later.'],
@@ -86,13 +108,13 @@ export const downloadChannels: DownloadChannel[] = [
     name: 'Android app',
     summary:
       'The Expo React Native app: generate, review, archive, and export drafts on a phone, with the same shared blueprint compiler and content the other surfaces use.',
-    downloadUrl: '/downloads/app-release.apk',
+    downloadUrl: buildReleaseAssetUrl('app-release.apk'),
     artifacts: [
       {
         label: 'Release APK',
         filename: 'app-release.apk',
         approxSize: '≈87 MB',
-        downloadUrl: '/downloads/app-release.apk',
+        downloadUrl: buildReleaseAssetUrl('app-release.apk'),
       },
     ],
     requirements: ['An Android device that allows installing an app from outside the store.'],

@@ -4,21 +4,15 @@
 
 ## What is published today
 
-`packages/web/public/downloads/` currently holds the artifacts; Vite copies that folder into the published build, so each file is served from the site itself:
+Artifacts are uploaded as **assets on GitHub Releases** of this repository, and `packages/shared/src/info/download.ts` derives each channel's `downloadUrl` from `buildReleaseAssetUrl`. Nothing is site-hosted anymore — `packages/web/public/downloads/` is intentionally empty — so the published site stays small and no binary counts against the Pages storage or bandwidth budget.
 
-| File                                    | Size     | Channel                         |
+| Asset (on release `v4.5.0`)             | Size     | Channel                         |
 | --------------------------------------- | -------- | ------------------------------- |
 | `Eidolon Simulacra_4.5.0_x64-setup.exe` | 51.29 MB | Desktop (recommended installer) |
 | `Eidolon Simulacra_4.5.0_x64_en-US.msi` | 52.67 MB | Desktop (MSI)                   |
 | `app-release.apk`                       | 87.42 MB | Android                         |
 
-Vite copies that same folder into the published build, so a file here is served from the site itself:
-
-```
-packages/web/public/downloads/<file>   ->   https://<site>/downloads/<file>
-```
-
-Same origin as the app: no redirect, no third-party host, no signed URLs.
+The APK keeps its fixed `app-release.apk` name on purpose: each release uploads an asset of the same name under the new tag, so the URL shape stays predictable even though the tag version changes.
 
 ## Shipping a new build
 
@@ -29,19 +23,20 @@ Same origin as the app: no redirect, no third-party host, no signed URLs.
    pnpm build:mobile    # -> packages/mobile/android/app/build/outputs/apk/release/
    ```
 
-2. Replace the file here, or add the new version alongside the old one and `git rm` the old one. The APK keeps its fixed `app-release.apk` name on purpose, so the download link survives version bumps.
-3. Update `packages/shared/src/info/download.ts` so the paths and versioned filenames match. Encode spaces as `%20` — the shared test rejects a literal space.
-4. Run `pnpm downloads:check`. It fails if any channel points at a site-relative download with no file — or a file under 64 KB — behind it, so a download button can never 404.
+2. Create a GitHub release tagged `v<version>` on the release commit and upload the artifacts as assets, keeping the exact filenames (desktop names embed the version; the APK stays `app-release.apk`). **Create the release before pushing the `download.ts` change**, or the download buttons 404 until the assets exist.
+3. Update `packages/shared/src/info/download.ts`: bump `RELEASE_VERSION` and the `approxSize` labels. `buildReleaseAssetUrl` handles space encoding and the tag.
+4. Run `pnpm test:shared` — the URL-shape test pins the repository, the `vX.Y.Z` tag, and space encoding, because `pnpm downloads:check` deliberately cannot verify absolute URLs (they are GitHub's uptime, not this repository's). `pnpm downloads:check` still guards the (currently empty) set of site-relative downloads should any return.
 
-## Costs that come with hosting binaries in this repository
+## Why GitHub Releases, not the repository
 
-Recorded because the decision was made with them on the table, not because they block anything:
+Recorded because the trade-offs were weighed when the binaries moved (after 4.5.0), not because anything blocks:
 
-- GitHub Pages allows a **1 GB published site** and a **100 GB/month soft bandwidth limit**; GitHub recommends keeping source repositories **under 1 GB**. These downloads add ~98 MB, almost all of it the APK, which costs roughly **14× the bandwidth** of a desktop installer per download.
-- Committed artifacts stay in git history forever, so each release adds another copy. Replacing `app-release.apk` in place keeps the _link_ stable but not the history size.
-- GitHub warns above **50 MB per file** on push; the APK is above that (though under the hard limit).
-- **Git LFS is not an option for this.** GitHub's docs: _"Git LFS cannot be used with GitHub Pages sites."_ The pointer would be committed while the bytes were not served.
-- GitHub's own guidance for distributing binaries is **Releases**, where there is no bandwidth cost against the Pages quota and per-file limits are far higher (2 GB on Free). Any download here can move to a release URL at any time: `downloadUrl` accepts an absolute `https://` link too, and `pnpm downloads:check` leaves non-site-relative links alone.
+- GitHub Pages allows a **1 GB published site** and a **100 GB/month soft bandwidth limit**. Committing artifacts added ~190 MB to the repository per release, and the APK alone cost roughly **14× the bandwidth** of a desktop installer per download.
+- Committed artifacts stay in git history forever: each release added another full copy even when a file was replaced in place.
+- GitHub warns above **50 MB per file** on push. All three artifacts exceed it; release assets have a **2 GB per-file limit** on Free and cost nothing against the Pages quota.
+- **Git LFS was never an option** for the site-hosted variant ("Git LFS cannot be used with GitHub Pages sites"), which is what forced binaries into the repository originally. Release assets make the question moot.
+
+History note: releases 4.0.0 through 4.5.0 shipped binaries from `packages/web/public/downloads/`; those blobs remain in git history even though the files are gone from the tip. Reclaiming that size would require a history rewrite (`git filter-repo`), which invalidates every clone — not worth it unless the repository nears the 1 GB guidance.
 
 ## Android signing caveat (still open)
 

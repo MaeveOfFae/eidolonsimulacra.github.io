@@ -74,6 +74,21 @@ describe('download channels', () => {
     expect(isAnyDownloadPublished()).toBe(listPublishedDownloads().length > 0);
   });
 
+  it('publishes downloads as release assets of this repository under a versioned tag', () => {
+    // Binaries live on GitHub Releases, not the Pages site (docs/DOWNLOADS.md).
+    // Absolute links are outside `downloads:check`'s reach, so this test pins
+    // the shape instead: this repository, a vX.Y.Z tag, no unencoded spaces.
+    const prefix = `${downloadRepositoryUrl}/releases/download/`;
+
+    for (const channel of listPublishedDownloads()) {
+      listChannelDownloadUrls(channel).forEach((url) => {
+        expect(url.startsWith(prefix)).toBe(true);
+        expect(url).toMatch(/\/releases\/download\/v\d+\.\d+\.\d+\//);
+        expect(url).not.toContain(' ');
+      });
+    }
+  });
+
   it('collects every download link a channel exposes, primary and per-artifact', () => {
     const desktop = getDownloadChannel('desktop');
 
