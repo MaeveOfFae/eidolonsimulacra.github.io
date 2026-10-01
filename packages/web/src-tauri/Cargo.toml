@@ -1,6 +1,6 @@
 [package]
 name = "eidolon-simulacra-desktop"
-version = "4.3.0"
+version = "4.4.0"
 description = "Desktop runtime for Eidolon Simulacra"
 edition = "2021"
 rust-version = "1.77.2"
