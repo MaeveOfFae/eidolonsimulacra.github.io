@@ -13,6 +13,7 @@ The repo is centered on a strict blueprint contract: start from one seed, genera
 - Direct LLM provider integration from the client via the shared engine layer.
 - Usage Insights: every LLM call (generation, per-asset regeneration, seeds, offspring, lorebook, chat/refine, similarity) writes a local usage record — IndexedDB in the browser, SQLite on desktop — and the Insights page rolls tokens, durations, and failure rates up by provider, model, asset, template, draft, and day.
 - Multi-model comparison runs: `/compare` sends one seed and template through up to four candidate models, saves each result as a linked draft, and lines the candidates up with their token and time cost from the usage records.
+- Generation launcher polish: save the launcher's template, mode, and instructions as named scenario presets that apply in one click; compose additional-instruction lines from a pickable constraint catalog (tone, pacing, style, content handling, framing); fold 2–4 favorite seeds into one premise line; and keep tagged inspiration fragments on the seed generator's idea board.
 - Draft library at scale: save the library's filter set as named searches, edit metadata across selected drafts in one batched write, and scan for duplicates by seed, character name, and similarity score.
 - One built-in runtime template is currently loaded from `blueprints/templates/`:
   - `V2/V3 Card` with `system_prompt`, `post_history`, `character_sheet`, `intro_scene`, `creator_notes`, and `a1111`

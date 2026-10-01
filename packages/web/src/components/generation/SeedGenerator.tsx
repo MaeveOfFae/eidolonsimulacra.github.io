@@ -1,7 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
-import { Sparkles, Loader2, ArrowRight, Copy, Check, RefreshCcw, Wand2, Star, Archive, Lightbulb, Shuffle } from 'lucide-react';
+import {
+  Sparkles,
+  Loader2,
+  ArrowRight,
+  Copy,
+  Check,
+  RefreshCcw,
+  Wand2,
+  Star,
+  Archive,
+  Lightbulb,
+  Shuffle,
+} from 'lucide-react';
 import { buildRemixedSeed, type SeedIdeaRecord } from '@char-gen/shared';
 import type { FeatureCategory, SeedGenerationRequest } from '@char-gen/shared';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
@@ -35,12 +47,7 @@ import {
   toBlueprintOptions,
 } from '@/lib/blueprints/featureSelection';
 import { configManager } from '@/lib/config/manager';
-import {
-  SEED_IDEAS_CHANGED_EVENT,
-  deleteSeedIdea,
-  getSeedIdeas,
-  saveSeedIdea,
-} from '@/lib/generation/seed-ideas';
+import { SEED_IDEAS_CHANGED_EVENT, deleteSeedIdea, getSeedIdeas, saveSeedIdea } from '@/lib/generation/seed-ideas';
 import {
   clearActiveSeedGeneratorSession,
   loadActiveSeedGeneratorSession,
@@ -682,7 +689,9 @@ export default function SeedGenerator() {
         <CollapsibleSection
           title="Seed remix"
           subtitle="Fold two to four favorite seeds into one premise line"
-          preview={remixedSeed ? remixedSeed.slice(0, 60) + (remixedSeed.length > 60 ? '…' : '') : 'Select seeds to remix'}
+          preview={
+            remixedSeed ? remixedSeed.slice(0, 60) + (remixedSeed.length > 60 ? '…' : '') : 'Select seeds to remix'
+          }
           className="app-panel"
           bodyClassName="space-y-3"
         >
@@ -695,7 +704,9 @@ export default function SeedGenerator() {
                   type="button"
                   onClick={() => toggleRemixSeed(entry.seed)}
                   className={`block w-full rounded-xl border p-3 text-left text-sm transition-colors ${
-                    selected ? 'border-primary bg-primary/10 text-foreground' : 'border-border/60 bg-background/35 text-foreground hover:border-primary/40'
+                    selected
+                      ? 'border-primary bg-primary/10 text-foreground'
+                      : 'border-border/60 bg-background/35 text-foreground hover:border-primary/40'
                   }`}
                 >
                   <div className="flex items-center gap-2">
@@ -749,7 +760,13 @@ export default function SeedGenerator() {
             type="button"
             disabled={!ideaText.trim()}
             onClick={() => {
-              saveSeedIdea({ text: ideaText, tags: ideaTags.split(',').map((tag) => tag.trim()).filter(Boolean) });
+              saveSeedIdea({
+                text: ideaText,
+                tags: ideaTags
+                  .split(',')
+                  .map((tag) => tag.trim())
+                  .filter(Boolean),
+              });
               setIdeaText('');
               setIdeaTags('');
             }}

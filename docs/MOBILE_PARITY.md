@@ -107,6 +107,7 @@ These are staged or explicitly "planned" on web, so they must not be built for p
 - Usage Insights (`/insights`, shipped in the 4.1 web/desktop line): mobile records no usage and ships no Insights screen. The shared record contract in `packages/shared/src/usage/records.ts` is runtime-free, so a mobile store could adopt the same format later without forking it
 - Multi-model comparison runs (`/compare`, shipped in the 4.2 web/desktop line): mobile ships no Compare screen. The shared comparison contract in `packages/shared/src/comparison.ts` is runtime-free, so a mobile surface can adopt it without forking
 - Saved searches, bulk metadata editing, and the duplicate scan (shipped in the 4.3 web/desktop line): mobile keeps its simple inline filters. The shared filter contract in `packages/shared/src/draft-library.ts` is runtime-free, so the formats cannot fork
+- Generation launcher polish — scenario presets, constraint builder, seed remix, and idea board (shipped in the 4.4 web/desktop line): mobile keeps its plain seed input and genre presets. The shared contracts in `packages/shared/src/generation-launcher.ts` and `seed-studio.ts` are runtime-free, so a mobile surface can adopt them without forking
 
 ## Recommended sequence
 

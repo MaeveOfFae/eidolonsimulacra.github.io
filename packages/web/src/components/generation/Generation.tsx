@@ -153,9 +153,7 @@ export default function Generation() {
   const toggleConstraint = (categoryId: string, optionId: string) => {
     setConstraintSelections((current) => {
       const selected = current[categoryId] ?? [];
-      const next = selected.includes(optionId)
-        ? selected.filter((id) => id !== optionId)
-        : [...selected, optionId];
+      const next = selected.includes(optionId) ? selected.filter((id) => id !== optionId) : [...selected, optionId];
       return { ...current, [categoryId]: next };
     });
   };
@@ -942,7 +940,8 @@ export default function Generation() {
                       {constraintInstructions.length > 0 && (
                         <div className="rounded-md border border-border/60 bg-muted/30 p-2">
                           <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                            Applied as {constraintInstructions.length} instruction{constraintInstructions.length === 1 ? '' : 's'}
+                            Applied as {constraintInstructions.length} instruction
+                            {constraintInstructions.length === 1 ? '' : 's'}
                           </p>
                         </div>
                       )}
