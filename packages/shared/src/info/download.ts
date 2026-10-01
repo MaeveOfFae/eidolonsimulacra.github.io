@@ -61,19 +61,19 @@ export const downloadChannels: DownloadChannel[] = [
     name: 'Desktop app',
     summary:
       'The same browser app wrapped in a Tauri shell, so it runs offline with local SQLite-backed draft and lore storage, and can host a LAN companion endpoint for paired mobile devices.',
-    downloadUrl: '/downloads/Eidolon%20Simulacra_4.0.0_x64-setup.exe',
+    downloadUrl: '/downloads/Eidolon%20Simulacra_4.5.0_x64-setup.exe',
     artifacts: [
       {
         label: 'Windows installer (recommended)',
         filename: 'Eidolon Simulacra_{version}_x64-setup.exe',
-        approxSize: '≈5 MB',
-        downloadUrl: '/downloads/Eidolon%20Simulacra_4.0.0_x64-setup.exe',
+        approxSize: '≈51 MB',
+        downloadUrl: '/downloads/Eidolon%20Simulacra_4.5.0_x64-setup.exe',
       },
       {
         label: 'Windows installer (MSI)',
         filename: 'Eidolon Simulacra_{version}_x64_en-US.msi',
-        approxSize: '≈6 MB',
-        downloadUrl: '/downloads/Eidolon%20Simulacra_4.0.0_x64_en-US.msi',
+        approxSize: '≈53 MB',
+        downloadUrl: '/downloads/Eidolon%20Simulacra_4.5.0_x64_en-US.msi',
       },
     ],
     requirements: ['Windows 10 or later.'],
@@ -91,7 +91,7 @@ export const downloadChannels: DownloadChannel[] = [
       {
         label: 'Release APK',
         filename: 'app-release.apk',
-        approxSize: '≈85 MB',
+        approxSize: '≈87 MB',
         downloadUrl: '/downloads/app-release.apk',
       },
     ],

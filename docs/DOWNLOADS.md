@@ -8,9 +8,9 @@
 
 | File                                    | Size     | Channel                         |
 | --------------------------------------- | -------- | ------------------------------- |
-| `Eidolon Simulacra_4.0.0_x64-setup.exe` | 4.98 MB  | Desktop (recommended installer) |
-| `Eidolon Simulacra_4.0.0_x64_en-US.msi` | 6.34 MB  | Desktop (MSI)                   |
-| `app-release.apk`                       | 86.51 MB | Android                         |
+| `Eidolon Simulacra_4.5.0_x64-setup.exe` | 51.29 MB | Desktop (recommended installer) |
+| `Eidolon Simulacra_4.5.0_x64_en-US.msi` | 52.67 MB | Desktop (MSI)                   |
+| `app-release.apk`                       | 87.42 MB | Android                         |
 
 Vite copies that same folder into the published build, so a file here is served from the site itself:
 
