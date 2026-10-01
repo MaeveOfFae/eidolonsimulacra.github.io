@@ -2,7 +2,7 @@
   "expo": {
     "name": "Eidolon Simulacra",
     "slug": "eidolon-simulacra",
-    "version": "4.2.0",
+    "version": "4.3.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "icon": "./assets/icon.png",
@@ -15,7 +15,7 @@
     "platforms": ["ios", "android"],
     "android": {
       "package": "io.github.maeveoffae.eidolonsimulacra",
-      "versionCode": 4,
+      "versionCode": 5,
       "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
