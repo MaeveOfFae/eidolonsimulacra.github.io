@@ -28,6 +28,7 @@ export { OpenAICompatEngine, OpenAICompatConfig } from './llm/openai-compat';
 // ============================================================================
 
 export * from './usage/records';
+export * from './usage/pricing';
 
 // ============================================================================
 // Multi-Model Comparison
