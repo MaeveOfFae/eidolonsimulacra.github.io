@@ -3,6 +3,22 @@
 Generated release history for the browser app.
 
 
+## v4.3.0 - 2026-09-30
+
+### Draft library at scale
+
+This release makes the draft library manageable as it grows: the library's filter set can be saved as named searches, selected drafts can be edited in bulk through one batched write, and a duplicate scan pairs matching seeds and names then scores each pair with the similarity engine.
+
+### Highlights
+- Save the library's filter set as named searches that survive navigation
+- Select drafts and edit favourite, archive, genre, or tags in one batched write
+- Duplicate scan pairs matching seeds and character names, then scores each pair by similarity
+- Filter and sort logic now lives in one shared, test-pinned contract
+
+### Links
+- [Open the library](/drafts)
+- [Open generation](/generate)
+- [Open the Help Center](/help)
 ## v4.2.0 - 2026-09-30
 
 ### Multi-model comparison runs
@@ -120,6 +136,7 @@ This release packages recent commits focused on platform, templates, and themes.
 ### Links
 - [Open generation](/generate)
 - [Review templates](/templates)
+
 
 
 

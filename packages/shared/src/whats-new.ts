@@ -16,9 +16,28 @@ export interface ReleaseNoteEntry {
 // Generated and maintained by tools/generation/generate-release-notes.mjs.
 export const releaseNotes: ReleaseNoteEntry[] = [
   {
-    version: '4.2.0',
+    version: '4.3.0',
     releasedOn: '2026-09-30',
     badge: 'Current release',
+    headline: 'Draft library at scale',
+    summary:
+      "This release makes the draft library manageable as it grows: the library's filter set can be saved as named searches, selected drafts can be edited in bulk through one batched write, and a duplicate scan pairs matching seeds and names then scores each pair with the similarity engine.",
+    highlights: [
+      "Save the library's filter set as named searches that survive navigation",
+      'Select drafts and edit favourite, archive, genre, or tags in one batched write',
+      'Duplicate scan pairs matching seeds and character names, then scores each pair by similarity',
+      'Filter and sort logic now lives in one shared, test-pinned contract',
+    ],
+    links: [
+      { label: 'Open the library', to: '/drafts' },
+      { label: 'Open generation', to: '/generate' },
+      { label: 'Open the Help Center', to: '/help' },
+    ],
+  },
+  {
+    version: '4.2.0',
+    releasedOn: '2026-09-30',
+    badge: 'Previous release',
     headline: 'Multi-model comparison runs',
     summary:
       'This release adds a Compare page that sends one seed and template through up to four candidate models, saves each result as a linked draft, and lines the candidates up with their token and time cost from the local usage records introduced in 4.1.',
