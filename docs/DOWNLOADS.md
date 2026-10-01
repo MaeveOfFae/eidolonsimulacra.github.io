@@ -8,11 +8,11 @@ Artifacts are uploaded as **assets on GitHub Releases** of this repository, and 
 
 | Asset (on release `v4.5.0`)             | Size     | Channel                         |
 | --------------------------------------- | -------- | ------------------------------- |
-| `Eidolon Simulacra_4.5.0_x64-setup.exe` | 51.29 MB | Desktop (recommended installer) |
-| `Eidolon Simulacra_4.5.0_x64_en-US.msi` | 52.67 MB | Desktop (MSI)                   |
+| `Eidolon.Simulacra_4.5.0_x64-setup.exe` | 5.26 MB  | Desktop (recommended installer) |
+| `Eidolon.Simulacra_4.5.0_x64_en-US.msi` | 6.64 MB  | Desktop (MSI)                   |
 | `app-release.apk`                       | 87.42 MB | Android                         |
 
-The APK keeps its fixed `app-release.apk` name on purpose: each release uploads an asset of the same name under the new tag, so the URL shape stays predictable even though the tag version changes.
+The APK keeps its fixed `app-release.apk` name on purpose: each release uploads an asset of the same name under the new tag, so the URL shape stays predictable even though the tag version changes. The desktop asset names use dots (`Eidolon.Simulacra_…`) rather than the Tauri bundle's spaces — uploading normalizes the space away — which `buildReleaseAssetUrl` already accounts for. Size note: the first 4.5.0 desktop bundles built at ~51–53 MB were an anomaly (as were the local 4.3.0/4.4.0 bundles); the 4.5.0 assets above are from a clean rebuild back at the normal ~5–7 MB.
 
 ## Shipping a new build
 
@@ -23,7 +23,7 @@ The APK keeps its fixed `app-release.apk` name on purpose: each release uploads 
    pnpm build:mobile    # -> packages/mobile/android/app/build/outputs/apk/release/
    ```
 
-2. Create a GitHub release tagged `v<version>` on the release commit and upload the artifacts as assets, keeping the exact filenames (desktop names embed the version; the APK stays `app-release.apk`). **Create the release before pushing the `download.ts` change**, or the download buttons 404 until the assets exist.
+2. Create a GitHub release tagged `v<version>` on the release commit and upload the artifacts as assets with dot-separated names (`Eidolon.Simulacra_<version>_x64-setup.exe` and `…_x64_en-US.msi` — uploading normalizes the Tauri bundle's spaces to dots; the APK stays `app-release.apk`). **Create the release before pushing the `download.ts` change**, or the download buttons 404 until the assets exist.
 3. Update `packages/shared/src/info/download.ts`: bump `RELEASE_VERSION` and the `approxSize` labels. `buildReleaseAssetUrl` handles space encoding and the tag.
 4. Run `pnpm test:shared` — the URL-shape test pins the repository, the `vX.Y.Z` tag, and space encoding, because `pnpm downloads:check` deliberately cannot verify absolute URLs (they are GitHub's uptime, not this repository's). `pnpm downloads:check` still guards the (currently empty) set of site-relative downloads should any return.
 
