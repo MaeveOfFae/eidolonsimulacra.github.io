@@ -142,6 +142,21 @@ export interface AssetWriteOptions {
   expectedPreviousContent?: string | null;
 }
 
+/**
+ * The editable metadata subset bulk operations may touch. Identity, lineage,
+ * and merge history are deliberately not bulk-editable. `unarchive` clears
+ * the archive marker (an absent `archived_at` cannot express that intent).
+ */
+export interface BulkDraftMetadataPatch {
+  favorite?: boolean;
+  genre?: string;
+  notes?: string;
+  mode?: DraftMetadata['mode'];
+  tags?: string[];
+  archived_at?: string;
+  unarchive?: boolean;
+}
+
 function describeStorageError(error: unknown): string {
   if (error instanceof Error) {
     const baseMessage = error.message?.trim() || error.name || 'Unknown storage error';
@@ -1606,6 +1621,83 @@ export class DraftStorage {
         await db.tags.bulkAdd(tagEntities);
       }
     }
+  }
+
+  /**
+   * Bulk-update editable metadata across many drafts in one pass — a single
+   * browser transaction and a single desktop persist instead of one full
+   * re-persist per draft. Returns the number of drafts updated.
+   */
+  static async updateDraftsMetadata(reviewIds: readonly string[], updates: BulkDraftMetadataPatch): Promise<number> {
+    const ids = [...new Set(reviewIds.map((id) => id.trim()).filter(Boolean))];
+    if (ids.length === 0) {
+      return 0;
+    }
+
+    const { unarchive, ...patch } = updates;
+    const applyPatch = (metadata: DraftMetadata, now: number): DraftMetadata => ({
+      ...metadata,
+      ...patch,
+      ...(unarchive ? { archived_at: undefined } : {}),
+      modified: new Date(now).toISOString(),
+    });
+
+    if (isDesktopDraftStoreEnabled()) {
+      return withDesktopDraftStore(
+        (store) => {
+          const now = Date.now();
+          let updated = 0;
+
+          for (const id of ids) {
+            const existing = store.drafts.find((entry) => entry.reviewId === id);
+            if (!existing) {
+              continue;
+            }
+            existing.metadata = applyPatch(existing.metadata, now);
+            existing.updatedAt = now;
+            updated += 1;
+          }
+
+          return updated;
+        },
+        { persist: true },
+      );
+    }
+
+    await this.ensureReady();
+
+    let updated = 0;
+    const now = Date.now();
+
+    await db.transaction('rw', db.drafts, db.tags, async () => {
+      for (const id of ids) {
+        const existing = await db.drafts.where('reviewId').equals(id).first();
+        if (!existing) {
+          continue;
+        }
+
+        existing.metadata = applyPatch(existing.metadata, now);
+        existing.updatedAt = now;
+        await db.drafts.put(existing);
+
+        if (updates.tags !== undefined) {
+          await db.tags.where('draftId').equals(id).delete();
+          if (updates.tags && updates.tags.length > 0) {
+            await db.tags.bulkAdd(
+              updates.tags.map((tag) => ({
+                tag,
+                draftId: id,
+                createdAt: now,
+              })),
+            );
+          }
+        }
+
+        updated += 1;
+      }
+    });
+
+    return updated;
   }
 
   /**

@@ -94,6 +94,7 @@ type ApiMethodName =
   | 'testConnection'
   | 'updateAsset'
   | 'updateBlueprint'
+  | 'updateDraftsMetadata'
   | 'updateConfig'
   | 'updateMetadata'
   | 'updateTemplate'

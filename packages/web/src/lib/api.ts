@@ -104,7 +104,7 @@ import {
   updateLocalWorldLocation,
   updateLocalWorldRelationship,
 } from './storage/desktop-lore-db.js';
-import { DraftStorage, type AssetWriteOptions } from './storage/draft-db.js';
+import { DraftStorage, type AssetWriteOptions, type BulkDraftMetadataPatch } from './storage/draft-db.js';
 import { UsageStorage } from './storage/usage-db.js';
 import { GenerationService } from './services/generation.js';
 import { appendDraftRevisionSnapshot, buildDraftRevisionSnapshot } from './drafts/revision-snapshots.js';
@@ -1842,6 +1842,10 @@ export class EidolonBrowserAPI {
 
   getComparisonGroupDrafts(groupId: string): Promise<DraftMetadata[]> {
     return DraftStorage.getComparisonGroupDrafts(groupId);
+  }
+
+  updateDraftsMetadata(reviewIds: readonly string[], updates: BulkDraftMetadataPatch): Promise<number> {
+    return DraftStorage.updateDraftsMetadata(reviewIds, updates);
   }
 
   getUsageRecords(filter: UsageFilter = {}): Promise<UsageRecord[]> {
