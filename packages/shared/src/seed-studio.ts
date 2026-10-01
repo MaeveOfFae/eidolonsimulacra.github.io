@@ -93,8 +93,7 @@ export function normalizeSeedIdeaRecord(value: unknown): SeedIdeaRecord | null {
 
   const raw = value as Record<string, unknown>;
   const id = typeof raw.id === 'string' && raw.id.trim().length > 0 ? raw.id.trim() : null;
-  const text =
-    typeof raw.text === 'string' && raw.text.trim().length > 0 ? raw.text.trim().replace(/\s+/g, ' ') : null;
+  const text = typeof raw.text === 'string' && raw.text.trim().length > 0 ? raw.text.trim().replace(/\s+/g, ' ') : null;
 
   if (!id || !text) {
     return null;
