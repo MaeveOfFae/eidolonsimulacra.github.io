@@ -38,7 +38,12 @@ function toRepoRelative(filePath) {
 
 async function buildContentMap(files) {
   const pairs = await Promise.all(files.map(async (filePath) => {
-    const contents = await fs.readFile(filePath, 'utf8');
+    // Normalise at read time, before the content is stringified: CRLF inside
+    // a JSON string becomes the literal escape text `\r\n`, which the check's
+    // whole-file EOL normalisation cannot see. Without this, a Windows
+    // checkout (CRLF on disk) and a Linux checkout (LF) produce different
+    // generated files and CI fails with no real drift.
+    const contents = (await fs.readFile(filePath, 'utf8')).replace(/\r\n/g, '\n');
     return [toRepoRelative(filePath), contents];
   }));
 
