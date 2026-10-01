@@ -19,7 +19,17 @@ async function collectFiles(rootDir, predicate) {
     return predicate(fullPath) ? [fullPath] : [];
   }));
 
-  return nested.flat().sort((left, right) => left.localeCompare(right));
+  // Sort by repo-relative POSIX paths with a plain codepoint comparison:
+  // `localeCompare` is locale/ICU-dependent and absolute paths differ by OS
+  // separator (`\` vs `/`), so anything else can order files differently on
+  // the CI runner than on the machine that committed the generated file —
+  // failing `content:check` with no real drift. This ordering is identical
+  // on every platform.
+  return nested.flat().sort((left, right) => {
+    const leftKey = toRepoRelative(left);
+    const rightKey = toRepoRelative(right);
+    return leftKey < rightKey ? -1 : leftKey > rightKey ? 1 : 0;
+  });
 }
 
 function toRepoRelative(filePath) {
