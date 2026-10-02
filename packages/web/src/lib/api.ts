@@ -1,7 +1,6 @@
 import {
   applyDraftFilters,
   buildDraftExportArtifact,
-  buildBlueprintList,
   buildDraftListResponse,
   buildLineageResponse,
   buildMissingTemplateBlueprintWarnings,
@@ -76,35 +75,9 @@ import { toAppConnectionTestResult } from './llm/connection-result.js';
 import { builtinThemes } from './themes/builtin-themes.js';
 import { configManager } from './config/manager.js';
 import { readPersistedJson, writePersistedJson } from './persistence/storage.js';
-import { isDesktopRuntime, isSelfContainedDesktopRuntime } from './runtime.js';
-import {
-  addLocalTimelineEvent,
-  addLocalWorldCharacter,
-  addLocalWorldFaction,
-  addLocalWorldLocation,
-  addLocalWorldRelationship,
-  createLocalTimeline,
-  createLocalWorld,
-  deleteLocalTimeline,
-  deleteLocalTimelineEvent,
-  deleteLocalWorld,
-  deleteLocalWorldCharacter,
-  deleteLocalWorldFaction,
-  deleteLocalWorldLocation,
-  deleteLocalWorldRelationship,
-  getLocalWorldCharacterDraftLinks,
-  getLocalWorldRelationshipAuditIssues,
-  getLocalTimeline,
-  getLocalWorld,
-  getLocalWorlds,
-  updateLocalTimeline,
-  updateLocalTimelineEvent,
-  updateLocalWorld,
-  updateLocalWorldCharacter,
-  updateLocalWorldFaction,
-  updateLocalWorldLocation,
-  updateLocalWorldRelationship,
-} from './storage/desktop-lore-db.js';
+import { isDesktopRuntime } from './runtime.js';
+import * as worldApi from './worlds/lore-api.js';
+import * as blueprintApi from './blueprints/blueprint-api.js';
 import { DraftStorage, type AssetWriteOptions, type BulkDraftMetadataPatch } from './storage/draft-db.js';
 import { UsageStorage } from './storage/usage-db.js';
 import {
@@ -116,21 +89,14 @@ import {
 import { GenerationService } from './services/generation.js';
 import { appendDraftRevisionSnapshot, buildDraftRevisionSnapshot } from './drafts/revision-snapshots.js';
 import {
-  buildUniqueCustomBlueprintPath,
   type StoredTemplateRecord,
   getAllTemplateRecords,
-  getBlueprintCatalog,
-  getBlueprintOverrides,
-  getOriginalBlueprintContent,
-  hasBlueprintOverride,
   getStoredTemplateRecord,
   getStoredTemplates,
   getTemplateRecord,
   inferCharacterDisplayNameForTemplate,
-  isCustomBlueprintPath,
   resolveTemplateBlueprintContent,
   resolveTemplateDefinition,
-  saveBlueprintOverrides,
   saveStoredTemplates,
 } from './templates/browser.js';
 import { buildOptimizeTextMessages } from '@char-gen/shared';
@@ -207,50 +173,6 @@ type BlueprintPreviewResponse = GenerateAssetResponse & {
 const CUSTOM_THEMES_STORAGE_KEY = 'eidolon.web.themes.custom';
 export const THEMES_SYNCED_EVENT = 'eidolon:themes-synced';
 export const DRAFTS_SYNCED_EVENT = 'eidolon:drafts-synced';
-const DESKTOP_WORLDS_ONLY_MESSAGE =
-  'Persisted worlds, factions, locations, and timelines are currently only available in the desktop app.';
-
-function parseBlueprintMetadata(
-  path: string,
-  content: string,
-): {
-  name: string;
-  description: string;
-  version: string;
-  invokable: boolean;
-} {
-  const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
-  let name = path.split('/').pop()?.replace('.md', '') || 'Blueprint';
-  let description = '';
-  let version = '1.0';
-  let invokable = true;
-
-  if (!frontmatterMatch) {
-    return { name, description, version, invokable };
-  }
-
-  const frontmatter = frontmatterMatch[1];
-  const nameMatch = frontmatter.match(/^name:\s*(.+)$/m);
-  const descriptionMatch = frontmatter.match(/^description:\s*(.+)$/m);
-  const versionMatch = frontmatter.match(/^version:\s*(.+)$/m);
-  const invokableMatch = frontmatter.match(/^invokable:\s*(.+)$/m);
-
-  if (nameMatch) {
-    name = nameMatch[1].trim();
-  }
-  if (descriptionMatch) {
-    description = descriptionMatch[1].trim();
-  }
-  if (versionMatch) {
-    version = versionMatch[1].trim();
-  }
-  if (invokableMatch) {
-    invokable = invokableMatch[1].trim() === 'true';
-  }
-
-  return { name, description, version, invokable };
-}
-
 function getUniqueTemplateName(requestedName: string, excludeName?: string): string {
   const existingNames = new Set(
     getAllTemplateRecords()
@@ -379,15 +301,8 @@ class BrowserStream {
   }
 }
 
-export class APIError extends Error {
-  constructor(
-    public status: number,
-    message: string,
-  ) {
-    super(message);
-    this.name = 'APIError';
-  }
-}
+export { APIError } from './api-error.js';
+import { APIError } from './api-error.js';
 
 function readStorage<T>(keys: string | readonly string[], fallback: T): T {
   return readPersistedJson(keys, fallback);
@@ -1361,8 +1276,7 @@ export class EidolonBrowserAPI {
   }
 
   async getBlueprints(): Promise<BlueprintList> {
-    const values = [...getBlueprintCatalog().values()];
-    return buildBlueprintList(values);
+    return blueprintApi.getBlueprints();
   }
 
   async getWorlds(params?: {
@@ -1370,21 +1284,13 @@ export class EidolonBrowserAPI {
     genre?: string;
     includePublic?: boolean;
   }): Promise<{ worlds: WorldRecord[] }> {
-    if (isSelfContainedDesktopRuntime()) {
-      return getLocalWorlds(params);
-    }
-
-    return { worlds: [] };
+    return worldApi.getWorlds(params);
   }
 
   async getWorldCharacterDraftLinks(params?: {
     draftIds?: string[];
   }): Promise<{ links: WorldCharacterDraftLinkRecord[] }> {
-    if (isSelfContainedDesktopRuntime()) {
-      return getLocalWorldCharacterDraftLinks(params);
-    }
-
-    return { links: [] };
+    return worldApi.getWorldCharacterDraftLinks(params);
   }
 
   async getWorldRelationshipAuditIssues(): Promise<{
@@ -1401,19 +1307,11 @@ export class EidolonBrowserAPI {
       kind: 'missing-source-character' | 'missing-target-character' | 'missing-both-characters';
     }>;
   }> {
-    if (isSelfContainedDesktopRuntime()) {
-      return getLocalWorldRelationshipAuditIssues();
-    }
-
-    return { issues: [] };
+    return worldApi.getWorldRelationshipAuditIssues();
   }
 
   async getWorld(id: string): Promise<{ world: WorldRecord }> {
-    if (isSelfContainedDesktopRuntime()) {
-      return getLocalWorld(id);
-    }
-
-    throw new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE);
+    return worldApi.getWorld(id);
   }
 
   async createWorld(data: {
@@ -1425,38 +1323,22 @@ export class EidolonBrowserAPI {
     tags?: string[];
     isPublic?: boolean;
   }): Promise<{ world: WorldRecord }> {
-    if (isSelfContainedDesktopRuntime()) {
-      return createLocalWorld(data);
-    }
-
-    throw new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE);
+    return worldApi.createWorld(data);
   }
 
   async updateWorld(id: string, data: Record<string, unknown>): Promise<{ world: WorldRecord }> {
-    if (isSelfContainedDesktopRuntime()) {
-      return updateLocalWorld(id, data);
-    }
-
-    throw new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE);
+    return worldApi.updateWorld(id, data);
   }
 
   async deleteWorld(id: string): Promise<{ message: string }> {
-    if (isSelfContainedDesktopRuntime()) {
-      return deleteLocalWorld(id);
-    }
-
-    throw new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE);
+    return worldApi.deleteWorld(id);
   }
 
   async addWorldCharacter(
     worldId: string,
     data: { draftId?: string; characterName: string; role?: string; notes?: string },
   ): Promise<{ character: WorldCharacterRecord }> {
-    if (isSelfContainedDesktopRuntime()) {
-      return addLocalWorldCharacter(worldId, data);
-    }
-
-    throw new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE);
+    return worldApi.addWorldCharacter(worldId, data);
   }
 
   async updateWorldCharacter(
@@ -1464,30 +1346,18 @@ export class EidolonBrowserAPI {
     characterId: string,
     data: Record<string, unknown>,
   ): Promise<{ character: WorldCharacterRecord }> {
-    if (isSelfContainedDesktopRuntime()) {
-      return updateLocalWorldCharacter(worldId, characterId, data);
-    }
-
-    throw new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE);
+    return worldApi.updateWorldCharacter(worldId, characterId, data);
   }
 
   async deleteWorldCharacter(worldId: string, characterId: string): Promise<{ message: string }> {
-    if (isSelfContainedDesktopRuntime()) {
-      return deleteLocalWorldCharacter(worldId, characterId);
-    }
-
-    throw new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE);
+    return worldApi.deleteWorldCharacter(worldId, characterId);
   }
 
   async addWorldFaction(
     worldId: string,
     data: { name: string; description?: string; role?: string; notes?: string; tags?: string[]; draftIds?: string[] },
   ): Promise<{ faction: WorldFactionRecord }> {
-    if (isSelfContainedDesktopRuntime()) {
-      return addLocalWorldFaction(worldId, data);
-    }
-
-    throw new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE);
+    return worldApi.addWorldFaction(worldId, data);
   }
 
   async updateWorldFaction(
@@ -1495,19 +1365,11 @@ export class EidolonBrowserAPI {
     factionId: string,
     data: Record<string, unknown>,
   ): Promise<{ faction: WorldFactionRecord }> {
-    if (isSelfContainedDesktopRuntime()) {
-      return updateLocalWorldFaction(worldId, factionId, data);
-    }
-
-    throw new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE);
+    return worldApi.updateWorldFaction(worldId, factionId, data);
   }
 
   async deleteWorldFaction(worldId: string, factionId: string): Promise<{ message: string }> {
-    if (isSelfContainedDesktopRuntime()) {
-      return deleteLocalWorldFaction(worldId, factionId);
-    }
-
-    throw new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE);
+    return worldApi.deleteWorldFaction(worldId, factionId);
   }
 
   async addWorldLocation(
@@ -1521,11 +1383,7 @@ export class EidolonBrowserAPI {
       draftIds?: string[];
     },
   ): Promise<{ location: WorldLocationRecord }> {
-    if (isSelfContainedDesktopRuntime()) {
-      return addLocalWorldLocation(worldId, data);
-    }
-
-    throw new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE);
+    return worldApi.addWorldLocation(worldId, data);
   }
 
   async updateWorldLocation(
@@ -1533,30 +1391,18 @@ export class EidolonBrowserAPI {
     locationId: string,
     data: Record<string, unknown>,
   ): Promise<{ location: WorldLocationRecord }> {
-    if (isSelfContainedDesktopRuntime()) {
-      return updateLocalWorldLocation(worldId, locationId, data);
-    }
-
-    throw new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE);
+    return worldApi.updateWorldLocation(worldId, locationId, data);
   }
 
   async deleteWorldLocation(worldId: string, locationId: string): Promise<{ message: string }> {
-    if (isSelfContainedDesktopRuntime()) {
-      return deleteLocalWorldLocation(worldId, locationId);
-    }
-
-    throw new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE);
+    return worldApi.deleteWorldLocation(worldId, locationId);
   }
 
   async addWorldRelationship(
     worldId: string,
     data: { sourceCharacterId: string; targetCharacterId: string; label: string; notes?: string },
   ): Promise<{ relationship: WorldRelationshipRecord }> {
-    if (isSelfContainedDesktopRuntime()) {
-      return addLocalWorldRelationship(worldId, data);
-    }
-
-    throw new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE);
+    return worldApi.addWorldRelationship(worldId, data);
   }
 
   async updateWorldRelationship(
@@ -1564,27 +1410,15 @@ export class EidolonBrowserAPI {
     relationshipId: string,
     data: Record<string, unknown>,
   ): Promise<{ relationship: WorldRelationshipRecord }> {
-    if (isSelfContainedDesktopRuntime()) {
-      return updateLocalWorldRelationship(worldId, relationshipId, data);
-    }
-
-    throw new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE);
+    return worldApi.updateWorldRelationship(worldId, relationshipId, data);
   }
 
   async deleteWorldRelationship(worldId: string, relationshipId: string): Promise<{ message: string }> {
-    if (isSelfContainedDesktopRuntime()) {
-      return deleteLocalWorldRelationship(worldId, relationshipId);
-    }
-
-    throw new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE);
+    return worldApi.deleteWorldRelationship(worldId, relationshipId);
   }
 
   async getTimeline(id: string): Promise<{ timeline: TimelineRecord }> {
-    if (isSelfContainedDesktopRuntime()) {
-      return getLocalTimeline(id);
-    }
-
-    throw new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE);
+    return worldApi.getTimeline(id);
   }
 
   async createTimeline(data: {
@@ -1595,27 +1429,15 @@ export class EidolonBrowserAPI {
     endDate?: string;
     tags?: string[];
   }): Promise<{ timeline: TimelineRecord }> {
-    if (isSelfContainedDesktopRuntime()) {
-      return createLocalTimeline(data);
-    }
-
-    throw new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE);
+    return worldApi.createTimeline(data);
   }
 
   async updateTimeline(id: string, data: Record<string, unknown>): Promise<{ timeline: TimelineRecord }> {
-    if (isSelfContainedDesktopRuntime()) {
-      return updateLocalTimeline(id, data);
-    }
-
-    throw new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE);
+    return worldApi.updateTimeline(id, data);
   }
 
   async deleteTimeline(id: string): Promise<{ message: string }> {
-    if (isSelfContainedDesktopRuntime()) {
-      return deleteLocalTimeline(id);
-    }
-
-    throw new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE);
+    return worldApi.deleteTimeline(id);
   }
 
   async addTimelineEvent(
@@ -1629,11 +1451,7 @@ export class EidolonBrowserAPI {
       metadata?: Record<string, unknown>;
     },
   ): Promise<{ event: TimelineEventRecord }> {
-    if (isSelfContainedDesktopRuntime()) {
-      return addLocalTimelineEvent(timelineId, data);
-    }
-
-    throw new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE);
+    return worldApi.addTimelineEvent(timelineId, data);
   }
 
   async updateTimelineEvent(
@@ -1641,108 +1459,43 @@ export class EidolonBrowserAPI {
     eventId: string,
     data: Record<string, unknown>,
   ): Promise<{ event: TimelineEventRecord }> {
-    if (isSelfContainedDesktopRuntime()) {
-      return updateLocalTimelineEvent(timelineId, eventId, data);
-    }
-
-    throw new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE);
+    return worldApi.updateTimelineEvent(timelineId, eventId, data);
   }
 
   async deleteTimelineEvent(timelineId: string, eventId: string): Promise<{ message: string }> {
-    if (isSelfContainedDesktopRuntime()) {
-      return deleteLocalTimelineEvent(timelineId, eventId);
-    }
-
-    throw new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE);
+    return worldApi.deleteTimelineEvent(timelineId, eventId);
   }
 
   async getBlueprint(path: string): Promise<Blueprint> {
-    const blueprint = getBlueprintCatalog().get(path);
-    if (!blueprint) {
-      throw new APIError(404, `Blueprint ${path} not found`);
-    }
-    return blueprint;
+    return blueprintApi.getBlueprint(path);
   }
 
   async updateBlueprint(path: string, content: string): Promise<Blueprint> {
-    const isBuiltinBlueprint = getOriginalBlueprintContent(path) !== null && !isCustomBlueprintPath(path);
-    if (isBuiltinBlueprint) {
-      const metadata = parseBlueprintMetadata(path, content);
-      const targetPath = buildUniqueCustomBlueprintPath(metadata.name || path, path);
-      return this.createBlueprint(targetPath, content);
-    }
-
-    // Save locally first
-    const overrides = getBlueprintOverrides();
-    overrides[path] = content;
-    saveBlueprintOverrides(overrides);
-
-    return this.getBlueprint(path);
+    return blueprintApi.updateBlueprint(path, content);
   }
 
   async deleteBlueprint(path: string): Promise<{ status: 'deleted'; path: string }> {
-    if (getOriginalBlueprintContent(path) !== null) {
-      throw new APIError(400, `Cannot delete built-in blueprint ${path}`);
-    }
-
-    const overrides = getBlueprintOverrides();
-    delete overrides[path];
-    saveBlueprintOverrides(overrides);
-
-    return { status: 'deleted', path };
+    return blueprintApi.deleteBlueprint(path);
   }
 
   async resetBlueprint(path: string): Promise<Blueprint> {
-    // Remove local override
-    const overrides = getBlueprintOverrides();
-    delete overrides[path];
-    saveBlueprintOverrides(overrides);
-
-    const blueprint = this.getBlueprint(path);
-    if (!blueprint) {
-      throw new APIError(404, `Blueprint ${path} not found`);
-    }
-    return blueprint;
+    return blueprintApi.resetBlueprint(path);
   }
 
   async createBlueprint(path: string, content: string): Promise<Blueprint> {
-    const existing = getBlueprintCatalog().get(path);
-    if (existing) {
-      throw new APIError(409, `Blueprint ${path} already exists`);
-    }
-
-    // Save locally first
-    const overrides = getBlueprintOverrides();
-    overrides[path] = content;
-    saveBlueprintOverrides(overrides);
-
-    return this.getBlueprint(path);
+    return blueprintApi.createBlueprint(path, content);
   }
 
   async duplicateBlueprint(sourcePath: string, targetPath: string): Promise<Blueprint> {
-    const source = getBlueprintCatalog().get(sourcePath);
-    if (!source) {
-      throw new APIError(404, `Source blueprint ${sourcePath} not found`);
-    }
-    const existing = getBlueprintCatalog().get(targetPath);
-    if (existing) {
-      throw new APIError(409, `Blueprint ${targetPath} already exists`);
-    }
-
-    // Save locally first
-    const overrides = getBlueprintOverrides();
-    overrides[targetPath] = source.content;
-    saveBlueprintOverrides(overrides);
-
-    return this.getBlueprint(targetPath);
+    return blueprintApi.duplicateBlueprint(sourcePath, targetPath);
   }
 
   hasBlueprintOverride(path: string): boolean {
-    return hasBlueprintOverride(path);
+    return blueprintApi.hasBlueprintOverride(path);
   }
 
   getOriginalBlueprintContent(path: string): string | null {
-    return getOriginalBlueprintContent(path);
+    return blueprintApi.getOriginalBlueprintContent(path);
   }
 
   chat(request: ChatRequest): BrowserStream {
