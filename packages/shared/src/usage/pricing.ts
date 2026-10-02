@@ -1,11 +1,12 @@
 /**
  * Model pricing, provider scorecards, and usage-record export.
  *
- * Pricing is user-entered per model (what the user actually pays, per 1K
- * tokens, in their currency) — there is deliberately no bundled price table
- * to maintain. Cost calculation and scorecard aggregation are pure functions
- * over the usage records the engines already write (4.1). Export serializers
- * are pure too, so a surface can test the exact bytes it will download.
+ * Pricing is user-entered per model (what the user actually pays, per 1M
+ * tokens — the unit providers quote — in their currency) — there is
+ * deliberately no bundled price table to maintain. Cost calculation and
+ * scorecard aggregation are pure functions over the usage records the
+ * engines already write (4.1). Export serializers are pure too, so a
+ * surface can test the exact bytes it will download.
  */
 
 import type { UsageRecord } from './records';
@@ -18,8 +19,8 @@ import { filterUsageRecords, type UsageFilter } from './records';
 export interface ModelPricing {
   id: string;
   model: string;
-  inputCostPer1kTokens: number;
-  outputCostPer1kTokens: number;
+  inputCostPerMillionTokens: number;
+  outputCostPerMillionTokens: number;
   /** ISO 4217 currency code, e.g. "USD". */
   currency: string;
   createdAt: string;
@@ -46,8 +47,13 @@ export function normalizeModelPricing(value: unknown): ModelPricing | null {
   const raw = value as Record<string, unknown>;
   const id = typeof raw.id === 'string' && raw.id.trim().length > 0 ? raw.id.trim() : null;
   const model = typeof raw.model === 'string' && raw.model.trim().length > 0 ? raw.model.trim() : null;
-  const inputCost = coerceNonNegativeFinite(raw.inputCostPer1kTokens ?? raw.inputCost);
-  const outputCost = coerceNonNegativeFinite(raw.outputCostPer1kTokens ?? raw.outputCost);
+  // `inputCostPer1kTokens`/`outputCostPer1kTokens` are the pre-4.6.1 field
+  // names: entries saved then carry per-1M rates under the old keys, so they
+  // migrate verbatim — the values were always meant per 1M tokens.
+  const inputCost = coerceNonNegativeFinite(raw.inputCostPerMillionTokens ?? raw.inputCostPer1kTokens ?? raw.inputCost);
+  const outputCost = coerceNonNegativeFinite(
+    raw.outputCostPerMillionTokens ?? raw.outputCostPer1kTokens ?? raw.outputCost,
+  );
   const currency =
     typeof raw.currency === 'string' && raw.currency.trim().length > 0 ? raw.currency.trim().toUpperCase() : null;
 
@@ -60,7 +66,14 @@ export function normalizeModelPricing(value: unknown): ModelPricing | null {
       ? raw.createdAt
       : new Date().toISOString();
 
-  return { id, model, inputCostPer1kTokens: inputCost, outputCostPer1kTokens: outputCost, currency, createdAt };
+  return {
+    id,
+    model,
+    inputCostPerMillionTokens: inputCost,
+    outputCostPerMillionTokens: outputCost,
+    currency,
+    createdAt,
+  };
 }
 
 /** Add or replace a pricing record by id, newest first, capped. */
@@ -98,15 +111,15 @@ export function findPricingForModel(table: readonly ModelPricing[], model: strin
 
 /**
  * Calculate the cost of a single LLM call from its token counts and the
- * per-1K-token pricing. Returns 0 when the usage or pricing is missing
+ * per-1M-token pricing. Returns 0 when the usage or pricing is missing
  * (the caller decides whether to display "—" or "0").
  */
 export function calculateUsageCost(
   usage: { promptTokens?: number; completionTokens?: number },
   pricing: ModelPricing,
 ): number {
-  const inputCost = ((usage.promptTokens ?? 0) / 1000) * pricing.inputCostPer1kTokens;
-  const outputCost = ((usage.completionTokens ?? 0) / 1000) * pricing.outputCostPer1kTokens;
+  const inputCost = ((usage.promptTokens ?? 0) / 1_000_000) * pricing.inputCostPerMillionTokens;
+  const outputCost = ((usage.completionTokens ?? 0) / 1_000_000) * pricing.outputCostPerMillionTokens;
   return inputCost + outputCost;
 }
 

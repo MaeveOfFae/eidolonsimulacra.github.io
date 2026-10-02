@@ -20,22 +20,27 @@ describe('model pricing store', () => {
 
     const saved = saveModelPricing({
       model: ' gpt-4o ',
-      inputCostPer1kTokens: 0.0025,
-      outputCostPer1kTokens: 0.01,
+      inputCostPerMillionTokens: 0.0025,
+      outputCostPerMillionTokens: 0.01,
       currency: 'usd',
     });
 
-    expect(saved).toMatchObject({ model: 'gpt-4o', currency: 'USD', inputCostPer1kTokens: 0.0025 });
+    expect(saved).toMatchObject({ model: 'gpt-4o', currency: 'USD', inputCostPerMillionTokens: 0.0025 });
     expect(listener).toHaveBeenCalledTimes(1);
     expect(getModelPricing()).toEqual([saved]);
   });
 
   it('rejects invalid input without writing', () => {
     expect(
-      saveModelPricing({ model: '   ', inputCostPer1kTokens: 1, outputCostPer1kTokens: 1, currency: 'USD' }),
+      saveModelPricing({ model: '   ', inputCostPerMillionTokens: 1, outputCostPerMillionTokens: 1, currency: 'USD' }),
     ).toBeNull();
     expect(
-      saveModelPricing({ model: 'gpt-4o', inputCostPer1kTokens: -1, outputCostPer1kTokens: 1, currency: 'USD' }),
+      saveModelPricing({
+        model: 'gpt-4o',
+        inputCostPerMillionTokens: -1,
+        outputCostPerMillionTokens: 1,
+        currency: 'USD',
+      }),
     ).toBeNull();
     expect(getModelPricing()).toEqual([]);
   });
@@ -43,8 +48,8 @@ describe('model pricing store', () => {
   it('updates an existing entry by id, keeping createdAt, and deletes by id', () => {
     const first = saveModelPricing({
       model: 'gpt-4o',
-      inputCostPer1kTokens: 0.0025,
-      outputCostPer1kTokens: 0.01,
+      inputCostPerMillionTokens: 0.0025,
+      outputCostPerMillionTokens: 0.01,
       currency: 'USD',
     });
     expect(first).not.toBeNull();
@@ -52,12 +57,12 @@ describe('model pricing store', () => {
     const updated = saveModelPricing({
       id: first!.id,
       model: 'gpt-4o',
-      inputCostPer1kTokens: 0.005,
-      outputCostPer1kTokens: 0.02,
+      inputCostPerMillionTokens: 0.005,
+      outputCostPerMillionTokens: 0.02,
       currency: 'USD',
     });
 
-    expect(updated).toMatchObject({ id: first!.id, inputCostPer1kTokens: 0.005, createdAt: first!.createdAt });
+    expect(updated).toMatchObject({ id: first!.id, inputCostPerMillionTokens: 0.005, createdAt: first!.createdAt });
     expect(getModelPricing()).toHaveLength(1);
 
     deleteModelPricing(first!.id);
@@ -72,8 +77,8 @@ describe('model pricing store', () => {
         {
           id: 'ok',
           model: 'gpt-4o',
-          inputCostPer1kTokens: 1,
-          outputCostPer1kTokens: 2,
+          inputCostPerMillionTokens: 1,
+          outputCostPerMillionTokens: 2,
           currency: 'USD',
           createdAt: '2026-09-01T00:00:00.000Z',
         },

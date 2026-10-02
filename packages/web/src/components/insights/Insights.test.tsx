@@ -95,8 +95,8 @@ describe('Insights page', () => {
       {
         id: 'p1',
         model: 'gpt-4o',
-        inputCostPer1kTokens: 1,
-        outputCostPer1kTokens: 1,
+        inputCostPerMillionTokens: 1000,
+        outputCostPerMillionTokens: 1000,
         currency: 'USD',
         createdAt: '2026-09-01T00:00:00.000Z',
       },

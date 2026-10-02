@@ -1,5 +1,5 @@
 /**
- * User-editable per-model pricing (what the user actually pays, per 1K tokens).
+ * User-editable per-model pricing (what the user actually pays, per 1M tokens).
  *
  * Same pattern as saved searches and scenario presets: records persist through
  * the shared persistence layer (browser localStorage, desktop app data on
@@ -40,8 +40,8 @@ export interface SaveModelPricingInput {
   /** Existing id when editing; omitted to create a new entry. */
   id?: string;
   model: string;
-  inputCostPer1kTokens: number;
-  outputCostPer1kTokens: number;
+  inputCostPerMillionTokens: number;
+  outputCostPerMillionTokens: number;
   currency: string;
 }
 
@@ -55,8 +55,8 @@ export function saveModelPricing(input: SaveModelPricingInput): ModelPricing | n
   const candidate = normalizeModelPricing({
     id: input.id?.trim() || createModelPricingId(),
     model: input.model,
-    inputCostPer1kTokens: input.inputCostPer1kTokens,
-    outputCostPer1kTokens: input.outputCostPer1kTokens,
+    inputCostPerMillionTokens: input.inputCostPerMillionTokens,
+    outputCostPerMillionTokens: input.outputCostPerMillionTokens,
     currency: input.currency,
     createdAt: existing?.createdAt ?? new Date().toISOString(),
   });

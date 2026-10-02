@@ -28,8 +28,8 @@ function pricing(overrides: Partial<ModelPricing> = {}): ModelPricing {
   return {
     id: 'p-1',
     model: 'gpt-4o',
-    inputCostPer1kTokens: 0.0025,
-    outputCostPer1kTokens: 0.01,
+    inputCostPerMillionTokens: 2.5,
+    outputCostPerMillionTokens: 10,
     currency: 'USD',
     createdAt: '2026-09-01T00:00:00.000Z',
     ...overrides,
@@ -42,9 +42,24 @@ describe('model pricing', () => {
       normalizeModelPricing({
         id: ' p-1 ',
         model: ' gpt-4o ',
-        inputCostPer1kTokens: 0.0025,
-        outputCostPer1kTokens: 0.01,
+        inputCostPerMillionTokens: 2.5,
+        outputCostPerMillionTokens: 10,
         currency: 'usd',
+        createdAt: '2026-09-01T00:00:00.000Z',
+      }),
+    ).toEqual(pricing());
+  });
+
+  it('migrates pre-4.6.1 per-1K field names verbatim', () => {
+    // Entries saved before 4.6.1 carry per-1M rates under the old keys; the
+    // values were always meant per 1M tokens, so they carry over unchanged.
+    expect(
+      normalizeModelPricing({
+        id: 'p-1',
+        model: 'gpt-4o',
+        inputCostPer1kTokens: 2.5,
+        outputCostPer1kTokens: 10,
+        currency: 'USD',
         createdAt: '2026-09-01T00:00:00.000Z',
       }),
     ).toEqual(pricing());
@@ -56,8 +71,8 @@ describe('model pricing', () => {
       normalizeModelPricing({
         id: 'x',
         model: 'm',
-        inputCostPer1kTokens: -1,
-        outputCostPer1kTokens: 0.01,
+        inputCostPerMillionTokens: -1,
+        outputCostPerMillionTokens: 10,
         currency: 'USD',
       }),
     ).toBeNull();
@@ -65,13 +80,19 @@ describe('model pricing', () => {
       normalizeModelPricing({
         id: 'x',
         model: 'm',
-        inputCostPer1kTokens: 0.0025,
-        outputCostPer1kTokens: 'lots',
+        inputCostPerMillionTokens: 2.5,
+        outputCostPerMillionTokens: 'lots',
         currency: 'USD',
       }),
     ).toBeNull();
     expect(
-      normalizeModelPricing({ id: 'x', model: 'm', inputCostPer1kTokens: 0, outputCostPer1kTokens: 0, currency: '' }),
+      normalizeModelPricing({
+        id: 'x',
+        model: 'm',
+        inputCostPerMillionTokens: 0,
+        outputCostPerMillionTokens: 0,
+        currency: '',
+      }),
     ).toBeNull();
   });
 
@@ -89,7 +110,8 @@ describe('model pricing', () => {
     expect(findPricingForModel(table, 'claude-3')).toBeUndefined();
   });
 
-  it('computes cost from token counts and per-1K pricing', () => {
+  it('computes cost from token counts and per-1M pricing', () => {
+    // 10K input × $2.50/1M + 5K output × $10/1M = $0.025 + $0.05 = $0.075
     expect(calculateUsageCost({ promptTokens: 10_000, completionTokens: 5_000 }, pricing())).toBeCloseTo(0.075);
     expect(calculateUsageCost({}, pricing())).toBe(0);
   });

@@ -83,8 +83,8 @@ function PricingEditor({ pricingTable }: { pricingTable: ModelPricing[] }) {
   function startEdit(entry: ModelPricing): void {
     setEditingId(entry.id);
     setModel(entry.model);
-    setInputRate(String(entry.inputCostPer1kTokens));
-    setOutputRate(String(entry.outputCostPer1kTokens));
+    setInputRate(String(entry.inputCostPerMillionTokens));
+    setOutputRate(String(entry.outputCostPerMillionTokens));
     setCurrency(entry.currency);
     setError(null);
   }
@@ -95,8 +95,8 @@ function PricingEditor({ pricingTable }: { pricingTable: ModelPricing[] }) {
     const saved = api.saveModelPricing({
       ...(editingId ? { id: editingId } : {}),
       model,
-      inputCostPer1kTokens: Number.parseFloat(inputRate),
-      outputCostPer1kTokens: Number.parseFloat(outputRate),
+      inputCostPerMillionTokens: Number.parseFloat(inputRate),
+      outputCostPerMillionTokens: Number.parseFloat(outputRate),
       currency,
     });
 
@@ -115,7 +115,7 @@ function PricingEditor({ pricingTable }: { pricingTable: ModelPricing[] }) {
       </summary>
       <div className="mt-4 space-y-4">
         <p className="text-xs text-muted-foreground">
-          Cost figures are estimates from your own per-1K-token rates. Eidolon ships no price tables — enter what your
+          Cost figures are estimates from your own per-1M-token rates. Eidolon ships no price tables — enter what your
           provider actually charges you.
         </p>
 
@@ -125,8 +125,8 @@ function PricingEditor({ pricingTable }: { pricingTable: ModelPricing[] }) {
               <thead className="border-b bg-accent text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
                   <th className="px-3 py-2">Model</th>
-                  <th className="px-3 py-2">In / 1K</th>
-                  <th className="px-3 py-2">Out / 1K</th>
+                  <th className="px-3 py-2">In / 1M</th>
+                  <th className="px-3 py-2">Out / 1M</th>
                   <th className="px-3 py-2">Currency</th>
                   <th className="px-3 py-2 sr-only">Actions</th>
                 </tr>
@@ -135,8 +135,8 @@ function PricingEditor({ pricingTable }: { pricingTable: ModelPricing[] }) {
                 {pricingTable.map((entry) => (
                   <tr key={entry.id} className="border-b last:border-b-0">
                     <td className="px-3 py-2 font-medium text-foreground">{entry.model}</td>
-                    <td className="px-3 py-2">{entry.inputCostPer1kTokens}</td>
-                    <td className="px-3 py-2">{entry.outputCostPer1kTokens}</td>
+                    <td className="px-3 py-2">{entry.inputCostPerMillionTokens}</td>
+                    <td className="px-3 py-2">{entry.outputCostPerMillionTokens}</td>
                     <td className="px-3 py-2">{entry.currency}</td>
                     <td className="px-3 py-2 text-right">
                       <button
@@ -178,23 +178,23 @@ function PricingEditor({ pricingTable }: { pricingTable: ModelPricing[] }) {
             />
           </label>
           <label className="w-28 text-xs text-muted-foreground">
-            In / 1K
+            In / 1M
             <input
               className="mt-1 w-full rounded-lg border bg-transparent px-2 py-1 text-sm text-foreground"
               value={inputRate}
               onChange={(event) => setInputRate(event.target.value)}
               inputMode="decimal"
-              placeholder="0.0025"
+              placeholder="2.50"
             />
           </label>
           <label className="w-28 text-xs text-muted-foreground">
-            Out / 1K
+            Out / 1M
             <input
               className="mt-1 w-full rounded-lg border bg-transparent px-2 py-1 text-sm text-foreground"
               value={outputRate}
               onChange={(event) => setOutputRate(event.target.value)}
               inputMode="decimal"
-              placeholder="0.01"
+              placeholder="10.00"
             />
           </label>
           <label className="w-20 text-xs text-muted-foreground">
