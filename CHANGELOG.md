@@ -3,6 +3,22 @@
 Generated release history for the browser app.
 
 
+## v4.6.1 - 2026-10-01
+
+### Pricing is per million tokens
+
+Corrects the Insights pricing model: rates are entered per 1M tokens — the unit providers actually quote — not per 1K, so estimated costs had been coming out 1000x too high. The math, field names, editor labels, and example placeholders now all say 1M, and pricing entries saved earlier migrate automatically with their values unchanged.
+
+### Highlights
+- Cost calculation divides by one million tokens instead of one thousand
+- Pricing fields renamed to input and output cost per million tokens
+- Entries saved before this release migrate automatically, values unchanged
+- Editor labels and placeholders now read per 1M with realistic example rates
+
+### Links
+- [Open generation](/generate)
+- [Open the library](/drafts)
+- [Open the Help Center](/help)
 ## v4.6.0 - 2026-10-01
 
 ### API facade split: domain homes for worlds and blueprints
@@ -187,6 +203,7 @@ This release packages recent commits focused on platform, templates, and themes.
 ### Links
 - [Open generation](/generate)
 - [Review templates](/templates)
+
 
 
 

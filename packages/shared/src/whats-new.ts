@@ -16,9 +16,28 @@ export interface ReleaseNoteEntry {
 // Generated and maintained by tools/generation/generate-release-notes.mjs.
 export const releaseNotes: ReleaseNoteEntry[] = [
   {
-    version: '4.6.0',
+    version: '4.6.1',
     releasedOn: '2026-10-01',
     badge: 'Current release',
+    headline: 'Pricing is per million tokens',
+    summary:
+      'Corrects the Insights pricing model: rates are entered per 1M tokens — the unit providers actually quote — not per 1K, so estimated costs had been coming out 1000x too high. The math, field names, editor labels, and example placeholders now all say 1M, and pricing entries saved earlier migrate automatically with their values unchanged.',
+    highlights: [
+      'Cost calculation divides by one million tokens instead of one thousand',
+      'Pricing fields renamed to input and output cost per million tokens',
+      'Entries saved before this release migrate automatically, values unchanged',
+      'Editor labels and placeholders now read per 1M with realistic example rates',
+    ],
+    links: [
+      { label: 'Open generation', to: '/generate' },
+      { label: 'Open the library', to: '/drafts' },
+      { label: 'Open the Help Center', to: '/help' },
+    ],
+  },
+  {
+    version: '4.6.0',
+    releasedOn: '2026-10-01',
+    badge: 'Previous release',
     headline: 'API facade split: domain homes for worlds and blueprints',
     summary:
       "A maintenance release: the browser API's world/timeline and blueprint domains move out of the 1,600-line facade into their own modules, pinned on both sides of the move by 39 new characterization tests, with the public 99-method surface locked unchanged.",
