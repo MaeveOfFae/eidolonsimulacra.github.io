@@ -16,9 +16,29 @@ export interface ReleaseNoteEntry {
 // Generated and maintained by tools/generation/generate-release-notes.mjs.
 export const releaseNotes: ReleaseNoteEntry[] = [
   {
+    version: '4.6.0',
+    releasedOn: '2026-10-01',
+    badge: 'Current release',
+    headline: 'API facade split: domain homes for worlds and blueprints',
+    summary:
+      "A maintenance release: the browser API's world/timeline and blueprint domains move out of the 1,600-line facade into their own modules, pinned on both sides of the move by 39 new characterization tests, with the public 99-method surface locked unchanged.",
+    highlights: [
+      'Blueprint domain characterized: 11 tests pin catalog listing, overrides, the built-in-edit redirect, and reset',
+      'World and timeline domain characterized: browser guards plus argument-exact desktop delegation across 28 tests',
+      'APIError extracted to its own module and re-exported, so no importer changes',
+      'The facade drops to 1,441 lines; every extracted domain now has a home of its own',
+      'All 199 web tests pass unchanged — the refactor is provably behavior-preserving',
+    ],
+    links: [
+      { label: 'Open generation', to: '/generate' },
+      { label: 'Open the library', to: '/drafts' },
+      { label: 'Open the Help Center', to: '/help' },
+    ],
+  },
+  {
     version: '4.5.0',
     releasedOn: '2026-09-30',
-    badge: 'Current release',
+    badge: 'Previous release',
     headline: 'Analysis round 2: scorecards, costs, and export',
     summary:
       'This release builds on the usage records introduced in 4.1: the Insights page now ranks every model in a provider scorecard, estimates cost in your own currency from per-model pricing you enter (Eidolon ships no price tables), and exports the raw usage history as CSV or JSON so it can leave the device it was recorded on.',

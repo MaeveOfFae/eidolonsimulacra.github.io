@@ -3,6 +3,23 @@
 Generated release history for the browser app.
 
 
+## v4.6.0 - 2026-10-01
+
+### API facade split: domain homes for worlds and blueprints
+
+A maintenance release: the browser API's world/timeline and blueprint domains move out of the 1,600-line facade into their own modules, pinned on both sides of the move by 39 new characterization tests, with the public 99-method surface locked unchanged.
+
+### Highlights
+- Blueprint domain characterized: 11 tests pin catalog listing, overrides, the built-in-edit redirect, and reset
+- World and timeline domain characterized: browser guards plus argument-exact desktop delegation across 28 tests
+- APIError extracted to its own module and re-exported, so no importer changes
+- The facade drops to 1,441 lines; every extracted domain now has a home of its own
+- All 199 web tests pass unchanged — the refactor is provably behavior-preserving
+
+### Links
+- [Open generation](/generate)
+- [Open the library](/drafts)
+- [Open the Help Center](/help)
 ## v4.5.0 - 2026-09-30
 
 ### Analysis round 2: scorecards, costs, and export
@@ -170,6 +187,7 @@ This release packages recent commits focused on platform, templates, and themes.
 ### Links
 - [Open generation](/generate)
 - [Review templates](/templates)
+
 
 
 
