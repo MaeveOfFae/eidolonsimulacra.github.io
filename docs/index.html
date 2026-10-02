@@ -845,7 +845,7 @@ footer {
     issues:  'https://github.com/MaeveOfFae/eidolonsimulacra.github.io/issues',
     support: 'https://ko-fi.com/maeveoffae',
     contact: 'mailto:[EMAIL]',
-    version: 'v4.6.0'
+    version: 'v4.6.1'
   };
 </script>
 
@@ -862,7 +862,7 @@ footer {
         <circle cx="7.5" cy="16" r="1.7" fill="var(--accent)"/>
       </svg>
       <span class="brand-name">Eidolon Simulacra</span>
-      <span class="brand-version">v4.6.0</span>
+      <span class="brand-version">v4.6.1</span>
     </a>
 
     <div class="nav-links">
@@ -1171,13 +1171,13 @@ pnpm dev:web">Copy</button>
     <div class="wrap release">
       <div>
         <p class="kicker">Current build</p>
-        <h2>v4.6.0 — API facade split</h2>
+        <h2>v4.6.1 — Pricing per million tokens</h2>
         <p class="date">2026-10-01 Â· release notes live in the app under About â†’ What's New</p>
       </div>
       <ul class="rel-list">
-        <li>World/timeline and blueprint domains extracted into their own modules</li>
-        <li>39 new characterization tests pin the behavior on both sides of the move</li>
-        <li>The public 99-method API surface is locked and unchanged</li>
+        <li>Cost math now divides by one million tokens, matching provider rate cards</li>
+        <li>Saved pricing entries migrate automatically with values unchanged</li>
+        <li>Editor labels and placeholders read per 1M tokens</li>
       </ul>
     </div>
   </section>
