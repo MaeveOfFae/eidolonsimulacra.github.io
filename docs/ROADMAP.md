@@ -10,11 +10,11 @@ If something is listed here, do not describe it anywhere else as shipped.
 
 ## Status legend
 
-| Status | Meaning |
-| --- | --- |
-| `shipped` | Live end to end in the web/desktop/mobile app |
+| Status    | Meaning                                                          |
+| --------- | ---------------------------------------------------------------- |
+| `shipped` | Live end to end in the web/desktop/mobile app                    |
 | `partial` | Core of the area is live; the listed items are still outstanding |
-| `planned` | Nothing in the area has shipped yet |
+| `planned` | Nothing in the area has shipped yet                              |
 
 The same data drives the in-app **What's New → Upcoming Updates** panel (`packages/web/src/lib/roadmap.ts`).
 
@@ -22,13 +22,13 @@ The same data drives the in-app **What's New → Upcoming Updates** panel (`pack
 
 These areas currently have visible UI that is explicitly labelled as staged rather than live:
 
-| Surface | Location | Note |
-| --- | --- | --- |
-| Events | `/events` | Page states event tracking is staged, not live |
-| World canon / worldbook / universe notes / canon locks | `/worlds` "Planned modules" | Listed as planned, not implemented |
-| Timeline event editing, continuity assistant/checker | `/timelines` "Staged timeline modules" | Live chronology view stops at draft history |
-| Batch scheduling, reusable batch presets | `/batch` "Staged modules" | Marked "Not live" |
-| Export preview, publishing | Export modal → "Planned Export Extras" | Marked "Planned" |
+| Surface                                                | Location                               | Note                                           |
+| ------------------------------------------------------ | -------------------------------------- | ---------------------------------------------- |
+| Events                                                 | `/events`                              | Page states event tracking is staged, not live |
+| World canon / worldbook / universe notes / canon locks | `/worlds` "Planned modules"            | Listed as planned, not implemented             |
+| Timeline event editing, continuity assistant/checker   | `/timelines` "Staged timeline modules" | Live chronology view stops at draft history    |
+| Batch scheduling, reusable batch presets               | `/batch` "Staged modules"              | Marked "Not live"                              |
+| Export preview, publishing                             | Export modal → "Planned Export Extras" | Marked "Planned"                               |
 
 ## Outstanding work by area
 
@@ -96,7 +96,7 @@ Outstanding: tone/style alternates; metadata suggestions; auto summaries; conver
 
 Tracked in [`TODO.md`](../TODO.md). Currently open:
 
-- Split the `EidolonBrowserAPI` class in `packages/web/src/lib/api.ts` into domain modules, after adding per-domain behaviour tests. The file already dropped from 2,727 to 1,834 lines (theme data extracted) and the public method set is locked by `src/lib/api.surface.ts`.
+- Split the `EidolonBrowserAPI` class in `packages/web/src/lib/api.ts` into domain modules, after adding per-domain behaviour tests. The file has dropped from 2,727 to 1,441 lines across successive extractions (themes, pricing, and — with 4.6 — the world/timeline and blueprint domains into `lib/worlds/lore-api.ts` and `lib/blueprints/blueprint-api.ts`, each pinned by characterization tests). The public method set is locked by `src/lib/api.surface.ts`; drafts, templates, config, export, and generation/usage remain inline.
 - Publish or drop `docs/index.html`.
 
 Mobile parity against the web app is scoped separately in [`MOBILE_PARITY.md`](MOBILE_PARITY.md).
