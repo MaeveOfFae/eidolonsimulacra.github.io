@@ -1,3 +1,18 @@
+/**
+ * The browser API facade.
+ *
+ * This file is deliberately a thin delegation shell: every domain lives in
+ * its own module under `lib/` — config/models (`config/config-api.ts`),
+ * themes (`themes/theme-api.ts` + `themes/builtin-themes.ts`), templates
+ * (`templates/template-api.ts`), drafts (`drafts/draft-api.ts`), export
+ * (`export/export-api.ts`), generation/chat streams
+ * (`generation/generation-api.ts` + `generation/browser-stream.ts`), usage
+ * and pricing (`usage/usage-api.ts` + `usage/pricing-store.ts`), blueprints
+ * (`blueprints/blueprint-api.ts`), and worlds/timelines
+ * (`worlds/lore-api.ts`). Screens depend only on the facade; the public
+ * method set is locked by `api.surface.ts`, and each module's behavior is
+ * pinned by its `api.<domain>.test.ts` characterization suite.
+ */
 import {
   type Blueprint,
   type BlueprintList,
@@ -54,8 +69,6 @@ import {
   type WorldRelationshipRecord,
   type WorldRecord,
 } from '@char-gen/shared';
-import { builtinThemes } from './themes/builtin-themes.js';
-import { readPersistedJson, writePersistedJson } from './persistence/storage.js';
 import * as worldApi from './worlds/lore-api.js';
 import * as blueprintApi from './blueprints/blueprint-api.js';
 import type { AssetWriteOptions, BulkDraftMetadataPatch } from './storage/draft-db.js';
@@ -64,41 +77,19 @@ import * as exportApi from './export/export-api.js';
 import * as draftApi from './drafts/draft-api.js';
 import type { CreateDraftRequest } from './drafts/draft-api.js';
 import * as configApi from './config/config-api.js';
-import { createDownload, slugifyFileName, type DownloadResponse } from './download-response.js';
+import type { DownloadResponse } from './download-response.js';
 import * as generationApi from './generation/generation-api.js';
 import { BrowserStream, type BlueprintPreviewRequest } from './generation/browser-stream.js';
 import * as usageApi from './usage/usage-api.js';
 import type { SaveModelPricingInput } from './usage/pricing-store.js';
+import * as themeApi from './themes/theme-api.js';
 
-const CUSTOM_THEMES_STORAGE_KEY = 'eidolon.web.themes.custom';
 export const THEMES_SYNCED_EVENT = 'eidolon:themes-synced';
 export const DRAFTS_SYNCED_EVENT = 'eidolon:drafts-synced';
-const LEGACY_CUSTOM_THEMES_STORAGE_KEYS = ['bpui.web.themes.custom'];
 
 export { APIError } from './api-error.js';
 export type { DownloadResponse } from './download-response.js';
 export type { CreateDraftRequest } from './drafts/draft-api.js';
-import { APIError } from './api-error.js';
-
-function readStorage<T>(keys: string | readonly string[], fallback: T): T {
-  return readPersistedJson(keys, fallback);
-}
-
-function writeStorage<T>(key: string, legacyKeys: readonly string[], value: T): void {
-  writePersistedJson(key, legacyKeys, value);
-}
-
-function getCustomThemes(): ThemePreset[] {
-  return readStorage<ThemePreset[]>([CUSTOM_THEMES_STORAGE_KEY, ...LEGACY_CUSTOM_THEMES_STORAGE_KEYS], []);
-}
-
-function saveCustomThemes(themes: ThemePreset[]): void {
-  writeStorage(CUSTOM_THEMES_STORAGE_KEY, LEGACY_CUSTOM_THEMES_STORAGE_KEYS, themes);
-}
-
-function getAllThemes(): ThemePreset[] {
-  return [...builtinThemes, ...getCustomThemes()];
-}
 
 export class EidolonBrowserAPI {
   async getConfig(): Promise<Config> {
@@ -110,7 +101,7 @@ export class EidolonBrowserAPI {
   }
 
   getThemesSnapshot(): ThemePreset[] {
-    return getAllThemes();
+    return themeApi.getThemesSnapshot();
   }
 
   async syncConfigFromServer(): Promise<boolean> {
@@ -126,113 +117,35 @@ export class EidolonBrowserAPI {
   }
 
   async getThemes(): Promise<ThemePreset[]> {
-    return this.getThemesSnapshot();
+    return themeApi.getThemes();
   }
 
   async createTheme(theme: ThemePresetCreate): Promise<ThemePreset> {
-    const themes = getCustomThemes();
-    if (getAllThemes().some((candidate) => candidate.name === theme.name)) {
-      throw new APIError(409, `Theme ${theme.name} already exists`);
-    }
-
-    const created: ThemePreset = {
-      ...theme,
-      description: theme.description || '',
-      author: theme.author || '',
-      tags: theme.tags || [],
-      based_on: theme.based_on || '',
-      is_builtin: false,
-    };
-    themes.push(created);
-    saveCustomThemes(themes);
-
-    return created;
+    return themeApi.createTheme(theme);
   }
 
   async exportTheme(name: string): Promise<DownloadResponse> {
-    const theme = getAllThemes().find((candidate) => candidate.name === name);
-    if (!theme) {
-      throw new APIError(404, `Theme ${name} not found`);
-    }
-    return createDownload(JSON.stringify(theme, null, 2), `${slugifyFileName(name)}.json`, 'application/json');
+    return themeApi.exportTheme(name);
   }
 
   async importTheme(file: File, options: ThemeImportRequest = {}): Promise<ThemePreset> {
-    const payload = JSON.parse(await file.text()) as ThemePreset;
-    const incoming: ThemePreset = {
-      ...payload,
-      is_builtin: false,
-    };
-
-    const themes = getCustomThemes();
-    const existingIndex = themes.findIndex((theme) => theme.name === incoming.name);
-    if (existingIndex >= 0) {
-      if (options.conflict_strategy === 'overwrite') {
-        themes[existingIndex] = incoming;
-      } else if (options.conflict_strategy === 'rename') {
-        incoming.name = options.target_name || `${incoming.name}_copy`;
-        themes.push(incoming);
-      } else {
-        throw new APIError(409, `Theme ${incoming.name} already exists`);
-      }
-    } else {
-      themes.push(incoming);
-    }
-
-    saveCustomThemes(themes);
-    return incoming;
+    return themeApi.importTheme(file, options);
   }
 
   async updateTheme(name: string, theme: ThemePresetUpdate): Promise<ThemePreset> {
-    const themes = getCustomThemes();
-    const index = themes.findIndex((candidate) => candidate.name === name);
-    if (index < 0) {
-      throw new APIError(404, `Theme ${name} is builtin or missing`);
-    }
-    themes[index] = { ...themes[index], ...theme };
-    saveCustomThemes(themes);
-
-    return themes[index];
+    return themeApi.updateTheme(name, theme);
   }
 
   async duplicateTheme(name: string, request: ThemeDuplicateRequest): Promise<ThemePreset> {
-    const source = getAllThemes().find((theme) => theme.name === name);
-    if (!source) {
-      throw new APIError(404, `Theme ${name} not found`);
-    }
-    return this.createTheme({
-      name: request.new_name,
-      display_name: request.display_name || source.display_name,
-      description: request.description || source.description,
-      author: request.author || source.author,
-      tags: request.tags || source.tags,
-      based_on: request.based_on || source.name,
-      colors: source.colors,
-    });
+    return themeApi.duplicateTheme(name, request);
   }
 
   async renameTheme(name: string, request: ThemeRenameRequest): Promise<ThemePreset> {
-    return this.updateTheme(name, {
-      display_name: request.display_name,
-      ...(request.new_name !== name ? {} : {}),
-    }).then((theme) => {
-      const themes = getCustomThemes();
-      const index = themes.findIndex((candidate) => candidate.name === name);
-      if (index < 0) {
-        throw new APIError(404, `Theme ${name} is builtin or missing`);
-      }
-      themes[index] = { ...theme, name: request.new_name };
-      saveCustomThemes(themes);
-      return themes[index];
-    });
+    return themeApi.renameTheme(name, request);
   }
 
   async deleteTheme(name: string): Promise<{ status: string; name: string }> {
-    // Delete locally first
-    const themes = getCustomThemes().filter((theme) => theme.name !== name);
-    saveCustomThemes(themes);
-
-    return { status: 'deleted', name };
+    return themeApi.deleteTheme(name);
   }
 
   async getModels(provider: string): Promise<ModelsResponse> {
