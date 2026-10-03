@@ -1,7 +1,7 @@
 /**
  * Usage records and model pricing for the browser API facade.
  *
- * Extracted from `EidolonBrowserAPI` (4.6.2). Records live in `UsageStorage`
+ * Extracted from `EidolonBrowserAPI` (4.7.0). Records live in `UsageStorage`
  * (IndexedDB in the browser, SQLite on desktop, capped at the newest 5,000
  * calls); pricing entries are user-entered per-model per-1M-token rates
  * persisted through the pricing store. Behavior is pinned by the Insights

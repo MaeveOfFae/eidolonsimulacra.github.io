@@ -1,7 +1,7 @@
 /**
  * Draft lifecycle operations for the browser API facade.
  *
- * Extracted from `EidolonBrowserAPI` (4.6.2). Drafts persist through
+ * Extracted from `EidolonBrowserAPI` (4.7.0). Drafts persist through
  * `DraftStorage` (IndexedDB in the browser, SQLite on desktop); listing and
  * filtering run over the full metadata set through the shared filter/list
  * builders; revision snapshots ride `drafts/revision-snapshots.ts` with a

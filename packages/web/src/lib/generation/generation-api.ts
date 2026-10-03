@@ -1,7 +1,7 @@
 /**
  * Generation, chat, and analysis operations for the browser API facade.
  *
- * Extracted from `EidolonBrowserAPI` (4.6.2). Every streaming method wraps
+ * Extracted from `EidolonBrowserAPI` (4.7.0). Every streaming method wraps
  * `GenerationService` progress into `BrowserStream` events; `finalizeGeneration`
  * and the seed/batch/offspring/lorebook helpers persist their results through
  * `DraftStorage`; chat/refine/optimizeText stream through the current config's

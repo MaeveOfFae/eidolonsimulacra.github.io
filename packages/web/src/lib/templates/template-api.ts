@@ -1,7 +1,7 @@
 /**
  * Template CRUD, validation, and import/export for the browser API facade.
  *
- * Extracted from `EidolonBrowserAPI` (4.6.2). Templates resolve through the
+ * Extracted from `EidolonBrowserAPI` (4.7.0). Templates resolve through the
  * browser template store (`templates/browser.ts`), which merges the built-in
  * `blueprints/templates/` definitions with browser-persisted custom records.
  * Deleting never removes a built-in, and `updateTemplate` on a built-in

@@ -1,7 +1,7 @@
 /**
  * Theme CRUD for the browser API facade.
  *
- * Extracted from `EidolonBrowserAPI` (4.6.2), beside the already-extracted
+ * Extracted from `EidolonBrowserAPI` (4.7.0), beside the already-extracted
  * builtin catalogue (`themes/builtin-themes.ts`). Custom themes persist
  * through the desktop-aware JSON storage layer under
  * `eidolon.web.themes.custom` (with the legacy `bpui.` key still read);

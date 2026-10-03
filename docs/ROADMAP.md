@@ -94,7 +94,7 @@ Outstanding: tone/style alternates; metadata suggestions; auto summaries; conver
 
 ## Known engineering gaps
 
-Tracked in [`TODO.md`](../TODO.md). None open: the browser API facade split completed in 4.6.2 — every domain (config/models, themes, templates, drafts, export, generation/usage, blueprints, worlds/timelines) lives in its own `lib/` module behind one-line delegations, `packages/web/src/lib/api.ts` dropped from 2,727 to 589 lines, and `src/lib/api.surface.ts` still locks the 99 public methods.
+Tracked in [`TODO.md`](../TODO.md). None open: the browser API facade split completed in 4.7.0 — every domain (config/models, themes, templates, drafts, export, generation/usage, blueprints, worlds/timelines) lives in its own `lib/` module behind one-line delegations, `packages/web/src/lib/api.ts` dropped from 2,727 to 589 lines, and `src/lib/api.surface.ts` still locks the 99 public methods.
 
 Mobile parity against the web app is scoped separately in [`MOBILE_PARITY.md`](MOBILE_PARITY.md).
 

@@ -1,7 +1,7 @@
 /**
  * Draft export presets and artifact assembly for the browser API facade.
  *
- * Extracted from `EidolonBrowserAPI` (4.6.2). The preset list is static data;
+ * Extracted from `EidolonBrowserAPI` (4.7.0). The preset list is static data;
  * `exportDraft` resolves the draft from local storage and renders it through
  * the shared export builders, falling back to the JSON preset for unknown
  * preset names. Behavior is pinned by `api.export.test.ts` through the facade.

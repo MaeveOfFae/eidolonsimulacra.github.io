@@ -1,7 +1,7 @@
 /**
  * Streaming plumbing for the browser API facade's generation surface.
  *
- * Extracted from `api.ts` (4.6.2). `BrowserStream` wraps an async executor
+ * Extracted from `api.ts` (4.7.0). `BrowserStream` wraps an async executor
  * with reader subscription, completion/error callbacks, and abort support;
  * the event map and payload types (including the blueprint-preview payloads)
  * are the contract every generation stream emits. Consumed by

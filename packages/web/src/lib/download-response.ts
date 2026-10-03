@@ -2,7 +2,7 @@
  * Shared download-response plumbing for the browser API facade and its
  * extracted domain modules.
  *
- * Split out of `api.ts` (4.6.2) so the template, theme, and export domains can
+ * Split out of `api.ts` (4.7.0) so the template, theme, and export domains can
  * build `DownloadResponse` payloads without importing the facade itself.
  */
 

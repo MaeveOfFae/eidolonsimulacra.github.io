@@ -1,7 +1,7 @@
 /**
  * Configuration and provider-model operations for the browser API facade.
  *
- * Extracted from `EidolonBrowserAPI` (4.6.2). Config reads and writes go
+ * Extracted from `EidolonBrowserAPI` (4.7.0). Config reads and writes go
  * through `configManager` (the desktop-aware persisted store); provider-key
  * resolution falls back to the first configured key; `loadProviderModels`
  * caches per provider/baseUrl/auth-shape for 5 minutes and falls back to the
