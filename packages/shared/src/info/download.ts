@@ -60,7 +60,7 @@ export const downloadRepositoryUrl = PROJECT_REPOSITORY_URL;
  * this (and the `approxSize` labels) as part of the release recipe in
  * `docs/DOWNLOADS.md`.
  */
-const RELEASE_VERSION = '4.6.1';
+const RELEASE_VERSION = '4.7.0';
 const RELEASE_TAG = `v${RELEASE_VERSION}`;
 
 /**

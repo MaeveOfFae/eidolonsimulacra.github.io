@@ -6,10 +6,10 @@
 
 Artifacts are uploaded as **assets on GitHub Releases** of this repository, and `packages/shared/src/info/download.ts` derives each channel's `downloadUrl` from `buildReleaseAssetUrl`. Nothing is site-hosted anymore — `packages/web/public/downloads/` is intentionally empty — so the published site stays small and no binary counts against the Pages storage or bandwidth budget.
 
-| Asset (on release `v4.6.1`)              | Size     | Channel                         |
+| Asset (on release `v4.7.0`)              | Size     | Channel                         |
 | ---------------------------------------- | -------- | ------------------------------- |
-| `Eidolon.Simulacra_4.6.1_x64-setup.exe`  | 5.27 MB  | Desktop (recommended installer) |
-| `Eidolon.Simulacra_4.6.1_x64_en-US.msi`  | 6.65 MB  | Desktop (MSI)                   |
+| `Eidolon.Simulacra_4.7.0_x64-setup.exe`  | 5.27 MB  | Desktop (recommended installer) |
+| `Eidolon.Simulacra_4.7.0_x64_en-US.msi`  | 6.65 MB  | Desktop (MSI)                   |
 | `app-release.apk`                        | 87.44 MB | Android                         |
 
 The APK keeps its fixed `app-release.apk` name on purpose: each release uploads an asset of the same name under the new tag, so the URL shape stays predictable even though the tag version changes. The desktop asset names use dots (`Eidolon.Simulacra_…`) rather than the Tauri bundle's spaces — uploading normalizes the space away — which `buildReleaseAssetUrl` already accounts for. Size note: the first 4.5.0 desktop bundles built at ~51–53 MB were an anomaly (as were the local 4.3.0/4.4.0 bundles); the 4.5.0 assets above are from a clean rebuild back at the normal ~5–7 MB.
