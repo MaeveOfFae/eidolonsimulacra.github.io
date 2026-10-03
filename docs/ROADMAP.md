@@ -40,7 +40,7 @@ Outstanding: checkpointed sessions; batch comparison across multiple seeds; batc
 
 ### Review and Editing — `partial`
 
-Shipped: comparison with staged merge branches, review checklist with scoring, export gating, inline notes, revision snapshots and diffs.
+Shipped: comparison with staged merge branches, review checklist with scoring, export gating, inline notes, revision snapshots and diffs, and asset-by-asset approval decisions — approve / request changes / undo per asset, fingerprinted to the approved content so later edits mark the decision stale, with fresh changes-requested assets joining low scores as export-readiness blockers (4.7.0).
 
 Outstanding: provenance view; asset health scoring; draft branching; focus mode; assistant single-asset rewrite; read-only review links.
 
@@ -94,7 +94,7 @@ Outstanding: tone/style alternates; metadata suggestions; auto summaries; conver
 
 ## Known engineering gaps
 
-Tracked in [`TODO.md`](../TODO.md). None open: the browser API facade split completed in 4.7.0 — every domain (config/models, themes, templates, drafts, export, generation/usage, blueprints, worlds/timelines) lives in its own `lib/` module behind one-line delegations, `packages/web/src/lib/api.ts` dropped from 2,727 to 589 lines, and `src/lib/api.surface.ts` still locks the 99 public methods.
+Tracked in [`TODO.md`](../TODO.md). None open: the browser API facade split completed in 4.7.0 — every domain (config/models, themes, templates, drafts, export, generation/usage, blueprints, worlds/timelines) lives in its own `lib/` module behind one-line delegations, `packages/web/src/lib/api.ts` dropped from 2,727 to 589 lines, and `src/lib/api.surface.ts` still locks the 100 public methods.
 
 Mobile parity against the web app is scoped separately in [`MOBILE_PARITY.md`](MOBILE_PARITY.md).
 

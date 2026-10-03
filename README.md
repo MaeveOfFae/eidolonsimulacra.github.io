@@ -57,7 +57,7 @@ The web app currently exposes the main workflows directly in the browser:
 
 - Generate from a seed with template selection and content mode controls
 - Generate seed ideas and carry them into the main generation flow
-- Review, edit, validate, compare, and export drafts
+- Review, edit, validate, compare, and export drafts, with asset-by-asset approval decisions that flag edits as stale and gate export readiness
 - Browse and edit templates and blueprint source
 - Run offspring and similarity workflows
 - Manage themes, browser-stored data, and app settings
