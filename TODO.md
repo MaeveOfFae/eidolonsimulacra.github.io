@@ -24,7 +24,16 @@ Known gaps found while reviewing the codebase (not yet scheduled):
 
 None open. The API facade split is complete; new gaps get added here as they are found.
 
+Saved for later review (parked tangents, not scheduled):
+
+- Checkpointing covers the review-then-generate flow (`GenerationProgress`); the single-shot orchestrator paths — `GenerationService.generate` behind batch, comparison runs, and API callers — have no per-asset checkpoints and could adopt the same session model
+- An explicit "Resume last session" entry on the generation form: today a paused session restores only when the form params match again or after a reload
+- Mobile has no generation-session checkpointing (see `docs/MOBILE_PARITY.md` for the parity frame)
+- `ActiveGenerationSession` stays at `version: 1` with `paused` added to the status union; the stored-session validator only type-checks `currentStatus` as a string, so a future tightening could validate the enum and bump the schema version
+
 Recently completed hygiene work (kept here for context):
+
+- [x] Shipped **checkpointed generation sessions** (the second outstanding Generation Workflow item): the per-asset generation run now has a Pause control that aborts the current asset's stream while keeping the persisted session checkpoint (Cancel remains the explicit discard), a Resume session control that continues from the paused asset with the approved prefix as prior context, reload-restore of a paused session that deliberately does not auto-resume — a reload never restarts token spend without consent, unlike the existing interrupted-run auto-resume — and restart-from-approved-asset: during review or pause, any completed asset chip becomes a restart-from-here action that trims the checkpoint to the approved prefix before it and regenerates from that point. `ActiveGenerationStatus` gained `'paused'` (the stored-session validator is type-only, so existing v1 sessions stay compatible). Covered by two new `GenerationProgress` tests — pause keeps the checkpoint and resumes; restart-from-approved regenerates with an empty prior prefix — `test:web` grew to 206
 
 - [x] Shipped the **asset-by-asset approval workflow** (the first outstanding Generation Workflow item): each draft asset on the review screen can now be approved, flagged as changes requested, or have its decision undone. Decisions live in `review_annotations.asset_approvals` with a content fingerprint, so editing an asset after approving it reports the decision as stale instead of silently keeping it; the shared module `packages/shared/src/draft-approvals.ts` (fingerprint, pure decision builder, summary) is covered by 11 tests, `buildExportReadinessSummary` gained approval counts and treats fresh changes-requested assets as export blockers (mirroring the existing low-score blocker), and the facade gained `setAssetApproval` (surface lock now 100 methods) implemented in `lib/drafts/draft-api.ts` with 404 guards for unknown drafts and assets. Review shows per-asset status chips, Approve / Request changes / Undo buttons, and an approved-count chip in the readiness card. `test:shared` grew to 250 tests, `test:web` to 204 (4 new draft-API approval tests + a Review card test); mobile typecheck and tests green unchanged
 

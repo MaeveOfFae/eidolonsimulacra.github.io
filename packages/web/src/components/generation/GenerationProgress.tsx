@@ -96,9 +96,9 @@ export default function GenerationProgress({
   onComplete,
   onCancel,
 }: GenerationProgressProps) {
-  const [status, setStatus] = useState<'initializing' | 'generating' | 'reviewing' | 'saving' | 'complete' | 'error'>(
-    'initializing',
-  );
+  const [status, setStatus] = useState<
+    'initializing' | 'generating' | 'reviewing' | 'saving' | 'complete' | 'error' | 'paused'
+  >('initializing');
   const [currentAsset, setCurrentAsset] = useState<string | null>(null);
   const [assets, setAssets] = useState<AssetProgress[]>([]);
   const [assetDrafts, setAssetDrafts] = useState<Record<string, string>>({});
@@ -422,6 +422,14 @@ export default function GenerationProgress({
     setError(null);
     setCharacterName(inferCharacterDisplayNameForTemplate(approvedAssets, template) ?? null);
 
+    if (storedSession.currentStatus === 'paused') {
+      // An explicitly paused session restores without auto-resuming, so a
+      // reload never restarts generation (or token spend) without consent.
+      setStatus('paused');
+      setResumeAction({ type: 'idle' });
+      return;
+    }
+
     if (storedSession.currentStatus === 'reviewing' && restoredCurrentAsset) {
       setStatus('reviewing');
       setResumeAction({ type: 'review' });
@@ -482,7 +490,7 @@ export default function GenerationProgress({
       return;
     }
 
-    const currentStatus = status === 'reviewing' || status === 'saving' ? status : 'generating';
+    const currentStatus = status === 'reviewing' || status === 'saving' || status === 'paused' ? status : 'generating';
     saveActiveGenerationSession({
       version: 1,
       seed,
@@ -566,6 +574,55 @@ export default function GenerationProgress({
     await generateAsset(assetIndex, approved);
   }, [activeAssetOrder, currentAsset, generateAsset, getApprovedAssets]);
 
+  // Checkpointed sessions: pause keeps the persisted session (unlike Cancel,
+  // which clears it), so the run can be resumed in this tab or after a reload.
+  const handlePause = useCallback(() => {
+    abortControllerRef.current?.abort();
+    setStatus('paused');
+  }, []);
+
+  const handleResume = useCallback(async () => {
+    const assetIndex = currentAsset ? activeAssetOrder.indexOf(currentAsset) : -1;
+    const resumeIndex =
+      assetIndex >= 0
+        ? assetIndex
+        : Math.min(Object.keys(assetDrafts).length, Math.max(activeAssetOrder.length - 1, 0));
+    if (resumeIndex < 0 || resumeIndex >= activeAssetOrder.length) {
+      return;
+    }
+
+    await generateAsset(resumeIndex, getApprovedAssets(resumeIndex));
+  }, [activeAssetOrder, assetDrafts, currentAsset, generateAsset, getApprovedAssets]);
+
+  // Restart from an approved asset: keep only the assets completed before it,
+  // discard the chosen asset and everything downstream, and regenerate from
+  // that point so downstream context is rebuilt from the approved prefix.
+  const handleRestartFrom = useCallback(
+    async (assetName: string) => {
+      if (status !== 'reviewing' && status !== 'paused') {
+        return;
+      }
+
+      const assetIndex = activeAssetOrder.indexOf(assetName);
+      if (assetIndex < 0) {
+        return;
+      }
+
+      const trimmed = getApprovedAssets(assetIndex);
+      setAssetDrafts(trimmed);
+      setAssets(
+        activeAssetOrder.map((name, index) =>
+          index < assetIndex && trimmed[name]
+            ? { name, status: 'complete' as const, content: trimmed[name] }
+            : { name, status: 'pending' as const },
+        ),
+      );
+
+      await generateAsset(assetIndex, trimmed);
+    },
+    [activeAssetOrder, generateAsset, getApprovedAssets, status],
+  );
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -589,6 +646,8 @@ export default function GenerationProgress({
         return 'Review and edit this asset';
       case 'saving':
         return 'Saving reviewed draft...';
+      case 'paused':
+        return 'Session paused';
       case 'complete':
         return 'Complete!';
       case 'error':
@@ -650,6 +709,22 @@ export default function GenerationProgress({
             <Clock className="h-4 w-4" />
             {formatTime(elapsed)}
           </div>
+          {status === 'generating' && (
+            <button
+              onClick={handlePause}
+              className="rounded-md border border-input bg-background px-3 py-1.5 text-sm hover:bg-accent"
+            >
+              Pause
+            </button>
+          )}
+          {status === 'paused' && (
+            <button
+              onClick={() => void handleResume()}
+              className="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:bg-primary/90"
+            >
+              Resume session
+            </button>
+          )}
           <button
             onClick={handleCancel}
             className="rounded-md border border-input bg-background px-3 py-1.5 text-sm hover:bg-accent"
@@ -674,23 +749,45 @@ export default function GenerationProgress({
 
       {/* Asset List */}
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-        {assets.map((asset) => (
-          <div
-            key={asset.name}
-            className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm ${
-              asset.status === 'generating'
-                ? 'border-primary bg-primary/10'
-                : asset.status === 'reviewing'
-                  ? 'border-amber-500/50 bg-amber-500/10'
-                  : asset.status === 'complete'
-                    ? 'border-green-500/50 bg-green-500/10'
-                    : 'border-border'
-            }`}
-          >
-            {getAssetIcon(asset.status)}
-            <span className="truncate">{asset.name}</span>
-          </div>
-        ))}
+        {assets.map((asset) => {
+          const canRestartFrom =
+            (status === 'reviewing' || status === 'paused') &&
+            asset.status === 'complete' &&
+            asset.name !== currentAsset;
+          const chipClass = `flex items-center gap-2 rounded-md border px-3 py-2 text-sm ${
+            asset.status === 'generating'
+              ? 'border-primary bg-primary/10'
+              : asset.status === 'reviewing'
+                ? 'border-amber-500/50 bg-amber-500/10'
+                : asset.status === 'complete'
+                  ? 'border-green-500/50 bg-green-500/10'
+                  : 'border-border'
+          }`;
+
+          if (canRestartFrom) {
+            return (
+              <button
+                key={asset.name}
+                type="button"
+                onClick={() => void handleRestartFrom(asset.name)}
+                title={`Discard this asset and everything after it, then regenerate from ${asset.name}`}
+                aria-label={`Restart from ${asset.name}`}
+                className={`${chipClass} w-full text-left transition-colors hover:border-primary/60`}
+              >
+                {getAssetIcon(asset.status)}
+                <span className="truncate">{asset.name}</span>
+                <RotateCcw className="ml-auto h-3 w-3 shrink-0 text-muted-foreground" />
+              </button>
+            );
+          }
+
+          return (
+            <div key={asset.name} className={chipClass}>
+              {getAssetIcon(asset.status)}
+              <span className="truncate">{asset.name}</span>
+            </div>
+          );
+        })}
       </div>
 
       {/* Current Asset Editor */}

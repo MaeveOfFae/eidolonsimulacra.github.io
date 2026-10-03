@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import GenerationProgress from './GenerationProgress';
 import { GenerationService } from '../../lib/services/generation.js';
 import { DraftStorage } from '../../lib/storage/draft-db.js';
+import { clearActiveGenerationSession, saveActiveGenerationSession } from '../../lib/services/generation-session.js';
 
 vi.mock('../../lib/services/generation.js', () => ({
   GenerationService: {
@@ -193,5 +194,133 @@ describe('GenerationProgress', () => {
     expect(screen.getByRole('button', { name: 'Save Draft' })).toBeEnabled();
     expect(onError).not.toHaveBeenCalled();
     expect(onComplete).not.toHaveBeenCalled();
+  });
+
+  it('pauses mid-run, keeps the checkpoint, and resumes from the paused asset', async () => {
+    vi.mocked(GenerationService.generateAsset)
+      .mockImplementationOnce(async function* () {
+        yield { type: 'chunk', content: 'partial content' };
+        // Deliberately never settles: the stream is interrupted by pausing.
+        await new Promise(() => {});
+      })
+      .mockImplementationOnce(async function* () {
+        yield {
+          type: 'asset',
+          asset: 'system_prompt',
+          content: 'System prompt content',
+        };
+      });
+
+    const onError = vi.fn();
+    const onCancel = vi.fn();
+    const onComplete = vi.fn();
+
+    render(
+      <GenerationProgress
+        seed="test seed"
+        mode="SFW"
+        template="Test Template"
+        templates={[
+          {
+            name: 'Test Template',
+            assets: [{ name: 'system_prompt', required: true, depends_on: [] }],
+          } as never,
+        ]}
+        onComplete={onComplete}
+        onError={onError}
+        onCancel={onCancel}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Generating current asset...')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Pause' }));
+
+    expect(await screen.findByText('Session paused')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Resume session' })).toBeEnabled();
+
+    // Unlike Cancel, pausing must not discard the persisted checkpoint.
+    expect(clearActiveGenerationSession).not.toHaveBeenCalled();
+    const lastSave = vi.mocked(saveActiveGenerationSession).mock.calls.at(-1)?.[0] as unknown as {
+      currentStatus?: string;
+    };
+    expect(lastSave.currentStatus).toBe('paused');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Resume session' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Review and edit this asset')).toBeInTheDocument();
+    });
+    expect(vi.mocked(GenerationService.generateAsset)).toHaveBeenCalledTimes(2);
+    expect(onError).not.toHaveBeenCalled();
+    expect(onComplete).not.toHaveBeenCalled();
+  });
+
+  it('restarts from an approved asset, discarding it and everything downstream', async () => {
+    vi.mocked(GenerationService.generateAsset)
+      .mockImplementationOnce(async function* () {
+        yield { type: 'asset', asset: 'system_prompt', content: 'System prompt v1' };
+      })
+      .mockImplementationOnce(async function* () {
+        yield { type: 'asset', asset: 'a1111', content: 'Tag block v1' };
+      })
+      .mockImplementationOnce(async function* () {
+        yield { type: 'asset', asset: 'system_prompt', content: 'System prompt v2' };
+      });
+
+    const onError = vi.fn();
+    const onCancel = vi.fn();
+    const onComplete = vi.fn();
+
+    render(
+      <GenerationProgress
+        seed="test seed"
+        mode="SFW"
+        template="Test Template"
+        templates={[
+          {
+            name: 'Test Template',
+            assets: [
+              { name: 'system_prompt', required: true, depends_on: [] },
+              { name: 'a1111', required: true, depends_on: ['system_prompt'] },
+            ],
+          } as never,
+        ]}
+        onComplete={onComplete}
+        onError={onError}
+        onCancel={onCancel}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Approve and Continue' })).toBeEnabled();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Approve and Continue' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Save Draft' })).toBeEnabled();
+    });
+
+    // The approved upstream asset is restartable from the asset list.
+    fireEvent.click(screen.getByRole('button', { name: 'Restart from system_prompt' }));
+
+    await waitFor(() => {
+      expect(vi.mocked(GenerationService.generateAsset)).toHaveBeenCalledTimes(3);
+    });
+
+    const restartRequest = vi.mocked(GenerationService.generateAsset).mock.calls[2]?.[0] as {
+      asset_name?: string;
+      prior_assets?: Record<string, string>;
+    };
+    expect(restartRequest.asset_name).toBe('system_prompt');
+    expect(restartRequest.prior_assets).toEqual({});
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Approve and Continue' })).toBeEnabled();
+    });
+    expect(onError).not.toHaveBeenCalled();
   });
 });

@@ -9,7 +9,7 @@ const ACTIVE_BATCH_GENERATION_SESSION_KEY = 'eidolon.active-batch-generation-ses
 const ACTIVE_DRAFT_REFINER_SESSION_KEY = 'eidolon.active-draft-refiner-session';
 const ACTIVE_ASSET_REGENERATOR_SESSION_KEY = 'eidolon.active-asset-regenerator-session';
 
-export type ActiveGenerationStatus = 'initializing' | 'generating' | 'reviewing' | 'saving';
+export type ActiveGenerationStatus = 'initializing' | 'generating' | 'paused' | 'reviewing' | 'saving';
 
 export interface ActiveGenerationSession {
   version: 1;
