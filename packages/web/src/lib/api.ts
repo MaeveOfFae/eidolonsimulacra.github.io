@@ -1,9 +1,5 @@
 import {
   buildSimilarityResult,
-  detectProviderFromModel,
-  fetchProviderModels as fetchSharedProviderModels,
-  getFallbackModels,
-  type ApiKeys,
   type Blueprint,
   type BlueprintList,
   type ChatMessage,
@@ -26,7 +22,6 @@ import {
   type GenerateRequest,
   type GenerationComplete,
   type LorebookGenerationRequest,
-  type LLMProvider,
   type LineageResponse,
   type ModelPricing,
   type ModelsResponse,
@@ -62,8 +57,7 @@ import {
   type WorldRelationshipRecord,
   type WorldRecord,
 } from '@char-gen/shared';
-import { MODEL_SUGGESTIONS, createEngine, getDefaultBaseUrl } from './llm/factory.js';
-import { toAppConnectionTestResult } from './llm/connection-result.js';
+import { createEngine } from './llm/factory.js';
 import { builtinThemes } from './themes/builtin-themes.js';
 import { configManager } from './config/manager.js';
 import { readPersistedJson, writePersistedJson } from './persistence/storage.js';
@@ -83,6 +77,8 @@ import * as templateApi from './templates/template-api.js';
 import * as exportApi from './export/export-api.js';
 import * as draftApi from './drafts/draft-api.js';
 import type { CreateDraftRequest } from './drafts/draft-api.js';
+import * as configApi from './config/config-api.js';
+import { getFallbackApiKey, resolveConfiguredProvider } from './config/config-api.js';
 import { createDownload, slugifyFileName, type DownloadResponse } from './download-response.js';
 import { buildOptimizeTextMessages } from '@char-gen/shared';
 
@@ -134,14 +130,6 @@ const CUSTOM_THEMES_STORAGE_KEY = 'eidolon.web.themes.custom';
 export const THEMES_SYNCED_EVENT = 'eidolon:themes-synced';
 export const DRAFTS_SYNCED_EVENT = 'eidolon:drafts-synced';
 const LEGACY_CUSTOM_THEMES_STORAGE_KEYS = ['bpui.web.themes.custom'];
-const MODEL_CACHE_TTL_MS = 5 * 60 * 1000;
-
-type CachedModelsEntry = {
-  response: ModelsResponse;
-  cachedAt: number;
-};
-
-const modelsCache = new Map<string, CachedModelsEntry>();
 
 class BrowserStream {
   private readers: StreamReader[] = [];
@@ -216,34 +204,6 @@ function writeStorage<T>(key: string, legacyKeys: readonly string[], value: T): 
   writePersistedJson(key, legacyKeys, value);
 }
 
-function getBrowserConfig(): Config {
-  return {
-    ...configManager.getConfig(),
-    api_keys: configManager.getApiKeys(),
-  };
-}
-
-function resolveConfiguredProvider(config: Config): LLMProvider | undefined {
-  if (config.engine_mode === 'explicit' && config.engine !== 'auto' && config.engine !== 'openai_compatible') {
-    return config.engine as LLMProvider;
-  }
-
-  return config.model ? detectProviderFromModel(config.model) : undefined;
-}
-
-function getFallbackApiKey(apiKeys: ApiKeys): string | undefined {
-  return Object.values(apiKeys).find((value): value is string => typeof value === 'string' && value.trim().length > 0);
-}
-
-function resolveProviderApiKey(provider: string, apiKeys: ApiKeys): string | undefined {
-  const providerKey = apiKeys[provider];
-  if (typeof providerKey === 'string' && providerKey.trim().length > 0) {
-    return providerKey;
-  }
-
-  return getFallbackApiKey(apiKeys);
-}
-
 function getCustomThemes(): ThemePreset[] {
   return readStorage<ThemePreset[]>([CUSTOM_THEMES_STORAGE_KEY, ...LEGACY_CUSTOM_THEMES_STORAGE_KEYS], []);
 }
@@ -275,72 +235,12 @@ async function generateWithCurrentConfig(
 }
 
 export class EidolonBrowserAPI {
-  private async loadProviderModels(provider: string, refresh: boolean = false): Promise<ModelsResponse> {
-    const apiKeys = configManager.getApiKeys();
-    const config = configManager.getConfig();
-    const typedProvider = provider as LLMProvider;
-    const baseUrl = config.base_url || getDefaultBaseUrl(typedProvider);
-    const apiKey = resolveProviderApiKey(provider, apiKeys);
-    const cacheKey = `${provider}|${baseUrl}|${apiKey ? 'auth' : 'anon'}`;
-    const cachedEntry = modelsCache.get(cacheKey);
-    if (!refresh && cachedEntry && Date.now() - cachedEntry.cachedAt < MODEL_CACHE_TTL_MS) {
-      return {
-        ...cachedEntry.response,
-        cached: true,
-      };
-    }
-
-    const fallbackModels = getFallbackModels(typedProvider);
-    const supportsRemoteListing = ['openrouter', 'openai', 'deepseek', 'zai', 'moonshot'].includes(provider);
-
-    if (!apiKey || !supportsRemoteListing) {
-      const response = {
-        provider,
-        models: fallbackModels,
-        cached: true,
-        error: apiKey || supportsRemoteListing ? undefined : 'Provider model listing is not available in browser mode.',
-      };
-      modelsCache.set(cacheKey, {
-        response,
-        cachedAt: Date.now(),
-      });
-      return response;
-    }
-
-    try {
-      const response = await fetchSharedProviderModels(typedProvider, apiKey, baseUrl);
-      modelsCache.set(cacheKey, {
-        response,
-        cachedAt: Date.now(),
-      });
-      return response;
-    } catch (error) {
-      const isNetworkError = error instanceof TypeError && error.message === 'Failed to fetch';
-      const message = isNetworkError
-        ? 'Network request blocked. This may be due to browser privacy settings (common in EU), ad blockers, or firewall restrictions. Try disabling tracking protection for this site or using a different network.'
-        : error instanceof Error
-          ? error.message
-          : 'Failed to load models';
-      const response = {
-        provider,
-        models: fallbackModels,
-        cached: true,
-        error: message,
-      };
-      modelsCache.set(cacheKey, {
-        response,
-        cachedAt: Date.now(),
-      });
-      return response;
-    }
-  }
-
   async getConfig(): Promise<Config> {
-    return getBrowserConfig();
+    return configApi.getConfig();
   }
 
   getConfigSnapshot(): Config {
-    return getBrowserConfig();
+    return configApi.getConfigSnapshot();
   }
 
   getThemesSnapshot(): ThemePreset[] {
@@ -348,39 +248,15 @@ export class EidolonBrowserAPI {
   }
 
   async syncConfigFromServer(): Promise<boolean> {
-    return false;
+    return configApi.syncConfigFromServer();
   }
 
   async updateConfig(config: Partial<Config>): Promise<Config> {
-    const nextConfig = { ...config };
-    if (config.api_keys) {
-      configManager.replaceApiKeys(config.api_keys);
-      delete nextConfig.api_keys;
-    }
-    configManager.updateConfig(nextConfig);
-    return this.getConfig();
+    return configApi.updateConfig(config);
   }
 
   async testConnection(request: ConnectionTestRequest): Promise<ConnectionTestResult> {
-    const apiKey = configManager.getApiKeys()[request.provider];
-    if (!apiKey) {
-      return { success: false, error: `No API key configured for ${request.provider}` };
-    }
-
-    const model =
-      request.model ||
-      MODEL_SUGGESTIONS[request.provider as keyof typeof MODEL_SUGGESTIONS]?.[0] ||
-      getBrowserConfig().model;
-    const engine = createEngine({
-      model,
-      apiKey,
-      provider: request.provider as never,
-      baseUrl: request.base_url,
-    });
-
-    const result = await engine.testConnection();
-
-    return toAppConnectionTestResult(result);
+    return configApi.testConnection(request);
   }
 
   async getThemes(): Promise<ThemePreset[]> {
@@ -494,12 +370,11 @@ export class EidolonBrowserAPI {
   }
 
   async getModels(provider: string): Promise<ModelsResponse> {
-    return this.loadProviderModels(provider, false);
+    return configApi.getModels(provider);
   }
 
   async refreshModels(provider: string): Promise<{ status: string; model_count: number; error?: string }> {
-    const response = await this.loadProviderModels(provider, true);
-    return { status: 'ok', model_count: response.models.length, error: response.error };
+    return configApi.refreshModels(provider);
   }
 
   async generateSeeds(request: SeedGenerationRequest): Promise<SeedGenerationResponse> {
