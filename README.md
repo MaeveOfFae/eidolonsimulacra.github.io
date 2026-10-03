@@ -249,7 +249,6 @@ If you are editing blueprints, start with `rules/60_blueprint_hard_rules.md` and
 - The browser app currently exposes built-in export modes for JSON, PNG character cards, plain text, combined markdown bundles, and printable PDF.
 - The `presets/` directory stores TOML preset definitions for raw packs and platform-oriented exports (`raw.toml`, `chubai.toml`, `risuai.toml`, `tavernai.toml`, `openrouter.toml`).
 - Theme and resource files tracked in `resources/` are repository assets; the current browser runtime uses built-in theme presets defined in code plus browser-stored customizations.
-- `docs/index.html` is the static project home page kept in the repo for hosting the project overview. It is not built or published by CI, so it only appears wherever that directory is served from.
 
 ## Contributing
 

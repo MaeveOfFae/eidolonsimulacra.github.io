@@ -1,16 +1,12 @@
 import {
   applyDraftFilters,
-  buildDraftExportArtifact,
   buildDraftListResponse,
   buildLineageResponse,
-  buildMissingTemplateBlueprintWarnings,
-  buildStoredTemplateRecord,
   buildSimilarityResult,
   detectProviderFromModel,
   fetchProviderModels as fetchSharedProviderModels,
   getFallbackModels,
   validateDraftAssets,
-  validateTemplate as validateTemplateDefinition,
   type ApiKeys,
   type Blueprint,
   type BlueprintList,
@@ -88,24 +84,11 @@ import {
 } from './usage/pricing-store.js';
 import { GenerationService } from './services/generation.js';
 import { appendDraftRevisionSnapshot, buildDraftRevisionSnapshot } from './drafts/revision-snapshots.js';
-import {
-  type StoredTemplateRecord,
-  getAllTemplateRecords,
-  getStoredTemplateRecord,
-  getStoredTemplates,
-  getTemplateRecord,
-  inferCharacterDisplayNameForTemplate,
-  resolveTemplateBlueprintContent,
-  resolveTemplateDefinition,
-  saveStoredTemplates,
-} from './templates/browser.js';
+import { inferCharacterDisplayNameForTemplate, resolveTemplateDefinition } from './templates/browser.js';
+import * as templateApi from './templates/template-api.js';
+import * as exportApi from './export/export-api.js';
+import { createDownload, slugifyFileName, type DownloadResponse } from './download-response.js';
 import { buildOptimizeTextMessages } from '@char-gen/shared';
-
-export interface DownloadResponse {
-  blob: Blob;
-  filename: string | null;
-  contentType: string | null;
-}
 
 export interface CreateDraftRequest {
   seed: string;
@@ -173,31 +156,6 @@ type BlueprintPreviewResponse = GenerateAssetResponse & {
 const CUSTOM_THEMES_STORAGE_KEY = 'eidolon.web.themes.custom';
 export const THEMES_SYNCED_EVENT = 'eidolon:themes-synced';
 export const DRAFTS_SYNCED_EVENT = 'eidolon:drafts-synced';
-function getUniqueTemplateName(requestedName: string, excludeName?: string): string {
-  const existingNames = new Set(
-    getAllTemplateRecords()
-      .map((record) => record.template.name)
-      .filter((name) => name !== excludeName),
-  );
-
-  if (!existingNames.has(requestedName)) {
-    return requestedName;
-  }
-
-  const copyBase = requestedName.endsWith(' Copy') ? requestedName : `${requestedName} Copy`;
-  if (!existingNames.has(copyBase)) {
-    return copyBase;
-  }
-
-  let suffix = 2;
-  let candidate = `${copyBase} ${suffix}`;
-  while (existingNames.has(candidate)) {
-    suffix += 1;
-    candidate = `${copyBase} ${suffix}`;
-  }
-
-  return candidate;
-}
 const LEGACY_CUSTOM_THEMES_STORAGE_KEYS = ['bpui.web.themes.custom'];
 const MODEL_CACHE_TTL_MS = 5 * 60 * 1000;
 
@@ -207,39 +165,6 @@ type CachedModelsEntry = {
 };
 
 const modelsCache = new Map<string, CachedModelsEntry>();
-
-const EXPORT_PRESETS: ExportPresetSummary[] = [
-  {
-    name: 'Official PNG Character Card',
-    path: 'png',
-    format: 'png',
-    description: 'Export a standard PNG character card with embedded V2/V3 card data.',
-  },
-  {
-    name: 'Official V2/V3 Card JSON',
-    path: 'json',
-    format: 'json',
-    description: 'Export a Chub-compatible V2/V3 character card JSON with Eidolon round-trip extensions.',
-  },
-  {
-    name: 'text',
-    path: 'text',
-    format: 'text',
-    description: 'Export draft assets as plain text sections.',
-  },
-  {
-    name: 'combined',
-    path: 'combined',
-    format: 'combined',
-    description: 'Export a markdown bundle with metadata and assets.',
-  },
-  {
-    name: 'Printable PDF',
-    path: 'pdf',
-    format: 'pdf',
-    description: 'Export a printable single-column PDF with metadata and every asset.',
-  },
-];
 
 class BrowserStream {
   private readers: StreamReader[] = [];
@@ -302,6 +227,7 @@ class BrowserStream {
 }
 
 export { APIError } from './api-error.js';
+export type { DownloadResponse } from './download-response.js';
 import { APIError } from './api-error.js';
 
 function readStorage<T>(keys: string | readonly string[], fallback: T): T {
@@ -310,13 +236,6 @@ function readStorage<T>(keys: string | readonly string[], fallback: T): T {
 
 function writeStorage<T>(key: string, legacyKeys: readonly string[], value: T): void {
   writePersistedJson(key, legacyKeys, value);
-}
-
-function slugifyFileName(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '');
 }
 
 function getBrowserConfig(): Config {
@@ -357,19 +276,6 @@ function saveCustomThemes(themes: ThemePreset[]): void {
 
 function getAllThemes(): ThemePreset[] {
   return [...builtinThemes, ...getCustomThemes()];
-}
-
-function createDownload(content: string | Uint8Array, filename: string, type: string): DownloadResponse {
-  // TypeScript's DOM types reject `Uint8Array<ArrayBufferLike>` as a `BlobPart`
-  // because `ArrayBufferLike` also covers `SharedArrayBuffer`. Copying through a
-  // fresh view guarantees an `ArrayBuffer`-backed part without a cast.
-  const parts: BlobPart[] = typeof content === 'string' ? [content] : [new Uint8Array(content)];
-
-  return {
-    blob: new Blob(parts, { type }),
-    filename,
-    contentType: type,
-  };
 }
 
 async function generateWithCurrentConfig(
@@ -636,133 +542,47 @@ export class EidolonBrowserAPI {
   }
 
   async getTemplates(): Promise<Template[]> {
-    return getAllTemplateRecords().map((record) => record.template);
+    return templateApi.getTemplates();
   }
 
   async listTemplates(): Promise<Template[]> {
-    return this.getTemplates();
+    return templateApi.listTemplates();
   }
 
   async getTemplate(name: string): Promise<Template> {
-    const record = getTemplateRecord(name);
-    if (!record) {
-      throw new APIError(404, `Template ${name} not found`);
-    }
-    return record.template;
+    return templateApi.getTemplate(name);
   }
 
   async getTemplateBlueprintContents(name: string): Promise<TemplateBlueprintContentsResponse> {
-    const record = getTemplateRecord(name);
-    if (!record) {
-      throw new APIError(404, `Template ${name} not found`);
-    }
-    return { blueprint_contents: record.blueprint_contents };
+    return templateApi.getTemplateBlueprintContents(name);
   }
 
   async createTemplate(template: CreateTemplateRequest): Promise<Template> {
-    const records = getStoredTemplates();
-    if (records.some((record) => record.template.name === template.name)) {
-      throw new APIError(409, `Template ${template.name} already exists`);
-    }
-    const record = buildStoredTemplateRecord<StoredTemplateRecord>(template);
-    records.push(record);
-    saveStoredTemplates(records);
-
-    return record.template;
+    return templateApi.createTemplate(template);
   }
 
   async updateTemplate(name: string, template: UpdateTemplateRequest): Promise<Template> {
-    const records = getStoredTemplates();
-    const index = records.findIndex((record) => record.template.name === name);
-    if (index < 0) {
-      const sourceRecord = getTemplateRecord(name);
-      if (!sourceRecord) {
-        throw new APIError(404, `Template ${name} not found`);
-      }
-
-      const nextName = getUniqueTemplateName(template.name, name);
-      return this.createTemplate({
-        ...template,
-        name: nextName,
-      });
-    }
-
-    if (template.name !== name) {
-      const conflictingRecord = getTemplateRecord(template.name);
-      if (conflictingRecord && conflictingRecord.template.name !== name) {
-        throw new APIError(409, `Template ${template.name} already exists`);
-      }
-    }
-
-    records[index] = buildStoredTemplateRecord<StoredTemplateRecord>(template, {
-      templateRoot: records[index].template_root,
-    });
-    saveStoredTemplates(records);
-
-    return records[index].template;
+    return templateApi.updateTemplate(name, template);
   }
 
   async deleteTemplate(name: string): Promise<{ status: string; name: string }> {
-    const records = getStoredTemplates().filter((record) => record.template.name !== name);
-    saveStoredTemplates(records);
-
-    return { status: 'deleted', name };
+    return templateApi.deleteTemplate(name);
   }
 
   async duplicateTemplate(name: string, request: DuplicateTemplateRequest): Promise<Template> {
-    const source = getTemplateRecord(name);
-    if (!source) {
-      throw new APIError(404, `Template ${name} not found`);
-    }
-    return this.createTemplate({
-      name: request.name,
-      version: request.version || source.template.version,
-      description: source.template.description,
-      assets: source.template.assets,
-      blueprint_contents: source.blueprint_contents,
-    });
+    return templateApi.duplicateTemplate(name, request);
   }
 
   async validateTemplate(name: string): Promise<TemplateValidationResult> {
-    const record = getTemplateRecord(name);
-    if (!record) {
-      throw new APIError(404, `Template ${name} not found`);
-    }
-    const validation = validateTemplateDefinition(record.template);
-    const warnings = buildMissingTemplateBlueprintWarnings(
-      record.template,
-      (assetName) => resolveTemplateBlueprintContent(record.template.name, assetName) ?? null,
-    );
-    return { errors: validation.errors, warnings };
+    return templateApi.validateTemplate(name);
   }
 
   async exportTemplate(name: string): Promise<DownloadResponse> {
-    const record = getStoredTemplateRecord(name) ?? getTemplateRecord(name);
-    if (!record) {
-      throw new APIError(404, `Template ${name} not found`);
-    }
-    return createDownload(JSON.stringify(record, null, 2), `${slugifyFileName(name)}.json`, 'application/json');
+    return templateApi.exportTemplate(name);
   }
 
   async importTemplate(file: File): Promise<Template> {
-    const parsed = JSON.parse(await file.text()) as Partial<StoredTemplateRecord & CreateTemplateRequest>;
-    if ('template' in parsed && parsed.template) {
-      const record = parsed as StoredTemplateRecord;
-      return this.createTemplate({
-        name: record.template.name,
-        version: record.template.version,
-        description: record.template.description,
-        assets: record.template.assets,
-        blueprint_contents: record.blueprint_contents,
-      });
-    }
-    return this.createTemplate({
-      name: parsed.name || file.name.replace(/\.[^.]+$/, ''),
-      version: parsed.version || '1.0',
-      description: parsed.description || '',
-      assets: parsed.assets || [],
-      blueprint_contents: parsed.blueprint_contents || {},
-    } as CreateTemplateRequest);
+    return templateApi.importTemplate(file);
   }
 
   async getDrafts(filters?: DraftFilters): Promise<DraftListResponse> {
@@ -1259,20 +1079,11 @@ export class EidolonBrowserAPI {
   }
 
   async getExportPresets(): Promise<ExportPresetSummary[]> {
-    return EXPORT_PRESETS;
+    return exportApi.getExportPresets();
   }
 
   async exportDraft(request: ExportRequest): Promise<DownloadResponse> {
-    const draft = await this.getDraft(request.draft_id);
-    const preset =
-      request.preset === 'text' || request.preset === 'combined' || request.preset === 'png' || request.preset === 'pdf'
-        ? request.preset
-        : 'json';
-    const includeMetadata = request.include_metadata !== false;
-    const fileBase = slugifyFileName(draft.metadata.character_name || draft.metadata.seed || draft.metadata.review_id);
-    const artifact = buildDraftExportArtifact(draft, preset, includeMetadata);
-
-    return createDownload(artifact.content, `${fileBase}.${artifact.extension}`, artifact.contentType);
+    return exportApi.exportDraft(request);
   }
 
   async getBlueprints(): Promise<BlueprintList> {
