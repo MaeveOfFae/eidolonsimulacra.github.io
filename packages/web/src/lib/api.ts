@@ -1,8 +1,6 @@
 import {
-  buildSimilarityResult,
   type Blueprint,
   type BlueprintList,
-  type ChatMessage,
   type ChatRequest,
   type Config,
   type ConnectionTestRequest,
@@ -17,7 +15,6 @@ import {
   type ExportRequest,
   type FinalizeGenerationRequest,
   type GenerateAssetRequest,
-  type GenerateAssetResponse,
   type GenerateBatchRequest,
   type GenerateRequest,
   type GenerationComplete,
@@ -57,139 +54,26 @@ import {
   type WorldRelationshipRecord,
   type WorldRecord,
 } from '@char-gen/shared';
-import { createEngine } from './llm/factory.js';
 import { builtinThemes } from './themes/builtin-themes.js';
-import { configManager } from './config/manager.js';
 import { readPersistedJson, writePersistedJson } from './persistence/storage.js';
 import * as worldApi from './worlds/lore-api.js';
 import * as blueprintApi from './blueprints/blueprint-api.js';
-import { DraftStorage, type AssetWriteOptions, type BulkDraftMetadataPatch } from './storage/draft-db.js';
-import { UsageStorage } from './storage/usage-db.js';
-import {
-  deleteModelPricing,
-  getModelPricing,
-  saveModelPricing,
-  type SaveModelPricingInput,
-} from './usage/pricing-store.js';
-import { GenerationService } from './services/generation.js';
-import { inferCharacterDisplayNameForTemplate } from './templates/browser.js';
+import type { AssetWriteOptions, BulkDraftMetadataPatch } from './storage/draft-db.js';
 import * as templateApi from './templates/template-api.js';
 import * as exportApi from './export/export-api.js';
 import * as draftApi from './drafts/draft-api.js';
 import type { CreateDraftRequest } from './drafts/draft-api.js';
 import * as configApi from './config/config-api.js';
-import { getFallbackApiKey, resolveConfiguredProvider } from './config/config-api.js';
 import { createDownload, slugifyFileName, type DownloadResponse } from './download-response.js';
-import { buildOptimizeTextMessages } from '@char-gen/shared';
-
-type StreamEventType = 'status' | 'chunk' | 'complete' | 'error' | 'batch_start' | 'batch_complete' | 'batch_error';
-
-type StatusStreamData = { stage?: string; asset?: string; progress?: number };
-type ChunkStreamData = { content: string };
-type ErrorStreamData = { error: string };
-type BatchStartStreamData = { index: number; seed: string };
-type BatchCompleteStreamData = { index: number; seed: string; draft_path: string };
-type BatchErrorStreamData = { index: number; seed: string; error: string };
-type CompleteStreamData =
-  | GenerationComplete
-  | GenerateAssetResponse
-  | BlueprintPreviewResponse
-  | { draft_id: string; character_name?: string }
-  | { content: string }
-  | { status: 'done' };
-
-type StreamEventMap = {
-  status: StatusStreamData;
-  chunk: ChunkStreamData;
-  complete: CompleteStreamData;
-  error: ErrorStreamData;
-  batch_start: BatchStartStreamData;
-  batch_complete: BatchCompleteStreamData;
-  batch_error: BatchErrorStreamData;
-};
-
-type StreamEvent = {
-  [EventType in StreamEventType]: {
-    event: EventType;
-    data: StreamEventMap[EventType];
-  };
-}[StreamEventType];
-
-type StreamReader = (event: StreamEvent) => void;
-
-type BlueprintPreviewRequest = GenerateAssetRequest & {
-  blueprint_content: string;
-};
-
-type BlueprintPreviewResponse = GenerateAssetResponse & {
-  system_prompt: string;
-  user_prompt: string;
-};
+import * as generationApi from './generation/generation-api.js';
+import { BrowserStream, type BlueprintPreviewRequest } from './generation/browser-stream.js';
+import * as usageApi from './usage/usage-api.js';
+import type { SaveModelPricingInput } from './usage/pricing-store.js';
 
 const CUSTOM_THEMES_STORAGE_KEY = 'eidolon.web.themes.custom';
 export const THEMES_SYNCED_EVENT = 'eidolon:themes-synced';
 export const DRAFTS_SYNCED_EVENT = 'eidolon:drafts-synced';
 const LEGACY_CUSTOM_THEMES_STORAGE_KEYS = ['bpui.web.themes.custom'];
-
-class BrowserStream {
-  private readers: StreamReader[] = [];
-  private onComplete?: (data: CompleteStreamData) => void;
-  private onError?: (error: string) => void;
-  private controller = new AbortController();
-
-  constructor(
-    private readonly executor: (helpers: {
-      emit: <EventType extends StreamEventType>(event: EventType, data: StreamEventMap[EventType]) => void;
-      signal: AbortSignal;
-    }) => Promise<void>,
-  ) {}
-
-  subscribe(callback: StreamReader): this {
-    this.readers.push(callback);
-    return this;
-  }
-
-  onComplete_(callback: (data: CompleteStreamData) => void): this {
-    this.onComplete = callback;
-    return this;
-  }
-
-  onError_(callback: (error: string) => void): this {
-    this.onError = callback;
-    return this;
-  }
-
-  async start(): Promise<void> {
-    try {
-      await this.executor({
-        emit: (event, data) => this.emit(event, data),
-        signal: this.controller.signal,
-      });
-    } catch (error) {
-      if (this.controller.signal.aborted) {
-        return;
-      }
-      this.emit('error', { error: error instanceof Error ? error.message : 'Stream failed' });
-    }
-  }
-
-  abort(): void {
-    this.controller.abort();
-  }
-
-  private emit<EventType extends StreamEventType>(event: EventType, data: StreamEventMap[EventType]): void {
-    const payload = { event, data } as StreamEvent;
-    this.readers.forEach((reader) => reader(payload));
-
-    if (payload.event === 'complete' && this.onComplete) {
-      this.onComplete(payload.data);
-    }
-
-    if (payload.event === 'error' && this.onError) {
-      this.onError(payload.data.error);
-    }
-  }
-}
 
 export { APIError } from './api-error.js';
 export type { DownloadResponse } from './download-response.js';
@@ -214,24 +98,6 @@ function saveCustomThemes(themes: ThemePreset[]): void {
 
 function getAllThemes(): ThemePreset[] {
   return [...builtinThemes, ...getCustomThemes()];
-}
-
-async function generateWithCurrentConfig(
-  messages: ChatMessage[],
-): Promise<AsyncIterable<{ content?: string; done?: boolean }>> {
-  const config = configManager.getConfig();
-  const apiKeys = configManager.getApiKeys();
-  const provider = resolveConfiguredProvider(config);
-  const engine = createEngine({
-    model: config.model,
-    apiKey: provider ? apiKeys[provider] : getFallbackApiKey(apiKeys),
-    apiKeys,
-    provider,
-    baseUrl: config.base_url,
-    temperature: config.temperature,
-    maxTokens: config.max_tokens,
-  });
-  return engine.generateStream(messages);
 }
 
 export class EidolonBrowserAPI {
@@ -378,20 +244,7 @@ export class EidolonBrowserAPI {
   }
 
   async generateSeeds(request: SeedGenerationRequest): Promise<SeedGenerationResponse> {
-    const seeds: string[] = [];
-
-    for await (const progress of GenerationService.generateSeeds(request)) {
-      if (progress.type === 'complete' && progress.content) {
-        seeds.push(
-          ...progress.content
-            .split('\n')
-            .map((seed) => seed.trim())
-            .filter(Boolean),
-        );
-      }
-    }
-
-    return { seeds: [...new Set(seeds)] };
+    return generationApi.generateSeeds(request);
   }
 
   async getTemplates(): Promise<Template[]> {
@@ -505,167 +358,23 @@ export class EidolonBrowserAPI {
   }
 
   generate(_request: GenerateRequest): BrowserStream {
-    return new BrowserStream(async ({ emit, signal }) => {
-      for await (const progress of GenerationService.generate(_request, { signal })) {
-        if (signal.aborted) {
-          return;
-        }
-        if (progress.type === 'chunk') {
-          emit('chunk', { content: progress.content || '' });
-        }
-        if (progress.type === 'complete') {
-          const draftId = progress.asset || '';
-          const draft = draftId ? await DraftStorage.getDraft(draftId) : null;
-          emit('complete', {
-            draft_path: draftId,
-            draft_id: draftId,
-            character_name: draft?.metadata.character_name,
-            duration_ms: 0,
-          } satisfies GenerationComplete);
-        }
-        if (progress.type === 'error') {
-          emit('error', { error: progress.error || 'Generation failed' });
-        }
-      }
-    });
+    return generationApi.generate(_request);
   }
 
   generateAsset(request: GenerateAssetRequest): BrowserStream {
-    return new BrowserStream(async ({ emit, signal }) => {
-      for await (const progress of GenerationService.generateAsset(request, true, { signal })) {
-        if (signal.aborted) {
-          return;
-        }
-        if (progress.type === 'chunk') {
-          emit('chunk', { content: progress.content || '' });
-        }
-        if (progress.type === 'asset') {
-          emit('complete', {
-            asset_name: request.asset_name,
-            content: progress.content || '',
-          } satisfies GenerateAssetResponse);
-        }
-        if (progress.type === 'error') {
-          emit('error', { error: progress.error || 'Asset generation failed' });
-        }
-      }
-    });
+    return generationApi.generateAsset(request);
   }
 
   previewBlueprint(request: BlueprintPreviewRequest): BrowserStream {
-    return new BrowserStream(async ({ emit, signal }) => {
-      for await (const progress of GenerationService.previewBlueprint(request, true, { signal })) {
-        if (signal.aborted) {
-          return;
-        }
-        if (progress.type === 'chunk') {
-          emit('chunk', { content: progress.content || '' });
-        }
-        if (progress.type === 'asset') {
-          emit('complete', {
-            asset_name: request.asset_name,
-            content: progress.content || '',
-            system_prompt: progress.systemPrompt || '',
-            user_prompt: progress.userPrompt || '',
-          } satisfies BlueprintPreviewResponse);
-        }
-        if (progress.type === 'error') {
-          emit('error', { error: progress.error || 'Blueprint preview failed' });
-        }
-      }
-    });
+    return generationApi.previewBlueprint(request);
   }
 
   async finalizeGeneration(request: FinalizeGenerationRequest): Promise<GenerationComplete> {
-    const reviewId = crypto.randomUUID();
-    const characterName = inferCharacterDisplayNameForTemplate(request.assets, request.template);
-    const draft: Draft = {
-      path: reviewId,
-      metadata: {
-        review_id: reviewId,
-        seed: request.seed,
-        mode: request.mode,
-        model: configManager.getConfig().model,
-        created: new Date().toISOString(),
-        modified: new Date().toISOString(),
-        favorite: false,
-        template_name: request.template,
-        character_name: characterName,
-      },
-      assets: request.assets,
-    };
-    await DraftStorage.saveDraft(draft);
-    return {
-      draft_path: reviewId,
-      draft_id: reviewId,
-      character_name: characterName,
-      duration_ms: 0,
-    };
+    return generationApi.finalizeGeneration(request);
   }
 
   generateBatch(seeds: string[], request: Omit<GenerateBatchRequest, 'seeds'>): BrowserStream {
-    return new BrowserStream(async ({ emit, signal }) => {
-      const runSeed = async (seed: string, index: number) => {
-        emit('batch_start', { index, seed });
-        try {
-          let draftId = '';
-          for await (const progress of GenerationService.generate(
-            {
-              seed,
-              mode: request.mode,
-              template: request.template,
-              selected_assets: request.selected_assets,
-              connected_draft_ids: request.connected_draft_ids,
-            },
-            { signal },
-          )) {
-            if (signal.aborted) {
-              return;
-            }
-            if (progress.type === 'complete') {
-              draftId = progress.asset || '';
-            }
-          }
-          emit('batch_complete', { index, seed, draft_path: draftId });
-        } catch (error) {
-          emit('batch_error', {
-            index,
-            seed,
-            error: error instanceof Error ? error.message : 'Batch generation failed',
-          });
-        }
-      };
-
-      if (request.parallel) {
-        let nextIndex = 0;
-        const workerCount = Math.min(Math.max(request.max_concurrent ?? 3, 1), seeds.length || 1);
-        await Promise.all(
-          Array.from({ length: workerCount }, async () => {
-            while (!signal.aborted) {
-              const index = nextIndex;
-              nextIndex += 1;
-              if (index >= seeds.length) {
-                return;
-              }
-              await runSeed(seeds[index], index);
-            }
-          }),
-        );
-      } else {
-        for (let index = 0; index < seeds.length; index += 1) {
-          if (signal.aborted) {
-            return;
-          }
-          await runSeed(seeds[index], index);
-        }
-      }
-
-      if (signal.aborted) {
-        return;
-      }
-
-      emit('complete', { status: 'done' });
-    });
+    return generationApi.generateBatch(seeds, request);
   }
 
   async getLineage(): Promise<LineageResponse> {
@@ -673,130 +382,19 @@ export class EidolonBrowserAPI {
   }
 
   async analyzeSimilarity(request: SimilarityRequest): Promise<SimilarityResult> {
-    const left = await draftApi.getDraft(request.draft1_id);
-    const right = await draftApi.getDraft(request.draft2_id);
-    const baseResult = buildSimilarityResult(left, right);
-
-    if (!request.include_llm_analysis) {
-      return baseResult;
-    }
-
-    try {
-      const analysis = (await GenerationService.analyzeSimilarity(request.draft1_id, request.draft2_id)) as {
-        narrative_dynamics?: unknown;
-        relationship_arc?: unknown;
-        story_opportunities?: unknown;
-        scene_suggestions?: unknown;
-        raw?: unknown;
-      };
-
-      const storyHooks = Array.isArray(analysis.story_opportunities)
-        ? analysis.story_opportunities.map((item) => String(item)).slice(0, 4)
-        : baseResult.relationship_suggestions;
-      const sceneSuggestions = Array.isArray(analysis.scene_suggestions)
-        ? analysis.scene_suggestions.map((item) => String(item)).slice(0, 3)
-        : baseResult.relationship_suggestions;
-      const relationshipPotential =
-        [analysis.narrative_dynamics, analysis.relationship_arc]
-          .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
-          .join('\n\n') || (typeof analysis.raw === 'string' ? analysis.raw : 'LLM analysis unavailable.');
-
-      return {
-        ...baseResult,
-        relationship_suggestions: sceneSuggestions,
-        llm_analysis: {
-          relationship_potential: relationshipPotential,
-          conflict_areas: baseResult.differences.slice(0, 4),
-          synergy_areas: baseResult.commonalities.slice(0, 4),
-          story_hooks: storyHooks,
-        },
-      };
-    } catch {
-      return baseResult;
-    }
+    return generationApi.analyzeSimilarity(request);
   }
 
   generateOffspring(request: OffspringRequest): BrowserStream {
-    return new BrowserStream(async ({ emit, signal }) => {
-      for await (const progress of GenerationService.generateOffspring(request, { signal })) {
-        if (signal.aborted) {
-          return;
-        }
-        if (progress.type === 'status') {
-          emit('status', {
-            stage: progress.stage,
-            asset: progress.asset,
-            progress: progress.progress,
-          });
-        }
-        if (progress.type === 'chunk') {
-          emit('chunk', { content: progress.content || '' });
-        }
-        if (progress.type === 'complete') {
-          const draftId = progress.asset || '';
-          const draft = draftId ? await DraftStorage.getDraft(draftId) : null;
-          emit('complete', {
-            draft_id: draftId,
-            character_name: draft?.metadata.character_name,
-          });
-        }
-        if (progress.type === 'error') {
-          emit('error', { error: progress.error || 'Offspring generation failed' });
-        }
-      }
-    });
+    return generationApi.generateOffspring(request);
   }
 
   generateOffspringSeed(request: OffspringRequest): BrowserStream {
-    return new BrowserStream(async ({ emit, signal }) => {
-      for await (const progress of GenerationService.generateOffspringSeed(request, { signal })) {
-        if (signal.aborted) {
-          return;
-        }
-        if (progress.type === 'status') {
-          emit('status', {
-            stage: progress.stage,
-            asset: progress.asset,
-            progress: progress.progress,
-          });
-        }
-        if (progress.type === 'chunk') {
-          emit('chunk', { content: progress.content || '' });
-        }
-        if (progress.type === 'complete') {
-          emit('complete', { content: progress.content || '' });
-        }
-        if (progress.type === 'error') {
-          emit('error', { error: progress.error || 'Offspring seed generation failed' });
-        }
-      }
-    });
+    return generationApi.generateOffspringSeed(request);
   }
 
   generateLorebook(request: LorebookGenerationRequest): BrowserStream {
-    return new BrowserStream(async ({ emit, signal }) => {
-      for await (const progress of GenerationService.generateLorebook(request, { signal })) {
-        if (signal.aborted) {
-          return;
-        }
-        if (progress.type === 'status') {
-          emit('status', {
-            stage: progress.stage,
-            asset: progress.asset,
-            progress: progress.progress,
-          });
-        }
-        if (progress.type === 'chunk') {
-          emit('chunk', { content: progress.content || '' });
-        }
-        if (progress.type === 'complete') {
-          emit('complete', { content: progress.content || '' });
-        }
-        if (progress.type === 'error') {
-          emit('error', { error: progress.error || 'Lorebook generation failed' });
-        }
-      }
-    });
+    return generationApi.generateLorebook(request);
   }
 
   async getExportPresets(): Promise<ExportPresetSummary[]> {
@@ -1031,105 +629,19 @@ export class EidolonBrowserAPI {
   }
 
   chat(request: ChatRequest): BrowserStream {
-    return new BrowserStream(async ({ emit, signal }) => {
-      const draft = request.draft_id ? await DraftStorage.getDraft(request.draft_id) : null;
-      const contextParts = [
-        draft ? `Current draft metadata: ${JSON.stringify(draft.metadata)}` : '',
-        request.context_asset && draft?.assets[request.context_asset]
-          ? `Focused asset (${request.context_asset}):\n${draft.assets[request.context_asset]}`
-          : '',
-        request.screen_context ? `Screen context: ${JSON.stringify(request.screen_context)}` : '',
-      ].filter(Boolean);
-
-      const messages: ChatMessage[] = [
-        {
-          role: 'system',
-          content:
-            'You are the in-app assistant for Eidolon Simulacra, a browser-only blueprint compiler. Be concise and practical. Use provided draft or screen context when relevant.',
-        },
-        ...(contextParts.length > 0 ? [{ role: 'system' as const, content: contextParts.join('\n\n') }] : []),
-        ...request.messages,
-      ];
-
-      const stream = await generateWithCurrentConfig(messages);
-      let fullContent = '';
-      for await (const chunk of stream) {
-        if (signal.aborted) {
-          return;
-        }
-        if (chunk.content) {
-          fullContent += chunk.content;
-          emit('chunk', { content: chunk.content });
-        }
-        if (chunk.done) {
-          break;
-        }
-      }
-      emit('complete', { content: fullContent });
-    });
+    return generationApi.chat(request);
   }
 
   refine(request: RefineRequest): BrowserStream {
-    return new BrowserStream(async ({ emit, signal }) => {
-      const draft = await draftApi.getDraft(request.draft_id);
-      const assetContent = draft.assets[request.asset];
-      if (!assetContent) {
-        throw new APIError(404, `Asset ${request.asset} not found in draft`);
-      }
-
-      const messages: ChatMessage[] = [
-        {
-          role: 'system',
-          content:
-            'Rewrite the provided asset according to the user request. Return only the revised asset content with no extra commentary.',
-        },
-        {
-          role: 'user',
-          content: `Draft seed: ${draft.metadata.seed}\nAsset: ${request.asset}\n\nCurrent content:\n${assetContent}\n\nRevision request:\n${request.message}`,
-        },
-      ];
-
-      const stream = await generateWithCurrentConfig(messages);
-      let fullContent = '';
-      for await (const chunk of stream) {
-        if (signal.aborted) {
-          return;
-        }
-        if (chunk.content) {
-          fullContent += chunk.content;
-          emit('chunk', { content: chunk.content });
-        }
-        if (chunk.done) {
-          break;
-        }
-      }
-      emit('complete', { content: fullContent });
-    });
+    return generationApi.refine(request);
   }
 
   optimizeText(request: OptimizeTextRequest): BrowserStream {
-    return new BrowserStream(async ({ emit, signal }) => {
-      const messages = buildOptimizeTextMessages(request);
-      const stream = await generateWithCurrentConfig(messages);
-      let fullContent = '';
-      for await (const chunk of stream) {
-        if (signal.aborted) {
-          return;
-        }
-        if (chunk.content) {
-          fullContent += chunk.content;
-          emit('chunk', { content: chunk.content });
-        }
-        if (chunk.done) {
-          break;
-        }
-      }
-      emit('complete', { content: fullContent });
-    });
+    return generationApi.optimizeText(request);
   }
 
   getUsageSummary(options: UsageSummarizeOptions = {}): Promise<UsageSummary> {
-    return UsageStorage.summarize(options);
+    return usageApi.getUsageSummary(options);
   }
 
   getComparisonGroupDrafts(groupId: string): Promise<DraftMetadata[]> {
@@ -1141,23 +653,23 @@ export class EidolonBrowserAPI {
   }
 
   getUsageRecords(filter: UsageFilter = {}): Promise<UsageRecord[]> {
-    return UsageStorage.list(filter);
+    return usageApi.getUsageRecords(filter);
   }
 
   clearUsageRecords(): Promise<void> {
-    return UsageStorage.clear();
+    return usageApi.clearUsageRecords();
   }
 
   getModelPricing(): ModelPricing[] {
-    return getModelPricing();
+    return usageApi.getModelPricing();
   }
 
   saveModelPricing(input: SaveModelPricingInput): ModelPricing | null {
-    return saveModelPricing(input);
+    return usageApi.saveModelPricing(input);
   }
 
   deleteModelPricing(id: string): void {
-    deleteModelPricing(id);
+    return usageApi.deleteModelPricing(id);
   }
 }
 
