@@ -292,7 +292,11 @@ export default function Generation() {
     setImportedTemplateName(session.importedCharacter?.templateName ?? null);
     setSelectedTemplateAssets(session.selectedAssets ?? []);
     setGenerationError(null);
-    setResumeNotice('Restored an interrupted generation session.');
+    setResumeNotice(
+      session.currentStatus === 'paused'
+        ? 'Restored a paused generation session.'
+        : 'Restored an interrupted generation session.',
+    );
     setIsGenerating(true);
   }, []);
 

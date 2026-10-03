@@ -1,4 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from 'react';
+import { isResumableMobileGenerationSession, type MobileGenerationSession } from '../lib/generation-session';
+import { clearGenerationSession, loadGenerationSession } from '../storage/generation-session';
 import {
   View,
   Text,
@@ -89,6 +91,14 @@ export default function GenerateScreen() {
   > | null>(null);
   const [importedTemplateName, setImportedTemplateName] = useState<string | null>(null);
   const [selectedTemplateAssets, setSelectedTemplateAssets] = useState<string[]>([]);
+  const [resumableSession, setResumableSession] = useState<MobileGenerationSession | null>(null);
+
+  // Checkpointed sessions: surface a resume card when an earlier run left a
+  // resumable checkpoint behind (app kill, navigation, provider failure).
+  useEffect(() => {
+    const stored = loadGenerationSession();
+    setResumableSession(isResumableMobileGenerationSession(stored) ? stored : null);
+  }, []);
 
   const { data: templates, isLoading: templatesLoading } = useQuery({
     queryKey: ['templates'],
@@ -188,8 +198,18 @@ export default function GenerateScreen() {
     });
   };
 
-  const handleGenerate = async () => {
-    if (!seed.trim()) return;
+  const handleGenerate = async (override?: {
+    seed?: string;
+    mode?: ContentMode;
+    template?: string;
+    selectedAssets?: string[];
+    resumeAssets?: Record<string, string>;
+  }) => {
+    const effectiveSeed = override?.seed ?? seed;
+    const effectiveMode = override?.mode ?? mode;
+    const effectiveTemplate = override?.template ?? template;
+    const effectiveSelectedAssets = override?.selectedAssets ?? selectedTemplateAssets;
+    if (!effectiveSeed.trim()) return;
 
     if (
       importedCharacter &&
@@ -212,11 +232,12 @@ export default function GenerateScreen() {
 
     try {
       const stream = api.generate({
-        seed,
-        mode,
-        template: template || undefined,
+        seed: effectiveSeed,
+        mode: effectiveMode,
+        template: effectiveTemplate || undefined,
         stream: true,
-        selected_assets: selectedTemplateAssets,
+        selected_assets: effectiveSelectedAssets,
+        resume_assets: override?.resumeAssets,
         imported_source: importedCharacter
           ? {
               label: importedCharacter.name,
@@ -241,6 +262,7 @@ export default function GenerateScreen() {
           const data = event.data as GenerationComplete;
           setResult(data);
           setGenerationStage('Generation complete.');
+          setResumableSession(null);
           // Refresh drafts list
           queryClient.invalidateQueries({ queryKey: ['drafts'] });
         }
@@ -264,12 +286,51 @@ export default function GenerateScreen() {
     }
   };
 
+  const handleResumeSession = () => {
+    if (!resumableSession) {
+      return;
+    }
+
+    const session = resumableSession;
+    setResumableSession(null);
+    void handleGenerate({
+      seed: session.seed,
+      mode: session.mode,
+      template: session.template,
+      selectedAssets: session.selectedAssets ?? [],
+      resumeAssets: { ...session.completedAssets },
+    });
+  };
+
+  const handleDiscardSession = () => {
+    clearGenerationSession();
+    setResumableSession(null);
+  };
+
   const modes: ContentMode[] = ['SFW', 'NSFW', 'Platform-Safe', 'Auto'];
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Generate</Text>
       <Text style={styles.subtitle}>Start from a seed or imported source.</Text>
+
+      {resumableSession && !isGenerating && (
+        <View style={styles.resumeCard}>
+          <Text style={styles.resumeTitle}>
+            Interrupted generation — {Object.keys(resumableSession.completedAssets).length} asset
+            {Object.keys(resumableSession.completedAssets).length === 1 ? '' : 's'} completed
+          </Text>
+          <Text style={styles.resumeSubtitle}>Resume from the checkpoint, or discard it to start fresh.</Text>
+          <View style={styles.resumeActions}>
+            <TouchableOpacity style={styles.resumePrimaryButton} onPress={handleResumeSession}>
+              <Text style={styles.generateButtonText}>Resume generation</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.resumeDiscardButton} onPress={handleDiscardSession}>
+              <Text style={styles.resumeDiscardButtonText}>Discard</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
 
       <View style={styles.form}>
         <View style={styles.heroCard}>
@@ -285,7 +346,7 @@ export default function GenerateScreen() {
           />
           <TouchableOpacity
             style={[styles.generateButton, (!seed.trim() || isGenerating) && styles.generateButtonDisabled]}
-            onPress={handleGenerate}
+            onPress={() => void handleGenerate()}
             disabled={!seed.trim() || isGenerating}
           >
             {isGenerating ? (
@@ -789,6 +850,50 @@ function buildStyles(colors: ThemeColors) {
       color: colors.button_text,
       fontSize: 16,
       fontWeight: '600',
+    },
+    resumeCard: {
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderWidth: 1,
+      borderRadius: 12,
+      padding: 16,
+      marginTop: 12,
+      marginBottom: 4,
+    },
+    resumeTitle: {
+      color: colors.text,
+      fontSize: 15,
+      fontWeight: '600',
+    },
+    resumeSubtitle: {
+      color: colors.muted_text,
+      fontSize: 13,
+      marginTop: 4,
+    },
+    resumeActions: {
+      flexDirection: 'row',
+      gap: 8,
+      marginTop: 12,
+    },
+    resumePrimaryButton: {
+      backgroundColor: colors.button,
+      borderRadius: 8,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+      alignItems: 'center',
+    },
+    resumeDiscardButton: {
+      borderColor: colors.border,
+      borderWidth: 1,
+      borderRadius: 8,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+      alignItems: 'center',
+    },
+    resumeDiscardButtonText: {
+      color: colors.text,
+      fontSize: 14,
+      fontWeight: '500',
     },
     buttonContent: {
       flexDirection: 'row',

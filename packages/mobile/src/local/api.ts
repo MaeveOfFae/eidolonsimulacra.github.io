@@ -65,6 +65,7 @@ import {
 } from '@char-gen/shared';
 import { Platform } from 'react-native';
 import { getStoredDeviceConfig, updateStoredDeviceConfig } from '../storage/device-config';
+import { clearGenerationSession, saveGenerationSession } from '../storage/generation-session';
 import { deleteDraft, getAllMetadata, getDraft, saveDraft, updateAsset, updateMetadata } from './draft-store';
 import {
   buildLorebookMessages,
@@ -357,6 +358,8 @@ type ImportedSourceContext = {
 
 type MobileGenerateRequest = GenerateRequest & {
   imported_source?: ImportedSourceContext;
+  /** Checkpoint resume: assets already completed by an earlier interrupted run. */
+  resume_assets?: Record<string, string>;
 };
 
 function buildImportedSourceContext(
@@ -659,6 +662,8 @@ async function runGeneration(
     parentDraftIds?: string[];
     offspringType?: string;
     extraInstruction?: string;
+    /** Persist a resumable checkpoint as assets complete (main generate path only). */
+    checkpointSession?: boolean;
   } = {},
 ): Promise<GenerationComplete> {
   const startedAt = Date.now();
@@ -707,17 +712,24 @@ async function runGeneration(
     throw new APIError(400, `No assets selected for generation in template ${template.name}`);
   }
 
+  // A fresh (non-resume) run invalidates any checkpoint left by an earlier
+  // interrupted run.
+  if (options.checkpointSession && !request.resume_assets) {
+    clearGenerationSession();
+  }
+
   options.onStatus?.('loading_references', 0.08);
   const referenceContext = await buildReferenceContext(request.connected_draft_ids);
-  const assets: Record<string, string> = {};
+  const assets: Record<string, string> = { ...(request.resume_assets ?? {}) };
+  const pendingAssets = generationAssets.filter((asset) => !Object.prototype.hasOwnProperty.call(assets, asset.name));
   const progressBase = 0.12;
   const progressSpan = 0.76;
   const configuredMaxTokens = Math.max(256, Math.round(getStoredDeviceConfig().max_tokens));
 
-  for (let index = 0; index < generationAssets.length; index += 1) {
-    const asset = generationAssets[index];
-    const assetStart = progressBase + (index / generationAssets.length) * progressSpan;
-    const assetEnd = progressBase + ((index + 1) / generationAssets.length) * progressSpan;
+  for (let index = 0; index < pendingAssets.length; index += 1) {
+    const asset = pendingAssets[index];
+    const assetStart = progressBase + (index / pendingAssets.length) * progressSpan;
+    const assetEnd = progressBase + ((index + 1) / pendingAssets.length) * progressSpan;
     const maxTokens = configuredMaxTokens;
 
     options.onStatus?.('building_asset_prompt', assetStart, asset.name);
@@ -745,6 +757,19 @@ async function runGeneration(
     }
 
     assets[asset.name] = assetContent;
+
+    if (options.checkpointSession) {
+      saveGenerationSession({
+        version: 1,
+        seed: request.seed,
+        mode: request.mode,
+        template: template.name,
+        selectedAssets: request.selected_assets,
+        completedAssets: { ...assets },
+        updatedAt: Date.now(),
+      });
+    }
+
     options.onStatus?.('asset_complete', assetEnd, asset.name);
     options.onChunk?.(`${index === 0 ? '' : '\n\n'}=== ${asset.name.toUpperCase()} ===\n${assetContent}`);
   }
@@ -772,6 +797,10 @@ async function runGeneration(
     },
     assets,
   });
+
+  if (options.checkpointSession) {
+    clearGenerationSession();
+  }
 
   options.onStatus?.('complete', 1);
 
@@ -1319,6 +1348,7 @@ export class MobileLocalAPI {
         signal,
         onChunk: (content) => emit('chunk', { content }),
         onStatus: (stage, progress, asset) => emit('status', { stage, progress, asset }),
+        checkpointSession: true,
       });
       if (!signal.aborted) {
         emit('complete', result);

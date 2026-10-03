@@ -241,6 +241,14 @@ function normalizeConnectedDraftIds(value: string[] | undefined): string[] {
   return normalized;
 }
 
+const VALID_GENERATION_SESSION_STATUSES: ReadonlySet<string> = new Set([
+  'initializing',
+  'generating',
+  'paused',
+  'reviewing',
+  'saving',
+]);
+
 function isValidSession(value: unknown): value is ActiveGenerationSession {
   if (!value || typeof value !== 'object') {
     return false;
@@ -260,6 +268,7 @@ function isValidSession(value: unknown): value is ActiveGenerationSession {
     (typeof session.currentAsset === 'string' || session.currentAsset === null) &&
     typeof session.currentAssetContent === 'string' &&
     typeof session.currentStatus === 'string' &&
+    VALID_GENERATION_SESSION_STATUSES.has(session.currentStatus) &&
     typeof session.startedAt === 'number' &&
     typeof session.updatedAt === 'number'
   );

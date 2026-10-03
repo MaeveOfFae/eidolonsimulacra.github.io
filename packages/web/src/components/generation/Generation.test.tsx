@@ -12,6 +12,13 @@ vi.mock('@/lib/api', () => ({
   },
 }));
 
+vi.mock('@/lib/services/generation-session', () => ({
+  clearActiveGenerationSession: vi.fn(),
+  loadActiveGenerationSession: vi.fn(),
+}));
+
+import { loadActiveGenerationSession } from '@/lib/services/generation-session';
+
 vi.mock('../common/useAssistantContext', () => ({
   useAssistantScreenContext: () => undefined,
 }));
@@ -53,6 +60,7 @@ vi.mock('./GenerationProgress', () => ({
 describe('Generation', () => {
   beforeEach(() => {
     window.localStorage.clear();
+    vi.mocked(loadActiveGenerationSession).mockReset();
     vi.mocked(api.getTemplates).mockResolvedValue([
       {
         name: 'V2/V3 Card',
@@ -142,5 +150,39 @@ describe('Generation', () => {
 
     expect(await screen.findByText('Generation Progress Mock')).toBeInTheDocument();
     expect(screen.getByText('Connected references: draft-1')).toBeInTheDocument();
+  });
+
+  it('restores a paused session on mount and enters the progress view', async () => {
+    vi.mocked(loadActiveGenerationSession).mockReturnValue({
+      version: 1,
+      seed: 'paused seed',
+      mode: 'SFW',
+      template: 'V2/V3 Card',
+      assetDrafts: { system_prompt: 'Partial system prompt' },
+      currentAsset: 'intro_scene',
+      currentAssetContent: '',
+      currentStatus: 'paused',
+      startedAt: 1,
+      updatedAt: 2,
+    } as never);
+
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={['/generate']}>
+          <Generation />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByText('Restored a paused generation session.')).toBeInTheDocument();
+    expect(screen.getByText('Generation Progress Mock')).toBeInTheDocument();
   });
 });

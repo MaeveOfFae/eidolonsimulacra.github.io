@@ -264,9 +264,18 @@ export class GenerationService {
         engineUsage = result.usage;
       }
     } catch (error) {
+      const salvagedReviewId = await this.salvagePartialGeneration({
+        seed,
+        template,
+        mode,
+        content: fullContent,
+        connectedDraftIds,
+        comparisonGroup: comparison_group,
+      });
       usageCapture.finish({
         status: options.signal?.aborted ? 'aborted' : 'error',
         usage: engineUsage,
+        draftId: salvagedReviewId,
         errorMessage: errorMessageOf(error),
       });
       throw error;
@@ -319,6 +328,69 @@ export class GenerationService {
       type: 'complete',
       asset: reviewId,
     };
+  }
+
+  /**
+   * Checkpoint salvage for the single-shot orchestrator path (batch runs,
+   * comparison runs, direct API callers): when the full-run stream dies after
+   * content started arriving, parse the assets that completed inside the
+   * partial document and save them as a draft so the run can be finished from
+   * review instead of being lost. Only closed asset blocks parse, so a block
+   * cut off mid-stream is excluded. The draft carries a notes marker and its
+   * usage record is attributed to the salvaged draft id.
+   */
+  private static async salvagePartialGeneration(input: {
+    seed: string;
+    template?: string;
+    mode?: string;
+    content: string;
+    connectedDraftIds: string[];
+    comparisonGroup?: string;
+  }): Promise<string | undefined> {
+    if (!input.content.trim()) {
+      return undefined;
+    }
+
+    try {
+      const templateDefinition = input.template ? resolveTemplateDefinition(input.template) : undefined;
+      let assets: Record<string, string>;
+      try {
+        assets = templateDefinition
+          ? parseGeneratedBlueprintOutput(input.content, templateDefinition).assets
+          : this.parseBlueprintOutput(input.content);
+      } catch {
+        assets = this.parseBlueprintOutput(input.content);
+      }
+
+      if (Object.keys(assets).length === 0) {
+        return undefined;
+      }
+
+      const reviewId = this.generateReviewId();
+      const draft: Draft = {
+        path: reviewId,
+        metadata: {
+          review_id: reviewId,
+          seed: input.seed,
+          mode: input.mode as Draft['metadata']['mode'],
+          created: new Date().toISOString(),
+          modified: new Date().toISOString(),
+          favorite: false,
+          template_name: input.template,
+          character_name: inferCharacterDisplayNameForTemplate(assets, input.template),
+          connected_drafts: input.connectedDraftIds.length > 0 ? input.connectedDraftIds : undefined,
+          notes: 'Partial generation salvaged from an interrupted run; regenerate the missing assets from review.',
+          ...(input.comparisonGroup ? { comparison_group: input.comparisonGroup } : {}),
+        },
+        assets,
+      };
+
+      await DraftStorage.saveDraft(draft);
+      return reviewId;
+    } catch {
+      // Salvage is best-effort: never mask the original generation error.
+      return undefined;
+    }
   }
 
   /**
