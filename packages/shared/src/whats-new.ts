@@ -16,9 +16,29 @@ export interface ReleaseNoteEntry {
 // Generated and maintained by tools/generation/generate-release-notes.mjs.
 export const releaseNotes: ReleaseNoteEntry[] = [
   {
+    version: '4.7.0',
+    releasedOn: '2026-10-02',
+    badge: 'Current release',
+    headline: 'Asset approvals and the finished facade split',
+    summary:
+      'Every draft asset can now be approved, flagged for changes, or undone from the review screen, with decisions fingerprinted to the content they approved so later edits mark them stale, and changes-requested assets joining low scores as export blockers. Under the hood the API facade split is complete: all nine domains live in their own modules behind a thin 589-line delegation shell, down from 2,727 lines, with the public surface locked and every characterization suite passing unchanged.',
+    highlights: [
+      'Approve, request changes, or undo a decision on each draft asset from the review screen',
+      'Decisions are fingerprinted to the approved content, so editing an asset marks its decision stale',
+      'Assets with changes requested join low scores as export-readiness blockers',
+      'The API facade split is complete: nine domain modules behind a 589-line shell, down from 2,727 lines',
+      'The public surface lock grows to 100 methods; 250 shared and 204 web tests pass',
+    ],
+    links: [
+      { label: 'Open the library', to: '/drafts' },
+      { label: 'Open the Help Center', to: '/help' },
+      { label: 'Open generation', to: '/generate' },
+    ],
+  },
+  {
     version: '4.6.1',
     releasedOn: '2026-10-01',
-    badge: 'Current release',
+    badge: 'Previous release',
     headline: 'Pricing is per million tokens',
     summary:
       'Corrects the Insights pricing model: rates are entered per 1M tokens — the unit providers actually quote — not per 1K, so estimated costs had been coming out 1000x too high. The math, field names, editor labels, and example placeholders now all say 1M, and pricing entries saved earlier migrate automatically with their values unchanged.',

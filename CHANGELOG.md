@@ -3,6 +3,23 @@
 Generated release history for the browser app.
 
 
+## v4.7.0 - 2026-10-02
+
+### Asset approvals and the finished facade split
+
+Every draft asset can now be approved, flagged for changes, or undone from the review screen, with decisions fingerprinted to the content they approved so later edits mark them stale, and changes-requested assets joining low scores as export blockers. Under the hood the API facade split is complete: all nine domains live in their own modules behind a thin 589-line delegation shell, down from 2,727 lines, with the public surface locked and every characterization suite passing unchanged.
+
+### Highlights
+- Approve, request changes, or undo a decision on each draft asset from the review screen
+- Decisions are fingerprinted to the approved content, so editing an asset marks its decision stale
+- Assets with changes requested join low scores as export-readiness blockers
+- The API facade split is complete: nine domain modules behind a 589-line shell, down from 2,727 lines
+- The public surface lock grows to 100 methods; 250 shared and 204 web tests pass
+
+### Links
+- [Open the library](/drafts)
+- [Open the Help Center](/help)
+- [Open generation](/generate)
 ## v4.6.1 - 2026-10-01
 
 ### Pricing is per million tokens
@@ -203,6 +220,7 @@ This release packages recent commits focused on platform, templates, and themes.
 ### Links
 - [Open generation](/generate)
 - [Review templates](/templates)
+
 
 
 
