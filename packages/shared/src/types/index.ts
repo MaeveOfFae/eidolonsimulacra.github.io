@@ -234,10 +234,25 @@ export interface CharacterCardMetadata {
 
 export type DraftAssetReviewScore = 1 | 2 | 3 | 4 | 5;
 
+export type DraftAssetApprovalStatus = 'approved' | 'changes_requested';
+
+export interface DraftAssetApproval {
+  status: DraftAssetApprovalStatus;
+  decided_at: string;
+  note?: string;
+  /**
+   * Fingerprint of the asset content at decision time. When it no longer
+   * matches the saved content, the decision is reported as stale instead of
+   * approved or changes requested.
+   */
+  content_fingerprint: string;
+}
+
 export interface DraftReviewAnnotations {
   notes?: string;
   asset_scores?: Record<string, DraftAssetReviewScore>;
   asset_notes?: Record<string, string>;
+  asset_approvals?: Record<string, DraftAssetApproval>;
   updated_at?: string;
 }
 

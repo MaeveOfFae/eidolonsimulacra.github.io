@@ -314,4 +314,32 @@ describe('Review export modal behavior', () => {
       ).toEqual(['post_history', 'system_prompt']);
     });
   });
+
+  it('records an asset approval decision from the review card', async () => {
+    mockUseGuidedTour.mockReturnValue({
+      activeTourId: null,
+      activeStepIndex: 0,
+      isTourCompleted: vi.fn(() => false),
+      restartTour: vi.fn(),
+      startTour: vi.fn(),
+    });
+
+    renderReview();
+
+    // The compact review layout renders each asset card collapsed.
+    fireEvent.click(screen.getByRole('button', { name: /^system prompt/ }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Approve' }));
+
+    await waitFor(() => {
+      const approvalCall = mutationResults
+        .flatMap((result) => result.mutate.mock.calls.map(([payload]) => payload))
+        .find((payload) => (payload as { assetName?: string })?.assetName === 'system_prompt');
+
+      expect(approvalCall).toEqual({
+        assetName: 'system_prompt',
+        decision: { status: 'approved' },
+      });
+    });
+  });
 });

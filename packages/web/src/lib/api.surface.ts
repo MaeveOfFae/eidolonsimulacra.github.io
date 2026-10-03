@@ -93,6 +93,7 @@ type ApiMethodName =
   | 'restoreDraft'
   | 'restoreDraftSnapshot'
   | 'saveModelPricing'
+  | 'setAssetApproval'
   | 'syncConfigFromServer'
   | 'testConnection'
   | 'updateAsset'

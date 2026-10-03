@@ -25,6 +25,7 @@ import {
   type DraftFilters,
   type DraftListResponse,
   type DraftMetadata,
+  type DraftAssetApprovalDecision,
   type DuplicateTemplateRequest,
   type ExportPresetSummary,
   type ExportRequest,
@@ -260,6 +261,14 @@ export class EidolonBrowserAPI {
     options: AssetWriteOptions = {},
   ): Promise<{ status: 'created' | 'updated'; draft_id: string; asset_name: string }> {
     return draftApi.updateAsset(reviewId, assetName, content, options);
+  }
+
+  async setAssetApproval(
+    reviewId: string,
+    assetName: string,
+    decision: DraftAssetApprovalDecision | null,
+  ): Promise<{ status: string; draft_id: string; asset_name: string }> {
+    return draftApi.setAssetApproval(reviewId, assetName, decision);
   }
 
   async validateDraft(reviewId: string): Promise<ValidationResponse> {

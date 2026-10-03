@@ -1,3 +1,4 @@
+import { buildAssetApprovalSummary } from './draft-approvals';
 import type { Draft, DraftAssetReviewScore, DraftMetadata, ValidationResponse } from './types';
 
 export interface ExportReadinessWarningAsset {
@@ -12,6 +13,9 @@ export interface ExportReadinessSummary {
   unratedAssetCount: number;
   assetNoteCount: number;
   lowScoreEntries: ExportReadinessWarningAsset[];
+  approvedAssetCount: number;
+  changesRequestedCount: number;
+  staleApprovalCount: number;
   blockingWarnings: string[];
   requiresAcknowledgement: boolean;
 }
@@ -40,6 +44,7 @@ export function buildExportReadinessSummary(
     ([assetName, note]) => reviewAssetNames.includes(assetName) && note.trim().length > 0,
   ).length;
   const reviewerSummary = reviewAnnotations?.notes?.trim() ?? '';
+  const assetApprovals = buildAssetApprovalSummary(draft);
   const blockingWarnings = [
     ...(!validation?.success && validation
       ? ['Validation currently fails. Resolve the validation output before treating this export as ready.']
@@ -47,6 +52,11 @@ export function buildExportReadinessSummary(
     ...(lowScoreEntries.length > 0
       ? [
           `${lowScoreEntries.length} asset${lowScoreEntries.length === 1 ? '' : 's'} scored 1-2/5 and may still need review work.`,
+        ]
+      : []),
+    ...(assetApprovals.changesRequestedCount > 0
+      ? [
+          `${assetApprovals.changesRequestedCount} asset${assetApprovals.changesRequestedCount === 1 ? '' : 's'} still ${assetApprovals.changesRequestedCount === 1 ? 'has' : 'have'} changes requested and need${assetApprovals.changesRequestedCount === 1 ? 's' : ''} approval work before export.`,
         ]
       : []),
   ];
@@ -58,6 +68,9 @@ export function buildExportReadinessSummary(
     unratedAssetCount,
     assetNoteCount,
     lowScoreEntries,
+    approvedAssetCount: assetApprovals.approvedCount,
+    changesRequestedCount: assetApprovals.changesRequestedCount,
+    staleApprovalCount: assetApprovals.staleCount,
     blockingWarnings,
     requiresAcknowledgement: blockingWarnings.length > 0,
   };

@@ -13,8 +13,10 @@ import {
   applyDraftFilters,
   buildDraftListResponse,
   buildLineageResponse,
+  decideAssetApproval,
   validateDraftAssets,
   type Draft,
+  type DraftAssetApprovalDecision,
   type DraftFilters,
   type DraftListResponse,
   type DraftMetadata,
@@ -221,6 +223,23 @@ export async function updateAsset(
   const status = await DraftStorage.updateAsset(reviewId, assetName, content, options);
 
   return { status, draft_id: reviewId, asset_name: assetName };
+}
+
+export async function setAssetApproval(
+  reviewId: string,
+  assetName: string,
+  decision: DraftAssetApprovalDecision | null,
+): Promise<{ status: 'updated'; draft_id: string; asset_name: string }> {
+  const draft = await getDraft(reviewId);
+  if (!Object.prototype.hasOwnProperty.call(draft.assets, assetName)) {
+    throw new APIError(404, `Asset ${assetName} not found in draft`);
+  }
+
+  await DraftStorage.updateMetadata(reviewId, {
+    review_annotations: decideAssetApproval(draft, assetName, decision),
+  });
+
+  return { status: 'updated', draft_id: reviewId, asset_name: assetName };
 }
 
 export async function validateDraft(reviewId: string): Promise<ValidationResponse> {

@@ -156,6 +156,16 @@ export {
 } from './draft-readiness';
 
 export {
+  buildAssetApprovalSummary,
+  decideAssetApproval,
+  fingerprintAssetContent,
+  type AssetApprovalEntry,
+  type AssetApprovalEntryStatus,
+  type AssetApprovalSummary,
+  type DraftAssetApprovalDecision,
+} from './draft-approvals';
+
+export {
   MAX_DRAFT_REVISION_SNAPSHOTS,
   appendDraftRevisionSnapshot,
   buildDraftRevisionSnapshot,

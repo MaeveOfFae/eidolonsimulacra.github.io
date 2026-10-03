@@ -33,7 +33,6 @@ export const roadmapGroups: RoadmapGroup[] = [
       'packages/web/src/lib/services/generation.ts',
     ],
     items: [
-      'Asset-by-asset approval workflow before downstream generation continues',
       'Checkpointed generation sessions that let users pause, resume, or restart from any approved asset',
       'Comparison runs across multiple seeds at once rather than one seed per run',
       'Batch run history with priorities and retry policies',

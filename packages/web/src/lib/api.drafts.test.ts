@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { buildAssetApprovalSummary } from '@char-gen/shared';
 import { APIError, api } from './api';
 import { db } from './storage/draft-db';
 
@@ -182,5 +183,64 @@ describe('browser api: draft lifecycle', () => {
     const missing = await api.validatePath({ path: 'drafts/does-not-exist' });
     expect(missing.success).toBe(false);
     expect(missing.exit_code).toBe(1);
+  });
+
+  it('approves an asset and persists the decision in review annotations', async () => {
+    const created = await api.createDraft({
+      seed: 'seed',
+      templateName: TEMPLATE,
+      assets: { character_sheet: 'v1' },
+    });
+    const reviewId = created.metadata.review_id;
+
+    const result = await api.setAssetApproval(reviewId, 'character_sheet', { status: 'approved' });
+
+    expect(result).toEqual({ status: 'updated', draft_id: reviewId, asset_name: 'character_sheet' });
+
+    const annotations = (await api.getDraft(reviewId)).metadata.review_annotations;
+    expect(annotations?.asset_approvals?.character_sheet?.status).toBe('approved');
+    expect(annotations?.asset_approvals?.character_sheet?.content_fingerprint).toBeTruthy();
+  });
+
+  it('marks an approval stale after the approved content changes', async () => {
+    const created = await api.createDraft({
+      seed: 'seed',
+      templateName: TEMPLATE,
+      assets: { character_sheet: 'v1' },
+    });
+    const reviewId = created.metadata.review_id;
+
+    await api.setAssetApproval(reviewId, 'character_sheet', { status: 'approved' });
+    await api.updateAsset(reviewId, 'character_sheet', 'v2');
+
+    const summary = buildAssetApprovalSummary(await api.getDraft(reviewId));
+    expect(summary.entries.find((entry) => entry.assetName === 'character_sheet')?.status).toBe('stale');
+    expect(summary.approvedCount).toBe(0);
+  });
+
+  it('clears a recorded approval decision', async () => {
+    const created = await api.createDraft({
+      seed: 'seed',
+      templateName: TEMPLATE,
+      assets: { character_sheet: 'v1' },
+    });
+    const reviewId = created.metadata.review_id;
+
+    await api.setAssetApproval(reviewId, 'character_sheet', { status: 'changes_requested' });
+    await api.setAssetApproval(reviewId, 'character_sheet', null);
+
+    const annotations = (await api.getDraft(reviewId)).metadata.review_annotations;
+    expect(annotations?.asset_approvals?.character_sheet).toBeUndefined();
+  });
+
+  it('404s when approving an unknown asset or draft', async () => {
+    const created = await api.createDraft({ seed: 'seed', templateName: TEMPLATE, assets: {} });
+
+    await expect(
+      api.setAssetApproval(created.metadata.review_id, 'nope', { status: 'approved' }),
+    ).rejects.toBeInstanceOf(APIError);
+    await expect(api.setAssetApproval('missing-id', 'character_sheet', { status: 'approved' })).rejects.toBeInstanceOf(
+      APIError,
+    );
   });
 });

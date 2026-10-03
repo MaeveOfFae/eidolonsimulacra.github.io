@@ -15,7 +15,13 @@ import {
   ScissorsLineDashed,
   AlertTriangle,
 } from 'lucide-react';
-import { MAX_CONNECTED_DRAFT_REFERENCES, type DraftMetadata, type Template } from '@char-gen/shared';
+import {
+  MAX_CONNECTED_DRAFT_REFERENCES,
+  buildAssetApprovalSummary,
+  type DraftAssetApprovalDecision,
+  type DraftMetadata,
+  type Template,
+} from '@char-gen/shared';
 import { api } from '@/lib/api';
 import { buildExportReadinessSummary } from '@/lib/drafts/export-readiness';
 import { getGuidedTour, REVIEW_EXPORT_TOUR_ID } from '@/lib/help';
@@ -209,6 +215,11 @@ export default function Review() {
     () => buildExportReadinessSummary(draft, exportReadinessValidation),
     [draft, exportReadinessValidation],
   );
+  const assetApprovals = useMemo(() => buildAssetApprovalSummary(draft), [draft]);
+  const assetApprovalLookup = useMemo(
+    () => new Map(assetApprovals.entries.map((entry) => [entry.assetName, entry] as const)),
+    [assetApprovals],
+  );
   const linkedWorldAttachments = worldDraftLinksData?.links ?? [];
   const linkedWorldAttachment = linkedWorldAttachments[0] ?? null;
   const hasMultipleWorldAttachments = linkedWorldAttachments.length > 1;
@@ -275,6 +286,14 @@ export default function Review() {
         favorite: !draft?.metadata.favorite,
       });
     },
+    onSuccess: () => {
+      invalidateDraftQueries();
+    },
+  });
+
+  const recordAssetApproval = useMutation({
+    mutationFn: (input: { assetName: string; decision: DraftAssetApprovalDecision | null }) =>
+      api.setAssetApproval(reviewId, input.assetName, input.decision),
     onSuccess: () => {
       invalidateDraftQueries();
     },
@@ -1047,6 +1066,11 @@ export default function Review() {
               <span className="rounded-full border border-border/60 bg-background/70 px-2.5 py-1 text-foreground">
                 {exportReadiness.assetNoteCount} asset note{exportReadiness.assetNoteCount === 1 ? '' : 's'}
               </span>
+              {assetApprovals.totalAssetCount > 0 && (
+                <span className="rounded-full border border-border/60 bg-background/70 px-2.5 py-1 text-foreground">
+                  {assetApprovals.approvedCount}/{assetApprovals.totalAssetCount} approved
+                </span>
+              )}
             </div>
           </div>
 
@@ -1403,6 +1427,8 @@ export default function Review() {
         {assetEntries.map((assetEntry) => {
           const assetName = assetEntry.name;
           const assetExists = assetEntry.exists;
+          const approvalEntry = assetApprovalLookup.get(assetName);
+          const approvalStatus = approvalEntry?.status ?? 'unapproved';
           const assetLabel = formatAssetLabel(assetName);
           const assetPreview =
             editingAsset === assetName
@@ -1423,7 +1449,7 @@ export default function Review() {
               className="app-panel"
               bodyClassName="space-y-2.5"
             >
-              {(assetEntry.required || !assetExists) && (
+              {(assetEntry.required || !assetExists || approvalStatus !== 'unapproved') && (
                 <div className="flex flex-wrap items-center gap-1.5">
                   {!assetExists && (
                     <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-700 dark:text-amber-300">
@@ -1433,6 +1459,21 @@ export default function Review() {
                   {assetEntry.required && (
                     <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-secondary-foreground">
                       Req
+                    </span>
+                  )}
+                  {assetExists && approvalStatus === 'approved' && (
+                    <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-700 dark:text-emerald-300">
+                      Approved
+                    </span>
+                  )}
+                  {approvalStatus === 'changes_requested' && (
+                    <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-700 dark:text-amber-300">
+                      Changes requested
+                    </span>
+                  )}
+                  {approvalStatus === 'stale' && (
+                    <span className="rounded-full border border-border/60 bg-background/70 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      Approval stale
                     </span>
                   )}
                 </div>
@@ -1462,6 +1503,36 @@ export default function Review() {
                   <ScissorsLineDashed className="h-3 w-3" />
                   Optimize
                 </Link>
+                {assetExists && (
+                  <button
+                    onClick={() => recordAssetApproval.mutate({ assetName, decision: { status: 'approved' } })}
+                    disabled={recordAssetApproval.isPending}
+                    className="inline-flex items-center gap-1 rounded-lg border border-input bg-background px-2 py-1 text-xs hover:bg-accent disabled:opacity-50"
+                  >
+                    <Check className="h-3 w-3" />
+                    Approve
+                  </button>
+                )}
+                {assetExists && (
+                  <button
+                    onClick={() => recordAssetApproval.mutate({ assetName, decision: { status: 'changes_requested' } })}
+                    disabled={recordAssetApproval.isPending}
+                    className="inline-flex items-center gap-1 rounded-lg border border-input bg-background px-2 py-1 text-xs hover:bg-accent disabled:opacity-50"
+                  >
+                    <AlertTriangle className="h-3 w-3" />
+                    Request changes
+                  </button>
+                )}
+                {assetExists && approvalStatus !== 'unapproved' && (
+                  <button
+                    onClick={() => recordAssetApproval.mutate({ assetName, decision: null })}
+                    disabled={recordAssetApproval.isPending}
+                    className="inline-flex items-center gap-1 rounded-lg border border-input bg-background px-2 py-1 text-xs hover:bg-accent disabled:opacity-50"
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                    Undo decision
+                  </button>
+                )}
                 {editingAsset !== assetName && (
                   <button
                     onClick={() => handleEditAsset(assetName)}
