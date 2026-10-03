@@ -96,7 +96,7 @@ Outstanding: tone/style alternates; metadata suggestions; auto summaries; conver
 
 Tracked in [`TODO.md`](../TODO.md). Currently open:
 
-- Split the `EidolonBrowserAPI` class in `packages/web/src/lib/api.ts` into domain modules, after adding per-domain behaviour tests. The file has dropped from 2,727 to 1,268 lines across successive extractions (themes, pricing; the world/timeline and blueprint domains with 4.6 into `lib/worlds/lore-api.ts` and `lib/blueprints/blueprint-api.ts`; the template and export domains with 4.6.2 into `lib/templates/template-api.ts` and `lib/export/export-api.ts`, each pinned by characterization tests). The public method set is locked by `src/lib/api.surface.ts`; drafts, config, and generation/usage remain inline.
+- Split the `EidolonBrowserAPI` class in `packages/web/src/lib/api.ts` into domain modules, after adding per-domain behaviour tests. The file has dropped from 2,727 to 1,289 lines across successive extractions (themes, pricing; the world/timeline and blueprint domains with 4.6 into `lib/worlds/lore-api.ts` and `lib/blueprints/blueprint-api.ts`; the template, export, and draft domains with 4.6.2 into `lib/templates/template-api.ts`, `lib/export/export-api.ts`, and `lib/drafts/draft-api.ts`, each pinned by characterization tests). The public method set is locked by `src/lib/api.surface.ts`; config and generation/usage remain inline.
 
 Mobile parity against the web app is scoped separately in [`MOBILE_PARITY.md`](MOBILE_PARITY.md).
 

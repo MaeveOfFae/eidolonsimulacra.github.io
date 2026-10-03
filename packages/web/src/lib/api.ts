@@ -1,12 +1,8 @@
 import {
-  applyDraftFilters,
-  buildDraftListResponse,
-  buildLineageResponse,
   buildSimilarityResult,
   detectProviderFromModel,
   fetchProviderModels as fetchSharedProviderModels,
   getFallbackModels,
-  validateDraftAssets,
   type ApiKeys,
   type Blueprint,
   type BlueprintList,
@@ -71,7 +67,6 @@ import { toAppConnectionTestResult } from './llm/connection-result.js';
 import { builtinThemes } from './themes/builtin-themes.js';
 import { configManager } from './config/manager.js';
 import { readPersistedJson, writePersistedJson } from './persistence/storage.js';
-import { isDesktopRuntime } from './runtime.js';
 import * as worldApi from './worlds/lore-api.js';
 import * as blueprintApi from './blueprints/blueprint-api.js';
 import { DraftStorage, type AssetWriteOptions, type BulkDraftMetadataPatch } from './storage/draft-db.js';
@@ -83,31 +78,13 @@ import {
   type SaveModelPricingInput,
 } from './usage/pricing-store.js';
 import { GenerationService } from './services/generation.js';
-import { appendDraftRevisionSnapshot, buildDraftRevisionSnapshot } from './drafts/revision-snapshots.js';
-import { inferCharacterDisplayNameForTemplate, resolveTemplateDefinition } from './templates/browser.js';
+import { inferCharacterDisplayNameForTemplate } from './templates/browser.js';
 import * as templateApi from './templates/template-api.js';
 import * as exportApi from './export/export-api.js';
+import * as draftApi from './drafts/draft-api.js';
+import type { CreateDraftRequest } from './drafts/draft-api.js';
 import { createDownload, slugifyFileName, type DownloadResponse } from './download-response.js';
 import { buildOptimizeTextMessages } from '@char-gen/shared';
-
-export interface CreateDraftRequest {
-  seed: string;
-  templateName: string;
-  mode?: DraftMetadata['mode'];
-  characterName?: string;
-  genre?: string;
-  notes?: string;
-  tags?: string[];
-  customInstructions?: string;
-  componentSendOrder?: string[];
-  connectedDraftIds?: string[];
-  parentDraftIds?: string[];
-  cardMetadata?: DraftMetadata['card_metadata'];
-  reviewAnnotations?: DraftMetadata['review_annotations'];
-  mergeProvenance?: DraftMetadata['merge_provenance'];
-  mergeHistory?: DraftMetadata['merge_history'];
-  assets?: Record<string, string>;
-}
 
 type StreamEventType = 'status' | 'chunk' | 'complete' | 'error' | 'batch_start' | 'batch_complete' | 'batch_error';
 
@@ -228,6 +205,7 @@ class BrowserStream {
 
 export { APIError } from './api-error.js';
 export type { DownloadResponse } from './download-response.js';
+export type { CreateDraftRequest } from './drafts/draft-api.js';
 import { APIError } from './api-error.js';
 
 function readStorage<T>(keys: string | readonly string[], fallback: T): T {
@@ -586,168 +564,52 @@ export class EidolonBrowserAPI {
   }
 
   async getDrafts(filters?: DraftFilters): Promise<DraftListResponse> {
-    const allMetadata = await DraftStorage.getAllMetadata({ includeArchived: true });
-    const filtered = applyDraftFilters(allMetadata, filters);
-    return buildDraftListResponse(filtered, filtered.length, filtered, allMetadata);
+    return draftApi.getDrafts(filters);
   }
 
   async listDrafts(filters?: DraftFilters): Promise<DraftListResponse> {
-    return this.getDrafts(filters);
+    return draftApi.listDrafts(filters);
   }
 
   async getDraft(reviewId: string): Promise<Draft> {
-    const draft = await DraftStorage.getDraft(reviewId);
-    if (!draft) {
-      throw new APIError(404, `Draft ${reviewId} not found`);
-    }
-    return draft;
+    return draftApi.getDraft(reviewId);
   }
 
   async createDraft(request: CreateDraftRequest): Promise<Draft> {
-    const seed = request.seed.trim();
-    const templateName = request.templateName.trim();
-
-    if (!seed) {
-      throw new APIError(400, 'Seed is required');
-    }
-
-    if (!templateName) {
-      throw new APIError(400, 'Template is required');
-    }
-
-    const reviewId = crypto.randomUUID();
-    const timestamp = new Date().toISOString();
-    const draft: Draft = {
-      path: reviewId,
-      metadata: {
-        review_id: reviewId,
-        seed,
-        mode: request.mode ?? 'Auto',
-        model: configManager.getConfig().model,
-        created: timestamp,
-        modified: timestamp,
-        favorite: false,
-        template_name: templateName,
-        character_name: request.characterName?.trim() || seed,
-        genre: request.genre?.trim() || undefined,
-        notes: request.notes?.trim() || undefined,
-        tags: (request.tags ?? []).map((tag) => tag.trim()).filter(Boolean),
-        custom_instructions: request.customInstructions?.trim() || undefined,
-        component_send_order: request.componentSendOrder,
-        connected_drafts: (request.connectedDraftIds ?? []).map((draftId) => draftId.trim()).filter(Boolean),
-        parent_drafts: (request.parentDraftIds ?? []).map((draftId) => draftId.trim()).filter(Boolean),
-        card_metadata: request.cardMetadata ? JSON.parse(JSON.stringify(request.cardMetadata)) : undefined,
-        review_annotations: request.reviewAnnotations
-          ? JSON.parse(JSON.stringify(request.reviewAnnotations))
-          : undefined,
-        merge_provenance: request.mergeProvenance ? JSON.parse(JSON.stringify(request.mergeProvenance)) : undefined,
-        merge_history: request.mergeHistory ? JSON.parse(JSON.stringify(request.mergeHistory)) : undefined,
-      },
-      assets: request.assets ?? {},
-    };
-
-    await DraftStorage.saveDraft(draft);
-
-    return draft;
+    return draftApi.createDraft(request);
   }
 
   async updateMetadata(
     reviewId: string,
     updates: Partial<DraftMetadata>,
   ): Promise<{ status: string; draft_id: string }> {
-    // Update locally first
-    await DraftStorage.updateMetadata(reviewId, updates);
-
-    return { status: 'updated', draft_id: reviewId };
+    return draftApi.updateMetadata(reviewId, updates);
   }
 
   async createDraftSnapshot(
     reviewId: string,
     options: { label?: string; reason?: string } = {},
   ): Promise<{ status: 'created'; draft_id: string; snapshot_id: string }> {
-    const draft = await this.getDraft(reviewId);
-    const snapshot = buildDraftRevisionSnapshot(draft, {
-      label: options.label ?? `${draft.metadata.character_name || draft.metadata.seed} restore point`,
-      reason: options.reason,
-    });
-
-    await DraftStorage.updateMetadata(reviewId, {
-      revision_snapshots: appendDraftRevisionSnapshot(draft.metadata.revision_snapshots, snapshot),
-    });
-
-    return { status: 'created', draft_id: reviewId, snapshot_id: snapshot.id };
+    return draftApi.createDraftSnapshot(reviewId, options);
   }
 
   async restoreDraftSnapshot(
     reviewId: string,
     snapshotId: string,
   ): Promise<{ status: 'restored'; draft_id: string; snapshot_id: string }> {
-    const draft = await this.getDraft(reviewId);
-    const snapshot = draft.metadata.revision_snapshots?.find((entry) => entry.id === snapshotId);
-    if (!snapshot) {
-      throw new APIError(404, `Snapshot ${snapshotId} not found for draft ${reviewId}`);
-    }
-
-    const safeguardSnapshot = buildDraftRevisionSnapshot(draft, {
-      label: `Before restore ${new Date().toLocaleString()}`,
-      reason: `pre-restore:${snapshotId}`,
-    });
-    const nextSnapshots = appendDraftRevisionSnapshot(draft.metadata.revision_snapshots, safeguardSnapshot);
-    const state = snapshot.state;
-
-    await DraftStorage.saveDraft({
-      path: draft.path,
-      metadata: {
-        ...draft.metadata,
-        seed: state.seed,
-        mode: state.mode,
-        model: state.model,
-        tags: state.tags,
-        genre: state.genre,
-        notes: state.notes,
-        favorite: state.favorite,
-        character_name: state.character_name,
-        template_name: state.template_name,
-        parent_drafts: state.parent_drafts,
-        connected_drafts: state.connected_drafts,
-        offspring_type: state.offspring_type,
-        comparison_group: state.comparison_group,
-        custom_instructions: state.custom_instructions,
-        component_send_order: state.component_send_order,
-        card_metadata: state.card_metadata ? JSON.parse(JSON.stringify(state.card_metadata)) : undefined,
-        review_annotations: state.review_annotations ? JSON.parse(JSON.stringify(state.review_annotations)) : undefined,
-        merge_provenance: state.merge_provenance ? JSON.parse(JSON.stringify(state.merge_provenance)) : undefined,
-        merge_history: state.merge_history ? JSON.parse(JSON.stringify(state.merge_history)) : undefined,
-        revision_snapshots: nextSnapshots,
-        modified: new Date().toISOString(),
-      },
-      assets: JSON.parse(JSON.stringify(state.assets)) as Draft['assets'],
-    });
-
-    return { status: 'restored', draft_id: reviewId, snapshot_id: snapshotId };
+    return draftApi.restoreDraftSnapshot(reviewId, snapshotId);
   }
 
   async archiveDraft(reviewId: string): Promise<{ status: string; draft_id: string }> {
-    await DraftStorage.updateMetadata(reviewId, {
-      archived_at: new Date().toISOString(),
-    });
-
-    return { status: 'archived', draft_id: reviewId };
+    return draftApi.archiveDraft(reviewId);
   }
 
   async restoreDraft(reviewId: string): Promise<{ status: string; draft_id: string }> {
-    await DraftStorage.updateMetadata(reviewId, {
-      archived_at: undefined,
-    });
-
-    return { status: 'restored', draft_id: reviewId };
+    return draftApi.restoreDraft(reviewId);
   }
 
   async deleteDraft(reviewId: string): Promise<{ status: string; draft_id: string }> {
-    // Delete locally first
-    await DraftStorage.deleteDraft(reviewId);
-
-    return { status: 'deleted', draft_id: reviewId };
+    return draftApi.deleteDraft(reviewId);
   }
 
   async updateAsset(
@@ -756,30 +618,15 @@ export class EidolonBrowserAPI {
     content: string,
     options: AssetWriteOptions = {},
   ): Promise<{ status: 'created' | 'updated'; draft_id: string; asset_name: string }> {
-    // Update locally first
-    const status = await DraftStorage.updateAsset(reviewId, assetName, content, options);
-
-    return { status, draft_id: reviewId, asset_name: assetName };
+    return draftApi.updateAsset(reviewId, assetName, content, options);
   }
 
   async validateDraft(reviewId: string): Promise<ValidationResponse> {
-    const draft = await this.getDraft(reviewId);
-    return validateDraftAssets(draft, { resolveTemplate: resolveTemplateDefinition });
+    return draftApi.validateDraft(reviewId);
   }
 
   async validatePath(request: ValidatePathRequest): Promise<ValidationResponse> {
-    const reviewId = request.path.trim().replace(/^drafts\//, '');
-    const draft = await DraftStorage.getDraft(reviewId);
-    if (!draft) {
-      return {
-        path: request.path,
-        output: `VALIDATION FAILED\n- ${isDesktopRuntime() ? 'Desktop draft storage' : 'Browser-only mode'} can validate saved drafts by review ID only.`,
-        errors: '',
-        exit_code: 1,
-        success: false,
-      };
-    }
-    return validateDraftAssets(draft, { resolveTemplate: resolveTemplateDefinition });
+    return draftApi.validatePath(request);
   }
 
   generate(_request: GenerateRequest): BrowserStream {
@@ -947,13 +794,12 @@ export class EidolonBrowserAPI {
   }
 
   async getLineage(): Promise<LineageResponse> {
-    const metadata = await DraftStorage.getAllMetadata();
-    return buildLineageResponse(metadata);
+    return draftApi.getLineage();
   }
 
   async analyzeSimilarity(request: SimilarityRequest): Promise<SimilarityResult> {
-    const left = await this.getDraft(request.draft1_id);
-    const right = await this.getDraft(request.draft2_id);
+    const left = await draftApi.getDraft(request.draft1_id);
+    const right = await draftApi.getDraft(request.draft2_id);
     const baseResult = buildSimilarityResult(left, right);
 
     if (!request.include_llm_analysis) {
@@ -1350,7 +1196,7 @@ export class EidolonBrowserAPI {
 
   refine(request: RefineRequest): BrowserStream {
     return new BrowserStream(async ({ emit, signal }) => {
-      const draft = await this.getDraft(request.draft_id);
+      const draft = await draftApi.getDraft(request.draft_id);
       const assetContent = draft.assets[request.asset];
       if (!assetContent) {
         throw new APIError(404, `Asset ${request.asset} not found in draft`);
@@ -1412,11 +1258,11 @@ export class EidolonBrowserAPI {
   }
 
   getComparisonGroupDrafts(groupId: string): Promise<DraftMetadata[]> {
-    return DraftStorage.getComparisonGroupDrafts(groupId);
+    return draftApi.getComparisonGroupDrafts(groupId);
   }
 
   updateDraftsMetadata(reviewIds: readonly string[], updates: BulkDraftMetadataPatch): Promise<number> {
-    return DraftStorage.updateDraftsMetadata(reviewIds, updates);
+    return draftApi.updateDraftsMetadata(reviewIds, updates);
   }
 
   getUsageRecords(filter: UsageFilter = {}): Promise<UsageRecord[]> {
