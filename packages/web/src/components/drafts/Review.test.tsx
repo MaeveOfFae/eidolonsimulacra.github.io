@@ -66,6 +66,7 @@ function createDraftResponse() {
       template_name: 'V2/V3 Card',
       tags: [] as string[],
       parent_drafts: [] as string[],
+      connected_drafts: [] as string[],
     },
     assets: { system_prompt: 'hello' } as Record<string, string>,
   };
@@ -540,6 +541,50 @@ describe('Review export modal behavior', () => {
     expect(screen.getByText('PNG card image attached. Standard PNG card export is available.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Clear image' })).toBeInTheDocument();
     expect(screen.getByRole('img', { name: 'test-seed card image' })).toBeInTheDocument();
+  });
+
+  it('shows the connected references panel with its empty state', async () => {
+    mockUseGuidedTour.mockReturnValue({
+      activeTourId: null,
+      activeStepIndex: 0,
+      isTourCompleted: vi.fn(() => false),
+      restartTour: vi.fn(),
+      startTour: vi.fn(),
+    });
+
+    renderReview();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Connected references/ }));
+
+    expect(screen.getByText('Connected characters:')).toBeInTheDocument();
+    expect(screen.getByText('None saved')).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Review connected draft reference' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add reference' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Save references' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Reset' })).toBeDisabled();
+  });
+
+  it('removes a connected draft reference from the panel', async () => {
+    mockUseGuidedTour.mockReturnValue({
+      activeTourId: null,
+      activeStepIndex: 0,
+      isTourCompleted: vi.fn(() => false),
+      restartTour: vi.fn(),
+      startTour: vi.fn(),
+    });
+    draftResponse.metadata.connected_drafts = ['d-9'];
+
+    renderReview();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Connected references/ }));
+
+    // The saved reference is seeded into the editable list, so it can be dropped.
+    fireEvent.click(screen.getByRole('button', { name: 'Remove d-9' }));
+
+    expect(screen.queryByRole('button', { name: 'Remove d-9' })).not.toBeInTheDocument();
+    expect(screen.getByText('None saved')).toBeInTheDocument();
+    // Dropping a saved reference is a pending change worth saving.
+    expect(screen.getByRole('button', { name: 'Save references' })).toBeEnabled();
   });
 
   it('records an asset approval decision from the review card', async () => {
