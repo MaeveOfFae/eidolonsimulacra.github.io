@@ -21,11 +21,7 @@ import { OFFICIAL_TEMPLATE, type Draft, type DraftMetadata, type Template } from
 import { api } from '@/lib/api';
 import { unwrapSingleCodeFence } from '@/lib/content-format';
 import DraftSendConfigPanel from '@/components/drafts/DraftSendConfigPanel';
-import {
-  buildDraftPriorAssets,
-  getEffectiveDraftComponentSendOrder,
-  mergeDraftAdditionalInstructions,
-} from '@/lib/drafts/send-config';
+import { buildDraftPriorAssets, mergeDraftAdditionalInstructions } from '@/lib/drafts/send-config';
 import { GenerationService } from '@/lib/services/generation';
 import { resolveTemplateBlueprintContent } from '@/lib/templates/browser';
 import {
@@ -35,6 +31,13 @@ import {
 } from '@/lib/services/generation-session';
 import { BlueprintPanel } from '../common/BlueprintPanel';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
+import {
+  buildRecoveredTemplateContract,
+  draftHasAsset,
+  exportIntrosAsJson,
+  exportIntrosAsMarkdown,
+} from '@/lib/drafts/asset-regenerator-helpers';
+import type { AssetCandidate } from '@/lib/drafts/asset-regenerator-helpers';
 
 interface AssetRegeneratorProps {
   templates?: Template[];
@@ -45,123 +48,6 @@ interface AssetRegeneratorProps {
   externalBlueprintContent?: string;
   hideInternalBlueprintPanel?: boolean;
 }
-
-interface AssetCandidate {
-  id: string;
-  content: string;
-  timestamp: number;
-}
-
-function draftHasAsset(draft: Draft | undefined, assetName: string): boolean {
-  return Boolean(draft && Object.prototype.hasOwnProperty.call(draft.assets, assetName));
-}
-
-function buildRecoveredTemplateContract(draft: Draft, templates: Template[]): Template {
-  const defaultTemplate = templates.find((entry) => entry.is_default) ?? OFFICIAL_TEMPLATE;
-  const defaultAssetsByName = new Map(defaultTemplate.assets.map((asset) => [asset.name, asset] as const));
-  const orderedAssetNames = getEffectiveDraftComponentSendOrder(draft, defaultTemplate);
-
-  return {
-    name: draft.metadata.template_name || defaultTemplate.name,
-    version: defaultTemplate.version,
-    description: 'Recovered from the saved draft asset order because the original template is not available locally.',
-    is_official: false,
-    assets: orderedAssetNames.map((assetName, index) => {
-      const baseAsset = defaultAssetsByName.get(assetName);
-      if (baseAsset) {
-        return {
-          ...baseAsset,
-          depends_on: [...baseAsset.depends_on],
-          ...(baseAsset.import_aliases ? { import_aliases: [...baseAsset.import_aliases] } : {}),
-        };
-      }
-
-      const previousAssetName = orderedAssetNames[index - 1];
-      return {
-        name: assetName,
-        required: draftHasAsset(draft, assetName),
-        depends_on: previousAssetName ? [previousAssetName] : [],
-        description: 'Recovered from the saved draft asset order.',
-      };
-    }),
-  };
-}
-
-const exportIntrosAsMarkdown = (
-  characterName: string,
-  savedIntros: AssetCandidate[],
-  activeIntroContent: string | undefined,
-) => {
-  const lines: string[] = [
-    `# Intro Scenes for ${characterName}`,
-    '',
-    `Generated: ${new Date().toLocaleString()}`,
-    `Total intros: ${savedIntros.length}`,
-    '',
-    '---',
-    '',
-  ];
-
-  if (activeIntroContent) {
-    lines.push('## Currently Active Intro Scene', '');
-    lines.push('```');
-    lines.push(activeIntroContent);
-    lines.push('```');
-    lines.push('', '---', '');
-  }
-
-  savedIntros.forEach((intro, index) => {
-    const date = new Date(intro.timestamp).toLocaleString();
-    lines.push(`## Intro Scene #${index + 1}`);
-    lines.push(`*Created: ${date}*`);
-    lines.push('');
-    lines.push('```');
-    lines.push(intro.content);
-    lines.push('```');
-    lines.push('');
-    if (index < savedIntros.length - 1) {
-      lines.push('---', '');
-    }
-  });
-
-  const content = lines.join('\n');
-  const blob = new Blob([content], { type: 'text/markdown' });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = `${characterName.replace(/[^a-z0-9]/gi, '_')}_intro_scenes.md`;
-  document.body.appendChild(anchor);
-  anchor.click();
-  document.body.removeChild(anchor);
-  URL.revokeObjectURL(url);
-};
-
-const exportIntrosAsJson = (
-  characterName: string,
-  savedIntros: AssetCandidate[],
-  activeIntroContent: string | undefined,
-) => {
-  const data = {
-    character_name: characterName,
-    exported_at: new Date().toISOString(),
-    active_intro: activeIntroContent || null,
-    saved_intros: savedIntros.map((intro) => ({
-      id: intro.id,
-      content: intro.content,
-      created_at: new Date(intro.timestamp).toISOString(),
-    })),
-  };
-
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = `${characterName.replace(/[^a-z0-9]/gi, '_')}_intro_scenes.json`;
-  document.body.appendChild(anchor);
-  anchor.click();
-  document.body.removeChild(anchor);
-  URL.revokeObjectURL(url);
-};
 
 export default function AssetRegenerator({
   templates: providedTemplates,
