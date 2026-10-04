@@ -106,3 +106,71 @@ describe('Settings setup access column', () => {
     expect(screen.getByText(`0 / ${ALL_PROVIDERS.length}`)).toBeInTheDocument();
   });
 });
+
+describe('Settings setup runtime column', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+    configManager.clearAll();
+    vi.mocked(api.updateConfig).mockClear();
+  });
+
+  it('renders the configured engine, model and sampling defaults', async () => {
+    renderSetupSettings();
+
+    expect(await screen.findByRole('heading', { name: 'Runtime' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Auto' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Explicit' })).toBeInTheDocument();
+
+    // The default model is an OpenRouter id but the provider resolves to OpenAI
+    // (see SettingsProviders.test.tsx for that inference quirk).
+    expect(screen.getByLabelText('Provider')).toHaveValue('openai');
+    // The "Custom model ID" label has no htmlFor, so target the field by placeholder.
+    expect(screen.getByPlaceholderText('e.g., openrouter/openai/gpt-4o-mini')).toHaveValue(
+      'openrouter/openai/gpt-4o-mini',
+    );
+    expect(screen.getByText('Showing built-in suggestions.')).toBeInTheDocument();
+
+    expect(screen.getByLabelText('Temperature')).toHaveValue(0.7);
+    expect(screen.getByLabelText('Max Tokens')).toHaveValue(4096);
+
+    // Advanced transport stays collapsed until something custom is configured.
+    expect(screen.getByText('Using provider defaults')).toBeInTheDocument();
+    expect(screen.queryByText('Test Connection')).not.toBeInTheDocument();
+  });
+
+  it('saves engine mode and sampling edits through the parent draft', async () => {
+    renderSetupSettings();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Explicit' }));
+    fireEvent.change(screen.getByLabelText('Temperature'), { target: { value: '1.2' } });
+    fireEvent.change(screen.getByLabelText('Max Tokens'), { target: { value: '2048' } });
+    fireEvent.click(screen.getByRole('button', { name: /Save All Settings/ }));
+
+    await waitFor(() => {
+      expect(api.updateConfig).toHaveBeenCalledWith(
+        expect.objectContaining({ engine_mode: 'explicit', temperature: 1.2, max_tokens: 2048 }),
+      );
+    });
+  });
+
+  it('reveals the custom transport fields and enables the connection test', async () => {
+    renderSetupSettings();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Advanced transport/ }));
+
+    // OpenAI is the resolved provider, so the CORS warning is part of the panel.
+    expect(screen.getByText(/blocked by CORS on api\.openai\.com/)).toBeInTheDocument();
+
+    const testConnection = screen.getByRole('button', { name: 'Test Connection' });
+    expect(testConnection).toBeDisabled();
+
+    fireEvent.change(screen.getByPlaceholderText('e.g., https://your-proxy.example.com/v1'), {
+      target: { value: 'https://proxy.example.com/v1' },
+    });
+
+    expect(screen.getByRole('button', { name: 'Test Connection' })).toBeEnabled();
+    // Same as above: the proxy key label is not tied to its input, so use the placeholder.
+    expect(screen.getByPlaceholderText('Enter proxy API key if required')).toBeInTheDocument();
+  });
+});

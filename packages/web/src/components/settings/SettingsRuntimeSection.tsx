@@ -1,0 +1,270 @@
+import type { Config } from '@char-gen/shared';
+import { Eye, EyeOff, Zap } from 'lucide-react';
+import { ALL_PROVIDERS, PROVIDER_COLORS, PROVIDER_LABELS, type Provider } from '../../lib/llm/providers.js';
+import CollapsibleSection from '../common/CollapsibleSection';
+
+/**
+ * Setup-tab "Runtime" column for the settings screen.
+ *
+ * Extracted from `Settings` (5.0 workspace-release work stream: decompose the giant
+ * screens into focused, individually testable sections). Holds engine mode, provider and
+ * model selection, the sampling sliders, and the advanced transport panel. Values that the
+ * parent owns as defaults (`engine_mode ?? 'auto'`, `temperature ?? 0.7`, ...) arrive
+ * already resolved so this section only renders what it is given. Behavior is pinned by
+ * `SettingsSetup.test.tsx`.
+ */
+
+interface SettingsRuntimeSectionProps {
+  engineMode: NonNullable<Config['engine_mode']>;
+  onEngineModeChange: (engineMode: NonNullable<Config['engine_mode']>) => void;
+  selectedProvider: Provider;
+  onProviderSelect: (provider: Provider) => void;
+  currentModel: string;
+  onModelSelect: (modelId: string) => void;
+  modelSuggestions: string[];
+  modelsLoading: boolean;
+  modelsLoadedCount: number;
+  modelsNotice: string | null;
+  temperature: number;
+  onTemperatureChange: (value: number) => void;
+  maxTokens: number;
+  onMaxTokensChange: (value: number) => void;
+  baseUrl: string;
+  onBaseUrlChange: (url: string) => void;
+  apiProxyKey: string;
+  onProxyKeyChange: (key: string) => void;
+  showProxyKey: boolean;
+  onToggleShowKey: (key: string) => void;
+  onTestApiConnection: () => void;
+}
+
+export default function SettingsRuntimeSection({
+  engineMode,
+  onEngineModeChange,
+  selectedProvider,
+  onProviderSelect,
+  currentModel,
+  onModelSelect,
+  modelSuggestions,
+  modelsLoading,
+  modelsLoadedCount,
+  modelsNotice,
+  temperature,
+  onTemperatureChange,
+  maxTokens,
+  onMaxTokensChange,
+  baseUrl,
+  onBaseUrlChange,
+  apiProxyKey,
+  onProxyKeyChange,
+  showProxyKey,
+  onToggleShowKey,
+  onTestApiConnection,
+}: SettingsRuntimeSectionProps) {
+  return (
+    <section data-tour-anchor="settings-model" className="order-2 app-panel p-6 xl:order-2">
+      <div className="mb-5 flex items-center gap-3">
+        <div className={`rounded-xl bg-gradient-to-br p-2 ${PROVIDER_COLORS[selectedProvider]}`}>
+          <Zap className="h-5 w-5 text-white" />
+        </div>
+        <div>
+          <h2 className="text-xl font-bold">Runtime</h2>
+          <p className="text-sm text-muted-foreground">Pick the provider, model, and default generation behavior.</p>
+        </div>
+      </div>
+
+      <div className="space-y-5">
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Engine Mode</label>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => onEngineModeChange('auto')}
+              className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
+                engineMode === 'auto'
+                  ? 'border-primary bg-primary/10 text-foreground'
+                  : 'border-border bg-background/50 hover:bg-accent'
+              }`}
+            >
+              Auto
+            </button>
+            <button
+              type="button"
+              onClick={() => onEngineModeChange('explicit')}
+              className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
+                engineMode === 'explicit'
+                  ? 'border-primary bg-primary/10 text-foreground'
+                  : 'border-border bg-background/50 hover:bg-accent'
+              }`}
+            >
+              Explicit
+            </button>
+          </div>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <label htmlFor="provider-select" className="text-sm font-medium">
+              Provider
+            </label>
+            <select
+              id="provider-select"
+              value={selectedProvider}
+              onChange={(e) => onProviderSelect(e.target.value as Provider)}
+              className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {ALL_PROVIDERS.map((provider) => (
+                <option key={provider} value={provider}>
+                  {PROVIDER_LABELS[provider]}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="model-select" className="text-sm font-medium">
+              Model
+            </label>
+            <select
+              id="model-select"
+              value={currentModel}
+              onChange={(e) => onModelSelect(e.target.value)}
+              className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="">Select a model...</option>
+              {modelSuggestions.map((model: string) => (
+                <option key={model} value={model}>
+                  {model}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground">
+              {modelsLoading
+                ? 'Loading models...'
+                : modelsLoadedCount > 0
+                  ? `Loaded ${modelsLoadedCount} models.`
+                  : 'Showing built-in suggestions.'}
+            </p>
+            {modelsNotice && <p className="text-xs text-amber-700 dark:text-amber-300">{modelsNotice}</p>}
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-medium">Custom model ID</label>
+          <input
+            type="text"
+            value={currentModel}
+            onChange={(e) => onModelSelect(e.target.value)}
+            placeholder="e.g., openrouter/openai/gpt-4o-mini"
+            className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          />
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <label htmlFor="temperature-input" className="text-sm font-medium">
+              Temperature
+            </label>
+            <input
+              id="temperature-input"
+              type="number"
+              min="0"
+              max="2"
+              step="0.1"
+              value={temperature}
+              onChange={(e) => onTemperatureChange(parseFloat(e.target.value))}
+              inputMode="decimal"
+              className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>Focused (0.0)</span>
+              <span>Creative (2.0)</span>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="max-tokens-input" className="text-sm font-medium">
+              Max Tokens
+            </label>
+            <input
+              id="max-tokens-input"
+              type="number"
+              value={maxTokens}
+              onChange={(e) => onMaxTokensChange(parseInt(e.target.value, 10) || 0)}
+              className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          </div>
+        </div>
+
+        <CollapsibleSection
+          title="Advanced transport"
+          subtitle="Base URL, proxy key, and provider-specific transport notes"
+          preview={baseUrl || apiProxyKey ? 'Custom transport configured' : 'Using provider defaults'}
+          defaultExpanded={Boolean(baseUrl || apiProxyKey)}
+          className="bg-background/35"
+          bodyClassName="space-y-4"
+        >
+          {selectedProvider === 'openai' && (
+            <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-900 dark:text-amber-100">
+              Direct OpenAI calls from this browser app are blocked by CORS on api.openai.com. Use OpenRouter for
+              browser-direct usage, or point the base URL at your own proxy or relay.
+            </div>
+          )}
+
+          {selectedProvider === 'ollama' && (
+            <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 p-3 text-sm text-blue-900 dark:text-blue-100">
+              Ollama runs locally on your machine. Make sure Ollama is running on{' '}
+              <code className="rounded bg-blue-500/20 px-1 py-0.5">http://localhost:11434</code> or configure a custom
+              base URL.
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium">Custom API Base URL</label>
+              <button
+                type="button"
+                onClick={onTestApiConnection}
+                disabled={!baseUrl}
+                className="rounded-md border border-border px-2 py-1 text-xs transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Test Connection
+              </button>
+            </div>
+            <input
+              type="text"
+              value={baseUrl || ''}
+              onChange={(e) => onBaseUrlChange(e.target.value)}
+              placeholder="e.g., https://your-proxy.example.com/v1"
+              className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Proxy API Key (Optional)</label>
+            <div className="relative">
+              <input
+                type={showProxyKey ? 'text' : 'password'}
+                value={apiProxyKey || ''}
+                onChange={(e) => onProxyKeyChange(e.target.value)}
+                placeholder="Enter proxy API key if required"
+                className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 pr-11 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+              <button
+                type="button"
+                onClick={() => onToggleShowKey('proxy')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 transition-colors hover:bg-accent"
+              >
+                {showProxyKey ? (
+                  <EyeOff className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <Eye className="h-4 w-4 text-muted-foreground" />
+                )}
+              </button>
+            </div>
+          </div>
+        </CollapsibleSection>
+      </div>
+    </section>
+  );
+}
