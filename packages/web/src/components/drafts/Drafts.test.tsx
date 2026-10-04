@@ -213,4 +213,19 @@ describe('Drafts library screen', () => {
 
     expect(seedState.archivedRuns).toEqual(['run-1']);
   });
+
+  it('redirects the worlds tab to the worlds route instead of rendering the staged shelf', async () => {
+    renderDrafts({ entry: '/drafts?tab=worlds' });
+
+    // The screen navigates away from `?tab=worlds`, so the tab falls back to drafts.
+    expect(await screen.findByText('Library overview')).toBeInTheDocument();
+    expect(screen.queryByText('World library')).not.toBeInTheDocument();
+  });
+
+  it('redirects the timelines tab to the timelines route instead of rendering staged modules', async () => {
+    renderDrafts({ entry: '/drafts?tab=timelines' });
+
+    expect(await screen.findByText('Library overview')).toBeInTheDocument();
+    expect(screen.queryByText('Timeline modules')).not.toBeInTheDocument();
+  });
 });
