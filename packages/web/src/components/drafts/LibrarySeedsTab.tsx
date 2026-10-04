@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Archive, Star } from 'lucide-react';
 import SyncControls from '../common/SyncControls';
+import { formatTimestamp } from '@/lib/format-timestamp';
 import {
   getAllFavoriteSeeds,
   parseFavoriteSeedsPayload,
@@ -26,22 +27,6 @@ interface LibrarySeedsTabProps {
   onArchiveFavoriteSeed: (seed: string) => void;
   onArchiveSeedRun: (id: string) => void;
   onRefreshSeedData: () => void;
-}
-
-function formatTimestamp(value?: string): string {
-  if (!value) {
-    return 'Unknown';
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return 'Unknown';
-  }
-
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(date);
 }
 
 export default function LibrarySeedsTab({

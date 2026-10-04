@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { RotateCcw, Trash2 } from 'lucide-react';
 import type { DraftMetadata } from '@char-gen/shared';
 import { getLatestDraftSnapshotSummary } from '@/lib/drafts/revision-snapshots';
+import { formatTimestamp } from '@/lib/format-timestamp';
 import type { FavoriteSeedRecord, SeedRunRecord } from '@/lib/seed-generator';
 
 /**
@@ -26,22 +27,6 @@ interface LibraryArchiveTabProps {
   onDeleteArchivedFavoriteSeed: (seed: string) => void;
   onRestoreSeedRun: (id: string) => void;
   onDeleteArchivedSeedRun: (id: string) => void;
-}
-
-function formatTimestamp(value?: string): string {
-  if (!value) {
-    return 'Unknown';
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return 'Unknown';
-  }
-
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(date);
 }
 
 export default function LibraryArchiveTab({

@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Clock3, History, Loader2, RotateCcw, Save } from 'lucide-react';
 import type { DraftMetadata } from '@char-gen/shared';
 import { api } from '@/lib/api';
+import { formatTimestamp } from '@/lib/format-timestamp';
 import {
   buildDraftRevisionSnapshotState,
   buildDraftSnapshotDiffModelsFromSnapshots,
@@ -16,22 +17,6 @@ export interface VersionHistoryPanelProps {
   draftId?: string;
   assetName?: string;
   snapshotId?: string;
-}
-
-function formatTimestamp(value?: string | number): string {
-  if (!value) {
-    return 'Unknown';
-  }
-
-  const date = typeof value === 'number' ? new Date(value) : new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return 'Unknown';
-  }
-
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(date);
 }
 
 function formatAssetLabel(assetName: string): string {

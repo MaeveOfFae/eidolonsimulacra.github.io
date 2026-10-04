@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { History } from 'lucide-react';
 import type { DraftMergeHistoryEvent, DraftMetadata, WorldCharacterDraftLinkRecord } from '@char-gen/shared';
+import { formatTimestamp } from '@/lib/format-timestamp';
 import { DraftStorage } from '@/lib/storage/draft-db';
 import CollapsibleSection from '../common/CollapsibleSection';
 import SyncControls from '../common/SyncControls';
@@ -43,22 +44,6 @@ interface LibraryDraftsTabProps {
   onDraftsChanged: () => void;
   selfContainedDesktop: boolean;
   snapshotPreview: ReactNode;
-}
-
-function formatTimestamp(value?: string): string {
-  if (!value) {
-    return 'Unknown';
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return 'Unknown';
-  }
-
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(date);
 }
 
 export default function LibraryDraftsTab({

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import type { DraftMetadata } from '@char-gen/shared';
+import { formatTimestamp } from '@/lib/format-timestamp';
 import { DraftComparisonPanel } from './DraftComparisonPanel';
 import { ReviewChecklistPanel } from './ReviewChecklistPanel';
 import { VersionHistoryPanel } from './VersionHistoryPanel';
@@ -41,22 +42,6 @@ interface LibraryWorkbenchTabProps {
   selectedSnapshotPreviewId: string;
   onSelectSnapshotPreviewId: (snapshotId: string) => void;
   snapshotPreview: ReactNode;
-}
-
-function formatTimestamp(value?: string): string {
-  if (!value) {
-    return 'Unknown';
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return 'Unknown';
-  }
-
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(date);
 }
 
 export default function LibraryWorkbenchTab({
