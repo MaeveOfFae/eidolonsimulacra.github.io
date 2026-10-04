@@ -11,9 +11,7 @@ import {
   Lock,
   MapPin,
   ShieldCheck,
-  Star,
   Users,
-  Archive,
   History,
 } from 'lucide-react';
 import { api, type CreateDraftRequest } from '@/lib/api';
@@ -33,13 +31,10 @@ import {
   archiveSeedRun,
   deleteArchivedFavoriteSeed,
   deleteArchivedSeedRun,
-  getAllFavoriteSeeds,
   getArchivedFavoriteSeeds,
   getArchivedSeedRuns,
   getFavoriteSeeds,
   getSeedRunHistory,
-  parseFavoriteSeedsPayload,
-  replaceFavoriteSeedsFromServer,
   restoreFavoriteSeed,
   restoreSeedRun,
   SEED_FAVORITES_CHANGED_EVENT,
@@ -51,6 +46,7 @@ import { pickFile } from '@/utils/download';
 import CollapsibleSection from '../common/CollapsibleSection';
 import { DraftListSidebar } from './DraftListSidebar';
 import LibraryArchiveTab from './LibraryArchiveTab';
+import LibrarySeedsTab from './LibrarySeedsTab';
 import { DraftDuplicatesPanel } from './DraftDuplicatesPanel';
 import { DraftComparisonPanel } from './DraftComparisonPanel';
 import ManualDraftCreateModal from './ManualDraftCreateModal';
@@ -436,8 +432,6 @@ export default function Drafts() {
     selectedSnapshotPreviewIndex >= 0 && selectedSnapshotPreviewIndex < selectedSnapshotPreviewEntries.length - 1
       ? selectedSnapshotPreviewEntries[selectedSnapshotPreviewIndex + 1]
       : null;
-  const recentFavoriteSeeds = favoriteSeeds.slice(0, 6);
-  const recentSeedRuns = seedHistory.slice(0, 4);
 
   useEffect(() => {
     if (workbenchPreviewSide === 'right' && !rightDraftId && leftDraftId) {
@@ -544,7 +538,7 @@ export default function Drafts() {
           <div>
             <h3 className="text-sm font-semibold text-foreground">Snapshot preview</h3>
             <p className="mt-1 text-xs text-muted-foreground">
-              {selectedSnapshotEntry.draftName} Â· {selectedSnapshotEntry.snapshot.label || 'Restore point'} Â·{' '}
+              {selectedSnapshotEntry.draftName} Ã‚Â· {selectedSnapshotEntry.snapshot.label || 'Restore point'} Ã‚Â·{' '}
               {formatTimestamp(selectedSnapshotEntry.snapshot.created_at)}
             </p>
           </div>
@@ -591,7 +585,7 @@ export default function Drafts() {
                   <option value="">Compare against current draft</option>
                   {selectedSnapshotCompareOptions.map((snapshot) => (
                     <option key={snapshot.id} value={snapshot.id}>
-                      {snapshot.label || 'Restore point'} Â· {formatTimestamp(snapshot.created_at)}
+                      {snapshot.label || 'Restore point'} Ã‚Â· {formatTimestamp(snapshot.created_at)}
                     </option>
                   ))}
                 </select>
@@ -661,7 +655,7 @@ export default function Drafts() {
                         >
                           <div className="rounded-md border border-border/60 bg-background/80 p-2">
                             <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                              {selectedSnapshotCompareBaseSnapshot ? 'Baseline snapshot' : 'Current'} Â· line{' '}
+                              {selectedSnapshotCompareBaseSnapshot ? 'Baseline snapshot' : 'Current'} Ã‚Â· line{' '}
                               {line.lineNumber}
                             </div>
                             <pre className="mt-1 whitespace-pre-wrap break-words font-mono text-[11px] text-foreground">
@@ -670,7 +664,7 @@ export default function Drafts() {
                           </div>
                           <div className="rounded-md border border-border/60 bg-background/80 p-2">
                             <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                              Snapshot Â· line {line.lineNumber}
+                              Snapshot Ã‚Â· line {line.lineNumber}
                             </div>
                             <pre className="mt-1 whitespace-pre-wrap break-words font-mono text-[11px] text-foreground">
                               {line.snapshotLine || '(empty)'}
@@ -926,7 +920,7 @@ export default function Drafts() {
           )}
           <span className="text-sm">{notice.message}</span>
           <button type="button" onClick={() => setNotice(null)} className="ml-auto opacity-50 hover:opacity-100">
-            Ã—
+            Ãƒâ€”
           </button>
         </div>
       )}
@@ -1072,7 +1066,7 @@ export default function Drafts() {
                               {snapshot.label || 'Restore point'}
                             </Link>
                             <p className="mt-1 text-xs text-muted-foreground">
-                              {draftName} Â· {formatTimestamp(snapshot.created_at)}
+                              {draftName} Ã‚Â· {formatTimestamp(snapshot.created_at)}
                             </p>
                             {snapshot.reason && <p className="mt-1 text-xs text-muted-foreground">{snapshot.reason}</p>}
                           </div>
@@ -1132,11 +1126,11 @@ export default function Drafts() {
                                 {draftName}
                               </Link>
                               <p className="mt-1 text-xs text-muted-foreground">
-                                {entry.strategy === 'staged-merge' ? 'Staged merge' : 'Single-asset merge'} Â·{' '}
+                                {entry.strategy === 'staged-merge' ? 'Staged merge' : 'Single-asset merge'} Ã‚Â·{' '}
                                 {formatTimestamp(entry.created_at)}
                               </p>
                               <p className="mt-1 text-xs text-muted-foreground">
-                                Source: {sourceName} ({entry.source_side}) Â· Base: {baseName} ({entry.base_side})
+                                Source: {sourceName} ({entry.source_side}) Ã‚Â· Base: {baseName} ({entry.base_side})
                               </p>
                               <p className="mt-1 text-xs text-muted-foreground">
                                 Assets: {entry.asset_names.join(', ')}
@@ -1197,155 +1191,16 @@ export default function Drafts() {
       )}
 
       {activeTab === 'seeds' && (
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-          <section className="app-panel p-5">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-semibold">Favorite seeds</h2>
-                <p className="text-sm text-muted-foreground">
-                  Keep reusable concepts close to the review flow instead of bouncing back to the generator.
-                </p>
-              </div>
-              <span className="app-pill app-pill-muted">{favoriteSeeds.length} saved</span>
-            </div>
-
-            <div className="mt-4 grid gap-3 sm:grid-cols-3 text-sm">
-              <div className="rounded-lg border border-border bg-background/60 p-4">
-                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Favorites</div>
-                <div className="mt-1 text-2xl font-semibold text-foreground">{favoriteSeeds.length}</div>
-              </div>
-              <div className="rounded-lg border border-border bg-background/60 p-4">
-                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Recent runs</div>
-                <div className="mt-1 text-2xl font-semibold text-foreground">{seedHistory.length}</div>
-              </div>
-              <div className="rounded-lg border border-border bg-background/60 p-4">
-                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Archived</div>
-                <div className="mt-1 text-sm font-semibold text-foreground">
-                  {archivedFavoriteSeeds.length} seeds Â· {archivedSeedRuns.length} runs
-                </div>
-              </div>
-            </div>
-
-            {!selfContainedDesktop && (
-              <div className="mt-4 rounded-lg border border-border bg-background/40 p-4">
-                <SyncControls
-                  dataType="seeds"
-                  label="Favorite seeds"
-                  onGetLocalData={() => ({ seeds: getAllFavoriteSeeds() })}
-                  onApplyData={(payload) => {
-                    const parsed = parseFavoriteSeedsPayload(payload);
-                    if (parsed) {
-                      replaceFavoriteSeedsFromServer(parsed);
-                      refreshSeedData();
-                    }
-                  }}
-                />
-              </div>
-            )}
-
-            {recentFavoriteSeeds.length === 0 ? (
-              <div className="mt-4 rounded-lg border border-dashed border-border bg-background/40 p-6 text-center">
-                <Star className="mx-auto h-10 w-10 text-muted-foreground" />
-                <h3 className="mt-3 text-lg font-semibold">No favorite seeds yet</h3>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Generate concepts in the seed generator, then star the ones worth keeping in the library.
-                </p>
-                <Link to="/seed-generator" className="app-button app-button-primary mt-4">
-                  Open Seed Generator
-                </Link>
-              </div>
-            ) : (
-              <div className="mt-4 space-y-3">
-                {recentFavoriteSeeds.map((entry) => (
-                  <article
-                    key={`${entry.seed}-${entry.addedAt}`}
-                    className="rounded-lg border border-border bg-background/50 p-4"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-amber-600 dark:text-amber-400">
-                          <Star className="h-3.5 w-3.5 fill-current" />
-                          Favorite Seed
-                        </div>
-                        <p className="mt-2 text-sm text-foreground">{entry.seed}</p>
-                        <p className="mt-2 text-xs text-muted-foreground">
-                          Added {formatTimestamp(entry.addedAt)}
-                          {entry.lastUsedAt ? ` Â· Last used ${formatTimestamp(entry.lastUsedAt)}` : ''}
-                        </p>
-                      </div>
-                      <div className="flex shrink-0 gap-2">
-                        <Link to="/generate" state={{ seed: entry.seed }} className="app-button app-button-secondary">
-                          Use seed
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={() => handleArchiveFavoriteSeed(entry.seed)}
-                          className="app-button app-button-secondary"
-                        >
-                          <Archive className="h-4 w-4" />
-                          Archive
-                        </button>
-                      </div>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            )}
-          </section>
-
-          <section className="app-panel p-5">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-semibold">Seed run history</h2>
-                <p className="text-sm text-muted-foreground">
-                  Recent batches stay visible here so it is easier to reuse concepts during review.
-                </p>
-              </div>
-              <Link to="/seed-generator" className="app-button app-button-secondary">
-                Open generator
-              </Link>
-            </div>
-
-            {recentSeedRuns.length === 0 ? (
-              <div className="mt-4 rounded-lg border border-dashed border-border bg-background/40 p-6 text-sm text-muted-foreground">
-                No recent seed runs yet.
-              </div>
-            ) : (
-              <div className="mt-4 space-y-3">
-                {recentSeedRuns.map((entry) => (
-                  <article key={entry.id} className="rounded-lg border border-border bg-background/50 p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <h3 className="text-sm font-semibold text-foreground">{entry.seeds.length} generated seeds</h3>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {entry.request.count} requested Â· {formatTimestamp(entry.createdAt)}
-                        </p>
-                      </div>
-                      <span className="app-pill app-pill-muted">Run</span>
-                    </div>
-                    <div className="mt-3 space-y-2 text-sm text-muted-foreground">
-                      {entry.seeds.slice(0, 3).map((seed) => (
-                        <div key={seed} className="rounded-md border border-border bg-background/60 px-3 py-2">
-                          {seed}
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-3 flex justify-end">
-                      <button
-                        type="button"
-                        onClick={() => handleArchiveSeedRun(entry.id)}
-                        className="app-button app-button-secondary"
-                      >
-                        <Archive className="h-4 w-4" />
-                        Archive run
-                      </button>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            )}
-          </section>
-        </div>
+        <LibrarySeedsTab
+          favoriteSeeds={favoriteSeeds}
+          seedHistory={seedHistory}
+          archivedFavoriteSeeds={archivedFavoriteSeeds}
+          archivedSeedRuns={archivedSeedRuns}
+          selfContainedDesktop={selfContainedDesktop}
+          onArchiveFavoriteSeed={handleArchiveFavoriteSeed}
+          onArchiveSeedRun={handleArchiveSeedRun}
+          onRefreshSeedData={refreshSeedData}
+        />
       )}
 
       {activeTab === 'archive' && (
@@ -1597,7 +1452,7 @@ export default function Drafts() {
                         <div className="text-sm font-medium text-foreground">{snapshot.label || 'Restore point'}</div>
                         <div className="mt-1 text-xs text-muted-foreground">
                           {formatTimestamp(snapshot.created_at)}
-                          {snapshot.reason ? ` Â· ${snapshot.reason}` : ''}
+                          {snapshot.reason ? ` Ã‚Â· ${snapshot.reason}` : ''}
                         </div>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">

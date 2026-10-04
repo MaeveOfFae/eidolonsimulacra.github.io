@@ -1,8 +1,38 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import { api } from '@/lib/api';
+import type { FavoriteSeedRecord, SeedRunRecord } from '@/lib/seed-generator';
 import Drafts from './Drafts';
+
+const seedState = vi.hoisted(() => ({
+  favorites: [] as Array<{ seed: string; addedAt: string; lastUsedAt?: string }>,
+  history: [] as Array<{
+    id: string;
+    createdAt: string;
+    seeds: string[];
+    request: { count: number; genreLines: string };
+  }>,
+  archivedSeeds: [] as string[],
+  archivedRuns: [] as string[],
+}));
+
+vi.mock('@/lib/seed-generator', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/seed-generator')>();
+  return {
+    ...actual,
+    getFavoriteSeeds: () => [...seedState.favorites] as unknown as FavoriteSeedRecord[],
+    getSeedRunHistory: () => [...seedState.history] as unknown as SeedRunRecord[],
+    getArchivedFavoriteSeeds: () => [] as FavoriteSeedRecord[],
+    getArchivedSeedRuns: () => [] as SeedRunRecord[],
+    archiveFavoriteSeed: (seed: string) => {
+      seedState.archivedSeeds.push(seed);
+    },
+    archiveSeedRun: (id: string) => {
+      seedState.archivedRuns.push(id);
+    },
+  };
+});
 
 vi.mock('@/lib/api', () => ({
   api: {
@@ -27,7 +57,7 @@ vi.mock('../common/GuidedTourContext', () => ({
 }));
 
 vi.mock('../common/SyncControls', () => ({
-  default: ({ label }: { label: string }) => <div data-testid="sync-controls">{label}</div>,
+  default: ({ label }: { label: string }) => <div data-testid="sync-controls">{`sync:${label}`}</div>,
 }));
 
 // The comparison panel owns its own draft fetching; the library composition is what
@@ -91,6 +121,10 @@ describe('Drafts library screen', () => {
   beforeEach(() => {
     localStorage.clear();
     vi.clearAllMocks();
+    seedState.favorites = [];
+    seedState.history = [];
+    seedState.archivedSeeds = [];
+    seedState.archivedRuns = [];
   });
 
   it('renders the library hero and overview for saved drafts', async () => {
@@ -141,5 +175,42 @@ describe('Drafts library screen', () => {
     await waitFor(() => {
       expect(screen.getByText('No drafts yet')).toBeInTheDocument();
     });
+  });
+
+  it('shows the seeds tab empty states when nothing is saved', async () => {
+    renderDrafts({ entry: '/drafts?tab=seeds' });
+
+    expect(await screen.findByText('No favorite seeds yet')).toBeInTheDocument();
+    expect(screen.getByText('No recent seed runs yet.')).toBeInTheDocument();
+    expect(screen.getByText('0 saved')).toBeInTheDocument();
+  });
+
+  it('lists saved seeds and runs on the seeds tab and archives a favorite', async () => {
+    seedState.favorites = [{ seed: 'a lonely space pirate', addedAt: TIMESTAMP }];
+    seedState.history = [
+      {
+        id: 'run-1',
+        createdAt: TIMESTAMP,
+        seeds: ['first seed', 'second seed', 'third seed'],
+        request: { count: 3, genreLines: 'space opera' },
+      },
+    ];
+
+    renderDrafts({ entry: '/drafts?tab=seeds' });
+
+    expect(await screen.findByText('a lonely space pirate')).toBeInTheDocument();
+    expect(screen.getByText('1 saved')).toBeInTheDocument();
+    expect(screen.getByText('3 generated seeds')).toBeInTheDocument();
+    expect(screen.getByText('first seed')).toBeInTheDocument();
+
+    const favoriteArticle = screen.getByText('a lonely space pirate').closest('article');
+    fireEvent.click(within(favoriteArticle!).getByRole('button', { name: 'Archive' }));
+
+    expect(seedState.archivedSeeds).toEqual(['a lonely space pirate']);
+
+    const runArticle = screen.getByText('3 generated seeds').closest('article');
+    fireEvent.click(within(runArticle!).getByRole('button', { name: 'Archive run' }));
+
+    expect(seedState.archivedRuns).toEqual(['run-1']);
   });
 });
