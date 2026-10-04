@@ -21,7 +21,12 @@ const draftOptions: DraftMetadata[] = [
   { review_id: 'd-2', seed: 'a lonely space pirate', favorite: false, model: 'gpt-4o', character_name: 'Draft B' },
 ];
 
-function makeDraft(reviewId: string, characterName: string, templateName: string): Draft {
+function makeDraft(
+  reviewId: string,
+  characterName: string,
+  templateName: string,
+  assets: Record<string, string> = {},
+): Draft {
   return {
     metadata: {
       review_id: reviewId,
@@ -34,12 +39,20 @@ function makeDraft(reviewId: string, characterName: string, templateName: string
       created_at: TIMESTAMP,
       updated_at: TIMESTAMP,
     },
-    assets: {},
+    assets,
   } as unknown as Draft;
 }
 
-const LEFT_DRAFT = makeDraft('d-1', 'Draft A', 'V2/V3 Card');
-const RIGHT_DRAFT = makeDraft('d-2', 'Draft B', 'Classic');
+// `speech` matches on both sides while `personality` drifted, so the panel offers one
+// shared-but-different asset and one merge candidate.
+const LEFT_DRAFT = makeDraft('d-1', 'Draft A', 'V2/V3 Card', {
+  speech: 'shared text',
+  personality: 'left version',
+});
+const RIGHT_DRAFT = makeDraft('d-2', 'Draft B', 'Classic', {
+  speech: 'shared text',
+  personality: 'right version',
+});
 
 function renderPanel(props: Partial<Parameters<typeof DraftComparisonPanel>[0]> = {}) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -97,6 +110,19 @@ describe('DraftComparisonPanel', () => {
       expect(api.getDraft).toHaveBeenCalledWith('d-1');
       expect(api.getDraft).toHaveBeenCalledWith('d-2');
     });
+  });
+
+  it('stages a merge candidate and lists it in the merge manifest', async () => {
+    renderPanel({ leftDraftId: 'd-1', rightDraftId: 'd-2' });
+
+    expect(await screen.findByText('Compare asset')).toBeInTheDocument();
+    expect(screen.getByText('0 staged')).toBeInTheDocument();
+
+    const stageButtons = await screen.findAllByRole('button', { name: /^Stage / });
+    fireEvent.click(stageButtons[0]);
+
+    expect(screen.getByText('1 staged')).toBeInTheDocument();
+    expect(screen.getByText('Merge manifest')).toBeInTheDocument();
   });
 
   it('reports draft selection changes to the parent', async () => {
