@@ -292,6 +292,58 @@ describe('Drafts library screen', () => {
     expect(screen.getByRole('link', { name: 'Open merged draft' })).toBeInTheDocument();
   });
 
+  const twoSnapshotDrafts = [
+    {
+      ...activeDrafts[0],
+      revision_snapshots: [
+        { id: 'snap-1', label: 'Before merge', created_at: TIMESTAMP, state: { assets: {} } },
+        { id: 'snap-2', label: 'After merge', created_at: TIMESTAMP, state: { assets: {} } },
+      ],
+    },
+    activeDrafts[1],
+  ];
+
+  it('previews a restore point and steps between entries', async () => {
+    renderDrafts({ drafts: twoSnapshotDrafts });
+
+    expect(await screen.findByText('Snapshot preview')).toBeInTheDocument();
+    // The first entry is selected automatically, so only Next is available.
+    expect(screen.getByRole('button', { name: 'Previous snapshot' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Next snapshot' })).toBeEnabled();
+    expect(
+      await screen.findByText('This snapshot currently matches the latest saved asset content.'),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next snapshot' }));
+
+    expect(await screen.findByRole('button', { name: 'Previous snapshot' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Next snapshot' })).toBeDisabled();
+  });
+
+  it('offers the other restore points as comparison baselines', async () => {
+    const draftSnapshots = [
+      { id: 'snap-1', label: 'Before merge', created_at: TIMESTAMP, state: { assets: {} } },
+      { id: 'snap-2', label: 'After merge', created_at: TIMESTAMP, state: { assets: {} } },
+    ];
+    vi.mocked(api.getDraft).mockResolvedValue({
+      metadata: { review_id: 'd-1', character_name: 'Vesna', revision_snapshots: draftSnapshots },
+      assets: {},
+      revision_snapshots: draftSnapshots,
+    } as never);
+
+    renderDrafts({ drafts: twoSnapshotDrafts });
+
+    const compareSelect = await screen.findByRole('combobox', { name: 'Compare preview against' });
+    const options = within(compareSelect)
+      .getAllByRole('option')
+      .map((option) => option.textContent ?? '');
+
+    // The selected snapshot is excluded from its own comparison list.
+    expect(options.some((option) => option.includes('Compare against current draft'))).toBe(true);
+    expect(options.some((option) => option.includes('After merge'))).toBe(true);
+    expect(options.some((option) => option.includes('Before merge'))).toBe(false);
+  });
+
   it('redirects the worlds tab to the worlds route and falls back to the default tab', async () => {
     renderDrafts({ entry: '/drafts?tab=worlds' });
 
