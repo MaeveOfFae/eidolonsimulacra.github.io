@@ -251,6 +251,47 @@ describe('Drafts library screen', () => {
     expect(await screen.findByText('Snapshot preview')).toBeInTheDocument();
   });
 
+  it('renders the library overview panels with their empty states', async () => {
+    renderDrafts();
+
+    expect(await screen.findByText('Search, filter, and reopen any saved draft from one place.')).toBeInTheDocument();
+    expect(screen.getByText('Recent restore points')).toBeInTheDocument();
+    expect(screen.getByText('No restore points saved yet.')).toBeInTheDocument();
+    expect(screen.getByText('Recent merge events')).toBeInTheDocument();
+    expect(screen.getByText('No merge events recorded yet.')).toBeInTheDocument();
+  });
+
+  it('lists merge events with their resolved draft names and undo affordance', async () => {
+    renderDrafts({
+      drafts: [
+        {
+          ...activeDrafts[0],
+          merge_history: [
+            {
+              id: 'merge-1',
+              strategy: 'staged-merge',
+              source_draft_id: 'd-2',
+              source_side: 'right',
+              base_draft_id: 'd-1',
+              base_side: 'left',
+              asset_names: ['personality', 'appearance'],
+              created_at: TIMESTAMP,
+              undo_snapshot_id: 'snap-undo',
+            },
+          ],
+        },
+        activeDrafts[1],
+      ],
+    });
+
+    expect(await screen.findByText(/Staged merge/)).toBeInTheDocument();
+    expect(screen.getByText(/Source: Maeve \(right\) · Base: Vesna \(left\)/)).toBeInTheDocument();
+    expect(screen.getByText(/Assets: personality, appearance/)).toBeInTheDocument();
+    expect(screen.getByText('Undo available via safeguard snapshot.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Open undo snapshot' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Open merged draft' })).toBeInTheDocument();
+  });
+
   it('redirects the worlds tab to the worlds route and falls back to the default tab', async () => {
     renderDrafts({ entry: '/drafts?tab=worlds' });
 

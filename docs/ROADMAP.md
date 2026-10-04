@@ -34,7 +34,7 @@ These areas currently have visible UI that is explicitly labelled as staged rath
 
 The next major is scoped as a UI overhaul with measurable bars, not feature accumulation (features remain 4.x minors). A 5.0 is cut only when every bar below is green. Tracked here so the claim stays honest while the work is in progress; the same bars drive the in-app Upcoming panel.
 
-1. **Screen decomposition** — every screen over ~1,000 lines split into focused, individually testable sections. **Done: `WorldDetailEditorPanel` (2,213 → 228 lines, six section components, 12 characterization tests).** Remaining giants: `Drafts` (1,918 → 1,226), `Review` (1,740), `Themes` (1,489), `ThemeEditor` (1,451), `Settings` (1,444), `DraftComparisonPanel` (1,430), `AssetRegenerator` (1,210).
+1. **Screen decomposition** — every screen over ~1,000 lines split into focused, individually testable sections. **Done: `WorldDetailEditorPanel` (2,213 → 228 lines, six section components, 12 characterization tests).** Remaining giants: `Drafts` (1,918 → 1,039), `Review` (1,740), `Themes` (1,489), `ThemeEditor` (1,451), `Settings` (1,444), `DraftComparisonPanel` (1,430), `AssetRegenerator` (1,210).
 2. **Information architecture over the 36 routes** — consolidation, a quick-actions palette, and workspace modes (solo drafting / review / bulk).
 3. **Keyboard-first + focus/a11y audit** — every primary action reachable and visibly focused via keyboard.
 4. **Mobile-first review/approval** — closing the largest cross-surface gap, riding the approvals and checkpoint foundations.
