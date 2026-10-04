@@ -35,6 +35,7 @@ import {
 import { buildDraftLibraryBadges } from '@/lib/drafts/export-readiness';
 import { getLatestDraftSnapshotSummary } from '@/lib/drafts/revision-snapshots';
 import { cn } from '@/utils/cn';
+import { formatAssetLabel } from '@/lib/drafts/asset-display';
 
 export interface DraftListSidebarProps {
   drafts: DraftMetadata[];
@@ -48,10 +49,6 @@ export interface DraftListSidebarProps {
 type SortField = 'created' | 'modified' | 'name';
 type SortOrder = 'asc' | 'desc';
 type MergeStrategyFilter = '' | 'single-asset' | 'staged-merge';
-
-function formatAssetLabel(assetName: string): string {
-  return assetName.replace(/_/g, ' ');
-}
 
 export function DraftListSidebar({
   drafts,

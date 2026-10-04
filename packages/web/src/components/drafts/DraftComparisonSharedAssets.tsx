@@ -1,5 +1,5 @@
 import { cn } from '../../utils/cn';
-import { formatAssetLabel } from '@/lib/drafts/comparison-helpers';
+import { formatAssetLabel } from '@/lib/drafts/asset-display';
 import type { MergeCandidateAsset } from '@/lib/drafts/comparison-helpers';
 
 /**

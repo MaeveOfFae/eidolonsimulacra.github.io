@@ -12,15 +12,12 @@ import {
 import CollapsibleSection from '../common/CollapsibleSection';
 import { DraftStorage } from '@/lib/storage/draft-db';
 import { isDesktopRuntime } from '@/lib/runtime';
+import { formatAssetLabel } from '@/lib/drafts/asset-display';
 
 export interface VersionHistoryPanelProps {
   draftId?: string;
   assetName?: string;
   snapshotId?: string;
-}
-
-function formatAssetLabel(assetName: string): string {
-  return assetName.replace(/_/g, ' ');
 }
 
 function formatMergeResolutionReason(reason: 'content-drift' | 'review-drift' | 'left-only' | 'right-only'): string {

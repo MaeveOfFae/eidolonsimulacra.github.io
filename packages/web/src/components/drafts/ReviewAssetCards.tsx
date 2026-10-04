@@ -4,6 +4,7 @@ import { AlertTriangle, ArrowLeft, Check, Copy, Edit3, RotateCcw, ScissorsLineDa
 import { buildAssetApprovalSummary, type DraftAssetApprovalDecision } from '@char-gen/shared';
 import { formatAssetLabel } from '@/lib/drafts/asset-display';
 import CollapsibleSection from '../common/CollapsibleSection';
+import { summarizeText } from '@/lib/drafts/asset-display';
 
 /**
  * Asset cards for the review screen.
@@ -42,15 +43,6 @@ interface ReviewAssetCardsProps {
   onRecordApproval: (assetName: string, decision: DraftAssetApprovalDecision | null) => void;
 }
 
-function summarizeText(content: string, maxLength = 180): string {
-  const trimmed = content.replace(/\s+/g, ' ').trim();
-  if (trimmed.length <= maxLength) {
-    return trimmed;
-  }
-
-  return `${trimmed.slice(0, maxLength - 3).trimEnd()}...`;
-}
-
 export default function ReviewAssetCards({
   reviewId,
   assets,
@@ -86,7 +78,7 @@ export default function ReviewAssetCards({
           editingAsset === assetName
             ? 'Editing asset content'
             : assetExists
-              ? summarizeText(assets[assetName])
+              ? summarizeText(assets[assetName], 180)
               : 'No saved content yet';
 
         return (

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { AlertTriangle } from 'lucide-react';
-import { summarizeText } from '@/lib/drafts/comparison-helpers';
+import { summarizeText } from '@/lib/drafts/asset-display';
 
 /**
  * Selected-asset detail for the draft comparison panel.

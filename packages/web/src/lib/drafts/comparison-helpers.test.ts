@@ -3,10 +3,8 @@ import {
   buildDraftMergeProvenance,
   buildDraftReviewSummary,
   countChangedLines,
-  formatAssetLabel,
   formatSnapshotOptionLabel,
   getAssetReviewState,
-  summarizeText,
 } from './comparison-helpers';
 import type { DraftMetadata } from '@char-gen/shared';
 
@@ -79,24 +77,6 @@ describe('asset review helpers', () => {
 
   it('reports no review when neither score nor note exists', () => {
     expect(getAssetReviewState({}, 'speech')).toEqual({ score: undefined, note: '', hasReview: false });
-  });
-
-  it('humanizes asset names', () => {
-    expect(formatAssetLabel('intro_scene')).toBe('intro scene');
-  });
-});
-
-describe('summarizeText', () => {
-  it('collapses whitespace and keeps short content intact', () => {
-    expect(summarizeText('  a\n  b  ')).toBe('a b');
-  });
-
-  it('truncates long content to the limit with an ellipsis', () => {
-    const summarized = summarizeText('x'.repeat(200));
-
-    expect(summarized).toHaveLength(120);
-    expect(summarized.endsWith('...')).toBe(true);
-    expect(summarizeText('y'.repeat(50), 20)).toHaveLength(20);
   });
 });
 

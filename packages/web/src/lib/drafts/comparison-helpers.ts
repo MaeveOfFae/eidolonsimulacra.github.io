@@ -90,19 +90,6 @@ export function getAssetReviewState(
   };
 }
 
-export function formatAssetLabel(assetName: string): string {
-  return assetName.replace(/_/g, ' ');
-}
-
-export function summarizeText(content: string, maxLength = 120): string {
-  const trimmed = content.replace(/\s+/g, ' ').trim();
-  if (trimmed.length <= maxLength) {
-    return trimmed;
-  }
-
-  return `${trimmed.slice(0, maxLength - 3).trimEnd()}...`;
-}
-
 export function formatSnapshotOptionLabel(snapshot: NonNullable<DraftMetadata['revision_snapshots']>[number]) {
   const timestamp = new Intl.DateTimeFormat(undefined, {
     month: 'short',

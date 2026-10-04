@@ -8,6 +8,7 @@ import {
   getEffectiveDraftComponentSendOrder,
   normalizeDraftComponentSendOrderForSave,
 } from '@/lib/drafts/send-config';
+import { formatAssetLabel } from '@/lib/drafts/asset-display';
 
 interface DraftSendConfigPanelProps {
   draft: Draft;
@@ -24,10 +25,6 @@ interface DraftSendConfigPanelProps {
     description?: string;
     placeholder?: string;
   };
-}
-
-function formatAssetLabel(assetName: string): string {
-  return assetName.replace(/_/g, ' ');
 }
 
 function arraysEqual(left: readonly string[], right: readonly string[]): boolean {

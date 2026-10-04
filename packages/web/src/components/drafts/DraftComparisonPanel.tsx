@@ -7,12 +7,11 @@ import CollapsibleSection from '../common/CollapsibleSection';
 import { DraftComparisonCards } from './DraftComparisonCards';
 import { DraftAssetComparisonDetail } from './DraftAssetComparisonDetail';
 import { DraftComparisonSharedAssets } from './DraftComparisonSharedAssets';
+import { formatAssetLabel, summarizeText } from '@/lib/drafts/asset-display';
 import {
   countChangedLines,
   buildDraftReviewSummary,
   getAssetReviewState,
-  formatAssetLabel,
-  summarizeText,
   formatSnapshotOptionLabel,
   buildDraftMergeProvenance,
   buildDraftMergeHistoryEvent,
