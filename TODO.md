@@ -86,6 +86,15 @@ Recently completed hygiene work (kept here for context):
 
 **All four UI issues are now fixed** (provider inference + clear-key bounce as one root cause, the override metric, and the picker). Each had been pinned by tests describing the _old_ behaviour, and in every case those assertions were rewritten to the agreed behaviour rather than deleted — `Settings` suite 34 tests, plus `defaults.test.ts` (5) and the renamed provider tests. Full suite: **56 files, all passing**.
 
+- [x] **Deduped the asset label and text summarizer helpers** (queued follow-up). All five `formatAssetLabel` copies were byte-identical, and the two `summarizeText` copies differed only in their default length (180 in the review cards vs 120 in the comparison helpers):
+  - both now live in `@/lib/drafts/asset-display`, which nine files import — the three local `formatAssetLabel` copies (drafts sidebar, send-config panel, version history) were deleted, `comparison-helpers` no longer exports either, and `ReviewAssetCards` passes its own `180` at the call site so the shared default is the _documented_ behaviour rather than a per-file accident;
+  - `asset-display` gained `asset-display.test.ts` (5 tests), moved and extended from `comparison-helpers.test.ts` so the new module owns its coverage.
+  - Two scripted slips on the way, both caught by `tsc`: my line-anchored regex needed `TrimEnd("\r")` again (a `$` anchor never matches with a trailing `\r` — the CRLF rule already written down in this file), and the new import landed _inside_ a multi-line import block in `DraftSendConfigPanel` because "the last line starting with `import `" was the opening `import {`.
+
+- [x] **Fixed the `GenerationProgress` flake** for real. It failed twice in full-suite runs (once silently, then as `saves a partial draft when the final asset fails empty` at ~1030ms) while passing 5/5 in isolation — a classic **default `waitFor` timeout** (1000ms) losing to CPU contention when files run in parallel.
+  - Rather than bump one assertion, `src/test/setup.ts` now sets `configure({ asyncUtilTimeout: 3000 })` with a comment explaining why, which removes the whole class of scheduling flake.
+  - Verified with **three consecutive full-suite runs: 57 files passed, zero failures** each time.
+
 - [ ] **Sweep leftovers — three non-screen modules are still over ~1,000 lines**, found by a repo-wide count rather than from the original list. (The fourth, the `Generation.tsx` screen at 1,037, is done — see above.)
   - `lib/storage/draft-db.ts` — **2,156 lines**, `lib/storage/desktop-lore-db.ts` — **1,609**, `lib/services/generation.ts` — **1,130**: these are storage/service layers, not screens, and want a different seam (per-store or per-service modules) plus a decision on whether the ~1,000-line guideline should even apply to them
 
