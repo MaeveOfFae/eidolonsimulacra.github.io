@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import DeviceLinkSettings from './DeviceLinkSettings';
 import {
@@ -176,5 +176,30 @@ describe('DeviceLinkSettings incoming preview', () => {
 
     expect((await screen.findAllByRole('heading', { name: 'Live PC Link' })).length).toBeGreaterThan(0);
     expect(screen.queryByText('Incoming Sync Preview')).not.toBeInTheDocument();
+  });
+
+  it('lists remembered senders and can untrust one from the card', async () => {
+    saveRememberedMobileCompanion({
+      deviceId: 'mobile-1',
+      name: 'Mobile A',
+      platform: 'mobile',
+      runtime: 'tauri',
+      trusted: true,
+    });
+
+    renderDeviceLink();
+
+    expect(await screen.findByText('Recent Mobile Senders')).toBeInTheDocument();
+    expect(screen.getByText('Mobile A')).toBeInTheDocument();
+    expect(screen.getByText('Trusted')).toBeInTheDocument();
+    expect(screen.getByText('mobile/tauri')).toBeInTheDocument();
+    expect(screen.getByText(/Last seen /)).toBeInTheDocument();
+
+    // Untrusting from the card flips the incoming banner for the same sender.
+    fireEvent.click(screen.getByRole('button', { name: 'Untrust' }));
+
+    expect(await screen.findByText(/• untrusted sender\./)).toBeInTheDocument();
+    expect(screen.getByText('Untrusted')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Trust' })).toBeInTheDocument();
   });
 });
