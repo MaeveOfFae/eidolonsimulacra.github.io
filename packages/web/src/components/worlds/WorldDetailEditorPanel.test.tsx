@@ -82,7 +82,7 @@ const world: WorldRecord = {
   ],
 };
 
-function renderPanel() {
+function renderPanel(worldOverride?: WorldRecord) {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
@@ -95,7 +95,7 @@ function renderPanel() {
   render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={['/worlds']}>
-        <WorldDetailEditorPanel world={world} canEdit onRefresh={onRefresh} />
+        <WorldDetailEditorPanel world={worldOverride ?? world} canEdit onRefresh={onRefresh} />
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -121,6 +121,7 @@ describe('WorldDetailEditorPanel', () => {
     vi.mocked(api.updateWorld).mockResolvedValue({ world } as never);
     vi.mocked(api.addWorldCharacter).mockResolvedValue({ character: world.characters![0] } as never);
     vi.mocked(api.updateWorldCharacter).mockResolvedValue({ character: world.characters![0] } as never);
+    vi.mocked(api.addWorldRelationship).mockResolvedValue({ relationship: {} } as never);
   });
 
   it('opens on world details with tab counts', () => {
@@ -349,5 +350,56 @@ describe('WorldDetailEditorPanel', () => {
       expect(api.updateWorldCharacter).toHaveBeenCalledWith('world-1', 'char-1', { draftId: '' });
     });
     expect(await screen.findByText('Draft link removed from character.')).toBeInTheDocument();
+  });
+
+  it('requires two characters before relationships can be created', () => {
+    renderPanel();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Relationships 0' }));
+
+    expect(screen.getByText('Add at least two characters before creating relationships.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add relationship' })).not.toBeInTheDocument();
+  });
+
+  it('adds a relationship between two characters with trimmed values', async () => {
+    const twoCharacterWorld: WorldRecord = {
+      ...world,
+      characters: [
+        ...world.characters!,
+        {
+          id: 'char-2',
+          worldId: 'world-1',
+          characterName: 'Rook',
+          role: 'Engineer',
+          createdAt: TIMESTAMP,
+          updatedAt: TIMESTAMP,
+        },
+      ],
+    };
+
+    const { onRefresh } = renderPanel(twoCharacterWorld);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Relationships 0' }));
+
+    const [sourceSelect, targetSelect] = screen.getAllByRole('combobox');
+    fireEvent.change(sourceSelect!, { target: { value: 'char-1' } });
+    fireEvent.change(targetSelect!, { target: { value: 'char-2' } });
+    fireEvent.change(screen.getByPlaceholderText('Relationship label'), { target: { value: '  Old allies  ' } });
+    fireEvent.change(screen.getByPlaceholderText('Relationship notes'), {
+      target: { value: 'Split after the mutiny.' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add relationship' }));
+
+    await waitFor(() => {
+      expect(api.addWorldRelationship).toHaveBeenCalledWith('world-1', {
+        sourceCharacterId: 'char-1',
+        targetCharacterId: 'char-2',
+        label: 'Old allies',
+        notes: 'Split after the mutiny.',
+      });
+    });
+    expect(await screen.findByText('Relationship added.')).toBeInTheDocument();
+    expect(onRefresh).toHaveBeenCalled();
   });
 });
