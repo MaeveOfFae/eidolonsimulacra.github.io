@@ -756,9 +756,9 @@ export default function Themes() {
                   resolvedCurrentTheme.button,
                   resolvedCurrentTheme.tok_brackets,
                   resolvedCurrentTheme.highlight,
-                ].map((color) => (
+                ].map((color, index) => (
                   <span
-                    key={color}
+                    key={`${index}-${color}`}
                     className="h-8 w-8 rounded-full border border-black/10"
                     style={{ backgroundColor: color }}
                   />
@@ -1203,9 +1203,9 @@ export default function Themes() {
                   </div>
                   <div className="flex gap-2">
                     {[theme.colors.background, theme.colors.surface, theme.colors.accent, theme.colors.button].map(
-                      (color) => (
+                      (color, index) => (
                         <span
-                          key={`${theme.name}-${color}`}
+                          key={`${theme.name}-${index}-${color}`}
                           className={`${isCompact ? 'h-5 w-5' : 'h-6 w-6'} rounded-full border border-black/10`}
                           style={{ backgroundColor: color }}
                         />
