@@ -315,6 +315,73 @@ describe('Review export modal behavior', () => {
     });
   });
 
+  it('shows the asset card actions and required marker for a saved asset', async () => {
+    mockUseGuidedTour.mockReturnValue({
+      activeTourId: null,
+      activeStepIndex: 0,
+      isTourCompleted: vi.fn(() => false),
+      restartTour: vi.fn(),
+      startTour: vi.fn(),
+    });
+
+    renderReview();
+
+    fireEvent.click(screen.getByRole('button', { name: /^system prompt/ }));
+
+    expect(screen.getByText('Req')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Copy' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Regen' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Optimize' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Approve' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Request changes' })).toBeInTheDocument();
+    // The saved content is previewed inline and the asset can be edited.
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument();
+    expect(screen.getByText('hello')).toBeInTheDocument();
+  });
+
+  it('shows the missing-asset card with its create affordances', async () => {
+    mockUseGuidedTour.mockReturnValue({
+      activeTourId: null,
+      activeStepIndex: 0,
+      isTourCompleted: vi.fn(() => false),
+      restartTour: vi.fn(),
+      startTour: vi.fn(),
+    });
+
+    renderReview();
+
+    fireEvent.click(screen.getByRole('button', { name: /^post history/ }));
+
+    expect(screen.getByText('Missing')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Create with AI' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add manually' })).toBeInTheDocument();
+    expect(
+      screen.getByText('Not saved yet. Create it with AI using the existing draft context, or add it manually here.'),
+    ).toBeInTheDocument();
+  });
+
+  it('opens and cancels the inline asset editor', async () => {
+    mockUseGuidedTour.mockReturnValue({
+      activeTourId: null,
+      activeStepIndex: 0,
+      isTourCompleted: vi.fn(() => false),
+      restartTour: vi.fn(),
+      startTour: vi.fn(),
+    });
+
+    renderReview();
+
+    fireEvent.click(screen.getByRole('button', { name: /^system prompt/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+
+    const editor = screen.getByLabelText('system prompt content');
+    expect(editor).toHaveValue('hello');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.queryByLabelText('system prompt content')).not.toBeInTheDocument();
+  });
+
   it('records an asset approval decision from the review card', async () => {
     mockUseGuidedTour.mockReturnValue({
       activeTourId: null,
