@@ -157,4 +157,20 @@ describe('Settings help controls', () => {
     expect(configManager.getHelpState().completed_guides).toEqual([]);
     expect(configManager.getHelpState().completed_tours).toEqual([]);
   });
+
+  it('shows the help section with its popup toggle, guide link and reset action', async () => {
+    renderSettings();
+
+    expect(await screen.findByRole('heading', { name: 'Help and Tutorials' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Hover help popups' })).toBeInTheDocument();
+
+    // First-run guidance is on by default, so the toggle starts checked.
+    expect(screen.getByRole('checkbox')).toBeChecked();
+
+    const helpCenterLink = screen.getByRole('link', { name: 'Open Help Center' });
+    expect(helpCenterLink).toHaveAttribute('href', '/help');
+
+    expect(screen.getByRole('button', { name: 'Restart Getting Started' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Reset Help Preferences' })).toBeInTheDocument();
+  });
 });
