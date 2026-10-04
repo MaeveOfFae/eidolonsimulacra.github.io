@@ -8,6 +8,7 @@
 
 import { OFFICIAL_TEMPLATE, type Draft, type Template } from '@char-gen/shared';
 import { getEffectiveDraftComponentSendOrder } from '@/lib/drafts/send-config';
+import { saveBlobDownload } from '@/utils/download';
 
 export interface AssetCandidate {
   id: string;
@@ -50,11 +51,17 @@ export function buildRecoveredTemplateContract(draft: Draft, templates: Template
   };
 }
 
-export const exportIntrosAsMarkdown = (
+/** Filename used for the intro-scene exports. */
+export function introExportFilename(characterName: string, extension: 'md' | 'json'): string {
+  return `${characterName.replace(/[^a-z0-9]/gi, '_')}_intro_scenes.${extension}`;
+}
+
+/** Builds the markdown body for the intro-scene export. */
+export function buildIntrosMarkdown(
   characterName: string,
   savedIntros: AssetCandidate[],
   activeIntroContent: string | undefined,
-) => {
+): string {
   const lines: string[] = [
     `# Intro Scenes for ${characterName}`,
     '',
@@ -87,23 +94,15 @@ export const exportIntrosAsMarkdown = (
     }
   });
 
-  const content = lines.join('\n');
-  const blob = new Blob([content], { type: 'text/markdown' });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = `${characterName.replace(/[^a-z0-9]/gi, '_')}_intro_scenes.md`;
-  document.body.appendChild(anchor);
-  anchor.click();
-  document.body.removeChild(anchor);
-  URL.revokeObjectURL(url);
-};
+  return lines.join('\n');
+}
 
-export const exportIntrosAsJson = (
+/** Builds the JSON payload for the intro-scene export. */
+export function buildIntrosJson(
   characterName: string,
   savedIntros: AssetCandidate[],
   activeIntroContent: string | undefined,
-) => {
+): string {
   const data = {
     character_name: characterName,
     exported_at: new Date().toISOString(),
@@ -115,13 +114,35 @@ export const exportIntrosAsJson = (
     })),
   };
 
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = `${characterName.replace(/[^a-z0-9]/gi, '_')}_intro_scenes.json`;
-  document.body.appendChild(anchor);
-  anchor.click();
-  document.body.removeChild(anchor);
-  URL.revokeObjectURL(url);
-};
+  return JSON.stringify(data, null, 2);
+}
+
+/**
+ * Downloads the saved intros as markdown.
+ *
+ * The download itself goes through `saveBlobDownload`, so the desktop build gets a Tauri
+ * save dialog and mobile browsers get the share sheet instead of the hand-rolled anchor
+ * this used to create.
+ */
+export async function exportIntrosAsMarkdown(
+  characterName: string,
+  savedIntros: AssetCandidate[],
+  activeIntroContent: string | undefined,
+): Promise<void> {
+  const blob = new Blob([buildIntrosMarkdown(characterName, savedIntros, activeIntroContent)], {
+    type: 'text/markdown',
+  });
+  await saveBlobDownload(blob, introExportFilename(characterName, 'md'), 'text/markdown');
+}
+
+/** Downloads the saved intros as JSON. See `exportIntrosAsMarkdown` for the transport. */
+export async function exportIntrosAsJson(
+  characterName: string,
+  savedIntros: AssetCandidate[],
+  activeIntroContent: string | undefined,
+): Promise<void> {
+  const blob = new Blob([buildIntrosJson(characterName, savedIntros, activeIntroContent)], {
+    type: 'application/json',
+  });
+  await saveBlobDownload(blob, introExportFilename(characterName, 'json'), 'application/json');
+}

@@ -35,12 +35,16 @@ These areas currently have visible UI that is explicitly labelled as staged rath
 The next major is scoped as a UI overhaul with measurable bars, not feature accumulation (features remain 4.x minors). A 5.0 is cut only when every bar below is green. Tracked here so the claim stays honest while the work is in progress; the same bars drive the in-app Upcoming panel.
 
 1. **Screen decomposition** — every screen over ~1,000 lines split into focused, individually testable sections. **DONE for every screen that was in scope:** `WorldDetailEditorPanel` 2,213 → 228 · `Drafts` 1,918 → 744 · `Review` 1,740 → 984 · `Themes`/`ThemeEditor` 1,489 + 1,451 → one shared manager + two thin wrappers (~1,400 lines of duplication removed) · `Settings` 1,444 → 639 · `DraftComparisonPanel` 1,430 → 948 · `AssetRegenerator` 1,210 → 995 · `DeviceLinkSettings` 1,078 → 813. Extracted sections carry characterization tests written first, and shared helpers now live in `@/lib` modules with their own unit tests (`format-timestamp`, `themes/theme-helpers`, `llm/providers`, `drafts/comparison-helpers`, `drafts/asset-regenerator-helpers`).
-   - **Beyond the screen scope** (found by a sweep after the above finished): three large non-screen modules — `lib/storage/draft-db.ts` (2,156), `lib/storage/desktop-lore-db.ts` (1,609) and `lib/services/generation.ts` (1,130). The `Generation.tsx` screen the same sweep turned up (1,037) is now **987** via `@/lib/generation/generation-helpers` + 7 unit tests. The three modules want a different seam (per-store / per-service modules) and a decision on whether the guideline should apply to them at all.
+   - **Beyond the screen scope, staged for 5.1:** three large non-screen modules — `lib/storage/draft-db.ts` (2,156), `lib/storage/desktop-lore-db.ts` (1,609) and `lib/services/generation.ts` (1,130). The `Generation.tsx` screen the same sweep turned up (1,037) is now **987** via `@/lib/generation/generation-helpers` + 7 unit tests, so the screen bar is met. The modules are not screens and need a per-store/per-service seam, so they are scheduled for **5.1** rather than blocking 5.0.
 2. **Information architecture over the 36 routes** — consolidation, a quick-actions palette, and workspace modes (solo drafting / review / bulk).
 3. **Keyboard-first + focus/a11y audit** — every primary action reachable and visibly focused via keyboard.
 4. **Mobile-first review/approval** — closing the largest cross-surface gap, riding the approvals and checkpoint foundations.
 5. **Visible visual refresh riding the existing theme-token system** (web components are already ~tokenized).
 6. **Breaking-change budget spent deliberately** — retire the legacy `bpui.*` storage keys with a final migration, decide each of the five staged UI surfaces (ship or remove), apply any export/format changes.
+
+### Staged for 5.1
+
+- **Storage and service layer decomposition** — `lib/storage/draft-db.ts`, `lib/storage/desktop-lore-db.ts` and `lib/services/generation.ts` are the three remaining files over the ~1,000-line bar. They are storage/service layers rather than screens, so the seam is per-store/per-service modules (splitting `draft-db` by table, for example). Scheduled to ship with or before 5.1; explicitly not a 5.0 bar.
 
 ## Outstanding work by area
 

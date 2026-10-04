@@ -930,7 +930,7 @@ export default function AssetRegenerator({
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() =>
-                        exportIntrosAsMarkdown(
+                        void exportIntrosAsMarkdown(
                           draft.metadata.character_name || draft.metadata.seed,
                           savedIntros,
                           draft.assets.intro_scene,
@@ -943,7 +943,7 @@ export default function AssetRegenerator({
                     </button>
                     <button
                       onClick={() =>
-                        exportIntrosAsJson(
+                        void exportIntrosAsJson(
                           draft.metadata.character_name || draft.metadata.seed,
                           savedIntros,
                           draft.assets.intro_scene,

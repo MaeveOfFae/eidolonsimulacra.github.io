@@ -1,11 +1,19 @@
 import type { Draft, Template } from '@char-gen/shared';
+import { saveBlobDownload } from '@/utils/download';
 import {
+  buildIntrosJson,
+  buildIntrosMarkdown,
   buildRecoveredTemplateContract,
   draftHasAsset,
   exportIntrosAsJson,
   exportIntrosAsMarkdown,
+  introExportFilename,
   type AssetCandidate,
 } from './asset-regenerator-helpers';
+
+vi.mock('@/utils/download', () => ({
+  saveBlobDownload: vi.fn(async () => ({ saved: true, method: 'download' })),
+}));
 
 function makeDraft(overrides: { assets?: Record<string, string>; templateName?: string } = {}): Draft {
   return {
@@ -80,35 +88,58 @@ describe('buildRecoveredTemplateContract', () => {
 });
 
 describe('intro exports', () => {
-  let downloadedName = '';
-
   beforeEach(() => {
-    downloadedName = '';
-    Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: vi.fn(() => 'blob:mock') });
-    Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: vi.fn() });
-    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
-      downloadedName = this.download;
-    });
+    vi.mocked(saveBlobDownload).mockClear();
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
+  it('hands the markdown export to the shared download helper', async () => {
+    await exportIntrosAsMarkdown('Iris Storm', [CANDIDATE], 'active intro');
 
-  it('downloads the saved intros as markdown named after the character', () => {
-    exportIntrosAsMarkdown('Iris Storm', [CANDIDATE], 'active intro');
-
-    expect(downloadedName).toBe('Iris_Storm_intro_scenes.md');
-    const blob = vi.mocked(URL.createObjectURL).mock.calls[0][0] as Blob;
+    expect(saveBlobDownload).toHaveBeenCalledTimes(1);
+    const [blob, filename, contentType] = vi.mocked(saveBlobDownload).mock.calls[0];
+    expect(filename).toBe('Iris_Storm_intro_scenes.md');
+    expect(contentType).toBe('text/markdown');
     expect(blob.type).toBe('text/markdown');
-    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:mock');
   });
 
-  it('downloads the saved intros as json', () => {
-    exportIntrosAsJson('Iris Storm', [CANDIDATE], undefined);
+  it('hands the json export to the shared download helper', async () => {
+    await exportIntrosAsJson('Iris Storm', [CANDIDATE], undefined);
 
-    expect(downloadedName).toBe('Iris_Storm_intro_scenes.json');
-    const blob = vi.mocked(URL.createObjectURL).mock.calls[0][0] as Blob;
+    expect(saveBlobDownload).toHaveBeenCalledTimes(1);
+    const [blob, filename, contentType] = vi.mocked(saveBlobDownload).mock.calls[0];
+    expect(filename).toBe('Iris_Storm_intro_scenes.json');
+    expect(contentType).toBe('application/json');
     expect(blob.type).toBe('application/json');
+  });
+
+  it('derives the export filename from the character name', () => {
+    expect(introExportFilename('Iris Storm', 'md')).toBe('Iris_Storm_intro_scenes.md');
+    expect(introExportFilename('Iris Storm', 'json')).toBe('Iris_Storm_intro_scenes.json');
+  });
+
+  it('builds a markdown document with the active and saved intros', () => {
+    const markdown = buildIntrosMarkdown('Iris Storm', [CANDIDATE], 'active intro');
+
+    expect(markdown).toContain('# Intro Scenes for Iris Storm');
+    expect(markdown).toContain('Total intros: 1');
+    expect(markdown).toContain('## Currently Active Intro Scene');
+    expect(markdown).toContain('active intro');
+    expect(markdown).toContain('## Intro Scene #1');
+    expect(markdown).toContain('An intro scene.');
+  });
+
+  it('builds a json payload with the saved intros and their timestamps', () => {
+    const payload = JSON.parse(buildIntrosJson('Iris Storm', [CANDIDATE], undefined));
+
+    expect(payload.character_name).toBe('Iris Storm');
+    expect(payload.active_intro).toBeNull();
+    expect(payload.saved_intros).toEqual([
+      {
+        id: 'c-1',
+        content: 'An intro scene.',
+        created_at: new Date(CANDIDATE.timestamp).toISOString(),
+      },
+    ]);
+    expect(new Date(payload.exported_at).toString()).not.toBe('Invalid Date');
   });
 });
