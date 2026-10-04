@@ -382,6 +382,60 @@ describe('Review export modal behavior', () => {
     expect(screen.queryByLabelText('system prompt content')).not.toBeInTheDocument();
   });
 
+  it('saves an edited character name from the hero', async () => {
+    mockUseGuidedTour.mockReturnValue({
+      activeTourId: null,
+      activeStepIndex: 0,
+      isTourCompleted: vi.fn(() => false),
+      restartTour: vi.fn(),
+      startTour: vi.fn(),
+    });
+
+    renderReview();
+
+    expect(screen.getByRole('heading', { name: 'test-seed' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Name' }));
+    fireEvent.change(screen.getByPlaceholderText('Character name'), { target: { value: 'Maeve' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save Name' }));
+
+    await waitFor(() => {
+      const nameCall = mutationResults
+        .flatMap((result) => result.mutate.mock.calls.map(([payload]) => payload))
+        .find((payload) => (payload as { character_name?: string })?.character_name === 'Maeve');
+
+      expect(nameCall).toEqual({ character_name: 'Maeve' });
+    });
+  });
+
+  it('cancels a name edit and exposes the hero actions', async () => {
+    mockUseGuidedTour.mockReturnValue({
+      activeTourId: null,
+      activeStepIndex: 0,
+      isTourCompleted: vi.fn(() => false),
+      restartTour: vi.fn(),
+      startTour: vi.fn(),
+    });
+
+    renderReview();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Name' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    // The editor closes and the seed heading comes back.
+    expect(screen.queryByPlaceholderText('Character name')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'test-seed' })).toBeInTheDocument();
+
+    expect(screen.getByRole('link', { name: 'Back to Library' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Validate' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Favorite' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Archive' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Export' }));
+
+    expect(screen.getByTestId('export-modal')).toBeInTheDocument();
+  });
+
   it('records an asset approval decision from the review card', async () => {
     mockUseGuidedTour.mockReturnValue({
       activeTourId: null,

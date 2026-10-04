@@ -1,18 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  ArrowLeft,
-  Star,
-  Download,
-  Archive,
-  RotateCcw,
-  Edit3,
-  Check,
-  X,
-  ShieldCheck,
-  AlertTriangle,
-} from 'lucide-react';
+import { ArrowLeft, X, ShieldCheck, AlertTriangle } from 'lucide-react';
 import {
   MAX_CONNECTED_DRAFT_REFERENCES,
   buildAssetApprovalSummary,
@@ -33,6 +22,7 @@ import { useGuidedTour } from '../common/GuidedTourContext';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
 import DraftSendConfigPanel from './DraftSendConfigPanel';
 import ReviewAssetCards, { type ReviewAssetEntry } from './ReviewAssetCards';
+import ReviewHero from './ReviewHero';
 import ReviewChecklistPanel from './ReviewChecklistPanel';
 import VersionHistoryPanel from './VersionHistoryPanel';
 
@@ -833,125 +823,24 @@ export default function Review() {
   return (
     <div className="app-page space-y-5 pb-10 sm:space-y-6 sm:pb-12">
       <input ref={imageInputRef} type="file" accept=".png,image/png" title="Attach PNG image" className="hidden" />
-      <section className="app-page-hero">
-        <div className="app-page-hero-grid">
-          <div className="space-y-2.5 sm:space-y-3">
-            <Link
-              to="/drafts"
-              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back to Library
-            </Link>
-            <p className="app-page-eyebrow">Review</p>
-            {isEditingName ? (
-              <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-                <input
-                  value={editName}
-                  onChange={(event) => setEditName(event.target.value)}
-                  placeholder="Character name"
-                  className="w-full min-w-0 rounded-xl border border-input bg-background px-3 py-2 text-xl font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-w-[18rem] sm:text-2xl"
-                  style={{ fontFamily: '"Space Grotesk", sans-serif' }}
-                />
-                <button
-                  onClick={handleSaveName}
-                  disabled={updateMetadata.isPending}
-                  className="inline-flex items-center justify-center gap-1 rounded-xl bg-primary px-3 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-                >
-                  <Check className="h-4 w-4" />
-                  Save Name
-                </button>
-                <button
-                  onClick={handleCancelNameEdit}
-                  disabled={updateMetadata.isPending}
-                  className="inline-flex items-center justify-center gap-1 rounded-xl border border-input bg-background px-3 py-2 text-sm hover:bg-accent disabled:opacity-50"
-                >
-                  <X className="h-4 w-4" />
-                  Cancel
-                </button>
-              </div>
-            ) : (
-              <div className="flex flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-                <h1 className="app-page-title text-[clamp(2rem,4vw,3.4rem)]">
-                  {draft.metadata.character_name || draft.metadata.seed}
-                </h1>
-                <button
-                  onClick={handleEditName}
-                  className="inline-flex items-center gap-1 rounded-xl border border-input bg-background px-2.5 py-1.5 text-xs hover:bg-accent"
-                >
-                  <Edit3 className="h-3 w-3" />
-                  Edit Name
-                </button>
-              </div>
-            )}
-            <p className="app-page-summary max-w-4xl">{draft.metadata.seed}</p>
-          </div>
-
-          <div className="app-panel-muted min-w-0 p-3.5 sm:p-5">
-            <p className="app-page-eyebrow">Draft state</p>
-            <div className="mt-3 flex flex-wrap gap-2 sm:hidden">
-              <span className="app-pill app-pill-muted">{assetCountLabel} assets</span>
-              {draft.metadata.mode ? <span className="app-pill app-pill-muted">{draft.metadata.mode}</span> : null}
-              {draft.metadata.template_name ? (
-                <span className="app-pill app-pill-muted">{draft.metadata.template_name}</span>
-              ) : null}
-              {draft.metadata.genre ? <span className="app-pill app-pill-muted">{draft.metadata.genre}</span> : null}
-            </div>
-            <div className="mt-4 hidden sm:grid app-page-metrics">
-              <div className="app-page-metric">
-                <p className="app-page-metric-label">Assets</p>
-                <div className="app-page-metric-value text-2xl">{assetCountLabel}</div>
-              </div>
-              <div className="app-page-metric">
-                <p className="app-page-metric-label">Mode</p>
-                <div className="app-page-metric-value text-xl sm:text-2xl">{draft.metadata.mode || 'Unset'}</div>
-              </div>
-              <div className="app-page-metric">
-                <p className="app-page-metric-label">Template</p>
-                <div className="app-page-metric-value text-base sm:text-xl">
-                  {draft.metadata.template_name || 'Unset'}
-                </div>
-              </div>
-            </div>
-
-            <div data-tour-anchor="review-actions" className="mt-4 grid grid-cols-2 gap-2 sm:mt-5 sm:flex sm:flex-wrap">
-              <button
-                onClick={() => validateDraft.mutate()}
-                data-tour-anchor="review-validate"
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-input bg-background px-3 py-2 text-sm hover:bg-accent sm:justify-start"
-              >
-                <ShieldCheck className="h-4 w-4" />
-                Validate
-              </button>
-              <button
-                onClick={() => toggleFavorite.mutate()}
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-input bg-background px-3 py-2 text-sm hover:bg-accent sm:justify-start"
-              >
-                <Star className={`h-4 w-4 ${draft.metadata.favorite ? 'fill-yellow-500 text-yellow-500' : ''}`} />
-                {draft.metadata.favorite ? 'Favorited' : 'Favorite'}
-              </button>
-              <button
-                onClick={() => {
-                  setTourManagedExportModal(false);
-                  setShowExportModal(true);
-                }}
-                data-tour-anchor="review-export"
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-input bg-background px-3 py-2 text-sm hover:bg-accent sm:justify-start"
-              >
-                <Download className="h-4 w-4" />
-                Export
-              </button>
-              <button
-                onClick={() => archiveDraft.mutate()}
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-input bg-background px-3 py-2 text-sm hover:bg-accent sm:justify-start"
-              >
-                {draft.metadata.archived_at ? <RotateCcw className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
-                {draft.metadata.archived_at ? 'Restore' : 'Archive'}
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
+      <ReviewHero
+        metadata={draft.metadata}
+        assetCountLabel={assetCountLabel}
+        isEditingName={isEditingName}
+        editName={editName}
+        isSavingName={updateMetadata.isPending}
+        onEditName={handleEditName}
+        onEditNameChange={setEditName}
+        onSaveName={handleSaveName}
+        onCancelNameEdit={handleCancelNameEdit}
+        onValidate={() => validateDraft.mutate()}
+        onToggleFavorite={() => toggleFavorite.mutate()}
+        onArchive={() => archiveDraft.mutate()}
+        onExport={() => {
+          setTourManagedExportModal(false);
+          setShowExportModal(true);
+        }}
+      />
 
       <CollapsibleSection
         title="Overview"
