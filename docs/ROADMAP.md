@@ -30,6 +30,17 @@ These areas currently have visible UI that is explicitly labelled as staged rath
 | Batch scheduling, reusable batch presets               | `/batch` "Staged modules"              | Marked "Not live"                              |
 | Export preview, publishing                             | Export modal → "Planned Export Extras" | Marked "Planned"                               |
 
+## The 5.0 theme — the workspace release
+
+The next major is scoped as a UI overhaul with measurable bars, not feature accumulation (features remain 4.x minors). A 5.0 is cut only when every bar below is green. Tracked here so the claim stays honest while the work is in progress; the same bars drive the in-app Upcoming panel.
+
+1. **Screen decomposition** — every screen over ~1,000 lines split into focused, individually testable sections. Current giants: `WorldDetailEditorPanel` (2,213 → in progress), `Drafts` (1,918), `Review` (1,740), `Themes` (1,489), `ThemeEditor` (1,451), `Settings` (1,444), `DraftComparisonPanel` (1,430), `AssetRegenerator` (1,210).
+2. **Information architecture over the 36 routes** — consolidation, a quick-actions palette, and workspace modes (solo drafting / review / bulk).
+3. **Keyboard-first + focus/a11y audit** — every primary action reachable and visibly focused via keyboard.
+4. **Mobile-first review/approval** — closing the largest cross-surface gap, riding the approvals and checkpoint foundations.
+5. **Visible visual refresh riding the existing theme-token system** (web components are already ~tokenized).
+6. **Breaking-change budget spent deliberately** — retire the legacy `bpui.*` storage keys with a final migration, decide each of the five staged UI surfaces (ship or remove), apply any export/format changes.
+
 ## Outstanding work by area
 
 ### Generation Workflow — `partial`

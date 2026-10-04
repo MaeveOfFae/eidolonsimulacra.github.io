@@ -21,6 +21,20 @@ export interface RoadmapGroup {
 
 export const roadmapGroups: RoadmapGroup[] = [
   {
+    id: 'workspace-release',
+    title: '5.0 Workspace Release',
+    status: 'planned',
+    ownerFiles: ['packages/web/src/components/worlds/WorldDetailEditorPanel.tsx', 'packages/web/src/App.tsx'],
+    items: [
+      'Decompose every screen over roughly a thousand lines into focused, testable sections',
+      'Information-architecture pass over the routes with a quick-actions palette and workspace modes',
+      'Keyboard-first navigation and a focus and accessibility audit for all primary flows',
+      'Mobile-first review and approval flow riding the approvals and checkpoint foundations',
+      'A visible visual refresh riding the existing theme-token system',
+      'Retire legacy storage keys and decide each staged surface: ship it or remove it',
+    ],
+  },
+  {
     id: 'generation-workflow',
     title: 'Generation Workflow',
     status: 'partial',
