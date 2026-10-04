@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter } from 'react-router-dom';
 import WorldDetailEditorPanel from './WorldDetailEditorPanel';
 import { api } from '@/lib/api';
 import type { WorldRecord } from '@char-gen/shared';
@@ -43,7 +44,15 @@ const world: WorldRecord = {
   createdAt: TIMESTAMP,
   updatedAt: TIMESTAMP,
   characters: [
-    { id: 'char-1', worldId: 'world-1', characterName: 'Maeve', createdAt: TIMESTAMP, updatedAt: TIMESTAMP },
+    {
+      id: 'char-1',
+      worldId: 'world-1',
+      draftId: 'draft-1',
+      characterName: 'Maeve',
+      role: 'Navigator',
+      createdAt: TIMESTAMP,
+      updatedAt: TIMESTAMP,
+    },
   ],
   factions: [
     {
@@ -85,7 +94,9 @@ function renderPanel() {
 
   render(
     <QueryClientProvider client={queryClient}>
-      <WorldDetailEditorPanel world={world} canEdit onRefresh={onRefresh} />
+      <MemoryRouter initialEntries={['/worlds']}>
+        <WorldDetailEditorPanel world={world} canEdit onRefresh={onRefresh} />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 
@@ -107,6 +118,9 @@ describe('WorldDetailEditorPanel', () => {
     vi.mocked(api.createTimeline).mockResolvedValue({ timeline: world.timelines![0] } as never);
     vi.mocked(api.addTimelineEvent).mockResolvedValue({ event: {} } as never);
     vi.mocked(api.updateTimelineEvent).mockResolvedValue({ event: {} } as never);
+    vi.mocked(api.updateWorld).mockResolvedValue({ world } as never);
+    vi.mocked(api.addWorldCharacter).mockResolvedValue({ character: world.characters![0] } as never);
+    vi.mocked(api.updateWorldCharacter).mockResolvedValue({ character: world.characters![0] } as never);
   });
 
   it('opens on world details with tab counts', () => {
@@ -277,5 +291,63 @@ describe('WorldDetailEditorPanel', () => {
       ['timeline-1', 'event-2', { sortOrder: 0 }],
       ['timeline-1', 'event-1', { sortOrder: 1 }],
     ]);
+  });
+
+  it('saves world details with trimmed values once the form is dirty', async () => {
+    const { onRefresh } = renderPanel();
+
+    // The details tab is the default, so the metadata form is live.
+    const saveButton = screen.getByRole('button', { name: 'Save world details' });
+    expect(saveButton).toBeDisabled();
+
+    fireEvent.change(screen.getByPlaceholderText('World name'), { target: { value: 'Alpha Station II' } });
+
+    expect(saveButton).toBeEnabled();
+    fireEvent.click(saveButton);
+
+    await waitFor(() => {
+      expect(api.updateWorld).toHaveBeenCalledWith('world-1', {
+        name: 'Alpha Station II',
+        description: 'A station at the edge of the charted lanes',
+        genre: undefined,
+        setting: undefined,
+        notes: undefined,
+      });
+    });
+    expect(await screen.findByText('World details saved.')).toBeInTheDocument();
+    expect(onRefresh).toHaveBeenCalled();
+  });
+
+  it('adds a character with trimmed values', async () => {
+    const { onRefresh } = renderPanel();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Characters 1' }));
+    fireEvent.change(screen.getByPlaceholderText('Character name'), { target: { value: '  Vesna  ' } });
+    fireEvent.change(screen.getByPlaceholderText('Role'), { target: { value: 'Pilot' } });
+    fireEvent.change(screen.getByPlaceholderText('Character notes'), { target: { value: 'Steady hands.' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add character' }));
+
+    await waitFor(() => {
+      expect(api.addWorldCharacter).toHaveBeenCalledWith('world-1', {
+        characterName: 'Vesna',
+        role: 'Pilot',
+        notes: 'Steady hands.',
+      });
+    });
+    expect(await screen.findByText('Character added.')).toBeInTheDocument();
+    expect(onRefresh).toHaveBeenCalled();
+  });
+
+  it('unlinks a draft from a character', async () => {
+    renderPanel();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Characters 1' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Unlink draft' }));
+
+    await waitFor(() => {
+      expect(api.updateWorldCharacter).toHaveBeenCalledWith('world-1', 'char-1', { draftId: '' });
+    });
+    expect(await screen.findByText('Draft link removed from character.')).toBeInTheDocument();
   });
 });
