@@ -14,8 +14,6 @@ import {
   Star,
   Users,
   Archive,
-  RotateCcw,
-  Trash2,
   History,
 } from 'lucide-react';
 import { api, type CreateDraftRequest } from '@/lib/api';
@@ -24,7 +22,6 @@ import {
   buildDraftSnapshotDiffCandidateAssets,
   buildDraftSnapshotDiffModelFromStates,
   buildDraftSnapshotDiffSummaryFromStates,
-  getLatestDraftSnapshotSummary,
 } from '@/lib/drafts/revision-snapshots';
 import { isSelfContainedDesktopRuntime } from '@/lib/runtime';
 import SyncControls from '../common/SyncControls';
@@ -53,6 +50,7 @@ import {
 import { pickFile } from '@/utils/download';
 import CollapsibleSection from '../common/CollapsibleSection';
 import { DraftListSidebar } from './DraftListSidebar';
+import LibraryArchiveTab from './LibraryArchiveTab';
 import { DraftDuplicatesPanel } from './DraftDuplicatesPanel';
 import { DraftComparisonPanel } from './DraftComparisonPanel';
 import ManualDraftCreateModal from './ManualDraftCreateModal';
@@ -438,26 +436,8 @@ export default function Drafts() {
     selectedSnapshotPreviewIndex >= 0 && selectedSnapshotPreviewIndex < selectedSnapshotPreviewEntries.length - 1
       ? selectedSnapshotPreviewEntries[selectedSnapshotPreviewIndex + 1]
       : null;
-  const archivedRevisionSnapshots = useMemo(
-    () =>
-      (archivedDraftData?.drafts ?? [])
-        .flatMap((draft) =>
-          (draft.revision_snapshots ?? []).map((snapshot) => ({
-            draftId: draft.review_id,
-            draftName: draft.character_name || draft.seed,
-            snapshot,
-          })),
-        )
-        .sort(
-          (left, right) => new Date(right.snapshot.created_at).getTime() - new Date(left.snapshot.created_at).getTime(),
-        )
-        .slice(0, 4),
-    [archivedDraftData?.drafts],
-  );
   const recentFavoriteSeeds = favoriteSeeds.slice(0, 6);
   const recentSeedRuns = seedHistory.slice(0, 4);
-  const recentArchivedFavoriteSeeds = archivedFavoriteSeeds.slice(0, 6);
-  const recentArchivedSeedRuns = archivedSeedRuns.slice(0, 6);
 
   useEffect(() => {
     if (workbenchPreviewSide === 'right' && !rightDraftId && leftDraftId) {
@@ -564,7 +544,7 @@ export default function Drafts() {
           <div>
             <h3 className="text-sm font-semibold text-foreground">Snapshot preview</h3>
             <p className="mt-1 text-xs text-muted-foreground">
-              {selectedSnapshotEntry.draftName} · {selectedSnapshotEntry.snapshot.label || 'Restore point'} ·{' '}
+              {selectedSnapshotEntry.draftName} Â· {selectedSnapshotEntry.snapshot.label || 'Restore point'} Â·{' '}
               {formatTimestamp(selectedSnapshotEntry.snapshot.created_at)}
             </p>
           </div>
@@ -611,7 +591,7 @@ export default function Drafts() {
                   <option value="">Compare against current draft</option>
                   {selectedSnapshotCompareOptions.map((snapshot) => (
                     <option key={snapshot.id} value={snapshot.id}>
-                      {snapshot.label || 'Restore point'} · {formatTimestamp(snapshot.created_at)}
+                      {snapshot.label || 'Restore point'} Â· {formatTimestamp(snapshot.created_at)}
                     </option>
                   ))}
                 </select>
@@ -681,7 +661,7 @@ export default function Drafts() {
                         >
                           <div className="rounded-md border border-border/60 bg-background/80 p-2">
                             <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                              {selectedSnapshotCompareBaseSnapshot ? 'Baseline snapshot' : 'Current'} · line{' '}
+                              {selectedSnapshotCompareBaseSnapshot ? 'Baseline snapshot' : 'Current'} Â· line{' '}
                               {line.lineNumber}
                             </div>
                             <pre className="mt-1 whitespace-pre-wrap break-words font-mono text-[11px] text-foreground">
@@ -690,7 +670,7 @@ export default function Drafts() {
                           </div>
                           <div className="rounded-md border border-border/60 bg-background/80 p-2">
                             <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                              Snapshot · line {line.lineNumber}
+                              Snapshot Â· line {line.lineNumber}
                             </div>
                             <pre className="mt-1 whitespace-pre-wrap break-words font-mono text-[11px] text-foreground">
                               {line.snapshotLine || '(empty)'}
@@ -946,7 +926,7 @@ export default function Drafts() {
           )}
           <span className="text-sm">{notice.message}</span>
           <button type="button" onClick={() => setNotice(null)} className="ml-auto opacity-50 hover:opacity-100">
-            ×
+            Ã—
           </button>
         </div>
       )}
@@ -1092,7 +1072,7 @@ export default function Drafts() {
                               {snapshot.label || 'Restore point'}
                             </Link>
                             <p className="mt-1 text-xs text-muted-foreground">
-                              {draftName} · {formatTimestamp(snapshot.created_at)}
+                              {draftName} Â· {formatTimestamp(snapshot.created_at)}
                             </p>
                             {snapshot.reason && <p className="mt-1 text-xs text-muted-foreground">{snapshot.reason}</p>}
                           </div>
@@ -1152,11 +1132,11 @@ export default function Drafts() {
                                 {draftName}
                               </Link>
                               <p className="mt-1 text-xs text-muted-foreground">
-                                {entry.strategy === 'staged-merge' ? 'Staged merge' : 'Single-asset merge'} ·{' '}
+                                {entry.strategy === 'staged-merge' ? 'Staged merge' : 'Single-asset merge'} Â·{' '}
                                 {formatTimestamp(entry.created_at)}
                               </p>
                               <p className="mt-1 text-xs text-muted-foreground">
-                                Source: {sourceName} ({entry.source_side}) · Base: {baseName} ({entry.base_side})
+                                Source: {sourceName} ({entry.source_side}) Â· Base: {baseName} ({entry.base_side})
                               </p>
                               <p className="mt-1 text-xs text-muted-foreground">
                                 Assets: {entry.asset_names.join(', ')}
@@ -1241,7 +1221,7 @@ export default function Drafts() {
               <div className="rounded-lg border border-border bg-background/60 p-4">
                 <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Archived</div>
                 <div className="mt-1 text-sm font-semibold text-foreground">
-                  {archivedFavoriteSeeds.length} seeds · {archivedSeedRuns.length} runs
+                  {archivedFavoriteSeeds.length} seeds Â· {archivedSeedRuns.length} runs
                 </div>
               </div>
             </div>
@@ -1290,7 +1270,7 @@ export default function Drafts() {
                         <p className="mt-2 text-sm text-foreground">{entry.seed}</p>
                         <p className="mt-2 text-xs text-muted-foreground">
                           Added {formatTimestamp(entry.addedAt)}
-                          {entry.lastUsedAt ? ` · Last used ${formatTimestamp(entry.lastUsedAt)}` : ''}
+                          {entry.lastUsedAt ? ` Â· Last used ${formatTimestamp(entry.lastUsedAt)}` : ''}
                         </p>
                       </div>
                       <div className="flex shrink-0 gap-2">
@@ -1338,7 +1318,7 @@ export default function Drafts() {
                       <div>
                         <h3 className="text-sm font-semibold text-foreground">{entry.seeds.length} generated seeds</h3>
                         <p className="mt-1 text-xs text-muted-foreground">
-                          {entry.request.count} requested · {formatTimestamp(entry.createdAt)}
+                          {entry.request.count} requested Â· {formatTimestamp(entry.createdAt)}
                         </p>
                       </div>
                       <span className="app-pill app-pill-muted">Run</span>
@@ -1369,274 +1349,21 @@ export default function Drafts() {
       )}
 
       {activeTab === 'archive' && (
-        <div className="space-y-4">
-          <section className="app-panel p-5">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-semibold">Archive</h2>
-                <p className="text-sm text-muted-foreground">
-                  Keep source material recoverable without leaving it in the active library.
-                </p>
-              </div>
-              <span className="app-pill app-pill-muted">
-                {archivedDraftCount + archivedFavoriteSeeds.length + archivedSeedRuns.length} archived items
-              </span>
-            </div>
-
-            <div className="mt-4 grid gap-3 sm:grid-cols-3 text-sm">
-              <div className="rounded-lg border border-border bg-background/60 p-4">
-                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Drafts</div>
-                <div className="mt-1 text-2xl font-semibold text-foreground">{archivedDraftCount}</div>
-              </div>
-              <div className="rounded-lg border border-border bg-background/60 p-4">
-                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Favorite seeds</div>
-                <div className="mt-1 text-2xl font-semibold text-foreground">{archivedFavoriteSeeds.length}</div>
-              </div>
-              <div className="rounded-lg border border-border bg-background/60 p-4">
-                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Seed runs</div>
-                <div className="mt-1 text-2xl font-semibold text-foreground">{archivedSeedRuns.length}</div>
-              </div>
-            </div>
-          </section>
-
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-            <section className="app-panel p-5">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="text-lg font-semibold">Archived drafts</h2>
-                  <p className="text-sm text-muted-foreground">
-                    Restore archived drafts back into the active workspace or remove them permanently.
-                  </p>
-                </div>
-              </div>
-
-              {archivedDraftsLoading ? (
-                <div className="mt-4 rounded-lg border border-dashed border-border bg-background/40 p-6 text-sm text-muted-foreground">
-                  Loading archived drafts...
-                </div>
-              ) : archivedDraftError ? (
-                <div className="mt-4 rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
-                  Error loading archive: {archivedDraftError.message}
-                </div>
-              ) : (archivedDraftData?.drafts.length ?? 0) === 0 ? (
-                <div className="mt-4 rounded-lg border border-dashed border-border bg-background/40 p-6 text-sm text-muted-foreground">
-                  No archived drafts yet.
-                </div>
-              ) : (
-                <div className="mt-4 space-y-3">
-                  {(archivedDraftData?.drafts ?? []).map((draft) => (
-                    <article key={draft.review_id} className="rounded-lg border border-border bg-background/50 p-4">
-                      {(() => {
-                        const latestSnapshot = getLatestDraftSnapshotSummary(draft);
-                        return (
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="min-w-0">
-                              <Link
-                                to={`/drafts/${encodeURIComponent(draft.review_id)}`}
-                                className="text-sm font-semibold text-foreground hover:underline"
-                              >
-                                {draft.character_name || draft.seed}
-                              </Link>
-                              <p className="mt-1 text-xs text-muted-foreground">
-                                Archived {formatTimestamp(draft.archived_at)}
-                              </p>
-                              <p className="mt-2 text-sm text-muted-foreground line-clamp-2">{draft.seed}</p>
-                              {latestSnapshot && (
-                                <p className="mt-2 text-[11px] text-muted-foreground">
-                                  Snapshot: {latestSnapshot.label}
-                                  {latestSnapshot.reason ? ` · ${latestSnapshot.reason}` : ''}
-                                </p>
-                              )}
-                            </div>
-                            <div className="flex shrink-0 gap-2">
-                              {latestSnapshot && (
-                                <Link
-                                  to={`/drafts/${encodeURIComponent(draft.review_id)}?historySnapshot=${encodeURIComponent(latestSnapshot.id)}`}
-                                  className="app-button app-button-secondary"
-                                >
-                                  Preview snapshot
-                                </Link>
-                              )}
-                              <button
-                                type="button"
-                                onClick={() => void handleRestoreDraft(draft.review_id)}
-                                className="app-button app-button-secondary"
-                              >
-                                <RotateCcw className="h-4 w-4" />
-                                Restore
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => void handleDeleteDraft(draft.review_id)}
-                                className="app-button app-button-secondary text-destructive"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                                Delete
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })()}
-                    </article>
-                  ))}
-                </div>
-              )}
-            </section>
-
-            {archivedRevisionSnapshots.length > 0 && (
-              <section className="app-panel p-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <h2 className="text-lg font-semibold">Recent archived restore points</h2>
-                    <p className="text-sm text-muted-foreground">
-                      Jump straight into snapshot history for archived drafts without restoring them first.
-                    </p>
-                  </div>
-                  <span className="app-pill app-pill-muted">{archivedRevisionSnapshots.length} snapshots</span>
-                </div>
-
-                <div className="mt-4 space-y-3">
-                  {archivedRevisionSnapshots.map(({ draftId, draftName, snapshot }) => (
-                    <div
-                      key={`${draftId}-${snapshot.id}`}
-                      className="rounded-lg border border-border bg-background/50 p-4"
-                    >
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <div className="text-sm font-semibold text-foreground">
-                            {snapshot.label || 'Restore point'}
-                          </div>
-                          <div className="mt-1 text-xs text-muted-foreground">
-                            {draftName} · {formatTimestamp(snapshot.created_at)}
-                          </div>
-                          {snapshot.reason && (
-                            <div className="mt-1 text-xs text-muted-foreground">{snapshot.reason}</div>
-                          )}
-                        </div>
-                        <Link
-                          to={`/drafts/${encodeURIComponent(draftId)}?historySnapshot=${encodeURIComponent(snapshot.id)}`}
-                          className="app-button app-button-secondary"
-                        >
-                          Open snapshot diff
-                        </Link>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            <section className="space-y-4">
-              <div className="app-panel p-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <h2 className="text-lg font-semibold">Archived favorite seeds</h2>
-                    <p className="text-sm text-muted-foreground">
-                      Restore saved concepts when you want them back in the active seed shelf.
-                    </p>
-                  </div>
-                </div>
-
-                {recentArchivedFavoriteSeeds.length === 0 ? (
-                  <div className="mt-4 rounded-lg border border-dashed border-border bg-background/40 p-6 text-sm text-muted-foreground">
-                    No archived favorite seeds yet.
-                  </div>
-                ) : (
-                  <div className="mt-4 space-y-3">
-                    {recentArchivedFavoriteSeeds.map((entry) => (
-                      <article
-                        key={`${entry.seed}-${entry.archivedAt}`}
-                        className="rounded-lg border border-border bg-background/50 p-4"
-                      >
-                        <p className="text-sm text-foreground">{entry.seed}</p>
-                        <p className="mt-2 text-xs text-muted-foreground">
-                          Archived {formatTimestamp(entry.archivedAt)}
-                        </p>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleRestoreFavoriteSeed(entry.seed)}
-                            className="app-button app-button-secondary"
-                          >
-                            <RotateCcw className="h-4 w-4" />
-                            Restore
-                          </button>
-                          <Link to="/generate" state={{ seed: entry.seed }} className="app-button app-button-secondary">
-                            Use seed
-                          </Link>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteArchivedFavoriteSeed(entry.seed)}
-                            className="app-button app-button-secondary text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            Delete
-                          </button>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="app-panel p-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <h2 className="text-lg font-semibold">Archived seed runs</h2>
-                    <p className="text-sm text-muted-foreground">
-                      Restore old batches back into the active recent history or remove them permanently.
-                    </p>
-                  </div>
-                </div>
-
-                {recentArchivedSeedRuns.length === 0 ? (
-                  <div className="mt-4 rounded-lg border border-dashed border-border bg-background/40 p-6 text-sm text-muted-foreground">
-                    No archived seed runs yet.
-                  </div>
-                ) : (
-                  <div className="mt-4 space-y-3">
-                    {recentArchivedSeedRuns.map((entry) => (
-                      <article key={entry.id} className="rounded-lg border border-border bg-background/50 p-4">
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <h3 className="text-sm font-semibold text-foreground">
-                              {entry.seeds.length} generated seeds
-                            </h3>
-                            <p className="mt-1 text-xs text-muted-foreground">
-                              Archived {formatTimestamp(entry.archivedAt)}
-                            </p>
-                          </div>
-                          <span className="app-pill app-pill-muted">Archived run</span>
-                        </div>
-                        <p className="mt-3 text-sm text-muted-foreground line-clamp-3">{entry.request.genreLines}</p>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleRestoreSeedRun(entry.id)}
-                            className="app-button app-button-secondary"
-                          >
-                            <RotateCcw className="h-4 w-4" />
-                            Restore
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteArchivedSeedRun(entry.id)}
-                            className="app-button app-button-secondary text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            Delete
-                          </button>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </section>
-          </div>
-        </div>
+        <LibraryArchiveTab
+          archivedDraftCount={archivedDraftCount}
+          archivedDrafts={archivedDraftData?.drafts ?? []}
+          archivedDraftsLoading={archivedDraftsLoading}
+          archivedDraftError={archivedDraftError}
+          archivedFavoriteSeeds={archivedFavoriteSeeds}
+          archivedSeedRuns={archivedSeedRuns}
+          onRestoreDraft={handleRestoreDraft}
+          onDeleteDraft={handleDeleteDraft}
+          onRestoreFavoriteSeed={handleRestoreFavoriteSeed}
+          onDeleteArchivedFavoriteSeed={handleDeleteArchivedFavoriteSeed}
+          onRestoreSeedRun={handleRestoreSeedRun}
+          onDeleteArchivedSeedRun={handleDeleteArchivedSeedRun}
+        />
       )}
-
       {activeTab === 'worlds' && (
         <div className="grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
           <section className="app-panel p-5">
@@ -1870,7 +1597,7 @@ export default function Drafts() {
                         <div className="text-sm font-medium text-foreground">{snapshot.label || 'Restore point'}</div>
                         <div className="mt-1 text-xs text-muted-foreground">
                           {formatTimestamp(snapshot.created_at)}
-                          {snapshot.reason ? ` · ${snapshot.reason}` : ''}
+                          {snapshot.reason ? ` Â· ${snapshot.reason}` : ''}
                         </div>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
