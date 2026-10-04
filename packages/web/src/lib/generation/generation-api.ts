@@ -201,10 +201,13 @@ export function generateBatch(seeds: string[], request: Omit<GenerateBatchReques
         }
         emit('batch_complete', { index, seed, draft_path: draftId });
       } catch (error) {
+        const salvagedDraftId = (error as { salvagedDraftId?: string }).salvagedDraftId;
         emit('batch_error', {
           index,
           seed,
-          error: error instanceof Error ? error.message : 'Batch generation failed',
+          error: `${error instanceof Error ? error.message : 'Batch generation failed'}${
+            salvagedDraftId ? ` (partial draft saved as ${salvagedDraftId})` : ''
+          }`,
         });
       }
     };

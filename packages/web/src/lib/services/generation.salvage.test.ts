@@ -59,7 +59,15 @@ describe('GenerationService partial-run salvage', () => {
   });
 
   it('saves closed asset blocks as a partial draft when the stream dies mid-run', async () => {
-    await expect(drainGeneration()).rejects.toThrow('connection dropped');
+    let thrown: unknown;
+    try {
+      await drainGeneration();
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(Error);
+    expect((thrown as Error).message).toBe('connection dropped');
 
     const metadata = await DraftStorage.getAllMetadata();
     expect(metadata).toHaveLength(1);
@@ -72,6 +80,10 @@ describe('GenerationService partial-run salvage', () => {
     expect(draft?.assets.system_prompt).toBe('You are a pirate.');
     expect(draft?.metadata.notes).toContain('salvaged');
     expect(draft?.metadata.seed).toBe('a lonely space pirate');
+
+    // The thrown error carries the salvaged draft id so batch errors can
+    // surface which seed produced a partial draft.
+    expect((thrown as { salvagedDraftId?: string }).salvagedDraftId).toBe(metadata[0]!.review_id);
   });
 
   it('saves nothing when the stream dies before any asset block closes', async () => {

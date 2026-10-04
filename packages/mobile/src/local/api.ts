@@ -765,6 +765,7 @@ async function runGeneration(
         mode: request.mode,
         template: template.name,
         selectedAssets: request.selected_assets,
+        importedSource: request.imported_source,
         completedAssets: { ...assets },
         updatedAt: Date.now(),
       });

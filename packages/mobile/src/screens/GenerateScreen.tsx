@@ -1,5 +1,11 @@
 ﻿import { useEffect, useMemo, useState } from 'react';
-import { isResumableMobileGenerationSession, type MobileGenerationSession } from '../lib/generation-session';
+import { getOrderedAssets } from '@char-gen/shared';
+import {
+  isResumableMobileGenerationSession,
+  orderedCompletedAssetNames,
+  trimSessionFromAsset,
+  type MobileGenerationSession,
+} from '../lib/generation-session';
 import { clearGenerationSession, loadGenerationSession } from '../storage/generation-session';
 import {
   View,
@@ -204,6 +210,7 @@ export default function GenerateScreen() {
     template?: string;
     selectedAssets?: string[];
     resumeAssets?: Record<string, string>;
+    importedSource?: { label: string; source: string; assets: Record<string, string> };
   }) => {
     const effectiveSeed = override?.seed ?? seed;
     const effectiveMode = override?.mode ?? mode;
@@ -238,13 +245,15 @@ export default function GenerateScreen() {
         stream: true,
         selected_assets: effectiveSelectedAssets,
         resume_assets: override?.resumeAssets,
-        imported_source: importedCharacter
-          ? {
-              label: importedCharacter.name,
-              source: importedCharacter.sourcePreset || importedCharacter.sourceFormat,
-              assets: importedCharacter.assets,
-            }
-          : undefined,
+        imported_source:
+          override?.importedSource ??
+          (importedCharacter
+            ? {
+                label: importedCharacter.name,
+                source: importedCharacter.sourcePreset || importedCharacter.sourceFormat,
+                assets: importedCharacter.assets,
+              }
+            : undefined),
       });
 
       stream.subscribe((event) => {
@@ -293,18 +302,49 @@ export default function GenerateScreen() {
 
     const session = resumableSession;
     setResumableSession(null);
+
+    // Restore an imported source captured by the checkpoint so resumed runs
+    // keep the original import context. The stored source merges preset and
+    // format into one string, so the format is cast back on restore.
+    if (session.importedSource) {
+      setImportedCharacter({
+        name: session.importedSource.label,
+        sourceFormat: session.importedSource.source as ImportedCharacter['sourceFormat'],
+        assets: session.importedSource.assets,
+      });
+      setImportedTemplateName(null);
+    }
+
     void handleGenerate({
       seed: session.seed,
       mode: session.mode,
       template: session.template,
       selectedAssets: session.selectedAssets ?? [],
       resumeAssets: { ...session.completedAssets },
+      importedSource: session.importedSource,
     });
   };
 
   const handleDiscardSession = () => {
     clearGenerationSession();
     setResumableSession(null);
+  };
+
+  const resumeOrderedAssetNames = useMemo(() => {
+    if (!resumableSession) {
+      return [];
+    }
+
+    const templateDefinition = templates?.find((candidate: Template) => candidate.name === resumableSession.template);
+    return templateDefinition ? getOrderedAssets(templateDefinition).map((asset) => asset.name) : [];
+  }, [resumableSession, templates]);
+
+  const handleRestartSessionFrom = (assetName: string) => {
+    if (!resumableSession) {
+      return;
+    }
+
+    setResumableSession(trimSessionFromAsset(resumableSession, resumeOrderedAssetNames, assetName));
   };
 
   const modes: ContentMode[] = ['SFW', 'NSFW', 'Platform-Safe', 'Auto'];
@@ -321,6 +361,23 @@ export default function GenerateScreen() {
             {Object.keys(resumableSession.completedAssets).length === 1 ? '' : 's'} completed
           </Text>
           <Text style={styles.resumeSubtitle}>Resume from the checkpoint, or discard it to start fresh.</Text>
+          {orderedCompletedAssetNames(resumableSession, resumeOrderedAssetNames).length > 0 && (
+            <View style={styles.resumeAssetList}>
+              <Text style={styles.resumeAssetHint}>
+                Tap an asset to restart from it (it and later assets regenerate).
+              </Text>
+              {orderedCompletedAssetNames(resumableSession, resumeOrderedAssetNames).map((assetName) => (
+                <TouchableOpacity
+                  key={assetName}
+                  style={styles.resumeAssetRow}
+                  onPress={() => handleRestartSessionFrom(assetName)}
+                >
+                  <Text style={styles.resumeAssetName}>{assetName.replace(/_/g, ' ')}</Text>
+                  <Text style={styles.resumeAssetAction}>Restart here</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
           <View style={styles.resumeActions}>
             <TouchableOpacity style={styles.resumePrimaryButton} onPress={handleResumeSession}>
               <Text style={styles.generateButtonText}>Resume generation</Text>
@@ -859,6 +916,34 @@ function buildStyles(colors: ThemeColors) {
       padding: 16,
       marginTop: 12,
       marginBottom: 4,
+    },
+    resumeAssetList: {
+      marginTop: 12,
+      gap: 6,
+    },
+    resumeAssetHint: {
+      color: colors.muted_text,
+      fontSize: 12,
+      marginBottom: 2,
+    },
+    resumeAssetRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      borderColor: colors.border,
+      borderWidth: 1,
+      borderRadius: 8,
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+    },
+    resumeAssetName: {
+      color: colors.text,
+      fontSize: 13,
+    },
+    resumeAssetAction: {
+      color: colors.muted_text,
+      fontSize: 12,
+      fontWeight: '500',
     },
     resumeTitle: {
       color: colors.text,

@@ -15,6 +15,11 @@ export interface MobileGenerationSession {
   mode?: ContentMode;
   template: string;
   selectedAssets?: string[];
+  importedSource?: {
+    label: string;
+    source: string;
+    assets: Record<string, string>;
+  };
   completedAssets: Record<string, string>;
   updatedAt: number;
 }
@@ -32,6 +37,14 @@ export function isMobileGenerationSession(value: unknown): value is MobileGenera
     typeof session.template === 'string' &&
     (typeof session.selectedAssets === 'undefined' ||
       (Array.isArray(session.selectedAssets) && session.selectedAssets.every((name) => typeof name === 'string'))) &&
+    (typeof session.importedSource === 'undefined' ||
+      (!!session.importedSource &&
+        typeof session.importedSource === 'object' &&
+        typeof session.importedSource.label === 'string' &&
+        typeof session.importedSource.source === 'string' &&
+        !!session.importedSource.assets &&
+        typeof session.importedSource.assets === 'object' &&
+        Object.values(session.importedSource.assets).every((content) => typeof content === 'string'))) &&
     !!session.completedAssets &&
     typeof session.completedAssets === 'object' &&
     Object.values(session.completedAssets).every((content) => typeof content === 'string') &&
@@ -49,4 +62,37 @@ export function remainingAssetNames(session: MobileGenerationSession, orderedAss
   return orderedAssetNames.filter(
     (assetName) => !Object.prototype.hasOwnProperty.call(session.completedAssets, assetName),
   );
+}
+
+/** Completed checkpoint assets in template order. */
+export function orderedCompletedAssetNames(
+  session: MobileGenerationSession,
+  orderedAssetNames: readonly string[],
+): string[] {
+  return orderedAssetNames.filter((assetName) =>
+    Object.prototype.hasOwnProperty.call(session.completedAssets, assetName),
+  );
+}
+
+/**
+ * Restart-from semantics for the mobile resume card: drop the named asset and
+ * every asset after it in template order, keeping the approved prefix before
+ * it so the resumed run regenerates from that point.
+ */
+export function trimSessionFromAsset(
+  session: MobileGenerationSession,
+  orderedAssetNames: readonly string[],
+  restartFrom: string,
+): MobileGenerationSession {
+  const restartIndex = orderedAssetNames.indexOf(restartFrom);
+  if (restartIndex < 0) {
+    return session;
+  }
+
+  const keep = new Set(orderedAssetNames.slice(0, restartIndex));
+  const completedAssets = Object.fromEntries(
+    Object.entries(session.completedAssets).filter(([assetName]) => keep.has(assetName)),
+  );
+
+  return { ...session, completedAssets, updatedAt: Date.now() };
 }

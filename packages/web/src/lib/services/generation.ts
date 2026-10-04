@@ -272,6 +272,11 @@ export class GenerationService {
         connectedDraftIds,
         comparisonGroup: comparison_group,
       });
+      if (salvagedReviewId) {
+        // Surface the salvaged checkpoint to callers (batch errors append it
+        // to their message) without changing the thrown error type.
+        (error as { salvagedDraftId?: string }).salvagedDraftId = salvagedReviewId;
+      }
       usageCapture.finish({
         status: options.signal?.aborted ? 'aborted' : 'error',
         usage: engineUsage,
