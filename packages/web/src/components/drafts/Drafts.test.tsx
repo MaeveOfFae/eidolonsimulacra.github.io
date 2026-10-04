@@ -38,7 +38,14 @@ vi.mock('@/lib/api', () => ({
   api: {
     getDrafts: vi.fn(),
     getTemplates: vi.fn(async () => []),
-    getDraft: vi.fn(async () => ({ metadata: { review_id: 'd-1' }, assets: [] })),
+    getDraft: vi.fn(async (id: string) => ({
+      metadata: { review_id: id, character_name: 'Vesna' },
+      assets: {},
+      revision_snapshots: [],
+    })),
+    validateDraft: vi.fn(async () => ({ success: true, issues: [] })),
+    updateMetadata: vi.fn(async () => ({})),
+    getDraftSnapshots: vi.fn(async () => []),
     getWorldCharacterDraftLinks: vi.fn(async () => ({ links: [] })),
     restoreDraft: vi.fn(async () => ({})),
     deleteDraft: vi.fn(async () => ({})),
@@ -212,6 +219,43 @@ describe('Drafts library screen', () => {
     fireEvent.click(within(runArticle!).getByRole('button', { name: 'Archive run' }));
 
     expect(seedState.archivedRuns).toEqual(['run-1']);
+  });
+
+  it('shows the workbench inspector for saved drafts', async () => {
+    renderDrafts();
+
+    // `?tab=workbench` deep links bounce back to drafts while the draft query is still
+    // loading, so the workbench is reached through its button.
+    expect(await screen.findByText('Library overview')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Workbench' }));
+
+    expect(await screen.findByText('Workbench inspector')).toBeInTheDocument();
+    expect(screen.getByText('Compare drafts and inspect the active one.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Follow preview side' })).toBeInTheDocument();
+    expect(screen.queryByText('Workbench restore points')).not.toBeInTheDocument();
+  });
+
+  it('lists workbench restore points and marks the selected one as previewing', async () => {
+    renderDrafts({
+      drafts: [
+        {
+          ...activeDrafts[0],
+          revision_snapshots: [{ id: 'snap-1', label: 'Before merge', created_at: TIMESTAMP, state: { assets: {} } }],
+        },
+        activeDrafts[1],
+      ],
+    });
+
+    expect(await screen.findByText('Library overview')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Workbench' }));
+
+    expect(await screen.findByText('Workbench restore points')).toBeInTheDocument();
+    expect(screen.getAllByText('Before merge').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('1 snapshots')).toBeInTheDocument();
+
+    // The first restore point is selected automatically, so the preview renders inline.
+    expect(screen.getByRole('button', { name: 'Previewing' })).toBeInTheDocument();
+    expect(await screen.findByText('Snapshot preview')).toBeInTheDocument();
   });
 
   it('redirects the worlds tab to the worlds route instead of rendering the staged shelf', async () => {
