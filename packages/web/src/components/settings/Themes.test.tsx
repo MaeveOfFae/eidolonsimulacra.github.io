@@ -9,6 +9,9 @@ vi.mock('@/lib/api', () => ({
     getConfig: vi.fn(),
     getThemes: vi.fn(),
     importTheme: vi.fn(),
+    duplicateTheme: vi.fn(),
+    renameTheme: vi.fn(),
+    updateTheme: vi.fn(),
   },
 }));
 
@@ -66,6 +69,15 @@ describe('Themes manager', () => {
     vi.mocked(api.getConfig).mockResolvedValue({ theme_name: 'ember_night' } as never);
     vi.mocked(api.getThemes).mockResolvedValue(themeFixtures as never);
     vi.mocked(api.importTheme).mockResolvedValue({ display_name: 'Imported' } as never);
+    vi.mocked(api.duplicateTheme).mockResolvedValue(
+      createTheme({ name: 'charcoal_copy', display_name: 'Charcoal Copy', is_builtin: false }) as never,
+    );
+    vi.mocked(api.renameTheme).mockResolvedValue(
+      createTheme({ name: 'charcoal_renamed', display_name: 'Charcoal Renamed', is_builtin: false }) as never,
+    );
+    vi.mocked(api.updateTheme).mockResolvedValue(
+      createTheme({ name: 'charcoal', display_name: 'Charcoal', is_builtin: false }) as never,
+    );
     importPayload = null;
   });
 
@@ -232,6 +244,55 @@ describe('Themes manager', () => {
         conflict_strategy: 'overwrite',
         target_name: 'charcoal',
       });
+    });
+  });
+
+  it('submits the duplicate form with the edited preset name', async () => {
+    renderThemes();
+
+    await screen.findByRole('heading', { name: 'Ember Night' });
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Duplicate' })[0]!);
+    fireEvent.change(screen.getByPlaceholderText('theme name'), { target: { value: 'charcoal_night' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create copy' }));
+
+    await waitFor(() => {
+      expect(api.duplicateTheme).toHaveBeenCalledWith(
+        'charcoal',
+        expect.objectContaining({ new_name: 'charcoal_night' }),
+      );
+    });
+  });
+
+  it('cancels the rename form without renaming', async () => {
+    renderThemes();
+
+    await screen.findByRole('heading', { name: 'Charcoal' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Rename' }));
+
+    expect(screen.getByText('Rename Theme')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('theme name')).toHaveValue('charcoal');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.queryByText('Rename Theme')).not.toBeInTheDocument();
+    expect(api.renameTheme).not.toHaveBeenCalled();
+  });
+
+  it('saves the edited theme details', async () => {
+    renderThemes();
+
+    await screen.findByRole('heading', { name: 'Charcoal' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit details' }));
+
+    expect(screen.getByText('Edit Theme Details')).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText('author'), { target: { value: 'Maeve O.' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save details' }));
+
+    await waitFor(() => {
+      expect(api.updateTheme).toHaveBeenCalledWith('charcoal', expect.objectContaining({ author: 'Maeve O.' }));
     });
   });
 });

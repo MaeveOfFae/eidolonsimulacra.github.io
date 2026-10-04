@@ -15,33 +15,13 @@ import { EDITABLE_THEME_SECTIONS, resolveThemeColors, applyThemeToDocument } fro
 import { pickFile, saveDownload } from '../../utils/download';
 import SyncControls from '../common/SyncControls';
 import ThemeCard from './ThemeCard';
+import ThemeCardForms, {
+  type ThemeDuplicateDraft,
+  type ThemeMetadataDraft,
+  type ThemeRenameDraft,
+} from './ThemeCardForms';
 import ThemeFiltersPanel, { type ThemeSortMode, type ThemeViewMode } from './ThemeFiltersPanel';
 import ThemeImportDialog, { type ImportedThemePayload, type ThemeImportDraft } from './ThemeImportDialog';
-
-interface ThemeDuplicateDraft {
-  sourceName: string;
-  newName: string;
-  displayName: string;
-  description: string;
-  author: string;
-  tags: string;
-  basedOn: string;
-}
-
-interface ThemeRenameDraft {
-  sourceName: string;
-  newName: string;
-  displayName: string;
-}
-
-interface ThemeMetadataDraft {
-  sourceName: string;
-  displayName: string;
-  description: string;
-  author: string;
-  tags: string;
-  basedOn: string;
-}
 
 interface ThemeImportOptions {
   conflict_strategy?: 'reject' | 'rename' | 'overwrite';
@@ -827,181 +807,29 @@ export default function Themes() {
                   }
                 }}
               >
-                {isEditingMetadata && metadataDraft && (
-                  <div className="mt-4 space-y-3 rounded-lg border border-border bg-background/60 p-3">
-                    <div className="text-sm font-medium">Edit Theme Details</div>
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <input
-                        type="text"
-                        value={metadataDraft.displayName}
-                        onChange={(event) => setMetadataDraft({ ...metadataDraft, displayName: event.target.value })}
-                        placeholder="display name"
-                        className="rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      />
-                      <input
-                        type="text"
-                        value={metadataDraft.author}
-                        onChange={(event) => setMetadataDraft({ ...metadataDraft, author: event.target.value })}
-                        placeholder="author"
-                        className="rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      />
-                    </div>
-                    <textarea
-                      value={metadataDraft.description}
-                      onChange={(event) => setMetadataDraft({ ...metadataDraft, description: event.target.value })}
-                      rows={2}
-                      placeholder="description"
-                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    />
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <input
-                        type="text"
-                        value={metadataDraft.basedOn}
-                        onChange={(event) => setMetadataDraft({ ...metadataDraft, basedOn: event.target.value })}
-                        placeholder="based on"
-                        className="rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      />
-                      <input
-                        type="text"
-                        value={metadataDraft.tags}
-                        onChange={(event) => setMetadataDraft({ ...metadataDraft, tags: event.target.value })}
-                        placeholder="warm, editorial, night"
-                        className="rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      />
-                    </div>
-                    <div className="flex justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setMetadataDraft(null)}
-                        className="rounded-md border border-input px-3 py-2 text-sm hover:bg-accent"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => updateMetadataMutation.mutate(metadataDraft)}
-                        disabled={updateMetadataMutation.isPending || !metadataDraft.displayName.trim()}
-                        className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-                      >
-                        {updateMetadataMutation.isPending ? 'Saving...' : 'Save details'}
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {isDuplicating && duplicateDraft && (
-                  <div className="mt-4 space-y-3 rounded-lg border border-border bg-background/60 p-3">
-                    <div className="text-sm font-medium">Duplicate Theme</div>
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <input
-                        type="text"
-                        value={duplicateDraft.newName}
-                        onChange={(event) => setDuplicateDraft({ ...duplicateDraft, newName: event.target.value })}
-                        placeholder="theme name"
-                        className="rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      />
-                      <input
-                        type="text"
-                        value={duplicateDraft.displayName}
-                        onChange={(event) => setDuplicateDraft({ ...duplicateDraft, displayName: event.target.value })}
-                        placeholder="display name"
-                        className="rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      />
-                    </div>
-                    <textarea
-                      value={duplicateDraft.description}
-                      onChange={(event) => setDuplicateDraft({ ...duplicateDraft, description: event.target.value })}
-                      rows={2}
-                      placeholder="description"
-                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    />
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <input
-                        type="text"
-                        value={duplicateDraft.author}
-                        onChange={(event) => setDuplicateDraft({ ...duplicateDraft, author: event.target.value })}
-                        placeholder="author"
-                        className="rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      />
-                      <input
-                        type="text"
-                        value={duplicateDraft.basedOn}
-                        onChange={(event) => setDuplicateDraft({ ...duplicateDraft, basedOn: event.target.value })}
-                        placeholder="based on"
-                        className="rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      />
-                    </div>
-                    <input
-                      type="text"
-                      value={duplicateDraft.tags}
-                      onChange={(event) => setDuplicateDraft({ ...duplicateDraft, tags: event.target.value })}
-                      placeholder="warm, editorial, night"
-                      className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    />
-                    <div className="flex justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setDuplicateDraft(null)}
-                        className="rounded-md border border-input px-3 py-2 text-sm hover:bg-accent"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => duplicateMutation.mutate(duplicateDraft)}
-                        disabled={
-                          duplicateMutation.isPending ||
-                          !duplicateDraft.newName.trim() ||
-                          !duplicateDraft.displayName.trim()
-                        }
-                        className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-                      >
-                        {duplicateMutation.isPending ? 'Duplicating...' : 'Create copy'}
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {isRenaming && renameDraft && (
-                  <div className="mt-4 space-y-3 rounded-lg border border-border bg-background/60 p-3">
-                    <div className="text-sm font-medium">Rename Theme</div>
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <input
-                        type="text"
-                        value={renameDraft.newName}
-                        onChange={(event) => setRenameDraft({ ...renameDraft, newName: event.target.value })}
-                        placeholder="theme name"
-                        className="rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      />
-                      <input
-                        type="text"
-                        value={renameDraft.displayName}
-                        onChange={(event) => setRenameDraft({ ...renameDraft, displayName: event.target.value })}
-                        placeholder="display name"
-                        className="rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      />
-                    </div>
-                    <div className="flex justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setRenameDraft(null)}
-                        className="rounded-md border border-input px-3 py-2 text-sm hover:bg-accent"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => renameMutation.mutate(renameDraft)}
-                        disabled={
-                          renameMutation.isPending || !renameDraft.newName.trim() || !renameDraft.displayName.trim()
-                        }
-                        className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-                      >
-                        {renameMutation.isPending ? 'Renaming...' : 'Rename'}
-                      </button>
-                    </div>
-                  </div>
-                )}
+                <ThemeCardForms
+                  duplicateDraft={isDuplicating ? duplicateDraft : null}
+                  renameDraft={isRenaming ? renameDraft : null}
+                  metadataDraft={isEditingMetadata ? metadataDraft : null}
+                  isSubmittingDuplicate={duplicateMutation.isPending}
+                  isSubmittingRename={renameMutation.isPending}
+                  isSavingMetadata={updateMetadataMutation.isPending}
+                  onDuplicateDraftChange={setDuplicateDraft}
+                  onRenameDraftChange={setRenameDraft}
+                  onMetadataDraftChange={setMetadataDraft}
+                  onSubmitDuplicate={() => {
+                    if (duplicateDraft) duplicateMutation.mutate(duplicateDraft);
+                  }}
+                  onSubmitRename={() => {
+                    if (renameDraft) renameMutation.mutate(renameDraft);
+                  }}
+                  onSubmitMetadata={() => {
+                    if (metadataDraft) updateMetadataMutation.mutate(metadataDraft);
+                  }}
+                  onCancelDuplicate={() => setDuplicateDraft(null)}
+                  onCancelRename={() => setRenameDraft(null)}
+                  onCancelMetadata={() => setMetadataDraft(null)}
+                />
               </ThemeCard>
             );
           })}
