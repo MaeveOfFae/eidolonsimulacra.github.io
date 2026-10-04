@@ -109,6 +109,33 @@ describe('Themes manager', () => {
     expect(screen.queryByRole('heading', { name: 'Light' })).not.toBeInTheDocument();
   });
 
+  it('filters presets by author chip and reports the visible count', async () => {
+    renderThemes();
+
+    await screen.findByRole('heading', { name: 'Ember Night' });
+
+    expect(screen.getByText('Showing 3 of 3 presets.')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Maeve' }));
+
+    expect(screen.getByRole('heading', { name: 'Charcoal' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Light' })).not.toBeInTheDocument();
+    expect(screen.getByText('Showing 1 of 3 presets.')).toBeInTheDocument();
+  });
+
+  it('reports the empty state and tracks the sort selection', async () => {
+    renderThemes();
+
+    await screen.findByRole('heading', { name: 'Ember Night' });
+
+    fireEvent.change(screen.getByLabelText('Sort'), { target: { value: 'name-desc' } });
+    fireEvent.change(screen.getByLabelText('Search presets'), { target: { value: 'zzz' } });
+
+    expect(screen.getByLabelText('Sort')).toHaveValue('name-desc');
+    expect(screen.getByText('Showing 0 of 3 presets.')).toBeInTheDocument();
+    expect(screen.getByText('No themes match the current search and tag filters.')).toBeInTheDocument();
+  });
+
   it('flags an import conflict for a built-in preset without offering an overwrite', async () => {
     importPayload = {
       name: 'ember_night',
