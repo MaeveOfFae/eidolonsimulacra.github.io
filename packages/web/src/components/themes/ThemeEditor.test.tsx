@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter } from 'react-router-dom';
 import { api } from '@/lib/api';
 import ThemeEditor from './ThemeEditor';
 
@@ -48,7 +49,9 @@ function renderEditor(props: { showHeader?: boolean; showSyncControls?: boolean 
 
   render(
     <QueryClientProvider client={queryClient}>
-      <ThemeEditor {...props} />
+      <MemoryRouter initialEntries={['/theme-studio']}>
+        <ThemeEditor {...props} />
+      </MemoryRouter>
     </QueryClientProvider>,
   );
 }
@@ -60,38 +63,38 @@ describe('ThemeEditor', () => {
     vi.mocked(api.getThemes).mockResolvedValue(themeFixtures as never);
   });
 
-  it('renders the presets with its own header by default', async () => {
+  it('renders the shared manager with its page header by default', async () => {
     renderEditor();
 
-    expect(await screen.findByRole('heading', { name: 'Theme Editor' })).toBeInTheDocument();
+    // Full share: the studio embed now uses the manager's own header and filters.
+    expect(await screen.findByRole('heading', { name: 'Theme Manager' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Available Themes' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Light' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Charcoal' })).toBeInTheDocument();
     expect(screen.getByTestId('sync-controls')).toBeInTheDocument();
   });
 
-  it('swaps in the embedded header and hides sync when used inside the theme studio', async () => {
+  it('hides the page header and sync panel when embedded in the theme studio', async () => {
     renderEditor({ showHeader: false, showSyncControls: false });
 
     expect(await screen.findByRole('heading', { name: 'Available Themes' })).toBeInTheDocument();
-    // The page header gives way to a compact "Preset actions" heading.
-    expect(screen.queryByRole('heading', { name: 'Theme Editor' })).not.toBeInTheDocument();
-    expect(screen.getByText('Preset actions')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Charcoal' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Theme Manager' })).not.toBeInTheDocument();
     expect(screen.queryByTestId('sync-controls')).not.toBeInTheDocument();
   });
 
-  it('filters presets from its own filter row', async () => {
+  it('filters presets with the shared filter row', async () => {
     renderEditor({ showHeader: false, showSyncControls: false });
 
     await screen.findByRole('heading', { name: 'Charcoal' });
 
-    fireEvent.change(screen.getByLabelText('Search'), { target: { value: 'maeve' } });
+    fireEvent.change(screen.getByLabelText('Search presets'), { target: { value: 'maeve' } });
 
     expect(screen.getByRole('heading', { name: 'Charcoal' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Light' })).not.toBeInTheDocument();
 
-    // The source filter is a select here, not the chip row the manager uses.
-    fireEvent.change(screen.getByLabelText('Source'), { target: { value: 'builtin' } });
+    // The source filter is the manager's chip row, not the old select.
+    fireEvent.click(screen.getByRole('button', { name: 'Built-in' }));
 
     expect(screen.queryByRole('heading', { name: 'Charcoal' })).not.toBeInTheDocument();
   });
