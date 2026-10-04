@@ -16,6 +16,7 @@ import { ALL_PROVIDERS, PROVIDER_COLORS, PROVIDER_LABELS, type Provider } from '
 import CollapsibleSection from '../common/CollapsibleSection';
 import DeviceLinkSettings from './DeviceLinkSettings';
 import SettingsHelpSection from './SettingsHelpSection';
+import SettingsProvidersSection from './SettingsProvidersSection';
 import { getBlueprintsForFeature } from '@/lib/blueprints/featureSelection';
 
 type SettingsSectionId = 'setup' | 'providers' | 'generation' | 'help' | 'sync';
@@ -846,152 +847,20 @@ export default function Settings() {
       )}
 
       {activeSection === 'providers' && (
-        <div className="grid gap-6 xl:grid-cols-[minmax(280px,0.8fr)_minmax(0,1.2fr)]">
-          <section className="app-panel p-6">
-            <div className="mb-5 flex items-center gap-3">
-              <div className="rounded-xl bg-gradient-to-br from-primary to-accent p-2">
-                <Lock className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold">Providers</h2>
-                <p className="text-sm text-muted-foreground">Manage stored credentials one provider at a time.</p>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <label className="flex items-center gap-3 rounded-lg bg-background/60 p-3 transition-colors hover:bg-background/80 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={persistKeys}
-                  onChange={(e) => handlePersistKeysToggle(e.target.checked)}
-                  className="h-5 w-5 rounded border-input"
-                />
-                <span className="text-sm font-medium">Persist keys on this device</span>
-              </label>
-
-              <div className="rounded-xl border border-border/60 bg-background/35 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                  Configured providers
-                </p>
-                <div className="mt-2 text-2xl font-semibold text-foreground">
-                  {configuredProviderCount} / {ALL_PROVIDERS.length}
-                </div>
-              </div>
-
-              <div className="grid gap-2">
-                {ALL_PROVIDERS.map((provider) => {
-                  const isActive = provider === selectedProvider;
-                  const isConfigured = Boolean(localConfig.api_keys?.[provider]);
-
-                  return (
-                    <button
-                      key={provider}
-                      type="button"
-                      onClick={() => handleProviderSelect(provider)}
-                      className={`flex items-center justify-between rounded-xl border px-3 py-3 text-left transition-colors ${
-                        isActive
-                          ? 'border-primary/30 bg-primary/12 text-foreground'
-                          : 'border-border/60 bg-background/50 text-foreground hover:border-primary/35'
-                      }`}
-                    >
-                      <span className="font-medium">{PROVIDER_LABELS[provider]}</span>
-                      <span className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                        {isConfigured ? 'Configured' : provider === 'ollama' ? 'Local' : 'Empty'}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </section>
-
-          <section className="app-panel p-6">
-            <div className="mb-5 flex items-center gap-3">
-              <div className={`rounded-xl bg-gradient-to-br p-2 ${PROVIDER_COLORS[selectedProvider]}`}>
-                <Zap className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold">{PROVIDER_LABELS[selectedProvider]}</h2>
-                <p className="text-sm text-muted-foreground">
-                  Edit the selected provider without scanning the full list.
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div className="relative">
-                <input
-                  type={showKeys[selectedProvider] ? 'text' : 'password'}
-                  value={activeProviderKey}
-                  onChange={(e) => handleApiKeyChange(selectedProvider, e.target.value)}
-                  placeholder={
-                    selectedProvider === 'ollama'
-                      ? 'Optional - Ollama runs locally without auth'
-                      : `Enter your ${selectedProvider} API key`
-                  }
-                  className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 pr-12 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                />
-                <button
-                  type="button"
-                  onClick={() => toggleShowKey(selectedProvider)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 transition-colors hover:bg-accent"
-                >
-                  {showKeys[selectedProvider] ? (
-                    <EyeOff className="h-4 w-4 text-muted-foreground" />
-                  ) : (
-                    <Eye className="h-4 w-4 text-muted-foreground" />
-                  )}
-                </button>
-              </div>
-
-              <div className="flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  onClick={() => handleTest(selectedProvider)}
-                  disabled={selectedProvider !== 'ollama' && !activeProviderKey}
-                  className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <Zap className="h-4 w-4" />
-                  Test connection
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleApiKeyChange(selectedProvider, '')}
-                  disabled={!activeProviderKey}
-                  className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <XCircle className="h-4 w-4" />
-                  Clear key
-                </button>
-              </div>
-
-              {testResult?.provider === selectedProvider && (
-                <div
-                  className={`rounded-lg border px-4 py-3 text-sm ${
-                    testResult.success
-                      ? 'border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-300'
-                      : 'border-destructive/30 bg-destructive/10 text-destructive'
-                  }`}
-                >
-                  {testResult.message}
-                </div>
-              )}
-
-              <div className="rounded-xl border border-border/60 bg-background/35 p-4 text-sm text-muted-foreground">
-                {selectedProvider === 'openrouter' &&
-                  'Recommended default for browser-direct usage because it avoids the OpenAI CORS constraint.'}
-                {selectedProvider === 'openai' &&
-                  'Use a proxy or switch to OpenRouter when you want browser-direct generation without CORS issues.'}
-                {selectedProvider === 'ollama' &&
-                  'Keep Ollama running locally and use a base URL only when your instance is not on the default port.'}
-                {selectedProvider !== 'openrouter' &&
-                  selectedProvider !== 'openai' &&
-                  selectedProvider !== 'ollama' &&
-                  'Store only the providers you actually use so the browser profile does not collect stale keys.'}
-              </div>
-            </div>
-          </section>
-        </div>
+        <SettingsProvidersSection
+          persistKeys={persistKeys}
+          onPersistKeysToggle={handlePersistKeysToggle}
+          configuredProviderCount={configuredProviderCount}
+          selectedProvider={selectedProvider}
+          onProviderSelect={handleProviderSelect}
+          apiKeys={localConfig.api_keys}
+          showKeys={showKeys}
+          activeProviderKey={activeProviderKey}
+          onApiKeyChange={handleApiKeyChange}
+          onToggleShowKey={toggleShowKey}
+          testResult={testResult}
+          onTest={handleTest}
+        />
       )}
 
       {activeSection === 'generation' && (
