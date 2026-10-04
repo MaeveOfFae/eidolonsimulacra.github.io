@@ -1,6 +1,7 @@
 import type { Config, FeatureCategory } from '@char-gen/shared';
 import { Link } from 'react-router-dom';
 import { Zap } from 'lucide-react';
+import { countFeatureBlueprintOverrides } from '@/lib/blueprints/defaults';
 import CollapsibleSection from '../common/CollapsibleSection';
 
 /**
@@ -28,7 +29,8 @@ export default function SettingsGenerationSection({
   onFeatureBlueprintChange,
   featureBlueprintOptions,
 }: SettingsGenerationSectionProps) {
-  const configuredFeatureBlueprintCount = Object.values(featureBlueprints ?? {}).filter(Boolean).length;
+  // Only custom paths count: the five shipped defaults are not user overrides.
+  const configuredFeatureBlueprintCount = countFeatureBlueprintOverrides(featureBlueprints);
 
   return (
     <div className="space-y-6">

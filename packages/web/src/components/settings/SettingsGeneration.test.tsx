@@ -60,10 +60,8 @@ describe('Settings generation section', () => {
     expect(screen.getByLabelText('Max Concurrent')).toHaveValue(3);
     expect(screen.getByLabelText('Rate Limit Delay')).toHaveValue(1);
 
-    // The blueprint panel is collapsed, so only its preview is on screen. Note the
-    // scan counts the five *default* system blueprint paths as overrides, so a fresh
-    // install already reports five rather than none — that metric is pre-existing.
-    expect(screen.getByText('5 overrides configured')).toBeInTheDocument();
+    // A fresh install ships the five default system blueprints, which are not overrides.
+    expect(screen.getByText('0 overrides configured')).toBeInTheDocument();
     expect(screen.queryByLabelText('Orchestration')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /Feature blueprint defaults/ }));
@@ -94,23 +92,23 @@ describe('Settings generation section', () => {
 
     renderGenerationSettings();
 
-    expect(await screen.findByText('5 overrides configured')).toBeInTheDocument();
+    // A custom orchestration path is the only override.
+    expect(await screen.findByText('1 override configured')).toBeInTheDocument();
 
     // The config really does hold the custom path...
     expect(configManager.getConfig().feature_blueprints?.orchestration).toBe('blueprints/custom/orchestrator.md');
 
     fireEvent.click(screen.getByRole('button', { name: /Feature blueprint defaults/ }));
     const orchestration = screen.getByLabelText('Orchestration');
-    // ...but the select cannot show it, because its options come from the loaded
+    // ...but the select cannot show it yet, because its options come from the loaded
     // blueprint list (empty in this test) and a select whose value matches no option
-    // falls back to the first one. So a stored override that is not in the list
-    // silently reads as the default.
+    // falls back to the first one. Issue tracked separately.
     expect(orchestration).toHaveValue('blueprints/system/generator.md');
 
-    // Choosing "None (Built-in)" drops that override and the preview recomputes live.
+    // Choosing "None (Built-in)" drops the override and the preview recomputes live.
     fireEvent.change(orchestration, { target: { value: '' } });
     fireEvent.click(screen.getByRole('button', { name: /Feature blueprint defaults/ }));
 
-    expect(screen.getByText('4 overrides configured')).toBeInTheDocument();
+    expect(screen.getByText('0 overrides configured')).toBeInTheDocument();
   });
 });

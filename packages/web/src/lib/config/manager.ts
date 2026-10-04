@@ -5,6 +5,7 @@
 
 import type { ApiKeys, Config, FeatureBlueprintDefaults, HelpState } from '@char-gen/shared';
 import { readPersistedString, removePersistedValues, writePersistedString } from '../persistence/storage.js';
+import { DEFAULT_FEATURE_BLUEPRINT_PATHS } from '@/lib/blueprints/defaults';
 
 const CONFIG_STORAGE_KEY = 'eidolon.web.config';
 const LEGACY_CONFIG_STORAGE_KEYS = ['bpui.web.config'];
@@ -231,11 +232,7 @@ export class ConfigManager {
       },
       help: createDefaultHelpState(),
       feature_blueprints: {
-        orchestration: 'blueprints/system/generator.md',
-        seed_generation: 'blueprints/system/seed_generator.md',
-        offspring_generation: 'blueprints/system/offspring_generator.md',
-        worldbook_generation: 'blueprints/system/lorebook_generator.md',
-        intro_scene_generation: 'blueprints/system/intro_scene.md',
+        ...DEFAULT_FEATURE_BLUEPRINT_PATHS,
       },
     };
   }
