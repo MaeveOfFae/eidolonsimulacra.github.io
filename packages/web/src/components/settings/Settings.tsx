@@ -12,25 +12,11 @@ import {
 } from '../../lib/config/manager.js';
 import { isDesktopRuntime } from '../../lib/runtime.js';
 import { createEngine, MODEL_SUGGESTIONS } from '../../lib/llm/factory.js';
+import { ALL_PROVIDERS, PROVIDER_COLORS, PROVIDER_LABELS, type Provider } from '../../lib/llm/providers.js';
 import CollapsibleSection from '../common/CollapsibleSection';
 import DeviceLinkSettings from './DeviceLinkSettings';
 import SettingsHelpSection from './SettingsHelpSection';
 import { getBlueprintsForFeature } from '@/lib/blueprints/featureSelection';
-
-const ALL_PROVIDERS = ['openai', 'google', 'openrouter', 'anthropic', 'deepseek', 'zai', 'moonshot', 'ollama'] as const;
-type Provider = (typeof ALL_PROVIDERS)[number];
-
-// Provider colors for badges
-const PROVIDER_COLORS: Record<Provider, string> = {
-  openai: 'from-emerald-500 to-green-500',
-  google: 'from-blue-500 to-cyan-500',
-  openrouter: 'from-violet-500 to-purple-500',
-  anthropic: 'from-orange-500 to-red-500',
-  deepseek: 'from-cyan-500 to-teal-500',
-  zai: 'from-pink-500 to-rose-500',
-  moonshot: 'from-orange-500 to-amber-500',
-  ollama: 'from-slate-500 to-gray-600',
-};
 
 type SettingsSectionId = 'setup' | 'providers' | 'generation' | 'help' | 'sync';
 
@@ -45,17 +31,6 @@ const SETTINGS_SECTIONS: Array<{ id: SettingsSectionId; label: string }> = [
 function isSettingsSectionId(value: string | null): value is SettingsSectionId {
   return SETTINGS_SECTIONS.some((section) => section.id === value);
 }
-
-const PROVIDER_LABELS: Record<Provider, string> = {
-  openai: 'OpenAI',
-  google: 'Google',
-  openrouter: 'OpenRouter',
-  anthropic: 'Anthropic',
-  deepseek: 'DeepSeek',
-  zai: 'Z.AI',
-  moonshot: 'Moonshot',
-  ollama: 'Ollama',
-};
 
 export default function Settings() {
   const [searchParams, setSearchParams] = useSearchParams();
