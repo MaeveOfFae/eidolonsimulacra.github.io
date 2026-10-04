@@ -16,6 +16,13 @@ import {
 import type { ThemeColors, ThemePreset } from '@char-gen/shared';
 import { api } from '@/lib/api';
 import { isSelfContainedDesktopRuntime } from '@/lib/runtime';
+import {
+  buildUniqueThemeName,
+  palettePreviewKeys,
+  parseTagInput,
+  renderColorValue,
+  sanitizeThemeName,
+} from '@/lib/themes/theme-helpers';
 import { EDITABLE_THEME_SECTIONS, resolveThemeColors, applyThemeToDocument } from '../../theme/theme';
 import { pickFile, saveDownload } from '../../utils/download';
 import SyncControls from '../common/SyncControls';
@@ -139,62 +146,6 @@ async function readImportedThemePayload(file: File): Promise<ImportedThemePayloa
   }
 
   return { name, displayName, description, author, tags, basedOn, colors: colors as ThemeColors };
-}
-
-function parseTagInput(value: string): string[] {
-  return value
-    .split(',')
-    .map((tag) => tag.trim())
-    .filter(Boolean);
-}
-
-function sanitizeThemeName(name: string): string {
-  return name
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9_-]+/g, '_')
-    .replace(/^_+|_+$/g, '');
-}
-
-function buildUniqueThemeName(baseName: string, themes: ThemePreset[]): string {
-  const sanitizedBase = sanitizeThemeName(baseName);
-  const existing = new Set(themes.map((theme) => sanitizeThemeName(theme.name)));
-
-  if (!existing.has(sanitizedBase)) {
-    return sanitizedBase;
-  }
-
-  let index = 2;
-  while (existing.has(`${sanitizedBase}_${index}`)) {
-    index += 1;
-  }
-
-  return `${sanitizedBase}_${index}`;
-}
-
-const palettePreviewKeys: Array<keyof ThemeColors> = [
-  'background',
-  'surface',
-  'accent',
-  'highlight',
-  'button',
-  'tok_brackets',
-];
-
-function isHexColor(value: string): boolean {
-  return /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(value.trim());
-}
-
-function renderColorValue(value: string) {
-  return (
-    <div className="flex items-center gap-2">
-      <span
-        className="h-4 w-4 rounded-full border border-black/10"
-        style={{ backgroundColor: isHexColor(value) ? value : 'transparent' }}
-      />
-      <span className="font-mono text-xs">{value}</span>
-    </div>
-  );
 }
 
 export default function Themes({ showHeader = true, showSyncControls = true }: ThemeEditorProps) {
