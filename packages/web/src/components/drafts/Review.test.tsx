@@ -57,19 +57,21 @@ vi.mock('../common/GuidedTourContext', () => ({
   useGuidedTour: () => mockUseGuidedTour(),
 }));
 
-const draftResponse = {
-  metadata: {
-    seed: 'test-seed',
-    favorite: false,
-    mode: 'NSFW',
-    template_name: 'V2/V3 Card',
-    tags: [],
-    parent_drafts: [],
-  },
-  assets: {
-    system_prompt: 'hello',
-  },
-};
+function createDraftResponse() {
+  return {
+    metadata: {
+      seed: 'test-seed',
+      favorite: false,
+      mode: 'NSFW',
+      template_name: 'V2/V3 Card',
+      tags: [] as string[],
+      parent_drafts: [] as string[],
+    },
+    assets: { system_prompt: 'hello' } as Record<string, string>,
+  };
+}
+
+let draftResponse = createDraftResponse();
 
 const templatesResponse = [
   {
@@ -110,6 +112,7 @@ describe('Review export modal behavior', () => {
     writeText.mockReset();
     mutationResults = [];
     worldsResponse = { worlds: [] };
+    draftResponse = createDraftResponse();
     mockIsSelfContainedDesktop.mockReturnValue(false);
 
     Object.defineProperty(navigator, 'clipboard', {
@@ -494,6 +497,49 @@ describe('Review export modal behavior', () => {
 
       expect(attachCall).toBe('w-1');
     });
+  });
+
+  it('shows the overview metadata with export readiness and the missing-asset note', async () => {
+    mockUseGuidedTour.mockReturnValue({
+      activeTourId: null,
+      activeStepIndex: 0,
+      isTourCompleted: vi.fn(() => false),
+      restartTour: vi.fn(),
+      startTour: vi.fn(),
+    });
+
+    renderReview();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Overview/ }));
+
+    expect(screen.getByText('Export readiness')).toBeInTheDocument();
+    expect(screen.getByText(/This draft is missing 1 template asset/)).toBeInTheDocument();
+    expect(screen.getByText('Draft card image')).toBeInTheDocument();
+    expect(screen.getByText('No PNG card image attached yet. PNG export needs one.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Attach PNG image' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Clear image' })).not.toBeInTheDocument();
+  });
+
+  it('shows the attached card image with its clear action', async () => {
+    mockUseGuidedTour.mockReturnValue({
+      activeTourId: null,
+      activeStepIndex: 0,
+      isTourCompleted: vi.fn(() => false),
+      restartTour: vi.fn(),
+      startTour: vi.fn(),
+    });
+    draftResponse = {
+      ...createDraftResponse(),
+      assets: { system_prompt: 'hello', card_image: 'data:image/png;base64,AAA' },
+    };
+
+    renderReview();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Overview/ }));
+
+    expect(screen.getByText('PNG card image attached. Standard PNG card export is available.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Clear image' })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'test-seed card image' })).toBeInTheDocument();
   });
 
   it('records an asset approval decision from the review card', async () => {

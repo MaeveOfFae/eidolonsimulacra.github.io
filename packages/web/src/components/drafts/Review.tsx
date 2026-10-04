@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, X, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, X } from 'lucide-react';
 import {
   MAX_CONNECTED_DRAFT_REFERENCES,
   buildAssetApprovalSummary,
@@ -23,6 +23,7 @@ import { useAssistantScreenContext } from '../common/useAssistantContext';
 import DraftSendConfigPanel from './DraftSendConfigPanel';
 import ReviewAssetCards, { type ReviewAssetEntry } from './ReviewAssetCards';
 import ReviewHero from './ReviewHero';
+import ReviewOverviewSection from './ReviewOverviewSection';
 import ReviewWorldAttachmentsSection from './ReviewWorldAttachmentsSection';
 import ReviewChecklistPanel from './ReviewChecklistPanel';
 import VersionHistoryPanel from './VersionHistoryPanel';
@@ -843,10 +844,10 @@ export default function Review() {
         }}
       />
 
-      <CollapsibleSection
-        title="Overview"
-        subtitle="Tags, validation, lineage, and archive state"
-        preview={overviewPreview || 'No extra metadata'}
+      <ReviewOverviewSection
+        metadata={draft.metadata}
+        assets={draft.assets}
+        overviewPreview={overviewPreview}
         defaultExpanded={Boolean(
           validationMessage ||
           draft.metadata.parent_drafts?.length ||
@@ -854,256 +855,45 @@ export default function Review() {
           mergeProvenanceSummary ||
           (selfContainedDesktop && (hasMultipleWorldAttachments || linkedWorldAttachment || worldsData?.worlds.length)),
         )}
-        density="compact"
-        className="app-panel"
-        bodyClassName="space-y-2.5"
-      >
-        <div className="flex min-w-0 flex-wrap gap-1.5 sm:gap-2">
-          {draft.metadata.mode && (
-            <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs text-primary sm:px-3 sm:text-sm">
-              {draft.metadata.mode}
-            </span>
-          )}
-          {draft.metadata.template_name && (
-            <span className="rounded-full bg-secondary px-2.5 py-1 text-xs sm:px-3 sm:text-sm">
-              {draft.metadata.template_name}
-            </span>
-          )}
-          {draft.metadata.genre && (
-            <span className="rounded-full bg-muted px-2.5 py-1 text-xs sm:px-3 sm:text-sm">{draft.metadata.genre}</span>
-          )}
-          {draft.metadata.tags?.map((tag) => (
-            <span key={tag} className="rounded-full bg-muted px-2.5 py-1 text-xs sm:px-3 sm:text-sm">
-              {tag}
-            </span>
-          ))}
-        </div>
-
-        {validationMessage ? (
-          <div className="app-note p-4 text-sm">
-            {validationMessage}.{' '}
-            <Link to="/validation" className="text-primary hover:underline">
-              Open Validation screen
-            </Link>
-          </div>
-        ) : null}
-
-        {missingAssetCount > 0 ? (
-          <div className="app-note border-primary/30 bg-primary/10 p-4 text-sm text-foreground">
-            This draft is missing {missingAssetCount} template asset{missingAssetCount === 1 ? '' : 's'}.{' '}
-            {missingAssetCount === 1 ? 'Create it' : 'Create them'} with AI from the existing draft context or add{' '}
-            {missingAssetCount === 1 ? 'it' : 'them'} manually before export.
-          </div>
-        ) : null}
-
-        <div
-          className={`rounded-xl border p-4 text-sm ${exportReadiness.requiresAcknowledgement ? 'border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-100' : 'border-emerald-500/30 bg-emerald-500/10 text-muted-foreground'}`}
-        >
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                {exportReadiness.requiresAcknowledgement ? (
-                  <AlertTriangle className="h-4 w-4 shrink-0 text-amber-700 dark:text-amber-300" />
-                ) : (
-                  <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-300" />
-                )}
-                <div className="font-medium text-foreground">Export readiness</div>
-              </div>
-              <div className="mt-1 text-xs text-muted-foreground">
-                {exportReadiness.validationState === 'checking'
-                  ? 'Checking validation and saved review annotations.'
-                  : exportReadiness.requiresAcknowledgement
-                    ? 'This draft still has review blockers that will require acknowledgment in the export modal.'
-                    : 'Validation and saved review annotations do not currently show export blockers.'}
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-2 text-xs">
-              <span className="rounded-full border border-border/60 bg-background/70 px-2.5 py-1 text-foreground">
-                Validation{' '}
-                {exportReadiness.validationState === 'checking'
-                  ? 'checking'
-                  : exportReadiness.validationState === 'passing'
-                    ? 'passing'
-                    : 'failing'}
-              </span>
-              <span className="rounded-full border border-border/60 bg-background/70 px-2.5 py-1 text-foreground">
-                {exportReadiness.reviewedAssetCount}/{assetNames.length} scored
-              </span>
-              <span className="rounded-full border border-border/60 bg-background/70 px-2.5 py-1 text-foreground">
-                {exportReadiness.assetNoteCount} asset note{exportReadiness.assetNoteCount === 1 ? '' : 's'}
-              </span>
-              {assetApprovals.totalAssetCount > 0 && (
-                <span className="rounded-full border border-border/60 bg-background/70 px-2.5 py-1 text-foreground">
-                  {assetApprovals.approvedCount}/{assetApprovals.totalAssetCount} approved
-                </span>
-              )}
-            </div>
-          </div>
-
-          {exportReadiness.reviewerSummary ? (
-            <div className="mt-3 rounded-lg border border-border/60 bg-background/60 px-3 py-2 text-xs text-muted-foreground">
-              Reviewer summary saved.
-            </div>
-          ) : null}
-
-          {exportReadiness.blockingWarnings.length > 0 ? (
-            <div className="mt-3 space-y-2 rounded-lg border border-amber-500/40 bg-background/60 p-3 text-xs text-amber-800 dark:text-amber-200">
-              {exportReadiness.blockingWarnings.map((warning) => (
-                <div key={warning}>{warning}</div>
-              ))}
-              {exportReadiness.lowScoreEntries.length > 0 && (
-                <div>
-                  Low-score assets:{' '}
-                  {exportReadiness.lowScoreEntries
-                    .map(({ assetName, score }) => `${assetName.replace(/_/g, ' ')} (${score}/5)`)
-                    .join(', ')}
-                </div>
-              )}
-            </div>
-          ) : exportReadiness.unratedAssetCount > 0 ? (
-            <div className="mt-3 rounded-lg border border-border/60 bg-background/60 px-3 py-2 text-xs text-muted-foreground">
-              {exportReadiness.unratedAssetCount} asset{exportReadiness.unratedAssetCount === 1 ? '' : 's'} do not have
-              saved review scores yet.
-            </div>
-          ) : null}
-        </div>
-
-        {draft.metadata.parent_drafts && draft.metadata.parent_drafts.length > 0 ? (
-          <div className="app-note px-4 py-3 text-sm text-muted-foreground">
-            <span className="font-medium text-foreground">Lineage:</span> Offspring of:{' '}
-            {draft.metadata.parent_drafts.join(' + ')}
-          </div>
-        ) : null}
-
-        {selfContainedDesktop && (
-          <ReviewWorldAttachmentsSection
-            hasMultipleWorldAttachments={hasMultipleWorldAttachments}
-            linkedWorldAttachments={linkedWorldAttachments}
-            linkedWorldAttachment={linkedWorldAttachment}
-            worlds={worldsData?.worlds ?? []}
-            pendingWorldId={pendingWorldId}
-            onPendingWorldIdChange={setPendingWorldId}
-            isAttaching={attachDraftToWorld.isPending}
-            isDetaching={detachDraftFromWorld.isPending}
-            onAttach={(worldId) => attachDraftToWorld.mutate(worldId)}
-            onDetach={() => detachDraftFromWorld.mutate()}
-            linkedReviewCharacter={linkedReviewCharacter}
-            linkedReviewRelationships={linkedReviewRelationships}
-            linkedWorldCharacters={linkedWorldCharacters}
-            linkedRelationshipTargets={linkedRelationshipTargets}
-            pendingRelationshipTargetId={pendingRelationshipTargetId}
-            onPendingRelationshipTargetIdChange={setPendingRelationshipTargetId}
-            pendingRelationshipLabel={pendingRelationshipLabel}
-            onPendingRelationshipLabelChange={setPendingRelationshipLabel}
-            pendingRelationshipNotes={pendingRelationshipNotes}
-            onPendingRelationshipNotesChange={setPendingRelationshipNotes}
-            isAddingRelationship={addRelationshipFromReview.isPending}
-            onAddRelationship={() => addRelationshipFromReview.mutate()}
-            worldRelationshipFeedback={worldRelationshipFeedback}
-            worldAttachmentFeedback={worldAttachmentFeedback}
-          />
-        )}
-
-        {mergeProvenanceSummary ? (
-          <div className="rounded-xl border border-border/60 bg-background/40 p-4 text-sm">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <div className="font-medium text-foreground">Merge provenance</div>
-                <div className="mt-1 text-muted-foreground">
-                  {mergeProvenanceSummary.strategyLabel} recorded {mergeProvenanceSummary.createdAt}.
-                </div>
-              </div>
-              <span className="rounded-full border border-border/60 bg-background/70 px-2.5 py-1 text-xs text-foreground">
-                {mergeProvenanceSummary.strategyLabel}
-              </span>
-            </div>
-
-            <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-              <div className="rounded-lg border border-border/60 bg-background/60 p-3 text-xs text-muted-foreground">
-                <div className="font-medium uppercase tracking-[0.14em] text-muted-foreground">Source</div>
-                <Link
-                  to={`/drafts/${encodeURIComponent(mergeProvenanceSummary.sourceDraftId)}`}
-                  className="mt-1 block text-sm font-medium text-foreground hover:underline"
-                >
-                  {mergeProvenanceSummary.sourceName}
-                </Link>
-                <div className="mt-1">
-                  {mergeProvenanceSummary.sourceSide} side
-                  {mergeProvenanceSummary.sourceSnapshotLabel ? ` · ${mergeProvenanceSummary.sourceSnapshotLabel}` : ''}
-                </div>
-              </div>
-              <div className="rounded-lg border border-border/60 bg-background/60 p-3 text-xs text-muted-foreground">
-                <div className="font-medium uppercase tracking-[0.14em] text-muted-foreground">Base branch</div>
-                <Link
-                  to={`/drafts/${encodeURIComponent(mergeProvenanceSummary.baseDraftId)}`}
-                  className="mt-1 block text-sm font-medium text-foreground hover:underline"
-                >
-                  {mergeProvenanceSummary.baseName}
-                </Link>
-                <div className="mt-1">
-                  {mergeProvenanceSummary.baseSide} side
-                  {mergeProvenanceSummary.baseSnapshotLabel ? ` · ${mergeProvenanceSummary.baseSnapshotLabel}` : ''}
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-3 rounded-lg border border-border/60 bg-background/60 p-3 text-xs text-muted-foreground">
-              <div className="font-medium text-foreground">Merged assets</div>
-              <div className="mt-1">{mergeProvenanceSummary.assetNames.join(', ')}</div>
-            </div>
-          </div>
-        ) : null}
-
-        {draft.metadata.archived_at ? (
-          <div className="app-note px-4 py-3 text-sm text-muted-foreground">
-            Archived{' '}
-            {new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(
-              new Date(draft.metadata.archived_at),
-            )}
-          </div>
-        ) : null}
-
-        <div className="rounded-xl border border-border/60 bg-background/40 p-4 text-sm">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <div className="font-medium text-foreground">Draft card image</div>
-              <div className="mt-1 text-muted-foreground">
-                {draft.assets.card_image || draft.metadata.card_metadata?.avatar?.startsWith('data:image/png;base64,')
-                  ? 'PNG card image attached. Standard PNG card export is available.'
-                  : 'No PNG card image attached yet. PNG export needs one.'}
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => void handleAttachCardImage()}
-                className="inline-flex items-center gap-2 rounded-xl border border-input bg-background px-3 py-2 text-sm hover:bg-accent"
-              >
-                Attach PNG image
-              </button>
-              {(draft.assets.card_image ||
-                draft.metadata.card_metadata?.avatar?.startsWith('data:image/png;base64,')) && (
-                <button
-                  type="button"
-                  onClick={() => void handleClearCardImage()}
-                  className="inline-flex items-center gap-2 rounded-xl border border-input bg-background px-3 py-2 text-sm hover:bg-accent"
-                >
-                  Clear image
-                </button>
-              )}
-            </div>
-          </div>
-          {(draft.assets.card_image || draft.metadata.card_metadata?.avatar?.startsWith('data:image/png;base64,')) && (
-            <div className="mt-4 overflow-hidden rounded-xl border border-border/60 bg-background/60 p-3">
-              <img
-                src={draft.assets.card_image || draft.metadata.card_metadata?.avatar || ''}
-                alt={`${draft.metadata.character_name || draft.metadata.seed} card image`}
-                className="mx-auto max-h-72 rounded-lg object-contain"
-              />
-            </div>
-          )}
-        </div>
-      </CollapsibleSection>
+        validationMessage={validationMessage}
+        missingAssetCount={missingAssetCount}
+        exportReadiness={exportReadiness}
+        assetNames={assetNames}
+        assetApprovals={assetApprovals}
+        mergeProvenanceSummary={mergeProvenanceSummary}
+        onAttachCardImage={handleAttachCardImage}
+        onClearCardImage={handleClearCardImage}
+        worldAttachments={
+          selfContainedDesktop && (
+            <ReviewWorldAttachmentsSection
+              hasMultipleWorldAttachments={hasMultipleWorldAttachments}
+              linkedWorldAttachments={linkedWorldAttachments}
+              linkedWorldAttachment={linkedWorldAttachment}
+              worlds={worldsData?.worlds ?? []}
+              pendingWorldId={pendingWorldId}
+              onPendingWorldIdChange={setPendingWorldId}
+              isAttaching={attachDraftToWorld.isPending}
+              isDetaching={detachDraftFromWorld.isPending}
+              onAttach={(worldId) => attachDraftToWorld.mutate(worldId)}
+              onDetach={() => detachDraftFromWorld.mutate()}
+              linkedReviewCharacter={linkedReviewCharacter}
+              linkedReviewRelationships={linkedReviewRelationships}
+              linkedWorldCharacters={linkedWorldCharacters}
+              linkedRelationshipTargets={linkedRelationshipTargets}
+              pendingRelationshipTargetId={pendingRelationshipTargetId}
+              onPendingRelationshipTargetIdChange={setPendingRelationshipTargetId}
+              pendingRelationshipLabel={pendingRelationshipLabel}
+              onPendingRelationshipLabelChange={setPendingRelationshipLabel}
+              pendingRelationshipNotes={pendingRelationshipNotes}
+              onPendingRelationshipNotesChange={setPendingRelationshipNotes}
+              isAddingRelationship={addRelationshipFromReview.isPending}
+              onAddRelationship={() => addRelationshipFromReview.mutate()}
+              worldRelationshipFeedback={worldRelationshipFeedback}
+              worldAttachmentFeedback={worldAttachmentFeedback}
+            />
+          )
+        }
+      />
 
       {assetActionError && (
         <div className="app-note border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
