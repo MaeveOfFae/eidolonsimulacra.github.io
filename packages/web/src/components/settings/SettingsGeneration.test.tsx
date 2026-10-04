@@ -100,10 +100,12 @@ describe('Settings generation section', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Feature blueprint defaults/ }));
     const orchestration = screen.getByLabelText('Orchestration');
-    // ...but the select cannot show it yet, because its options come from the loaded
-    // blueprint list (empty in this test) and a select whose value matches no option
-    // falls back to the first one. Issue tracked separately.
-    expect(orchestration).toHaveValue('blueprints/system/generator.md');
+    // The stored path is added as its own option, so the picker reports what is actually
+    // configured instead of silently falling back to the default option.
+    expect(orchestration).toHaveValue('blueprints/custom/orchestrator.md');
+    expect(
+      screen.getByRole('option', { name: 'Stored blueprint (blueprints/custom/orchestrator.md)' }),
+    ).toBeInTheDocument();
 
     // Choosing "None (Built-in)" drops the override and the preview recomputes live.
     fireEvent.change(orchestration, { target: { value: '' } });

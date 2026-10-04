@@ -79,6 +79,13 @@ Recently completed hygiene work (kept here for context):
   - Unit tests (`defaults.test.ts`, 5) cover the fresh-install case, a custom path, the built-in fallback, a no-default feature and missing input. `SettingsGeneration.test.tsx` now asserts `0 overrides configured` for a fresh profile and the live `1 override configured` → `0` when a custom orchestration path is set back to None.
   - The semantic decision worth knowing: an **absent key means the shipped default applies**, so it is not an override — my first implementation compared `current ?? undefined` against the default and reported 5 for `{}`, which the tests caught.
 
+- [x] **Fixed the blueprint picker showing the default for a stored path** (issue 4, the last of the four). A `<select>` whose value matches no `<option>` renders its _first_ option, so a stored blueprint that wasn't in the loaded blueprint list read as the default — the panel showed "Orchestrator (Default)" while the config pointed at the user's custom path.
+  - Rather than patch seven selects, their near-identical markup (label + select + help, ~24 lines each) became one local **`BlueprintSelect`** component that **adds the stored path as its own option** when it is missing from the list. The section went to 242 lines.
+  - The component also absorbs the validation/similarity shape, where the built-in default _is_ "no path" (`defaultPath=""`), so those two keep a single empty option rather than gaining a duplicate "None (Built-in)".
+  - The generation test that documented the fallback now asserts the opposite: the picker shows `blueprints/custom/orchestrator.md` and exposes a `Stored blueprint (…)` option.
+
+**All four UI issues are now fixed** (provider inference + clear-key bounce as one root cause, the override metric, and the picker). Each had been pinned by tests describing the _old_ behaviour, and in every case those assertions were rewritten to the agreed behaviour rather than deleted — `Settings` suite 34 tests, plus `defaults.test.ts` (5) and the renamed provider tests. Full suite: **56 files, all passing**.
+
 - [ ] **Sweep leftovers — three non-screen modules are still over ~1,000 lines**, found by a repo-wide count rather than from the original list. (The fourth, the `Generation.tsx` screen at 1,037, is done — see above.)
   - `lib/storage/draft-db.ts` — **2,156 lines**, `lib/storage/desktop-lore-db.ts` — **1,609**, `lib/services/generation.ts` — **1,130**: these are storage/service layers, not screens, and want a different seam (per-store or per-service modules) plus a decision on whether the ~1,000-line guideline should even apply to them
 

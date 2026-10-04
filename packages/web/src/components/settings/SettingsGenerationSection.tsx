@@ -22,6 +22,68 @@ interface SettingsGenerationSectionProps {
   featureBlueprintOptions: Record<FeatureCategory, Array<{ value: string; label: string }>>;
 }
 
+const BLUEPRINT_SELECT_CLASS =
+  'w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+
+interface BlueprintSelectProps {
+  id: string;
+  label: string;
+  value: string;
+  defaultPath: string;
+  defaultLabel: string;
+  options: Array<{ value: string; label: string }>;
+  onChange: (value: string) => void;
+  help: string;
+}
+
+/**
+ * Feature blueprint picker.
+ *
+ * A `<select>` whose value matches no `<option>` renders its first option instead, so a
+ * stored path that is missing from the loaded blueprint list used to read as the default.
+ * When that happens the stored path is added as its own option. Features whose built-in
+ * default *is* "no path" (validation, similarity) pass `defaultPath=""`, in which case the
+ * default option already represents "None (Built-in)".
+ */
+function BlueprintSelect({
+  id,
+  label,
+  value,
+  defaultPath,
+  defaultLabel,
+  options,
+  onChange,
+  help,
+}: BlueprintSelectProps) {
+  const storedPathIsListed = !value || value === defaultPath || options.some((option) => option.value === value);
+
+  return (
+    <div className="space-y-2">
+      <label htmlFor={id} className="text-sm font-medium">
+        {label}
+      </label>
+      <select
+        id={id}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className={BLUEPRINT_SELECT_CLASS}
+      >
+        <option value={defaultPath}>{defaultLabel}</option>
+        {!storedPathIsListed && <option value={value}>Stored blueprint ({value})</option>}
+        {options
+          .filter((option) => option.value !== defaultPath)
+          .map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        {defaultPath !== '' && <option value="">None (Built-in)</option>}
+      </select>
+      <p className="text-xs text-muted-foreground">{help}</p>
+    </div>
+  );
+}
+
 export default function SettingsGenerationSection({
   batch,
   onBatchChange,
@@ -87,168 +149,82 @@ export default function SettingsGenerationSection({
         bodyClassName="space-y-4"
       >
         <div className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <label htmlFor="blueprint-orchestration" className="text-sm font-medium">
-              Orchestration
-            </label>
-            <select
-              id="blueprint-orchestration"
-              value={featureBlueprints?.orchestration || 'blueprints/system/generator.md'}
-              onChange={(e) => onFeatureBlueprintChange('orchestration', e.target.value)}
-              className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <option value="blueprints/system/generator.md">Orchestrator (Default)</option>
-              {featureBlueprintOptions.orchestration
-                .filter((option) => option.value !== 'blueprints/system/generator.md')
-                .map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              <option value="">None (Built-in)</option>
-            </select>
-            <p className="text-xs text-muted-foreground">
-              Blueprint used for the orchestrator on the Generate New tab.
-            </p>
-          </div>
+          <BlueprintSelect
+            id="blueprint-orchestration"
+            label="Orchestration"
+            value={featureBlueprints?.orchestration || 'blueprints/system/generator.md'}
+            defaultPath="blueprints/system/generator.md"
+            defaultLabel="Orchestrator (Default)"
+            options={featureBlueprintOptions.orchestration}
+            onChange={(value) => onFeatureBlueprintChange('orchestration', value)}
+            help="Blueprint used for the orchestrator on the Generate New tab."
+          />
 
-          <div className="space-y-2">
-            <label htmlFor="blueprint-seed" className="text-sm font-medium">
-              Seed Generation
-            </label>
-            <select
-              id="blueprint-seed"
-              value={featureBlueprints?.seed_generation || 'blueprints/system/seed_generator.md'}
-              onChange={(e) => onFeatureBlueprintChange('seed_generation', e.target.value)}
-              className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <option value="blueprints/system/seed_generator.md">Seed Generator (Default)</option>
-              {featureBlueprintOptions.seed_generation
-                .filter((option) => option.value !== 'blueprints/system/seed_generator.md')
-                .map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              <option value="">None (Built-in)</option>
-            </select>
-            <p className="text-xs text-muted-foreground">
-              Blueprint used for generating seed batches from genre lines.
-            </p>
-          </div>
+          <BlueprintSelect
+            id="blueprint-seed"
+            label="Seed Generation"
+            value={featureBlueprints?.seed_generation || 'blueprints/system/seed_generator.md'}
+            defaultPath="blueprints/system/seed_generator.md"
+            defaultLabel="Seed Generator (Default)"
+            options={featureBlueprintOptions.seed_generation}
+            onChange={(value) => onFeatureBlueprintChange('seed_generation', value)}
+            help="Blueprint used for generating seed batches from genre lines."
+          />
 
-          <div className="space-y-2">
-            <label htmlFor="blueprint-offspring" className="text-sm font-medium">
-              Offspring Generation
-            </label>
-            <select
-              id="blueprint-offspring"
-              value={featureBlueprints?.offspring_generation || 'blueprints/system/offspring_generator.md'}
-              onChange={(e) => onFeatureBlueprintChange('offspring_generation', e.target.value)}
-              className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <option value="blueprints/system/offspring_generator.md">Offspring Generator (Default)</option>
-              {featureBlueprintOptions.offspring_generation
-                .filter((option) => option.value !== 'blueprints/system/offspring_generator.md')
-                .map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              <option value="">None (Built-in)</option>
-            </select>
-            <p className="text-xs text-muted-foreground">Blueprint used for breeding characters.</p>
-          </div>
+          <BlueprintSelect
+            id="blueprint-offspring"
+            label="Offspring Generation"
+            value={featureBlueprints?.offspring_generation || 'blueprints/system/offspring_generator.md'}
+            defaultPath="blueprints/system/offspring_generator.md"
+            defaultLabel="Offspring Generator (Default)"
+            options={featureBlueprintOptions.offspring_generation}
+            onChange={(value) => onFeatureBlueprintChange('offspring_generation', value)}
+            help="Blueprint used for breeding characters."
+          />
 
-          <div className="space-y-2">
-            <label htmlFor="blueprint-intro-scene" className="text-sm font-medium">
-              Intro Scene Generation
-            </label>
-            <select
-              id="blueprint-intro-scene"
-              value={featureBlueprints?.intro_scene_generation || 'blueprints/system/intro_scene.md'}
-              onChange={(e) => onFeatureBlueprintChange('intro_scene_generation', e.target.value)}
-              className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <option value="blueprints/system/intro_scene.md">Intro Scene (Default)</option>
-              {featureBlueprintOptions.intro_scene_generation
-                .filter((option) => option.value !== 'blueprints/system/intro_scene.md')
-                .map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              <option value="">None (Built-in)</option>
-            </select>
-            <p className="text-xs text-muted-foreground">
-              Blueprint used by the Assets tab when generating additional intro scenes.
-            </p>
-          </div>
+          <BlueprintSelect
+            id="blueprint-intro-scene"
+            label="Intro Scene Generation"
+            value={featureBlueprints?.intro_scene_generation || 'blueprints/system/intro_scene.md'}
+            defaultPath="blueprints/system/intro_scene.md"
+            defaultLabel="Intro Scene (Default)"
+            options={featureBlueprintOptions.intro_scene_generation}
+            onChange={(value) => onFeatureBlueprintChange('intro_scene_generation', value)}
+            help="Blueprint used by the Assets tab when generating additional intro scenes."
+          />
 
-          <div className="space-y-2">
-            <label htmlFor="blueprint-worldbook" className="text-sm font-medium">
-              Worldbook Generation
-            </label>
-            <select
-              id="blueprint-worldbook"
-              value={featureBlueprints?.worldbook_generation || 'blueprints/system/lorebook_generator.md'}
-              onChange={(e) => onFeatureBlueprintChange('worldbook_generation', e.target.value)}
-              className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <option value="blueprints/system/lorebook_generator.md">Lorebook Generator (Default)</option>
-              {featureBlueprintOptions.worldbook_generation
-                .filter((option) => option.value !== 'blueprints/system/lorebook_generator.md')
-                .map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              <option value="">None (Built-in)</option>
-            </select>
-            <p className="text-xs text-muted-foreground">
-              Blueprint for synthesizing connected lorebook entries from reference drafts.
-            </p>
-          </div>
+          <BlueprintSelect
+            id="blueprint-worldbook"
+            label="Worldbook Generation"
+            value={featureBlueprints?.worldbook_generation || 'blueprints/system/lorebook_generator.md'}
+            defaultPath="blueprints/system/lorebook_generator.md"
+            defaultLabel="Lorebook Generator (Default)"
+            options={featureBlueprintOptions.worldbook_generation}
+            onChange={(value) => onFeatureBlueprintChange('worldbook_generation', value)}
+            help="Blueprint for synthesizing connected lorebook entries from reference drafts."
+          />
 
-          <div className="space-y-2">
-            <label htmlFor="blueprint-validation" className="text-sm font-medium">
-              Validation
-            </label>
-            <select
-              id="blueprint-validation"
-              value={featureBlueprints?.validation || ''}
-              onChange={(e) => onFeatureBlueprintChange('validation', e.target.value)}
-              className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <option value="">Built-in Validation (Default)</option>
-              {featureBlueprintOptions.validation.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <p className="text-xs text-muted-foreground">Blueprint for character validation checks.</p>
-          </div>
+          <BlueprintSelect
+            id="blueprint-validation"
+            label="Validation"
+            value={featureBlueprints?.validation || ''}
+            defaultPath=""
+            defaultLabel="Built-in Validation (Default)"
+            options={featureBlueprintOptions.validation}
+            onChange={(value) => onFeatureBlueprintChange('validation', value)}
+            help="Blueprint for character validation checks."
+          />
 
-          <div className="space-y-2">
-            <label htmlFor="blueprint-similarity" className="text-sm font-medium">
-              Similarity Analysis
-            </label>
-            <select
-              id="blueprint-similarity"
-              value={featureBlueprints?.similarity || ''}
-              onChange={(e) => onFeatureBlueprintChange('similarity', e.target.value)}
-              className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <option value="">Built-in Analysis (Default)</option>
-              {featureBlueprintOptions.similarity.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <p className="text-xs text-muted-foreground">Blueprint for comparing character relationships.</p>
-          </div>
+          <BlueprintSelect
+            id="blueprint-similarity"
+            label="Similarity Analysis"
+            value={featureBlueprints?.similarity || ''}
+            defaultPath=""
+            defaultLabel="Built-in Analysis (Default)"
+            options={featureBlueprintOptions.similarity}
+            onChange={(value) => onFeatureBlueprintChange('similarity', value)}
+            help="Blueprint for comparing character relationships."
+          />
         </div>
 
         <div className="mt-4 border-t border-border/50 pt-4">
