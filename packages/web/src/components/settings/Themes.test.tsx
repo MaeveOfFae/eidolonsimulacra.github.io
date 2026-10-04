@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import { api } from '@/lib/api';
@@ -8,11 +8,20 @@ vi.mock('@/lib/api', () => ({
   api: {
     getConfig: vi.fn(),
     getThemes: vi.fn(),
+    importTheme: vi.fn(),
   },
 }));
 
 vi.mock('../common/SyncControls', () => ({
   default: () => null,
+}));
+
+let importPayload: Record<string, unknown> | null = null;
+
+vi.mock('../../utils/download', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../utils/download')>()),
+  pickFile: async () =>
+    importPayload ? ({ text: async () => JSON.stringify(importPayload) } as unknown as File) : null,
 }));
 
 function createTheme(overrides: Record<string, unknown>) {
@@ -56,6 +65,8 @@ describe('Themes manager', () => {
     vi.clearAllMocks();
     vi.mocked(api.getConfig).mockResolvedValue({ theme_name: 'ember_night' } as never);
     vi.mocked(api.getThemes).mockResolvedValue(themeFixtures as never);
+    vi.mocked(api.importTheme).mockResolvedValue({ display_name: 'Imported' } as never);
+    importPayload = null;
   });
 
   it('renders the theme manager with every available preset and the active badge', async () => {
@@ -96,5 +107,74 @@ describe('Themes manager', () => {
     expect(screen.getByRole('heading', { name: 'Charcoal' })).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Ember Night' })).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Light' })).not.toBeInTheDocument();
+  });
+
+  it('flags an import conflict for a built-in preset without offering an overwrite', async () => {
+    importPayload = {
+      name: 'ember_night',
+      display_name: 'Ember Night Import',
+      colors: { background: '#101010', surface: '#181818', accent: '#ff0000', button: '#ff8800' },
+    };
+
+    renderThemes();
+
+    await screen.findByRole('heading', { name: 'Ember Night' });
+    fireEvent.click(screen.getByRole('button', { name: 'Import preset' }));
+
+    expect(await screen.findByRole('heading', { name: 'Import conflict detected' })).toBeInTheDocument();
+    expect(screen.getByText(/which already exists as/)).toBeInTheDocument();
+    expect(screen.getByText(/palette values differ/)).toBeInTheDocument();
+    expect(screen.getByText('Existing preset')).toBeInTheDocument();
+    expect(screen.getByText('Imported preset')).toBeInTheDocument();
+
+    // A built-in preset cannot be overwritten, only imported under a new name.
+    expect(screen.queryByRole('button', { name: 'Overwrite existing custom preset' })).not.toBeInTheDocument();
+    expect(screen.getByPlaceholderText('new preset name')).toHaveValue('ember_night_2');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+
+    expect(screen.queryByRole('heading', { name: 'Import conflict detected' })).not.toBeInTheDocument();
+  });
+
+  it('imports the conflicting preset under a new name', async () => {
+    importPayload = {
+      name: 'ember_night',
+      display_name: 'Ember Night Import',
+      colors: { background: '#101010', surface: '#181818', accent: '#ff0000', button: '#ff8800' },
+    };
+
+    renderThemes();
+
+    await screen.findByRole('heading', { name: 'Ember Night' });
+    fireEvent.click(screen.getByRole('button', { name: 'Import preset' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Import renamed preset' }));
+
+    await waitFor(() => {
+      expect(api.importTheme).toHaveBeenCalledWith(expect.anything(), {
+        conflict_strategy: 'rename',
+        target_name: 'ember_night_2',
+      });
+    });
+  });
+
+  it('offers an overwrite when the conflicting preset is a custom one', async () => {
+    importPayload = {
+      name: 'charcoal',
+      display_name: 'Charcoal Import',
+      colors: { background: '#101010', surface: '#181818', accent: '#ff0000', button: '#ff8800' },
+    };
+
+    renderThemes();
+
+    await screen.findByRole('heading', { name: 'Charcoal' });
+    fireEvent.click(screen.getByRole('button', { name: 'Import preset' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Overwrite existing custom preset' }));
+
+    await waitFor(() => {
+      expect(api.importTheme).toHaveBeenCalledWith(expect.anything(), {
+        conflict_strategy: 'overwrite',
+        target_name: 'charcoal',
+      });
+    });
   });
 });
