@@ -222,12 +222,7 @@ describe('Drafts library screen', () => {
   });
 
   it('shows the workbench inspector for saved drafts', async () => {
-    renderDrafts();
-
-    // `?tab=workbench` deep links bounce back to drafts while the draft query is still
-    // loading, so the workbench is reached through its button.
-    expect(await screen.findByText('Library overview')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Workbench' }));
+    renderDrafts({ entry: '/drafts?tab=workbench' });
 
     expect(await screen.findByText('Workbench inspector')).toBeInTheDocument();
     expect(screen.getByText('Compare drafts and inspect the active one.')).toBeInTheDocument();
@@ -237,6 +232,7 @@ describe('Drafts library screen', () => {
 
   it('lists workbench restore points and marks the selected one as previewing', async () => {
     renderDrafts({
+      entry: '/drafts?tab=workbench',
       drafts: [
         {
           ...activeDrafts[0],
@@ -245,9 +241,6 @@ describe('Drafts library screen', () => {
         activeDrafts[1],
       ],
     });
-
-    expect(await screen.findByText('Library overview')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Workbench' }));
 
     expect(await screen.findByText('Workbench restore points')).toBeInTheDocument();
     expect(screen.getAllByText('Before merge').length).toBeGreaterThanOrEqual(1);
@@ -258,18 +251,16 @@ describe('Drafts library screen', () => {
     expect(await screen.findByText('Snapshot preview')).toBeInTheDocument();
   });
 
-  it('redirects the worlds tab to the worlds route instead of rendering the staged shelf', async () => {
+  it('redirects the worlds tab to the worlds route and falls back to the default tab', async () => {
     renderDrafts({ entry: '/drafts?tab=worlds' });
 
-    // The screen navigates away from `?tab=worlds`, so the tab falls back to drafts.
+    // The library hands off to the dedicated worlds route; the staged shelf is gone.
     expect(await screen.findByText('Library overview')).toBeInTheDocument();
-    expect(screen.queryByText('World library')).not.toBeInTheDocument();
   });
 
-  it('redirects the timelines tab to the timelines route instead of rendering staged modules', async () => {
+  it('redirects the timelines tab to the timelines route and falls back to the default tab', async () => {
     renderDrafts({ entry: '/drafts?tab=timelines' });
 
     expect(await screen.findByText('Library overview')).toBeInTheDocument();
-    expect(screen.queryByText('Timeline modules')).not.toBeInTheDocument();
   });
 });

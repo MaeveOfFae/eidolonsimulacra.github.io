@@ -1,19 +1,7 @@
 import { useCallback, useState, useEffect, useMemo, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import {
-  FolderOpen,
-  Upload,
-  CheckCircle2,
-  AlertTriangle,
-  BookOpen,
-  Globe,
-  Lock,
-  MapPin,
-  ShieldCheck,
-  Users,
-  History,
-} from 'lucide-react';
+import { AlertTriangle, CheckCircle2, FolderOpen, History, Upload } from 'lucide-react';
 import { api, type CreateDraftRequest } from '@/lib/api';
 import {
   buildDraftRevisionSnapshotState,
@@ -50,7 +38,6 @@ import LibrarySeedsTab from './LibrarySeedsTab';
 import LibraryWorkbenchTab from './LibraryWorkbenchTab';
 import { DraftDuplicatesPanel } from './DraftDuplicatesPanel';
 import ManualDraftCreateModal from './ManualDraftCreateModal';
-import { GenerationHistoryPanel } from '../timelines/GenerationHistoryPanel';
 
 type LibraryTab = 'drafts' | 'seeds' | 'archive' | 'worlds' | 'timelines' | 'workbench';
 
@@ -58,29 +45,6 @@ const LIBRARY_TABS: Array<{ id: LibraryTab; label: string }> = [
   { id: 'drafts', label: 'Drafts' },
   { id: 'seeds', label: 'Seeds' },
   { id: 'archive', label: 'Archive' },
-];
-
-const WORLD_MODULES = [
-  { label: 'Canon library', icon: BookOpen },
-  { label: 'Worldbook', icon: Globe },
-  { label: 'Relationships', icon: Users },
-  { label: 'Factions', icon: ShieldCheck },
-  { label: 'Locations', icon: MapPin },
-  { label: 'Universe notes', icon: BookOpen },
-  { label: 'Canon locks', icon: Lock },
-] as const;
-
-const TIMELINE_MODULES = [
-  {
-    name: 'Event timeline',
-    status: 'Staged',
-    description: 'World event storage, ordering, and editing are not live in the current browser flow.',
-  },
-  {
-    name: 'Continuity assistant',
-    status: 'Staged',
-    description: 'Conflict detection still needs dedicated timeline data beyond saved draft branches.',
-  },
 ];
 
 function isLibraryTab(value: string | null): value is LibraryTab {
@@ -267,10 +231,16 @@ export default function Drafts() {
   }, [activeTab, navigate]);
 
   useEffect(() => {
-    if (!data?.drafts.length && activeTab === 'workbench') {
+    // Only fall back once the draft query has settled: reading `data?.drafts.length`
+    // while it is still loading would bounce a `?tab=workbench` deep link to drafts.
+    if (!data) {
+      return;
+    }
+
+    if (!data.drafts.length && activeTab === 'workbench') {
       setActiveTab('drafts');
     }
-  }, [activeTab, data?.drafts.length, setActiveTab]);
+  }, [activeTab, data, setActiveTab]);
 
   const hasDrafts = (data?.drafts?.length ?? 0) > 0;
   const draftCount = data?.stats?.total_drafts ?? data?.drafts.length ?? 0;
@@ -536,8 +506,9 @@ export default function Drafts() {
           <div>
             <h3 className="text-sm font-semibold text-foreground">Snapshot preview</h3>
             <p className="mt-1 text-xs text-muted-foreground">
-              {selectedSnapshotEntry.draftName} Ãƒâ€šÃ‚Â· {selectedSnapshotEntry.snapshot.label || 'Restore point'}{' '}
-              Ãƒâ€šÃ‚Â· {formatTimestamp(selectedSnapshotEntry.snapshot.created_at)}
+              {selectedSnapshotEntry.draftName} ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â·{' '}
+              {selectedSnapshotEntry.snapshot.label || 'Restore point'} ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â·{' '}
+              {formatTimestamp(selectedSnapshotEntry.snapshot.created_at)}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -583,7 +554,7 @@ export default function Drafts() {
                   <option value="">Compare against current draft</option>
                   {selectedSnapshotCompareOptions.map((snapshot) => (
                     <option key={snapshot.id} value={snapshot.id}>
-                      {snapshot.label || 'Restore point'} Ãƒâ€šÃ‚Â· {formatTimestamp(snapshot.created_at)}
+                      {snapshot.label || 'Restore point'} ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· {formatTimestamp(snapshot.created_at)}
                     </option>
                   ))}
                 </select>
@@ -653,8 +624,8 @@ export default function Drafts() {
                         >
                           <div className="rounded-md border border-border/60 bg-background/80 p-2">
                             <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                              {selectedSnapshotCompareBaseSnapshot ? 'Baseline snapshot' : 'Current'} Ãƒâ€šÃ‚Â· line{' '}
-                              {line.lineNumber}
+                              {selectedSnapshotCompareBaseSnapshot ? 'Baseline snapshot' : 'Current'}{' '}
+                              ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· line {line.lineNumber}
                             </div>
                             <pre className="mt-1 whitespace-pre-wrap break-words font-mono text-[11px] text-foreground">
                               {line.currentLine || '(empty)'}
@@ -662,7 +633,7 @@ export default function Drafts() {
                           </div>
                           <div className="rounded-md border border-border/60 bg-background/80 p-2">
                             <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                              Snapshot Ãƒâ€šÃ‚Â· line {line.lineNumber}
+                              Snapshot ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· line {line.lineNumber}
                             </div>
                             <pre className="mt-1 whitespace-pre-wrap break-words font-mono text-[11px] text-foreground">
                               {line.snapshotLine || '(empty)'}
@@ -918,7 +889,7 @@ export default function Drafts() {
           )}
           <span className="text-sm">{notice.message}</span>
           <button type="button" onClick={() => setNotice(null)} className="ml-auto opacity-50 hover:opacity-100">
-            ÃƒÆ’Ã¢â‚¬â€
+            ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â
           </button>
         </div>
       )}
@@ -1064,7 +1035,7 @@ export default function Drafts() {
                               {snapshot.label || 'Restore point'}
                             </Link>
                             <p className="mt-1 text-xs text-muted-foreground">
-                              {draftName} Ãƒâ€šÃ‚Â· {formatTimestamp(snapshot.created_at)}
+                              {draftName} ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· {formatTimestamp(snapshot.created_at)}
                             </p>
                             {snapshot.reason && <p className="mt-1 text-xs text-muted-foreground">{snapshot.reason}</p>}
                           </div>
@@ -1124,12 +1095,12 @@ export default function Drafts() {
                                 {draftName}
                               </Link>
                               <p className="mt-1 text-xs text-muted-foreground">
-                                {entry.strategy === 'staged-merge' ? 'Staged merge' : 'Single-asset merge'} Ãƒâ€šÃ‚Â·{' '}
-                                {formatTimestamp(entry.created_at)}
+                                {entry.strategy === 'staged-merge' ? 'Staged merge' : 'Single-asset merge'}{' '}
+                                ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· {formatTimestamp(entry.created_at)}
                               </p>
                               <p className="mt-1 text-xs text-muted-foreground">
-                                Source: {sourceName} ({entry.source_side}) Ãƒâ€šÃ‚Â· Base: {baseName} ({entry.base_side}
-                                )
+                                Source: {sourceName} ({entry.source_side}) ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· Base: {baseName} (
+                                {entry.base_side})
                               </p>
                               <p className="mt-1 text-xs text-muted-foreground">
                                 Assets: {entry.asset_names.join(', ')}
@@ -1217,130 +1188,6 @@ export default function Drafts() {
           onRestoreSeedRun={handleRestoreSeedRun}
           onDeleteArchivedSeedRun={handleDeleteArchivedSeedRun}
         />
-      )}
-      {activeTab === 'worlds' && (
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-          <section className="app-panel p-5">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-semibold">World library</h2>
-                <p className="text-sm text-muted-foreground">
-                  Shared setting data still sits in a staged state, but the library now gives it a dedicated shelf.
-                </p>
-              </div>
-              <span className="app-pill app-pill-muted">Planned</span>
-            </div>
-
-            <div className="mt-4 grid gap-3 sm:grid-cols-3 text-sm">
-              <div className="rounded-lg border border-border bg-background/60 p-4">
-                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Worlds</div>
-                <div className="mt-1 text-2xl font-semibold text-foreground">0</div>
-              </div>
-              <div className="rounded-lg border border-border bg-background/60 p-4">
-                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Modules</div>
-                <div className="mt-1 text-2xl font-semibold text-foreground">{WORLD_MODULES.length}</div>
-              </div>
-              <div className="rounded-lg border border-border bg-background/60 p-4">
-                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Draft branches</div>
-                <div className="mt-1 text-2xl font-semibold text-foreground">{branchCount}</div>
-              </div>
-            </div>
-
-            <div className="mt-4 rounded-lg border border-dashed border-border bg-background/40 p-4 text-sm text-muted-foreground">
-              Shared canon, factions, locations, and event state are still intentionally gated until they have real
-              persistence and cross-draft behavior.
-            </div>
-
-            <div className="mt-4 flex flex-wrap gap-3">
-              <Link to="/worlds" className="app-button app-button-secondary">
-                Open Worlds route
-              </Link>
-              <Link to="/events" className="app-button app-button-secondary">
-                Open Events route
-              </Link>
-            </div>
-          </section>
-
-          <section className="app-panel p-5">
-            <div className="mb-4 flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-semibold">Planned world modules</h2>
-                <p className="text-sm text-muted-foreground">
-                  These stay visible here as placeholders so the library reflects the intended long-term structure.
-                </p>
-              </div>
-              <span className="app-pill app-pill-muted">Staged</span>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {WORLD_MODULES.map(({ label, icon: Icon }) => (
-                <div key={label} className="app-panel-muted flex items-center gap-3 p-3">
-                  <div className="rounded-lg border border-border/60 bg-background/60 p-2 text-primary">
-                    <Icon className="h-4 w-4" />
-                  </div>
-                  <div className="text-sm font-medium text-foreground">{label}</div>
-                </div>
-              ))}
-            </div>
-          </section>
-        </div>
-      )}
-
-      {activeTab === 'timelines' && (
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
-          <GenerationHistoryPanel drafts={data?.drafts ?? []} />
-
-          <section className="app-panel border-dashed p-5">
-            <div className="mb-4 flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-semibold">Timeline modules</h2>
-                <p className="text-sm text-muted-foreground">
-                  Draft history is already live. Event editing and continuity tooling remain staged until the timeline
-                  model is real.
-                </p>
-              </div>
-              <span className="app-pill app-pill-muted">Partial</span>
-            </div>
-
-            <div className="space-y-3">
-              {TIMELINE_MODULES.map((module) => (
-                <article key={module.name} className="rounded-lg border border-border bg-background/60 p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h3 className="text-sm font-semibold text-foreground">{module.name}</h3>
-                      <p className="mt-1 text-sm text-muted-foreground">{module.description}</p>
-                    </div>
-                    <span className="app-pill app-pill-muted">{module.status}</span>
-                  </div>
-                </article>
-              ))}
-            </div>
-
-            <div className="mt-4 grid gap-3 sm:grid-cols-3 text-sm">
-              <div className="rounded-lg border border-border bg-background/60 p-4">
-                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Branches</div>
-                <div className="mt-1 text-2xl font-semibold text-foreground">{branchCount}</div>
-              </div>
-              <div className="rounded-lg border border-border bg-background/60 p-4">
-                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Events</div>
-                <div className="mt-1 text-2xl font-semibold text-foreground">0</div>
-              </div>
-              <div className="rounded-lg border border-border bg-background/60 p-4">
-                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Conflicts</div>
-                <div className="mt-1 text-2xl font-semibold text-foreground">0</div>
-              </div>
-            </div>
-
-            <div className="mt-4 flex flex-wrap gap-3">
-              <Link to="/timelines" className="app-button app-button-secondary">
-                Open timeline route
-              </Link>
-              <Link to="/lineage" className="app-button app-button-secondary">
-                Open lineage
-              </Link>
-            </div>
-          </section>
-        </div>
       )}
 
       {activeTab === 'workbench' && hasDrafts && (
