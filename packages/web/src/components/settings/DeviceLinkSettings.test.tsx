@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
+import QRCode from 'qrcode';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import DeviceLinkSettings from './DeviceLinkSettings';
 import {
@@ -201,5 +202,26 @@ describe('DeviceLinkSettings incoming preview', () => {
     expect(await screen.findByText(/• untrusted sender\./)).toBeInTheDocument();
     expect(screen.getByText('Untrusted')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Trust' })).toBeInTheDocument();
+  });
+
+  it('renders the pairing link and the scanned QR code', async () => {
+    renderDeviceLink();
+
+    expect(await screen.findByText('In-App Scanner QR')).toBeInTheDocument();
+    expect(screen.getByText('Pairing Link')).toBeInTheDocument();
+    expect(screen.getAllByText('pairing text').length).toBeGreaterThan(0);
+    expect(screen.getByText(/Scan this QR code from mobile Settings with Scan QR\./)).toBeInTheDocument();
+
+    const qr = await screen.findByAltText('Desktop companion pairing QR code');
+    expect(qr).toHaveAttribute('src', 'data:image/png;base64,AAA');
+  });
+
+  it('falls back to a QR placeholder when the code cannot be rendered', async () => {
+    vi.mocked(QRCode.toDataURL).mockRejectedValueOnce(new Error('qr failed'));
+
+    renderDeviceLink();
+
+    expect(await screen.findByText('QR unavailable')).toBeInTheDocument();
+    expect(screen.queryByAltText('Desktop companion pairing QR code')).not.toBeInTheDocument();
   });
 });
