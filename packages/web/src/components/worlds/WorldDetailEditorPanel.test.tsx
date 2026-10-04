@@ -19,6 +19,7 @@ vi.mock('@/lib/api', () => ({
     addWorldRelationship: vi.fn(),
     updateWorldRelationship: vi.fn(),
     deleteWorldRelationship: vi.fn(),
+    createTimeline: vi.fn(),
     updateTimeline: vi.fn(),
     deleteTimeline: vi.fn(),
     addTimelineEvent: vi.fn(),
@@ -103,6 +104,9 @@ describe('WorldDetailEditorPanel', () => {
     vi.mocked(api.addWorldFaction).mockResolvedValue({ faction: world.factions![0] } as never);
     vi.mocked(api.updateWorldFaction).mockResolvedValue({ faction: world.factions![0] } as never);
     vi.mocked(api.addWorldLocation).mockResolvedValue({ location: world.locations![0] } as never);
+    vi.mocked(api.createTimeline).mockResolvedValue({ timeline: world.timelines![0] } as never);
+    vi.mocked(api.addTimelineEvent).mockResolvedValue({ event: {} } as never);
+    vi.mocked(api.updateTimelineEvent).mockResolvedValue({ event: {} } as never);
   });
 
   it('opens on world details with tab counts', () => {
@@ -175,5 +179,103 @@ describe('WorldDetailEditorPanel', () => {
     });
     expect(await screen.findByText('Location added.')).toBeInTheDocument();
     expect(onRefresh).toHaveBeenCalled();
+  });
+
+  it('creates a timeline with trimmed values', async () => {
+    const { onRefresh } = renderPanel();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Timelines 1' }));
+    fireEvent.change(screen.getByPlaceholderText('Timeline name'), { target: { value: '  Second thread  ' } });
+    fireEvent.change(screen.getByPlaceholderText('Timeline description'), { target: { value: '  Later events  ' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add timeline' }));
+
+    await waitFor(() => {
+      expect(api.createTimeline).toHaveBeenCalledWith({
+        worldId: 'world-1',
+        name: 'Second thread',
+        description: 'Later events',
+      });
+    });
+    expect(await screen.findByText('Timeline created.')).toBeInTheDocument();
+    expect(onRefresh).toHaveBeenCalled();
+  });
+
+  it('adds an event to the timeline selected by default', async () => {
+    renderPanel();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Timelines 1' }));
+
+    // The first timeline is selected by default, so its event editor is live.
+    await waitFor(() => expect(api.getTimeline).toHaveBeenCalledWith('timeline-1'));
+
+    fireEvent.change(await screen.findByPlaceholderText('Event title'), {
+      target: { value: 'The fall of the Spire' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('Event date (optional)'), { target: { value: '  Year 400  ' } });
+    fireEvent.change(screen.getByPlaceholderText('Event description'), {
+      target: { value: 'The spire collapsed.' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add event' }));
+
+    await waitFor(() => {
+      expect(api.addTimelineEvent).toHaveBeenCalledWith('timeline-1', {
+        title: 'The fall of the Spire',
+        eventDate: 'Year 400',
+        description: 'The spire collapsed.',
+      });
+    });
+    expect(await screen.findByText('Timeline event added.')).toBeInTheDocument();
+  });
+
+  it('reorders events with the arrows and disables the edge arrows', async () => {
+    vi.mocked(api.getTimeline).mockResolvedValue({
+      timeline: {
+        ...world.timelines![0]!,
+        events: [
+          {
+            id: 'event-1',
+            timelineId: 'timeline-1',
+            title: 'First',
+            sortOrder: 0,
+            tags: [],
+            metadata: {},
+            createdAt: TIMESTAMP,
+            updatedAt: TIMESTAMP,
+          },
+          {
+            id: 'event-2',
+            timelineId: 'timeline-1',
+            title: 'Second',
+            sortOrder: 1,
+            tags: [],
+            metadata: {},
+            createdAt: TIMESTAMP,
+            updatedAt: TIMESTAMP,
+          },
+        ],
+      },
+    } as never);
+
+    renderPanel();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Timelines 1' }));
+
+    const downButtons = await screen.findAllByRole('button', { name: 'Move event down' });
+    expect(downButtons).toHaveLength(2);
+    // The first event cannot move up, and the last cannot move down.
+    expect(screen.getAllByRole('button', { name: 'Move event up' })[0]).toBeDisabled();
+    expect(downButtons[1]).toBeDisabled();
+
+    fireEvent.click(downButtons[0]!);
+
+    await waitFor(() => {
+      expect(api.updateTimelineEvent).toHaveBeenCalledTimes(2);
+    });
+    expect(vi.mocked(api.updateTimelineEvent).mock.calls).toEqual([
+      ['timeline-1', 'event-2', { sortOrder: 0 }],
+      ['timeline-1', 'event-1', { sortOrder: 1 }],
+    ]);
   });
 });
