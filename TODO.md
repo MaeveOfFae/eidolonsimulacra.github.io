@@ -30,6 +30,11 @@ None parked right now; new tangents get added here as they are found.
 
 Recently completed hygiene work (kept here for context):
 
+- [x] Extracted the **preset card** from the `Themes` grid into `ThemeCard.tsx` (147 lines) — the header with its active check, the description/author/tag rows, the swatch strip, and the six actions (Activate, Export, Duplicate, Edit details, Rename, Delete), with `actionButtonClass` and the compact/comfortable density computed inside the card. Two characterization tests went in first: the shared-vs-custom action split (Activate/Export/Duplicate on all three presets, Rename/Edit details/Delete only on the custom one) and opening the duplicate form from the first card. `Themes.test.tsx` has 10 tests, all passing unchanged through the parent. `Themes.tsx` dropped 1,134 → **1,012 lines** (1,489 when the stream opened).
+  - The card takes the preset's **duplicate / rename / detail forms as `children`** rather than as props, which keeps the card's DOM exactly as it was when the forms lived inline — the forms still belong to the parent that owns their drafts and mutations
+  - Also moved `ThemePresetRecord` from the import dialog into `@/lib/themes/theme-helpers`, so the card no longer has to import a domain type from a dialog component
+  - The duplicate test pinned a behaviour worth knowing: the grid defaults to **Name A-Z by display name**, so `Charcoal` leads, not the fixture's first entry
+
 - [x] Split the **filter controls** out of the `Themes` "Available Themes" section into `ThemeFiltersPanel.tsx` (176 lines) — the search field, the source/author/tag chip rows, the sort select, the Comfy/Compact density toggle and the "Showing N of M presets" line, via 16 props (+ the `ThemeSortMode` / `ThemeViewMode` types, which moved here and are imported back). Two characterization tests went in first (filtering by an author chip with the visible-count line, and the empty state plus sort tracking), so `Themes.test.tsx` has 8 tests, all passing unchanged through the parent. `Themes.tsx` dropped 1,241 → **1,134 lines** (1,489 when the stream opened).
   - The remaining piece of that section is the **preset cards grid** (~340 lines: the card markup plus its duplicate/rename/metadata inline forms), which is the next slice; then the create/update form area and the header
 

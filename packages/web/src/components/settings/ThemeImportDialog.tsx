@@ -1,6 +1,11 @@
 import { AlertTriangle, Loader2, Save, Upload } from 'lucide-react';
-import type { ThemeColors, ThemePreset } from '@char-gen/shared';
-import { palettePreviewKeys, renderColorValue, sanitizeThemeName } from '@/lib/themes/theme-helpers';
+import type { ThemeColors } from '@char-gen/shared';
+import {
+  palettePreviewKeys,
+  renderColorValue,
+  sanitizeThemeName,
+  type ThemePresetRecord,
+} from '@/lib/themes/theme-helpers';
 
 /**
  * Import-conflict dialog for the theme manager.
@@ -23,12 +28,6 @@ export interface ImportedThemePayload {
   basedOn: string;
   colors: ThemeColors;
 }
-
-export type ThemePresetRecord = ThemePreset & {
-  author: string;
-  tags: string[];
-  based_on: string;
-};
 
 export interface ThemeImportDraft {
   file: File;

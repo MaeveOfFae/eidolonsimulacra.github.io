@@ -9,6 +9,12 @@ import type { ThemeColors, ThemePreset } from '@char-gen/shared';
  * import dialog slice — share one copy.
  */
 
+export type ThemePresetRecord = ThemePreset & {
+  author: string;
+  tags: string[];
+  based_on: string;
+};
+
 export function parseTagInput(value: string): string[] {
   return value
     .split(',')

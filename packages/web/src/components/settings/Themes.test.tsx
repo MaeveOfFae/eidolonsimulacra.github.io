@@ -136,6 +136,36 @@ describe('Themes manager', () => {
     expect(screen.getByText('No themes match the current search and tag filters.')).toBeInTheDocument();
   });
 
+  it('shows shared preset actions and hides the custom-only ones for built-ins', async () => {
+    renderThemes();
+
+    await screen.findByRole('heading', { name: 'Ember Night' });
+
+    // Activate, Export and Duplicate are offered for every preset.
+    expect(screen.getAllByRole('button', { name: 'Activate' })).toHaveLength(3);
+    expect(screen.getAllByRole('button', { name: 'Export' })).toHaveLength(3);
+    expect(screen.getAllByRole('button', { name: 'Duplicate' })).toHaveLength(3);
+
+    // Renaming, editing details and deleting are custom-preset only.
+    expect(screen.getAllByRole('button', { name: 'Rename' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: 'Edit details' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: 'Delete' })).toHaveLength(1);
+  });
+
+  it('opens the duplicate form from the first alphabetical preset card', async () => {
+    renderThemes();
+
+    await screen.findByRole('heading', { name: 'Ember Night' });
+
+    expect(screen.queryByText('Duplicate Theme')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Duplicate' })[0]!);
+
+    expect(screen.getByText('Duplicate Theme')).toBeInTheDocument();
+    // Presets default to Name A-Z by display name, so Charcoal leads the grid.
+    expect(screen.getByPlaceholderText('theme name')).toHaveValue('charcoal_copy');
+  });
+
   it('flags an import conflict for a built-in preset without offering an overwrite', async () => {
     importPayload = {
       name: 'ember_night',
