@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { AlertTriangle, GitBranch, GitCompare, Loader2, MoveLeft, MoveRight } from 'lucide-react';
+import { GitBranch, GitCompare, Loader2, MoveLeft, MoveRight } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { DraftMetadata } from '@char-gen/shared';
 import CollapsibleSection from '../common/CollapsibleSection';
+import { DraftAssetComparisonDetail } from './DraftAssetComparisonDetail';
 import { DraftComparisonSharedAssets } from './DraftComparisonSharedAssets';
 import {
   countChangedLines,
@@ -887,39 +888,18 @@ export function DraftComparisonPanel({
               />
 
               {selectedAsset && (
-                <div className="space-y-3 rounded-md border border-border p-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <div className="font-medium text-foreground">{selectedAsset}</div>
-                      <div className="mt-1 text-xs text-muted-foreground">
-                        {selectedLeftAssetContent === selectedRightAssetContent
-                          ? 'No content differences.'
-                          : `${changedLines} changed lines detected.`}
-                      </div>
-                    </div>
-                    {mergeCandidateAssets.some((entry) => entry.assetName === selectedAsset) && (
-                      <button
-                        type="button"
-                        onClick={() => toggleStagedMergeAsset(selectedAsset)}
-                        className="inline-flex items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-accent"
-                      >
-                        {stagedMergeAssets.includes(selectedAsset) ? 'Remove from merge set' : 'Stage for merge'}
-                      </button>
-                    )}
-                  </div>
-
-                  {selectedAssetReviewComparison?.hasDifferences && (
-                    <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
-                      <div className="flex items-start gap-2">
-                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                        <div>
-                          Saved review context differs for this asset. Use the score and note drift here as merge
-                          groundwork before promoting one version over the other.
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
+                <DraftAssetComparisonDetail
+                  assetName={selectedAsset}
+                  leftContent={selectedLeftAssetContent}
+                  rightContent={selectedRightAssetContent}
+                  changedLines={changedLines}
+                  reviewComparison={selectedAssetReviewComparison}
+                  isMergeCandidate={mergeCandidateAssets.some((entry) => entry.assetName === selectedAsset)}
+                  isStaged={stagedMergeAssets.includes(selectedAsset)}
+                  onToggleStaged={toggleStagedMergeAsset}
+                  promotionNotice={promotionNotice}
+                  promotionError={promotionError}
+                >
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
@@ -1027,62 +1007,7 @@ export function DraftComparisonPanel({
                       restore-point view.
                     </span>
                   </div>
-
-                  {promotionError && (
-                    <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-                      {promotionError}
-                    </div>
-                  )}
-
-                  {promotionNotice && (
-                    <div className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-300">
-                      {promotionNotice}
-                    </div>
-                  )}
-
-                  <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-                    <div className="min-w-0 space-y-2">
-                      <div className="text-xs font-medium text-foreground">Left</div>
-                      <div className="rounded-md border border-border bg-background/70 px-3 py-2 text-xs text-muted-foreground">
-                        <div>
-                          Score:{' '}
-                          {selectedAssetReviewComparison?.leftReview.score
-                            ? `${selectedAssetReviewComparison.leftReview.score}/5`
-                            : 'Unrated'}
-                        </div>
-                        <div className="mt-1">
-                          Note:{' '}
-                          {selectedAssetReviewComparison?.leftReview.note
-                            ? summarizeText(selectedAssetReviewComparison.leftReview.note, 140)
-                            : 'No asset note saved.'}
-                        </div>
-                      </div>
-                      <pre className="max-h-64 overflow-auto rounded-md border border-border bg-background p-3 text-xs whitespace-pre-wrap break-words">
-                        {selectedLeftAssetContent || '(Asset missing)'}
-                      </pre>
-                    </div>
-                    <div className="min-w-0 space-y-2">
-                      <div className="text-xs font-medium text-foreground">Right</div>
-                      <div className="rounded-md border border-border bg-background/70 px-3 py-2 text-xs text-muted-foreground">
-                        <div>
-                          Score:{' '}
-                          {selectedAssetReviewComparison?.rightReview.score
-                            ? `${selectedAssetReviewComparison.rightReview.score}/5`
-                            : 'Unrated'}
-                        </div>
-                        <div className="mt-1">
-                          Note:{' '}
-                          {selectedAssetReviewComparison?.rightReview.note
-                            ? summarizeText(selectedAssetReviewComparison.rightReview.note, 140)
-                            : 'No asset note saved.'}
-                        </div>
-                      </div>
-                      <pre className="max-h-64 overflow-auto rounded-md border border-border bg-background p-3 text-xs whitespace-pre-wrap break-words">
-                        {selectedRightAssetContent || '(Asset missing)'}
-                      </pre>
-                    </div>
-                  </div>
-                </div>
+                </DraftAssetComparisonDetail>
               )}
             </>
           )}
