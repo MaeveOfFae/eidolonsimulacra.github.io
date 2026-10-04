@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Save, XCircle, Shield, Server } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
@@ -94,23 +94,40 @@ export default function Settings() {
     } as Record<FeatureCategory, Array<{ value: string; label: string }>>;
   }, [blueprintList]);
 
+  const providerSignatureRef = useRef<string | null>(null);
+
   const syncLocalConfigFromManager = () => {
     const config = configManager.getConfig();
     const apiKeys = configManager.getApiKeys();
     setLocalConfig({ ...config, api_keys: apiKeys });
     setPersistKeys(configManager.isPersistingApiKeys());
 
+    // Only re-resolve the provider when the config's engine/model identity changed.
+    // Saving or clearing a key rewrites config and fires the change event; without this
+    // guard the panel jumps back to the inferred provider mid-edit.
+    const signature = `${config.engine_mode}:${
+      config.engine_mode === 'explicit' ? (config.engine ?? '') : (config.model ?? '')
+    }`;
+    if (providerSignatureRef.current === signature) {
+      return;
+    }
+    providerSignatureRef.current = signature;
+
     if (config.engine_mode === 'explicit' && config.engine && ALL_PROVIDERS.includes(config.engine as Provider)) {
       setSelectedProvider(config.engine as Provider);
       return;
     }
 
+    // Prefer the model's own `provider/` prefix, and only fall back to a loose substring
+    // match: `openrouter/openai/gpt-4o-mini` starts with `openrouter/`, and matching by
+    // substring in list order would otherwise pick `openai` first.
     const model = config.model || '';
-    for (const provider of ALL_PROVIDERS) {
-      if (model.startsWith(provider + '/') || model.includes(provider)) {
-        setSelectedProvider(provider);
-        return;
-      }
+    const inferredProvider =
+      ALL_PROVIDERS.find((provider) => model.startsWith(`${provider}/`)) ??
+      ALL_PROVIDERS.find((provider) => model.includes(provider));
+
+    if (inferredProvider) {
+      setSelectedProvider(inferredProvider);
     }
   };
 

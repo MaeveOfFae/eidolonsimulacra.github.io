@@ -82,26 +82,24 @@ describe('Settings providers section', () => {
     expect(screen.getAllByText('Empty')).toHaveLength(ALL_PROVIDERS.length - 2);
   });
 
-  it('edits the selected provider and swaps to another one', async () => {
+  it('opens on the model prefix provider and swaps to another one', async () => {
     configManager.setApiKey('openrouter', 'sk-test');
 
     renderProviderSettings();
 
-    // Pre-existing quirk this test pins down: the default config model is
-    // `openrouter/openai/gpt-4o-mini`, and the provider is inferred by scanning
-    // ALL_PROVIDERS in order with `model.includes(provider)`, so `openai` wins over
-    // the model's actual `openrouter/` prefix and the tab opens on OpenAI.
-    expect(await screen.findByRole('heading', { name: 'OpenAI' })).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('Enter your openai API key')).toHaveValue('');
-    expect(screen.getByRole('button', { name: 'Test connection' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Clear key' })).toBeDisabled();
-
-    // Picking a provider with a stored key loads it into the editor.
-    fireEvent.click(screen.getByRole('button', { name: /^OpenRouter/ }));
-    expect(screen.getByRole('heading', { name: 'OpenRouter' })).toBeInTheDocument();
+    // The default model `openrouter/openai/gpt-4o-mini` resolves by its own
+    // `openrouter/` prefix, so the editor opens on the provider that model names.
+    expect(await screen.findByRole('heading', { name: 'OpenRouter' })).toBeInTheDocument();
     expect(screen.getByPlaceholderText('Enter your openrouter API key')).toHaveValue('sk-test');
     expect(screen.getByRole('button', { name: 'Test connection' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Clear key' })).toBeEnabled();
+
+    // Empty providers cannot be tested until a key is entered.
+    fireEvent.click(screen.getByRole('button', { name: /^OpenAI/ }));
+    expect(screen.getByRole('heading', { name: 'OpenAI' })).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Enter your openai API key')).toHaveValue('');
+    expect(screen.getByRole('button', { name: 'Test connection' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Clear key' })).toBeDisabled();
 
     // Ollama is local, so it is testable without credentials.
     fireEvent.click(screen.getByRole('button', { name: /^Ollama/ }));
@@ -110,21 +108,21 @@ describe('Settings providers section', () => {
     expect(screen.getByRole('button', { name: 'Test connection' })).toBeEnabled();
   });
 
-  it('clears a stored key, which re-syncs the editor to the model-inferred provider', async () => {
+  it('clears a stored key without switching providers', async () => {
     configManager.setApiKey('openrouter', 'sk-test');
 
     renderProviderSettings();
 
-    fireEvent.click(await screen.findByRole('button', { name: /^OpenRouter/ }));
+    expect(await screen.findByRole('heading', { name: 'OpenRouter' })).toBeInTheDocument();
     expect(screen.getByPlaceholderText('Enter your openrouter API key')).toHaveValue('sk-test');
 
     fireEvent.click(screen.getByRole('button', { name: 'Clear key' }));
 
-    // Clearing writes config, which emits the change event the screen listens for;
-    // that re-runs provider inference from `config.model`, so the editor lands back
-    // on OpenAI (see the quirk documented above) instead of staying on OpenRouter.
-    expect(await screen.findByRole('heading', { name: 'OpenAI' })).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('Enter your openai API key')).toHaveValue('');
+    // Clearing writes config and fires the change event the screen listens for, but the
+    // provider is only re-resolved when the engine/model identity changes, so the editor
+    // stays on the provider the user was working in.
+    expect(await screen.findByRole('heading', { name: 'OpenRouter' })).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Enter your openrouter API key')).toHaveValue('');
     expect(screen.getByRole('button', { name: 'Test connection' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Clear key' })).toBeDisabled();
 

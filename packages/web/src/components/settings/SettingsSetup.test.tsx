@@ -81,17 +81,17 @@ describe('Settings setup access column', () => {
   it('edits the selected provider key and saves it through the parent draft', async () => {
     renderSetupSettings();
 
-    // The default config model resolves to OpenAI (see SettingsProviders.test.tsx).
-    expect(await screen.findByRole('heading', { name: 'OpenAI access' })).toBeInTheDocument();
+    // The default model resolves to its own `openrouter/` prefix provider.
+    expect(await screen.findByRole('heading', { name: 'OpenRouter access' })).toBeInTheDocument();
 
-    fireEvent.change(screen.getByPlaceholderText('Enter your openai API key'), {
+    fireEvent.change(screen.getByPlaceholderText('Enter your openrouter API key'), {
       target: { value: 'sk-typed' },
     });
     fireEvent.click(screen.getByRole('button', { name: /Save All Settings/ }));
 
     await waitFor(() => {
       expect(api.updateConfig).toHaveBeenCalledWith(
-        expect.objectContaining({ api_keys: expect.objectContaining({ openai: 'sk-typed' }) }),
+        expect.objectContaining({ api_keys: expect.objectContaining({ openrouter: 'sk-typed' }) }),
       );
     });
   });
@@ -122,9 +122,8 @@ describe('Settings setup runtime column', () => {
     expect(screen.getByRole('button', { name: 'Auto' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Explicit' })).toBeInTheDocument();
 
-    // The default model is an OpenRouter id but the provider resolves to OpenAI
-    // (see SettingsProviders.test.tsx for that inference quirk).
-    expect(screen.getByLabelText('Provider')).toHaveValue('openai');
+    // The default model is an OpenRouter id, so its `openrouter/` prefix wins.
+    expect(screen.getByLabelText('Provider')).toHaveValue('openrouter');
     // The "Custom model ID" label has no htmlFor, so target the field by placeholder.
     expect(screen.getByPlaceholderText('e.g., openrouter/openai/gpt-4o-mini')).toHaveValue(
       'openrouter/openai/gpt-4o-mini',
@@ -157,9 +156,10 @@ describe('Settings setup runtime column', () => {
   it('reveals the custom transport fields and enables the connection test', async () => {
     renderSetupSettings();
 
-    fireEvent.click(await screen.findByRole('button', { name: /Advanced transport/ }));
+    fireEvent.change(await screen.findByLabelText('Provider'), { target: { value: 'openai' } });
+    fireEvent.click(screen.getByRole('button', { name: /Advanced transport/ }));
 
-    // OpenAI is the resolved provider, so the CORS warning is part of the panel.
+    // Choosing OpenAI surfaces its CORS warning inside the transport panel.
     expect(screen.getByText(/blocked by CORS on api\.openai\.com/)).toBeInTheDocument();
 
     const testConnection = screen.getByRole('button', { name: 'Test Connection' });
