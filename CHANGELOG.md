@@ -3,6 +3,23 @@
 Generated release history for the browser app.
 
 
+## v4.8.0 - 2026-10-04
+
+### Checkpointed generation sessions
+
+Generation runs are now checkpointed end to end. The per-asset run can pause mid-stream and resume from the paused asset with the approved prefix as context, any approved asset can become a restart point that regenerates everything downstream, and a paused session restores after reload without auto-resuming. Single-shot runs (batch, comparison, API callers) checkpoint by salvage - closed asset blocks from a dying stream are saved as a marked partial draft, and batch errors name it - while mobile persists a per-asset checkpoint with a Resume generation card that restores imported sources and can restart from any completed asset.
+
+### Highlights
+- Pause mid-run keeps the checkpoint; Resume session continues from the paused asset with the approved prefix as context
+- Restart from any approved asset - on the web run and the mobile resume card - regenerating everything downstream
+- Interrupted single-shot runs salvage closed asset blocks into a marked partial draft, and batch errors name it
+- Mobile checkpoints every completed asset and offers a Resume generation card that restores imported sources
+- Paused sessions restore after reload without auto-resuming, so a reload never restarts token spend on its own
+
+### Links
+- [Open generation](/generate)
+- [Open the library](/drafts)
+- [Open the Help Center](/help)
 ## v4.7.0 - 2026-10-02
 
 ### Asset approvals and the finished facade split
@@ -220,6 +237,7 @@ This release packages recent commits focused on platform, templates, and themes.
 ### Links
 - [Open generation](/generate)
 - [Review templates](/templates)
+
 
 
 

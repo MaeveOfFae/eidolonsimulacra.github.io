@@ -16,9 +16,29 @@ export interface ReleaseNoteEntry {
 // Generated and maintained by tools/generation/generate-release-notes.mjs.
 export const releaseNotes: ReleaseNoteEntry[] = [
   {
+    version: '4.8.0',
+    releasedOn: '2026-10-04',
+    badge: 'Current release',
+    headline: 'Checkpointed generation sessions',
+    summary:
+      'Generation runs are now checkpointed end to end. The per-asset run can pause mid-stream and resume from the paused asset with the approved prefix as context, any approved asset can become a restart point that regenerates everything downstream, and a paused session restores after reload without auto-resuming. Single-shot runs (batch, comparison, API callers) checkpoint by salvage - closed asset blocks from a dying stream are saved as a marked partial draft, and batch errors name it - while mobile persists a per-asset checkpoint with a Resume generation card that restores imported sources and can restart from any completed asset.',
+    highlights: [
+      'Pause mid-run keeps the checkpoint; Resume session continues from the paused asset with the approved prefix as context',
+      'Restart from any approved asset - on the web run and the mobile resume card - regenerating everything downstream',
+      'Interrupted single-shot runs salvage closed asset blocks into a marked partial draft, and batch errors name it',
+      'Mobile checkpoints every completed asset and offers a Resume generation card that restores imported sources',
+      'Paused sessions restore after reload without auto-resuming, so a reload never restarts token spend on its own',
+    ],
+    links: [
+      { label: 'Open generation', to: '/generate' },
+      { label: 'Open the library', to: '/drafts' },
+      { label: 'Open the Help Center', to: '/help' },
+    ],
+  },
+  {
     version: '4.7.0',
     releasedOn: '2026-10-02',
-    badge: 'Current release',
+    badge: 'Previous release',
     headline: 'Asset approvals and the finished facade split',
     summary:
       'Every draft asset can now be approved, flagged for changes, or undone from the review screen, with decisions fingerprinted to the content they approved so later edits mark them stale, and changes-requested assets joining low scores as export blockers. Under the hood the API facade split is complete: all nine domains live in their own modules behind a thin 589-line delegation shell, down from 2,727 lines, with the public surface locked and every characterization suite passing unchanged.',
