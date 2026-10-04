@@ -7,7 +7,14 @@ const mockUseQuery = vi.fn();
 const mockUseMutation = vi.fn();
 const mockUseQueryClient = vi.fn();
 const mockUseGuidedTour = vi.fn();
+const mockIsSelfContainedDesktop = vi.fn(() => false);
 let mutationResults: Array<ReturnType<typeof createMutationResult>> = [];
+let worldsResponse: { worlds: Array<{ id: string; name: string }> } = { worlds: [] };
+
+vi.mock('@/lib/runtime', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/runtime')>()),
+  isSelfContainedDesktopRuntime: () => mockIsSelfContainedDesktop(),
+}));
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: (options: unknown) => mockUseQuery(options),
@@ -102,6 +109,8 @@ describe('Review export modal behavior', () => {
     mockUseGuidedTour.mockReset();
     writeText.mockReset();
     mutationResults = [];
+    worldsResponse = { worlds: [] };
+    mockIsSelfContainedDesktop.mockReturnValue(false);
 
     Object.defineProperty(navigator, 'clipboard', {
       configurable: true,
@@ -123,7 +132,7 @@ describe('Review export modal behavior', () => {
 
       if (key === 'worlds-list') {
         return {
-          data: { worlds: [] },
+          data: worldsResponse,
           isLoading: false,
           error: null,
         };
@@ -434,6 +443,57 @@ describe('Review export modal behavior', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Export' }));
 
     expect(screen.getByTestId('export-modal')).toBeInTheDocument();
+  });
+
+  it('shows the empty-worlds fallback in the world attachments panel', async () => {
+    mockUseGuidedTour.mockReturnValue({
+      activeTourId: null,
+      activeStepIndex: 0,
+      isTourCompleted: vi.fn(() => false),
+      restartTour: vi.fn(),
+      startTour: vi.fn(),
+    });
+
+    mockIsSelfContainedDesktop.mockReturnValue(true);
+
+    renderReview();
+
+    // The world wiring lives inside the collapsed Overview panel.
+    fireEvent.click(screen.getByRole('button', { name: /^Overview/ }));
+
+    expect(
+      screen.getByText('No persisted worlds yet. Create or promote one from the Worlds route first.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: 'Attach draft to world' })).not.toBeInTheDocument();
+  });
+
+  it('attaches the draft to the selected world', async () => {
+    mockUseGuidedTour.mockReturnValue({
+      activeTourId: null,
+      activeStepIndex: 0,
+      isTourCompleted: vi.fn(() => false),
+      restartTour: vi.fn(),
+      startTour: vi.fn(),
+    });
+    worldsResponse = { worlds: [{ id: 'w-1', name: 'Eldoria' }] };
+    mockIsSelfContainedDesktop.mockReturnValue(true);
+
+    renderReview();
+
+    // The Overview panel auto-expands when the draft has worlds to attach to.
+    const worldSelect = screen.getByRole('combobox', { name: 'Attach draft to world' });
+    expect(worldSelect).toHaveValue('w-1');
+    expect(screen.getByRole('option', { name: 'Eldoria' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Attach to world' }));
+
+    await waitFor(() => {
+      const attachCall = mutationResults
+        .flatMap((result) => result.mutate.mock.calls.map(([payload]) => payload))
+        .find((payload) => payload === 'w-1');
+
+      expect(attachCall).toBe('w-1');
+    });
   });
 
   it('records an asset approval decision from the review card', async () => {

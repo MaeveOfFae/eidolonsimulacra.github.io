@@ -23,6 +23,7 @@ import { useAssistantScreenContext } from '../common/useAssistantContext';
 import DraftSendConfigPanel from './DraftSendConfigPanel';
 import ReviewAssetCards, { type ReviewAssetEntry } from './ReviewAssetCards';
 import ReviewHero from './ReviewHero';
+import ReviewWorldAttachmentsSection from './ReviewWorldAttachmentsSection';
 import ReviewChecklistPanel from './ReviewChecklistPanel';
 import VersionHistoryPanel from './VersionHistoryPanel';
 
@@ -975,210 +976,32 @@ export default function Review() {
         ) : null}
 
         {selfContainedDesktop && (
-          <div className="rounded-xl border border-border/60 bg-background/40 p-4 text-sm">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <div className="font-medium text-foreground">World attachment</div>
-                <div className="mt-1 text-muted-foreground">
-                  Attach this draft to a persisted world through its world-character record.
-                </div>
-              </div>
-              <Link
-                to="/worlds"
-                className="inline-flex items-center gap-2 rounded-xl border border-input bg-background px-3 py-2 text-sm hover:bg-accent"
-              >
-                Open Worlds
-              </Link>
-            </div>
-
-            {hasMultipleWorldAttachments ? (
-              <div className="mt-3 space-y-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-100">
-                <div className="font-medium text-foreground">Multiple world links found</div>
-                <div>
-                  This draft is linked to more than one persisted world character. Review-side move and detach actions
-                  are disabled until the extra links are cleaned up from Worlds.
-                </div>
-                <div className="space-y-1">
-                  {linkedWorldAttachments.map((attachment) => (
-                    <div key={attachment.characterId}>
-                      {attachment.worldName}: {attachment.characterName}
-                      {attachment.role ? ` · ${attachment.role}` : ''}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : linkedWorldAttachment ? (
-              <div className="mt-3 space-y-3">
-                <div className="rounded-lg border border-border/60 bg-background/60 p-3 text-xs text-muted-foreground">
-                  <div className="font-medium text-foreground">Attached to {linkedWorldAttachment.worldName}</div>
-                  <div className="mt-1">
-                    Character record: {linkedWorldAttachment.characterName}
-                    {linkedWorldAttachment.role ? ` · ${linkedWorldAttachment.role}` : ''}
-                  </div>
-                </div>
-                {worldsData?.worlds.length ? (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <select
-                      value={pendingWorldId}
-                      onChange={(event) => setPendingWorldId(event.target.value)}
-                      className="rounded-xl border border-input bg-background px-3 py-2 text-sm text-foreground"
-                      aria-label="Move draft to world"
-                    >
-                      {worldsData.worlds.map((world) => (
-                        <option key={world.id} value={world.id}>
-                          {world.name}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      type="button"
-                      onClick={() => pendingWorldId && attachDraftToWorld.mutate(pendingWorldId)}
-                      disabled={
-                        !pendingWorldId ||
-                        pendingWorldId === linkedWorldAttachment.worldId ||
-                        attachDraftToWorld.isPending ||
-                        detachDraftFromWorld.isPending
-                      }
-                      className="inline-flex items-center gap-2 rounded-xl bg-primary px-3 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-                    >
-                      {attachDraftToWorld.isPending ? 'Moving...' : 'Move to selected world'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => detachDraftFromWorld.mutate()}
-                      disabled={attachDraftToWorld.isPending || detachDraftFromWorld.isPending}
-                      className="inline-flex items-center gap-2 rounded-xl border border-input bg-background px-3 py-2 text-sm hover:bg-accent disabled:opacity-50"
-                    >
-                      {detachDraftFromWorld.isPending ? 'Detaching...' : 'Detach from world'}
-                    </button>
-                  </div>
-                ) : null}
-                {linkedReviewCharacter && (
-                  <div className="rounded-lg border border-border/60 bg-background/60 p-3 text-xs text-muted-foreground">
-                    <div className="font-medium text-foreground">Canon relationships</div>
-                    <div className="mt-1">
-                      Record ties for {linkedReviewCharacter.characterName} without leaving review.
-                    </div>
-
-                    {linkedReviewRelationships.length > 0 ? (
-                      <div className="mt-3 space-y-2">
-                        {linkedReviewRelationships.map((relationship) => {
-                          const sourceName =
-                            linkedWorldCharacters.find((character) => character.id === relationship.sourceCharacterId)
-                              ?.characterName ?? relationship.sourceCharacterId;
-                          const targetName =
-                            linkedWorldCharacters.find((character) => character.id === relationship.targetCharacterId)
-                              ?.characterName ?? relationship.targetCharacterId;
-
-                          return (
-                            <div
-                              key={relationship.id}
-                              className="rounded-md border border-border/50 bg-background/70 px-2.5 py-2"
-                            >
-                              <div className="font-medium text-foreground">
-                                {sourceName}
-                                {' -> '}
-                                {targetName}
-                              </div>
-                              <div className="mt-1">{relationship.label}</div>
-                              {relationship.notes ? (
-                                <div className="mt-1 text-[11px] text-muted-foreground">{relationship.notes}</div>
-                              ) : null}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="mt-3 rounded-md border border-border/50 bg-background/70 px-2.5 py-2 text-[11px] text-muted-foreground">
-                        No canon relationships recorded for this character yet.
-                      </div>
-                    )}
-
-                    {linkedRelationshipTargets.length > 0 ? (
-                      <div className="mt-3 space-y-2">
-                        <select
-                          value={pendingRelationshipTargetId}
-                          onChange={(event) => setPendingRelationshipTargetId(event.target.value)}
-                          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground"
-                          aria-label="Relationship target"
-                        >
-                          <option value="">Target character...</option>
-                          {linkedRelationshipTargets.map((character) => (
-                            <option key={character.id} value={character.id}>
-                              {character.characterName}
-                            </option>
-                          ))}
-                        </select>
-                        <input
-                          value={pendingRelationshipLabel}
-                          onChange={(event) => setPendingRelationshipLabel(event.target.value)}
-                          placeholder="Relationship label"
-                          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground"
-                        />
-                        <textarea
-                          value={pendingRelationshipNotes}
-                          onChange={(event) => setPendingRelationshipNotes(event.target.value)}
-                          placeholder="Relationship notes"
-                          className="min-h-20 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => addRelationshipFromReview.mutate()}
-                          disabled={
-                            !pendingRelationshipTargetId ||
-                            !pendingRelationshipLabel.trim() ||
-                            addRelationshipFromReview.isPending
-                          }
-                          className="inline-flex items-center gap-2 rounded-xl bg-primary px-3 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-                        >
-                          {addRelationshipFromReview.isPending ? 'Saving relationship...' : 'Add relationship to world'}
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="mt-3 rounded-md border border-border/50 bg-background/70 px-2.5 py-2 text-[11px] text-muted-foreground">
-                        Add another character to this world before recording relationships from review.
-                      </div>
-                    )}
-
-                    {worldRelationshipFeedback && (
-                      <div className="mt-3 text-[11px] text-muted-foreground">{worldRelationshipFeedback}</div>
-                    )}
-                  </div>
-                )}
-              </div>
-            ) : worldsData?.worlds.length ? (
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <select
-                  value={pendingWorldId}
-                  onChange={(event) => setPendingWorldId(event.target.value)}
-                  className="rounded-xl border border-input bg-background px-3 py-2 text-sm text-foreground"
-                  aria-label="Attach draft to world"
-                >
-                  {worldsData.worlds.map((world) => (
-                    <option key={world.id} value={world.id}>
-                      {world.name}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  onClick={() => pendingWorldId && attachDraftToWorld.mutate(pendingWorldId)}
-                  disabled={!pendingWorldId || attachDraftToWorld.isPending || detachDraftFromWorld.isPending}
-                  className="inline-flex items-center gap-2 rounded-xl bg-primary px-3 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-                >
-                  {attachDraftToWorld.isPending ? 'Attaching...' : 'Attach to world'}
-                </button>
-              </div>
-            ) : (
-              <div className="mt-3 rounded-lg border border-border/60 bg-background/60 p-3 text-xs text-muted-foreground">
-                No persisted worlds yet. Create or promote one from the Worlds route first.
-              </div>
-            )}
-
-            {worldAttachmentFeedback && (
-              <div className="mt-3 text-xs text-muted-foreground">{worldAttachmentFeedback}</div>
-            )}
-          </div>
+          <ReviewWorldAttachmentsSection
+            hasMultipleWorldAttachments={hasMultipleWorldAttachments}
+            linkedWorldAttachments={linkedWorldAttachments}
+            linkedWorldAttachment={linkedWorldAttachment}
+            worlds={worldsData?.worlds ?? []}
+            pendingWorldId={pendingWorldId}
+            onPendingWorldIdChange={setPendingWorldId}
+            isAttaching={attachDraftToWorld.isPending}
+            isDetaching={detachDraftFromWorld.isPending}
+            onAttach={(worldId) => attachDraftToWorld.mutate(worldId)}
+            onDetach={() => detachDraftFromWorld.mutate()}
+            linkedReviewCharacter={linkedReviewCharacter}
+            linkedReviewRelationships={linkedReviewRelationships}
+            linkedWorldCharacters={linkedWorldCharacters}
+            linkedRelationshipTargets={linkedRelationshipTargets}
+            pendingRelationshipTargetId={pendingRelationshipTargetId}
+            onPendingRelationshipTargetIdChange={setPendingRelationshipTargetId}
+            pendingRelationshipLabel={pendingRelationshipLabel}
+            onPendingRelationshipLabelChange={setPendingRelationshipLabel}
+            pendingRelationshipNotes={pendingRelationshipNotes}
+            onPendingRelationshipNotesChange={setPendingRelationshipNotes}
+            isAddingRelationship={addRelationshipFromReview.isPending}
+            onAddRelationship={() => addRelationshipFromReview.mutate()}
+            worldRelationshipFeedback={worldRelationshipFeedback}
+            worldAttachmentFeedback={worldAttachmentFeedback}
+          />
         )}
 
         {mergeProvenanceSummary ? (
