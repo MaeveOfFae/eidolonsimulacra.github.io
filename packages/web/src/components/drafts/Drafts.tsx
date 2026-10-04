@@ -506,8 +506,7 @@ export default function Drafts() {
           <div>
             <h3 className="text-sm font-semibold text-foreground">Snapshot preview</h3>
             <p className="mt-1 text-xs text-muted-foreground">
-              {selectedSnapshotEntry.draftName} ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â·{' '}
-              {selectedSnapshotEntry.snapshot.label || 'Restore point'} ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â·{' '}
+              {selectedSnapshotEntry.draftName} · {selectedSnapshotEntry.snapshot.label || 'Restore point'} ·{' '}
               {formatTimestamp(selectedSnapshotEntry.snapshot.created_at)}
             </p>
           </div>
@@ -554,7 +553,7 @@ export default function Drafts() {
                   <option value="">Compare against current draft</option>
                   {selectedSnapshotCompareOptions.map((snapshot) => (
                     <option key={snapshot.id} value={snapshot.id}>
-                      {snapshot.label || 'Restore point'} ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· {formatTimestamp(snapshot.created_at)}
+                      {snapshot.label || 'Restore point'} · {formatTimestamp(snapshot.created_at)}
                     </option>
                   ))}
                 </select>
@@ -624,8 +623,8 @@ export default function Drafts() {
                         >
                           <div className="rounded-md border border-border/60 bg-background/80 p-2">
                             <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                              {selectedSnapshotCompareBaseSnapshot ? 'Baseline snapshot' : 'Current'}{' '}
-                              ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· line {line.lineNumber}
+                              {selectedSnapshotCompareBaseSnapshot ? 'Baseline snapshot' : 'Current'} · line{' '}
+                              {line.lineNumber}
                             </div>
                             <pre className="mt-1 whitespace-pre-wrap break-words font-mono text-[11px] text-foreground">
                               {line.currentLine || '(empty)'}
@@ -633,7 +632,7 @@ export default function Drafts() {
                           </div>
                           <div className="rounded-md border border-border/60 bg-background/80 p-2">
                             <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                              Snapshot ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· line {line.lineNumber}
+                              Snapshot · line {line.lineNumber}
                             </div>
                             <pre className="mt-1 whitespace-pre-wrap break-words font-mono text-[11px] text-foreground">
                               {line.snapshotLine || '(empty)'}
@@ -889,7 +888,7 @@ export default function Drafts() {
           )}
           <span className="text-sm">{notice.message}</span>
           <button type="button" onClick={() => setNotice(null)} className="ml-auto opacity-50 hover:opacity-100">
-            ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â
+            ×
           </button>
         </div>
       )}
@@ -1035,7 +1034,7 @@ export default function Drafts() {
                               {snapshot.label || 'Restore point'}
                             </Link>
                             <p className="mt-1 text-xs text-muted-foreground">
-                              {draftName} ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· {formatTimestamp(snapshot.created_at)}
+                              {draftName} · {formatTimestamp(snapshot.created_at)}
                             </p>
                             {snapshot.reason && <p className="mt-1 text-xs text-muted-foreground">{snapshot.reason}</p>}
                           </div>
@@ -1095,12 +1094,11 @@ export default function Drafts() {
                                 {draftName}
                               </Link>
                               <p className="mt-1 text-xs text-muted-foreground">
-                                {entry.strategy === 'staged-merge' ? 'Staged merge' : 'Single-asset merge'}{' '}
-                                ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· {formatTimestamp(entry.created_at)}
+                                {entry.strategy === 'staged-merge' ? 'Staged merge' : 'Single-asset merge'} ·{' '}
+                                {formatTimestamp(entry.created_at)}
                               </p>
                               <p className="mt-1 text-xs text-muted-foreground">
-                                Source: {sourceName} ({entry.source_side}) ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· Base: {baseName} (
-                                {entry.base_side})
+                                Source: {sourceName} ({entry.source_side}) · Base: {baseName} ({entry.base_side})
                               </p>
                               <p className="mt-1 text-xs text-muted-foreground">
                                 Assets: {entry.asset_names.join(', ')}
