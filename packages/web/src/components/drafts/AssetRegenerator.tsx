@@ -1,22 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  ArrowLeft,
-  Bookmark,
-  Check,
-  ChevronDown,
-  ChevronRight,
-  Copy,
-  Download,
-  FileText,
-  Loader2,
-  MessageSquarePlus,
-  RotateCcw,
-  Sparkles,
-  Star,
-  Trash2,
-} from 'lucide-react';
+import { ArrowLeft, Download, FileText, Loader2, MessageSquarePlus, RotateCcw, Sparkles } from 'lucide-react';
 import { OFFICIAL_TEMPLATE, type Draft, type DraftMetadata, type Template } from '@char-gen/shared';
 import { api } from '@/lib/api';
 import { unwrapSingleCodeFence } from '@/lib/content-format';
@@ -39,6 +24,7 @@ import {
 } from '@/lib/drafts/asset-regenerator-helpers';
 import type { AssetCandidate } from '@/lib/drafts/asset-regenerator-helpers';
 
+import AssetCandidateCard from './AssetCandidateCard';
 interface AssetRegeneratorProps {
   templates?: Template[];
   fixedAssetName?: string;
@@ -618,117 +604,30 @@ export default function AssetRegenerator({
     return draftsResponse.drafts;
   }, [draftsResponse, enableDraftSelection, fixedAssetName, templates]);
 
-  const renderCandidateCard = (candidate: AssetCandidate, index: number, isSaved: boolean = false) => {
-    const isExpanded = expandedCandidates.has(candidate.id);
-    const isCopied = copiedId === candidate.id;
-    const isActive = currentAssetContent === candidate.content;
-    const cardLabel = isIntroAsset ? 'Intro' : 'Variant';
-
-    return (
-      <div
-        key={candidate.id}
-        className={`rounded-xl border ${isActive ? 'border-primary/50 bg-primary/5' : 'border-border/50'}`}
-      >
-        <button
-          onClick={() => toggleExpand(candidate.id)}
-          className="flex w-full items-center justify-between p-4 text-left"
-        >
-          <div className="flex items-center gap-3">
-            {isExpanded ? (
-              <ChevronDown className="h-4 w-4 text-muted-foreground" />
-            ) : (
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            )}
-            <span className="font-medium">
-              {cardLabel} #{index + 1}
-            </span>
-            {isActive && (
-              <span className="inline-flex items-center gap-1 text-xs text-primary">
-                <Star className="h-3 w-3 fill-primary" />
-                active
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span>{new Date(candidate.timestamp).toLocaleTimeString()}</span>
-            <span>•</span>
-            <span>{candidate.content.length} chars</span>
-          </div>
-        </button>
-
-        {isExpanded && (
-          <div className="space-y-3 border-t border-border/50 p-4">
-            <div className="grid gap-3 lg:grid-cols-2">
-              <div className="space-y-2">
-                <div className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
-                  Current active
-                </div>
-                <div className="max-h-80 overflow-y-auto rounded-md bg-muted/50 p-3 text-sm font-mono whitespace-pre-wrap">
-                  {currentAssetContent || 'No active content saved.'}
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Candidate</div>
-                <div className="max-h-80 overflow-y-auto rounded-md bg-muted/50 p-3 text-sm font-mono whitespace-pre-wrap">
-                  {candidate.content}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => void copyCandidate(candidate.id, candidate.content)}
-                className="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-sm hover:bg-accent"
-              >
-                {isCopied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
-                {isCopied ? 'Copied' : 'Copy'}
-              </button>
-
-              {!isSaved && isIntroAsset && (
-                <button
-                  onClick={() => void saveToIntroCollection(candidate)}
-                  disabled={updateMetadata.isPending}
-                  className="inline-flex items-center gap-1.5 rounded-md bg-secondary px-3 py-1.5 text-sm hover:bg-secondary/80 disabled:opacity-50"
-                >
-                  <Bookmark className="h-3.5 w-3.5" />
-                  Keep
-                </button>
-              )}
-
-              <button
-                onClick={() => void applyCandidate(candidate.content)}
-                disabled={updateAsset.isPending || isActive}
-                className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-              >
-                <Star className="h-3.5 w-3.5" />
-                {isActive ? 'Active' : primaryActionLabel}
-              </button>
-
-              {!embedded && (
-                <button
-                  onClick={() => void applyCandidate(candidate.content, { returnToReview: true })}
-                  disabled={updateAsset.isPending || isActive}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-sm hover:bg-accent disabled:opacity-50"
-                >
-                  <ArrowLeft className="h-3.5 w-3.5" />
-                  {secondaryActionLabel}
-                </button>
-              )}
-
-              <button
-                onClick={() => (isSaved ? void deleteSavedIntro(candidate.id) : removeCandidate(candidate.id))}
-                disabled={isSaved && updateMetadata.isPending}
-                className="inline-flex items-center gap-1.5 rounded-md border border-destructive/50 bg-destructive/10 px-3 py-1.5 text-sm text-destructive hover:bg-destructive/20 disabled:opacity-50"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                Remove
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
+  const renderCandidateCard = (candidate: AssetCandidate, index: number, isSaved: boolean = false) => (
+    <AssetCandidateCard
+      key={candidate.id}
+      candidate={candidate}
+      index={index}
+      isSaved={isSaved}
+      isExpanded={expandedCandidates.has(candidate.id)}
+      isCopied={copiedId === candidate.id}
+      isActive={currentAssetContent === candidate.content}
+      cardLabel={isIntroAsset ? 'Intro' : 'Variant'}
+      currentAssetContent={currentAssetContent}
+      primaryActionLabel={primaryActionLabel}
+      secondaryActionLabel={secondaryActionLabel}
+      embedded={embedded}
+      isIntroAsset={isIntroAsset}
+      savingPending={updateMetadata.isPending}
+      applyingPending={updateAsset.isPending}
+      onToggleExpand={toggleExpand}
+      onCopy={copyCandidate}
+      onKeep={saveToIntroCollection}
+      onApply={applyCandidate}
+      onDelete={(target, saved) => (saved ? void deleteSavedIntro(target.id) : removeCandidate(target.id))}
+    />
+  );
 
   if (draftLoading) {
     return (
