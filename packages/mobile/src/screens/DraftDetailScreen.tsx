@@ -23,12 +23,15 @@ import {
   buildDraftSnapshotDiffModelFromStates,
   buildDraftSnapshotDiffSummaryFromStates,
   buildExportReadinessSummary,
+  decideAssetApproval,
+  type DraftAssetApprovalStatus,
   type DraftAssetReviewScore,
   type DraftMetadata,
   type ExportFormat,
 } from '@char-gen/shared';
 import { api } from '../config/api';
 import CollapsibleTray from '../components/CollapsibleTray';
+import ReviewApprovalTray from '../components/ReviewApprovalTray';
 import { useTheme } from '../theme/ThemeProvider';
 import type { ThemeColors } from '@char-gen/shared';
 import {
@@ -43,6 +46,7 @@ import {
   PencilIcon,
   SparklesIcon,
   UsersIcon,
+  CheckIcon,
 } from '../components/Icons';
 import {
   getMobileCompareSelection,
@@ -50,6 +54,7 @@ import {
   type MobileCompareSelection,
 } from '../lib/compare-selection';
 import { isDraftArchived, resolveDraftArchiveAction } from '../lib/draft-archive';
+import { buildAssetApprovalDecision, buildMobileApprovalQueue } from '../lib/review-approval';
 import type { DraftDetailRouteProp, DraftsStackNavigationProp } from '../types/navigation';
 import { getErrorMessage } from '../utils/errors';
 import { pickCharacterImportFile, saveDownload } from '../utils/file-transfer';
@@ -633,6 +638,47 @@ export default function DraftDetailScreen() {
     },
     onError: (error: unknown) => {
       setReviewSaveFeedback(getErrorMessage(error, 'Failed to save review notes'));
+    },
+  });
+
+  const saveAssetApprovalMutation = useMutation({
+    mutationFn: async (variables: { assetName: string; status: DraftAssetApprovalStatus }) => {
+      if (!draft) {
+        return null;
+      }
+
+      // The shared engine records the decision against a fingerprint of the asset's
+      // current content, which is what makes an approval go stale the moment the
+      // asset is regenerated or edited — so mobile never has to police that itself.
+      const nextAnnotations = decideAssetApproval(
+        draft,
+        variables.assetName,
+        buildAssetApprovalDecision(draft, variables.assetName, variables.status),
+      );
+
+      await api.createDraftSnapshot(draftId, {
+        label: `Before ${
+          variables.status === 'approved' ? 'approving' : 'requesting changes on'
+        } ${formatAssetLabel(variables.assetName)}`,
+        reason: 'pre-asset-approval',
+      });
+
+      await api.updateMetadata(draftId, {
+        review_annotations: nextAnnotations,
+      });
+
+      return variables;
+    },
+    onSuccess: (result) => {
+      if (!result) {
+        return;
+      }
+
+      queryClient.invalidateQueries({ queryKey: ['draft', draftId] });
+      queryClient.invalidateQueries({ queryKey: ['drafts'] });
+    },
+    onError: (error: unknown) => {
+      Alert.alert('Error', getErrorMessage(error, 'Failed to save the approval decision'));
     },
   });
 
@@ -1351,6 +1397,10 @@ export default function DraftDetailScreen() {
     () => (draft ? buildExportReadinessSummary(draft, validationQuery.data) : undefined),
     [draft, validationQuery.data],
   );
+  const approvalQueue = useMemo(
+    () => buildMobileApprovalQueue(draft, validationQuery.data),
+    [draft, validationQuery.data],
+  );
 
   useEffect(() => {
     if (!draft) {
@@ -1660,6 +1710,21 @@ export default function DraftDetailScreen() {
               </View>
             ) : null}
           </View>
+        </CollapsibleTray>
+
+        <CollapsibleTray
+          title="Asset approvals"
+          subtitle={approvalQueue.progressLabel}
+          initiallyExpanded={approvalQueue.pendingEntries.length > 0}
+          meta={approvalQueue.complete ? <CheckIcon color={colors.success_text} size={16} /> : null}
+        >
+          <ReviewApprovalTray
+            queue={approvalQueue}
+            pendingAssetName={
+              saveAssetApprovalMutation.isPending ? (saveAssetApprovalMutation.variables?.assetName ?? null) : null
+            }
+            onDecide={(assetName, status) => saveAssetApprovalMutation.mutate({ assetName, status })}
+          />
         </CollapsibleTray>
 
         {hasReviewSummary ? (

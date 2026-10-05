@@ -6,6 +6,26 @@ interface IconProps {
   size?: number;
 }
 
+export function CheckIcon({ color, size = 24 }: IconProps) {
+  return (
+    <View style={{ width: size, height: size }}>
+      <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <Path d="M4.5 12.75l6 6 9-13.5" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+      </Svg>
+    </View>
+  );
+}
+
+export function XMarkIcon({ color, size = 24 }: IconProps) {
+  return (
+    <View style={{ width: size, height: size }}>
+      <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <Path d="M6 18L18 6M6 6l12 12" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+      </Svg>
+    </View>
+  );
+}
+
 export function HomeIcon({ color, size = 24 }: IconProps) {
   return (
     <View style={{ width: size, height: size }}>

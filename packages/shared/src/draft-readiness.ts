@@ -88,6 +88,23 @@ export function buildDraftLibraryBadges(metadata: DraftMetadata): DraftLibraryBa
   const hasReviewerSummary = Boolean(reviewAnnotations?.notes?.trim());
   const mergeStrategy = metadata.merge_provenance?.strategy;
   const snapshotCount = metadata.revision_snapshots?.length ?? 0;
+  // Approval counts come straight off the recorded decisions. A decision that has
+  // gone stale is not visible from metadata alone (staleness needs the asset's
+  // current content), which is why the detail screen is where staleness shows.
+  const approvalStatuses = Object.values(reviewAnnotations?.asset_approvals ?? {}).map((approval) => approval.status);
+  const approvedApprovalCount = approvalStatuses.filter((status) => status === 'approved').length;
+  const changesRequestedApprovalCount = approvalStatuses.filter((status) => status === 'changes_requested').length;
+
+  // Approval state leads the badges: it is the one thing a reviewer has to act on,
+  // and both surfaces cap how many they show.
+  if (changesRequestedApprovalCount > 0) {
+    badges.push({
+      label: `${changesRequestedApprovalCount} changes requested`,
+      tone: 'warning',
+    });
+  } else if (approvedApprovalCount > 0) {
+    badges.push({ label: `${approvedApprovalCount} approved`, tone: 'success' });
+  }
 
   if ((metadata.parent_drafts?.length ?? 0) > 0) {
     badges.push({ label: 'Branch', tone: 'muted' });
