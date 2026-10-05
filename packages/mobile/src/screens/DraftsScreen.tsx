@@ -1,22 +1,56 @@
 ﻿import { useCallback, useEffect, useState, useMemo } from 'react';
 
-import { View, Text, FlatList, TouchableOpacity, RefreshControl, TextInput, ScrollView, ActivityIndicator, Alert, Modal, KeyboardAvoidingView, Platform } from 'react-native';
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  RefreshControl,
+  TextInput,
+  ScrollView,
+  ActivityIndicator,
+  Alert,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { buildDraftLibraryBadges, getLatestDraftSnapshotSummary, type DraftMetadata, type ContentMode, type Template } from '@char-gen/shared';
+import {
+  buildDraftLibraryBadges,
+  getLatestDraftSnapshotSummary,
+  type DraftMetadata,
+  type ContentMode,
+  type Template,
+} from '@char-gen/shared';
 import { api } from '../config/api';
 import CollapsibleTray from '../components/CollapsibleTray';
 import { useTheme } from '../theme/ThemeProvider';
 import { exportAllDrafts, importDrafts } from '../local/draft-store';
-import { ArrowUturnLeftIcon, ArchiveBoxIcon, StarIcon, FolderIcon, MagnifyingGlassIcon, PlusIcon, UsersIcon } from '../components/Icons';
-import { isDraftArchived, resolveDraftArchiveAction, selectDraftListSource, type DraftFilterMode } from '../lib/draft-archive';
-import { getMobileCompareSelection, setMobileCompareSelection, type MobileCompareSelection } from '../lib/compare-selection';
+import {
+  ArrowUturnLeftIcon,
+  ArchiveBoxIcon,
+  StarIcon,
+  FolderIcon,
+  MagnifyingGlassIcon,
+  PlusIcon,
+  UsersIcon,
+} from '../components/Icons';
+import {
+  isDraftArchived,
+  resolveDraftArchiveAction,
+  selectDraftListSource,
+  type DraftFilterMode,
+} from '../lib/draft-archive';
+import {
+  getMobileCompareSelection,
+  setMobileCompareSelection,
+  type MobileCompareSelection,
+} from '../lib/compare-selection';
 import type { DraftsStackNavigationProp } from '../types/navigation';
 import { getErrorMessage } from '../utils/errors';
 import { pickTextFile, saveTextFile } from '../utils/file-transfer';
-import {
-  buildStyles,
-} from './drafts/styles';
+import { buildStyles } from './drafts/styles';
 
 type SortOption = 'created' | 'modified' | 'name';
 type FilterMode = DraftFilterMode;
@@ -792,4 +826,3 @@ export default function DraftsScreen() {
     </View>
   );
 }
-

@@ -20,7 +20,7 @@ const KIND_RE = /^(?:export )?(async function|function|const|let|class|interface
 const TYPE_KINDS = new Set(['interface', 'type']);
 
 export function split(config) {
-  const raw = readFileSync(config.source, 'utf8');
+  const raw = readFileSync(config.source, 'utf8').replace(/^\uFEFF/, '');
   const eol = raw.includes('\r\n') ? '\r\n' : '\n';
   const lines = raw.split(/\r?\n/);
   const slice = (from, to) => lines.slice(from - 1, to).join('\n');
@@ -45,7 +45,7 @@ export function split(config) {
       return out.replace(pattern, `export $1 ${name}`);
     }, body);
 
-  const built = config.modules.map((module) => {
+  const built = (config.modules ?? []).map((module) => {
     const body = slice(module.from, module.to);
     const decls = declarations(body);
     return { ...module, body, decls, names: decls.map((d) => d.name) };
@@ -99,13 +99,15 @@ export function split(config) {
   /**
    * Comments and string literals mention identifiers the code does not use. Stripping
    * both is what makes the per-name import filter accurate; if it ever strips too much,
-   * the typecheck says so at once.
+   * the typecheck says so at once. The string patterns are deliberately line-scoped:
+   * an apostrophe in a sentence ("the screen's state") must not open a string that
+   * swallows real code further down.
    */
   const stripComments = (text) =>
     text
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/^[ \t]*\/\/.*$/gm, '')
-      .replace(/'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"/g, "''");
+      .replace(/'[^'\n]*'|"[^"\n]*"/g, "''");
 
   /**
    * Rebuild an import statement with only the names a body uses. Filtering whole
@@ -206,7 +208,10 @@ export function split(config) {
   }
 
   // The barrel, generated from the pre-split export list so nothing is dropped.
-  const head = execSync(`git show HEAD:${config.source}`, { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 });
+  const head = execSync(`git show HEAD:${config.source}`, {
+    encoding: 'utf8',
+    maxBuffer: 32 * 1024 * 1024,
+  }).replace(/^\uFEFF/, '');
   const publicDecls = [
     ...head.replace(/\r\n/g, '\n').matchAll(/^export (async function|function|const|class|interface|type) (\w+)/gm),
   ].map((match) => ({ kind: match[1], name: match[2] }));
@@ -330,6 +335,158 @@ export function split(config) {
       files: built.map((module) => `${module.file}: ${module.names.length} declarations`),
       exports: publicDecls.length,
       kept: `${keepBody.split('\n').length} lines kept, ${moved.length} exports re-exported`,
+    };
+  }
+
+  // --- With `cut`, an interior range (or several) leaves the file, which keeps the rest.
+  if (config.cut) {
+    const cuts = config.cut;
+    const inCut = (index) => cuts.some(({ from, to }) => index + 1 >= from && index + 1 <= to);
+
+    const firstImportIndex = headLines.findIndex((line) => /^import /.test(line));
+    const importEnd = (() => {
+      let index = firstImportIndex;
+      while (index < headLines.length) {
+        const line = headLines[index];
+        if (
+          /^(?:import |\} from |^$|\s)/.test(line) &&
+          !/^(?:const|function|class|interface|type|export|let|var|async) /.test(line)
+        ) {
+          index += 1;
+          continue;
+        }
+        break;
+      }
+      return index;
+    })();
+
+    const header = headLines
+      .slice(0, firstImportIndex < 0 ? 0 : firstImportIndex)
+      .join('\n')
+      .replace(/\n+$/, '');
+    const rawLines = config.source.includes('.tsx') ? lines : lines;
+    const cutBody = rawLines.filter((_, index) => inCut(index)).join('\n');
+    const retainedBody = rawLines.filter((_, index) => index >= importEnd && !inCut(index)).join('\n');
+
+    const module = config.cutModule;
+    const wrap = module.wrap;
+
+    // Values the retained body needs handed back. Anchored at one indent level, which is
+    // where a component body keeps its state and handlers — matching column 0 here (as
+    // the top-level module scans do) would find only the file's own types.
+    const cutDecls = [
+      ...cutBody.matchAll(/^ {0,2}(?:export )?(async function|function|const|let|class|interface|type) (\w+)/gm),
+    ].map((match) => ({ kind: match[1], name: match[2] }));
+
+    // Destructured state (`const { colors } = useTheme()`, `const [seed, setSeed] = useState()`)
+    // is where most of a component's locals come from, so those names count too.
+    const destructured = [...cutBody.matchAll(/^ {0,2}const (\{[^}]*\}|\[[^\]]*\]) =/gm)].flatMap((match) =>
+      match[1]
+        .slice(1, -1)
+        .split(',')
+        .map((entry) =>
+          entry
+            .split('=')[0]
+            .split(':')
+            .pop()
+            .trim()
+            .replace(/^\.\.\./, ''),
+        )
+        .filter((name) => /^[A-Za-z_$][\w$]*$/.test(name)),
+    );
+    for (const name of destructured) {
+      if (!cutDecls.some((decl) => decl.name === name)) {
+        cutDecls.push({ kind: 'const', name });
+      }
+    }
+
+    const retainedUses = (name) => new RegExp(`\\b${name}\\b`).test(stripComments(retainedBody));
+
+    // Type declarations have to sit at module scope to be exportable, so they are split
+    // out of the cut body and hoisted above the hook; only values can be returned.
+    const cutLines = cutBody.split('\n');
+    const typeBlocks = [];
+    const valueLines = [];
+    for (let index = 0; index < cutLines.length; index += 1) {
+      const line = cutLines[index];
+      if (/^(?:export )?(?:type|interface) /.test(line)) {
+        let depth = 0;
+        let block = [line];
+        const opensBrace = line.includes('{');
+        if (opensBrace) {
+          depth += (line.match(/\{/g) ?? []).length - (line.match(/\}/g) ?? []).length;
+          while (depth > 0 && index + 1 < cutLines.length) {
+            index += 1;
+            block.push(cutLines[index]);
+            depth += (cutLines[index].match(/\{/g) ?? []).length - (cutLines[index].match(/\}/g) ?? []).length;
+          }
+        } else if (!/;\s*$/.test(line)) {
+          while (index + 1 < cutLines.length && !/;\s*$/.test(cutLines[index])) {
+            index += 1;
+            block.push(cutLines[index]);
+          }
+        }
+        typeBlocks.push(block.join('\n'));
+        continue;
+      }
+      valueLines.push(line);
+    }
+
+    const typeNames = typeBlocks
+      .map((block) => block.match(/^(?:export )?(?:type|interface) (\w+)/)?.[1])
+      .filter(Boolean);
+    const exportedTypes = typeBlocks.map((block) => (/^export /.test(block) ? block : `export ${block}`)).join('\n\n');
+
+    const hookDecls = new Set(cutDecls.map((decl) => decl.name));
+    const returned = cutDecls
+      .filter((decl) => !TYPE_KINDS.has(decl.kind))
+      .map((decl) => decl.name)
+      .filter((name, index, all) => all.indexOf(name) === index && hookDecls.has(name) && retainedUses(name))
+      .sort();
+
+    const moduleImports = sourceImports
+      .map((statement) => selectNames(statement, (name) => new RegExp(`\\b${name}\\b`).test(stripComments(cutBody))))
+      .filter(Boolean)
+      .map((statement) => deepen(statement));
+
+    const content = `${module.doc}\n\n${moduleImports.join('\n')}\n${exportedTypes ? `\n${exportedTypes}\n` : ''}\n${wrap.open}\n${valueLines.join('\n')}\n\n  return {\n${returned
+      .map((name) => `    ${name},`)
+      .join('\n')}\n  };\n${wrap.close}\n`;
+
+    mkdirSync(config.dir, { recursive: true });
+    writeFileSync(`${config.dir}/${module.file}`, content.replace(/\n/g, eol), 'utf8');
+
+    const sourceImportsFor = sourceImports
+      .map((statement) =>
+        selectNames(statement, (name) => new RegExp(`\\b${name}\\b`).test(stripComments(retainedBody))),
+      )
+      .filter(Boolean);
+    const moduleSpec = `./${config.dir.split('/').pop()}/${module.file.replace(/\.tsx?$/, config.extension ?? '.js')}`;
+    const typeImports = typeNames.filter(retainedUses).sort();
+    const moduleImportLines = [
+      `import { ${wrap.importName} } from '${moduleSpec}';`,
+      ...(typeImports.length > 0 ? [`import type { ${typeImports.join(', ')} } from '${moduleSpec}';`] : []),
+    ].join('\n');
+
+    // The destructure belongs inside the component: the retained body starts with its
+    // signature, so it is spliced in after that first line.
+    const retainedLines = retainedBody.split('\n');
+    const signature = retainedLines.shift();
+    const destructure = `  const { ${returned.join(', ')} } = ${wrap.importName}(${config.cutCall ?? ''});`;
+
+    writeFileSync(
+      config.source,
+      `${header}\n\n${sourceImportsFor.join('\n')}\n${moduleImportLines}\n\n${signature}\n${destructure}\n${retainedLines.join('\n')}\n`.replace(
+        /\n/g,
+        eol,
+      ),
+      'utf8',
+    );
+
+    return {
+      files: [`${module.file}: ${returned.length} returned, ${moduleImports.length} imports`],
+      exports: publicDecls.length,
+      kept: `${retainedBody.split('\n').length} lines retained, ${cutBody.split('\n').length} cut`,
     };
   }
 

@@ -1,26 +1,63 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Modal, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as Clipboard from 'expo-clipboard';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { buildDraftRevisionSnapshotState, buildDraftSnapshotDiffCandidateAssets, buildDraftSnapshotDiffModelFromStates, buildDraftSnapshotDiffSummaryFromStates, buildExportReadinessSummary, decideAssetApproval, type DraftAssetApprovalStatus, type DraftAssetReviewScore, type DraftMetadata, type ExportFormat } from '@char-gen/shared';
+import {
+  buildDraftRevisionSnapshotState,
+  buildDraftSnapshotDiffCandidateAssets,
+  buildDraftSnapshotDiffModelFromStates,
+  buildDraftSnapshotDiffSummaryFromStates,
+  buildExportReadinessSummary,
+  decideAssetApproval,
+  type DraftAssetApprovalStatus,
+  type DraftAssetReviewScore,
+  type DraftMetadata,
+  type ExportFormat,
+} from '@char-gen/shared';
 import { api } from '../config/api';
 import CollapsibleTray from '../components/CollapsibleTray';
 import ReviewApprovalTray from '../components/ReviewApprovalTray';
 import { useTheme } from '../theme/ThemeProvider';
-import { StarIcon, ArrowLeftIcon, ArchiveBoxIcon, ArrowUturnLeftIcon, TrashIcon, DocumentTextIcon, ChatBubbleIcon, ClipboardDocumentIcon, PencilIcon, SparklesIcon, UsersIcon, CheckIcon } from '../components/Icons';
-import { getMobileCompareSelection, setMobileCompareSelection, type MobileCompareSelection } from '../lib/compare-selection';
+import {
+  StarIcon,
+  ArrowLeftIcon,
+  ArchiveBoxIcon,
+  ArrowUturnLeftIcon,
+  TrashIcon,
+  DocumentTextIcon,
+  ChatBubbleIcon,
+  ClipboardDocumentIcon,
+  PencilIcon,
+  SparklesIcon,
+  UsersIcon,
+  CheckIcon,
+} from '../components/Icons';
+import {
+  getMobileCompareSelection,
+  setMobileCompareSelection,
+  type MobileCompareSelection,
+} from '../lib/compare-selection';
 import { isDraftArchived, resolveDraftArchiveAction } from '../lib/draft-archive';
 import { buildAssetApprovalDecision, buildMobileApprovalQueue } from '../lib/review-approval';
 import type { DraftDetailRouteProp, DraftsStackNavigationProp } from '../types/navigation';
 import { getErrorMessage } from '../utils/errors';
 import { pickCharacterImportFile, saveDownload } from '../utils/file-transfer';
-import {
-  buildStyles,
-} from './draft-detail/styles';
+import { buildStyles } from './draft-detail/styles';
 
 type AssetEntry = {
   name: string;
@@ -2797,4 +2834,3 @@ export default function DraftDetailScreen() {
     </View>
   );
 }
-
