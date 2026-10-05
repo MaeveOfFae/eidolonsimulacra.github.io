@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import Home from './Home';
@@ -84,5 +84,39 @@ describe('Home getting started guide', () => {
       expect(screen.getByText('Return to the next useful task.')).toBeInTheDocument();
     });
     expect(screen.queryByText('Follow this first-run path')).not.toBeInTheDocument();
+  });
+});
+
+describe('Home supporting tools', () => {
+  const openSupportingTools = async () => {
+    renderHome();
+    // The section is collapsed by default, and collapsed sections do not render
+    // their children, so the links only exist after the toggle is clicked.
+    fireEvent.click(await screen.findByRole('button', { name: /Supporting tools/i }));
+  };
+
+  it('links each supporting tool to its route', async () => {
+    await openSupportingTools();
+
+    const expected: Array<[string, string]> = [
+      ['Seed Generator', '/seed-generator'],
+      ['Validation', '/validation'],
+      ['Token Optimization', '/optimize'],
+      ['Batch', '/batch'],
+      ['Similarity', '/similarity'],
+    ];
+
+    for (const [label, href] of expected) {
+      expect(screen.getByRole('link', { name: new RegExp(`^${label}\\b`) })).toHaveAttribute('href', href);
+    }
+  });
+
+  it('calls the draft-overlap tool Similarity, not Compare', async () => {
+    await openSupportingTools();
+
+    expect(screen.getByRole('link', { name: /^Similarity\b/ })).toHaveAttribute('href', '/similarity');
+    // `/compare` is the multi-model comparison screen; only one thing may be
+    // called Compare, and it is not this tile.
+    expect(screen.queryByRole('link', { name: /^Compare\b/ })).not.toBeInTheDocument();
   });
 });

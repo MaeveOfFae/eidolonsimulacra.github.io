@@ -1,29 +1,6 @@
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import {
-  Home,
-  Sparkles,
-  ScissorsLineDashed,
-  FolderOpen,
-  FileText,
-  FileJson,
-  Baby,
-  GitBranch,
-  Settings,
-  Menu,
-  X,
-  CircleHelp,
-  Users,
-  ChevronDown,
-  ChevronRight,
-  Globe,
-  Calendar,
-  Palette,
-  Download,
-  Heart,
-  BarChart3,
-  GitCompare,
-} from 'lucide-react';
+import { CircleHelp, ChevronDown, ChevronRight, Heart, Menu, Sparkles, X } from 'lucide-react';
 import { PROJECT_SUPPORT_URL } from '@char-gen/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { helpTopics, resolvePageHelp } from '../lib/help';
@@ -35,92 +12,33 @@ import ContextualHelpPanel from './common/ContextualHelpPanel';
 import GuidedTourOverlay from './common/GuidedTourOverlay';
 import { GuidedTourProvider } from './common/GuidedTourContext';
 import { isDesktopRuntime } from '../lib/runtime';
+import {
+  isNavPathActive,
+  navSubmenuGroups,
+  primaryNavEntries,
+  resolveRouteTitle,
+} from '../lib/navigation/route-catalog';
 import HoverHelpPopover from './common/HoverHelpPopover';
 
 interface LayoutProps {
   children: ReactNode;
 }
 
-const navItems = [
-  { path: '/', label: 'Home', icon: Home },
-  { path: '/generate', label: 'Generate', icon: Sparkles },
-  { path: '/compare', label: 'Compare', icon: GitCompare },
-  { path: '/drafts', label: 'Library', icon: FolderOpen },
-  { path: '/templates', label: 'Templates', icon: FileText },
-  { path: '/optimize', label: 'Optimize', icon: ScissorsLineDashed },
-  { path: '/blueprints', label: 'Blueprints', icon: FileJson },
-  { path: '/themes', label: 'Themes', icon: Palette },
-  { path: '/tokenizer', label: 'Tokenizer', icon: Palette },
-  { path: '/insights', label: 'Insights', icon: BarChart3 },
-  { path: '/download', label: 'Download', icon: Download },
-  { path: '/settings', label: 'Settings', icon: Settings },
-];
-
-function isNavItemActive(currentPath: string, itemPath: string): boolean {
-  if (itemPath === '/') {
-    return currentPath === '/';
-  }
-
-  return currentPath === itemPath || currentPath.startsWith(`${itemPath}/`);
-}
-
+/**
+ * The sidebar list, its submenus, the active-route rule, and the heading
+ * fallback all come from `@/lib/navigation/route-catalog`, which is validated
+ * against `App.tsx` in `route-catalog.test.ts`. This file used to keep its own
+ * copy of each: a 12-item `navItems` array, two submenu arrays, an
+ * `isNavItemActive` clone of the same rule, and a hand-ordered 31-entry
+ * heading map whose correctness depended on `/drafts/` sorting above `/drafts`.
+ */
 function resolveWorkspaceTitle(pathname: string, helpTitle?: string): string {
   if (!helpTitle) {
-    if (pathname === '/') {
-      return 'Home';
-    }
-
-    const routeTitleByPrefix: Array<[string, string]> = [
-      ['/drafts/', 'Draft Review'],
-      ['/drafts', 'Library'],
-      ['/seed-generator', 'Seed Generator'],
-      ['/generate', 'Generate'],
-      ['/compare', 'Compare'],
-      ['/validation', 'Validation'],
-      ['/optimize', 'Token Optimization'],
-      ['/batch', 'Batch'],
-      ['/templates', 'Templates'],
-      ['/blueprints/edit', 'Blueprint Editor'],
-      ['/blueprints', 'Blueprints'],
-      ['/themes', 'Themes'],
-      ['/tokenizer', 'Tokenizer'],
-      ['/settings', 'Settings'],
-      ['/worlds', 'Worlds'],
-      ['/timelines', 'Timeline'],
-      ['/events', 'Events'],
-      ['/lineage', 'Lineage'],
-      ['/similarity', 'Similarity'],
-      ['/insights', 'Insights'],
-      ['/offspring', 'Offspring'],
-      ['/data', 'Data Manager'],
-      ['/about', 'About'],
-      ['/help', 'Help Center'],
-      ['/community', 'Community'],
-      ['/whats-new', "What's New"],
-      ['/license', 'License'],
-      ['/terms', 'Terms'],
-      ['/privacy', 'Privacy'],
-      ['/security', 'Security'],
-      ['/code-of-conduct', 'Code of Conduct'],
-    ];
-
-    const matchedRoute = routeTitleByPrefix.find(([prefix]) => pathname.startsWith(prefix));
-    return matchedRoute?.[1] ?? 'Workspace';
+    return resolveRouteTitle(pathname) ?? 'Workspace';
   }
 
   return helpTitle.replace(/\s+help$/i, '');
 }
-
-const charactersSubmenuItems = [
-  { path: '/lineage', label: 'Lineage', icon: GitBranch },
-  { path: '/offspring', label: 'Offspring', icon: Baby },
-];
-
-const worldsSubmenuItems = [
-  { path: '/worlds', label: 'Worlds', icon: Globe },
-  { path: '/timelines', label: 'Timeline', icon: GitBranch },
-  { path: '/events', label: 'Events', icon: Calendar },
-];
 
 interface NavItemProps {
   path: string;
@@ -244,8 +162,11 @@ export default function Layout({ children }: LayoutProps) {
   const desktopRuntime = isDesktopRuntime();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
-  const [charactersExpanded, setCharactersExpanded] = useState(false);
-  const [worldsExpanded, setWorldsExpanded] = useState(false);
+  const [expandedSubmenus, setExpandedSubmenus] = useState<string[]>([]);
+  const toggleSubmenu = (id: string) =>
+    setExpandedSubmenus((previous) =>
+      previous.includes(id) ? previous.filter((value) => value !== id) : [...previous, id],
+    );
   const pageHelp = useMemo(() => resolvePageHelp(location.pathname), [location.pathname]);
   const relatedTopics = useMemo(
     () => helpTopics.filter((topic) => pageHelp?.relatedTopicIds.includes(topic.id)),
@@ -278,27 +199,17 @@ export default function Layout({ children }: LayoutProps) {
     };
   }, [queryClient]);
 
-  // Check if any characters submenu item is active
-  const charactersPaths = charactersSubmenuItems.map((item) => item.path);
-  const isCharactersActive = charactersPaths.includes(location.pathname);
+  // Which collapsible sidebar section (if any) the current route belongs to.
+  const activeSubmenuId =
+    navSubmenuGroups.find((group) => group.entries.some((entry) => isNavPathActive(location.pathname, entry.path)))
+      ?.id ?? null;
 
-  // Check if any worlds submenu item is active
-  const worldsPaths = worldsSubmenuItems.map((item) => item.path);
-  const isWorldsActive = worldsPaths.includes(location.pathname);
-
-  // Auto-expand characters menu if a submenu item is active
+  // Auto-expand whichever section contains the current route.
   useEffect(() => {
-    if (isCharactersActive && !charactersExpanded) {
-      setCharactersExpanded(true);
+    if (activeSubmenuId && !expandedSubmenus.includes(activeSubmenuId)) {
+      setExpandedSubmenus((previous) => [...previous, activeSubmenuId]);
     }
-  }, [isCharactersActive, charactersExpanded]);
-
-  // Auto-expand worlds menu if a submenu item is active
-  useEffect(() => {
-    if (isWorldsActive && !worldsExpanded) {
-      setWorldsExpanded(true);
-    }
-  }, [isWorldsActive, worldsExpanded]);
+  }, [activeSubmenuId, expandedSubmenus]);
 
   useEffect(() => {
     const refreshSeedCount = () => {
@@ -371,35 +282,25 @@ export default function Layout({ children }: LayoutProps) {
 
               {/* Navigation */}
               <nav className="flex-1 space-y-0.5 overflow-y-auto p-3">
-                {/* Characters collapsible submenu */}
-                <CollapsibleSubmenu
-                  label="Characters"
-                  icon={Users}
-                  items={charactersSubmenuItems}
-                  isActive={isCharactersActive}
-                  isExpanded={charactersExpanded}
-                  onToggle={() => setCharactersExpanded(!charactersExpanded)}
-                  onNavigate={() => setSidebarOpen(false)}
-                  draftsCount={draftsCount}
-                  seedsCount={seedsCount}
-                />
-
-                {/* Worlds collapsible submenu */}
-                <CollapsibleSubmenu
-                  label="Worlds"
-                  icon={Globe}
-                  items={worldsSubmenuItems}
-                  isActive={isWorldsActive}
-                  isExpanded={worldsExpanded}
-                  onToggle={() => setWorldsExpanded(!worldsExpanded)}
-                  onNavigate={() => setSidebarOpen(false)}
-                  draftsCount={0}
-                  seedsCount={0}
-                />
+                {/* Collapsible sections (Characters, Worlds) come from the catalog. */}
+                {navSubmenuGroups.map((group) => (
+                  <CollapsibleSubmenu
+                    key={group.id}
+                    label={group.label}
+                    icon={group.icon}
+                    items={group.entries}
+                    isActive={activeSubmenuId === group.id}
+                    isExpanded={expandedSubmenus.includes(group.id)}
+                    onToggle={() => toggleSubmenu(group.id)}
+                    onNavigate={() => setSidebarOpen(false)}
+                    draftsCount={group.id === 'characters' ? draftsCount : 0}
+                    seedsCount={group.id === 'characters' ? seedsCount : 0}
+                  />
+                ))}
 
                 {/* Regular nav items */}
-                {navItems.map((item) => {
-                  const isActive = isNavItemActive(location.pathname, item.path);
+                {primaryNavEntries.map((item) => {
+                  const isActive = isNavPathActive(location.pathname, item.path);
                   return (
                     <NavItem
                       key={item.path}

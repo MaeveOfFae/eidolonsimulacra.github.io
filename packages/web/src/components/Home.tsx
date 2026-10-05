@@ -2,9 +2,9 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   ArrowRight,
-  Baby,
   Dice1,
   FolderOpen,
+  GitCompare,
   Layers,
   PlayCircle,
   RotateCcw,
@@ -88,9 +88,9 @@ const EXPLORATION_ACTIONS = [
   },
   {
     to: '/similarity',
-    label: 'Compare',
+    label: 'Similarity',
     description: 'Check overlap across drafts.',
-    icon: Baby,
+    icon: GitCompare,
   },
 ] as const;
 
