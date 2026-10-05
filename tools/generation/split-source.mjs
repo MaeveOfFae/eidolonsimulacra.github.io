@@ -1,8 +1,8 @@
-/**
+﻿/**
  * Generic source splitter: moves verbatim line ranges into modules behind a barrel.
  *
  * Used for the 5.1 decomposition of the remaining oversized files. It only ever
- * moves text and generates imports/barrels — no rewriting — and it records each
+ * moves text and generates imports/barrels â€” no rewriting â€” and it records each
  * declaration's *kind* so type-only re-exports use `export type`, which
  * `isolatedModules` requires (learned the hard way on the lore split).
  *
@@ -96,6 +96,9 @@ export function split(config) {
   };
 
   const sourceImports = parseSourceImports();
+
+  /** True when the extracted module lives in a different directory and paths must deepen. */
+  const moduleIsElsewhere = relative(dirname(config.source), config.dir) !== '';
 
   /**
    * Comments and string literals mention identifiers the code does not use. Stripping
@@ -220,7 +223,7 @@ export function split(config) {
   const byModule = new Map();
   const missing = [];
   // Names declared in the retained part of the file stay where they are, so they are not
-  // expected to have a new home — this applies to `keep` and to a `cut`.
+  // expected to have a new home â€” this applies to `keep` and to a `cut`.
   const keepBodyText = config.keep
     ? slice(config.keep.from, config.keep.to)
     : config.cut
@@ -402,7 +405,7 @@ export function split(config) {
       const moduleImports = sourceImports
         .map((statement) => selectNames(statement, (name) => new RegExp(`\\b${name}\\b`).test(stripComments(dedented))))
         .filter(Boolean)
-        .map((statement) => deepen(statement));
+        .map((statement) => (moduleIsElsewhere ? deepen(statement) : statement));
 
       for (const group of config.external ?? []) {
         const needed = group.names.filter((name) => new RegExp(`\\b${name}\\b`).test(stripComments(dedented)));
@@ -456,7 +459,7 @@ export function split(config) {
     }
 
     // Values the retained body needs handed back. Anchored at one indent level, which is
-    // where a component body keeps its state and handlers — matching column 0 here (as
+    // where a component body keeps its state and handlers â€” matching column 0 here (as
     // the top-level module scans do) would find only the file's own types.
     const cutDecls = [
       ...cutBody.matchAll(/^ {0,2}(?:export )?(async function|function|const|let|class|interface|type) (\w+)/gm),
@@ -531,7 +534,18 @@ export function split(config) {
     const moduleImports = sourceImports
       .map((statement) => selectNames(statement, (name) => new RegExp(`\\b${name}\\b`).test(stripComments(cutBody))))
       .filter(Boolean)
-      .map((statement) => deepen(statement));
+      .map((statement) => (moduleIsElsewhere ? deepen(statement) : statement));
+
+    for (const group of config.external ?? []) {
+      const needed = group.names.filter((name) =>
+        new RegExp(`\\b${name}\\b`).test(stripComments(`${wrap.open}\n${cutBody}`)),
+      );
+      if (needed.length > 0) {
+        moduleImports.push(
+          `import ${group.typeOnly ? 'type ' : ''}{\n${needed.map((n) => `  ${n},`).join('\n')}\n} from '${group.specifier}';`,
+        );
+      }
+    }
 
     const content = `${module.doc}\n\n${moduleImports.join('\n')}\n${exportedTypes ? `\n${exportedTypes}\n` : ''}\n${wrap.open}\n${valueLines.join('\n')}\n\n  return {\n${returned
       .map((name) => `    ${name},`)
@@ -545,25 +559,36 @@ export function split(config) {
         selectNames(statement, (name) => new RegExp(`\\b${name}\\b`).test(stripComments(retainedBody))),
       )
       .filter(Boolean);
-    const moduleSpec = `./${config.dir.split('/').pop()}/${module.file.replace(/\.tsx?$/, config.extension ?? '.js')}`;
+    const relDirForSpec = relative(dirname(config.source), config.dir).replace(/\\/g, '/');
+    const moduleSpec = `${relDirForSpec.startsWith('.') ? relDirForSpec : `./${relDirForSpec}`}/${module.file.replace(/\.tsx?$/, config.extension ?? '.js')}`;
     const typeImports = typeNames.filter(retainedUses).sort();
     const moduleImportLines = [
       `import { ${wrap.importName} } from '${moduleSpec}';`,
       ...(typeImports.length > 0 ? [`import type { ${typeImports.join(', ')} } from '${moduleSpec}';`] : []),
     ].join('\n');
 
-    // The destructure belongs inside the component: the retained body starts with its
-    // signature, so it is spliced in after that first line.
+    // The destructure belongs inside the hook: after its signature when the first retained
+    // line is not the signature (a file can begin with type declarations).
     const retainedLines = retainedBody.split('\n');
-    const signature = retainedLines.shift();
+    const insertPattern = config.cutInsertAfter ? new RegExp(config.cutInsertAfter) : null;
+    const beforePattern = config.cutInsertBefore ? new RegExp(config.cutInsertBefore) : null;
+    let insertIndex = 0;
+    if (beforePattern) {
+      const found = retainedLines.findIndex((line) => beforePattern.test(line));
+      insertIndex = found >= 0 ? found : 0;
+    } else if (insertPattern) {
+      const found = retainedLines.findIndex((line) => insertPattern.test(line));
+      insertIndex = found >= 0 ? found + 1 : 0;
+    } else {
+      retainedLines.shift();
+    }
     const destructure = `  const { ${returned.join(', ')} } = ${wrap.importName}(${config.cutCall ?? ''});`;
 
     writeFileSync(
       config.source,
-      `${header}\n\n${sourceImportsFor.join('\n')}\n${moduleImportLines}\n\n${signature}\n${destructure}\n${retainedLines.join('\n')}\n`.replace(
-        /\n/g,
-        eol,
-      ),
+      `${header}\n\n${sourceImportsFor.join('\n')}\n${moduleImportLines}\n\n${retainedLines
+        .slice(0, insertIndex)
+        .join('\n')}\n${destructure}\n${retainedLines.slice(insertIndex).join('\n')}\n`.replace(/\n/g, eol),
       'utf8',
     );
 
