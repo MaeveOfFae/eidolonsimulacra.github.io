@@ -1,9 +1,9 @@
 /**
  * The draft detail header: the title and status line, the favourite and archive buttons, the tag row, the action buttons, and the export tray summary.
  *
- * Extracted from `DraftDetailScreen` verbatim: the screen passes the state it renders
- * as `Pick<ReturnType<typeof useDraftDetailState>, …>`, so a missing prop and a missing
- * state entry are both compile errors rather than blank sections.
+ * Extracted from `DraftDetailScreen` verbatim: the screen passes the state it renders as
+ * `Pick`s of the three draft-detail hooks — state, mutations and handlers — so a missing
+ * prop and a missing state entry are both compile errors rather than blank sections.
  */
 import { useMemo } from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
@@ -21,31 +21,30 @@ import {
 } from '../../components/Icons';
 import { isDraftArchived } from '../../lib/draft-archive';
 import { useTheme } from '../../theme/ThemeProvider';
-import { useDraftDetailState } from './use-draft-detail-state';
+import type { useDraftDetailState } from './use-draft-detail-state';
+import type { useDraftDetailMutations } from './use-draft-detail-mutations';
+import type { useDraftDetailDerived } from './use-draft-detail-derived';
+import type { useDraftDetailHandlers } from './use-draft-detail-handlers';
 import { buildStyles } from './styles';
 
 type Props = Pick<
   ReturnType<typeof useDraftDetailState>,
-  | 'archiveMutation'
-  | 'draft'
-  | 'draftId'
-  | 'exportReadiness'
-  | 'exportTrayExpanded'
-  | 'handleArchive'
-  | 'handleAttachCardImage'
-  | 'handleClearCardImage'
-  | 'handleCompareDraft'
-  | 'handleDelete'
-  | 'handleExportPreset'
-  | 'handleOpenEditModal'
-  | 'handleOpenIntroModal'
-  | 'handleRefine'
-  | 'hasIntroScene'
-  | 'navigation'
-  | 'pendingCompareSelection'
-  | 'setExportTrayExpanded'
-  | 'toggleFavorite'
->;
+  'draft' | 'draftId' | 'exportTrayExpanded' | 'navigation' | 'pendingCompareSelection' | 'setExportTrayExpanded'
+> &
+  Pick<ReturnType<typeof useDraftDetailMutations>, 'archiveMutation' | 'hasIntroScene' | 'toggleFavorite'> &
+  Pick<ReturnType<typeof useDraftDetailDerived>, 'exportReadiness'> &
+  Pick<
+    ReturnType<typeof useDraftDetailHandlers>,
+    | 'handleArchive'
+    | 'handleAttachCardImage'
+    | 'handleClearCardImage'
+    | 'handleCompareDraft'
+    | 'handleDelete'
+    | 'handleExportPreset'
+    | 'handleOpenEditModal'
+    | 'handleOpenIntroModal'
+    | 'handleRefine'
+  >;
 
 export default function DraftDetailHeader({
   archiveMutation,

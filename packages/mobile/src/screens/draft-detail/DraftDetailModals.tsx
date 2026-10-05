@@ -1,9 +1,9 @@
 /**
  * The draft detail modals: the metadata editor, the refinement editor, the intro picker, and the asset editor.
  *
- * Extracted from `DraftDetailScreen` verbatim: the screen passes the state it renders
- * as `Pick<ReturnType<typeof useDraftDetailState>, …>`, so a missing prop and a missing
- * state entry are both compile errors rather than blank sections.
+ * Extracted from `DraftDetailScreen` verbatim: the screen passes the state it renders as
+ * `Pick`s of the three draft-detail hooks — state, mutations and handlers — so a missing
+ * prop and a missing state entry are both compile errors rather than blank sections.
  */
 import { useMemo } from 'react';
 import {
@@ -19,16 +19,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeProvider';
-import { useDraftDetailState } from './use-draft-detail-state';
+import type { useDraftDetailState } from './use-draft-detail-state';
+import type { useDraftDetailMutations } from './use-draft-detail-mutations';
+import type { useDraftDetailHandlers } from './use-draft-detail-handlers';
 import { buildStyles } from './styles';
 
 type Props = Pick<
   ReturnType<typeof useDraftDetailState>,
   | 'assetEditorVisible'
-  | 'assetEntries'
-  | 'closeAssetEditor'
-  | 'closeIntroModal'
-  | 'closeRefineModal'
   | 'draft'
   | 'editGenre'
   | 'editModalVisible'
@@ -39,19 +37,6 @@ type Props = Pick<
   | 'editingAssetName'
   | 'formatAssetLabel'
   | 'generatedIntro'
-  | 'handleApplyRefinement'
-  | 'handleCancelIntroGeneration'
-  | 'handleCopyAsset'
-  | 'handleDiscardRefinement'
-  | 'handleGenerateAdditionalIntro'
-  | 'handleKeepGeneratedIntro'
-  | 'handleOptimizeRefinement'
-  | 'handleRemoveSavedIntro'
-  | 'handleRunRefine'
-  | 'handleSaveAssetEdit'
-  | 'handleSaveMetadata'
-  | 'handleSelectRefineAsset'
-  | 'handleSetActiveIntro'
   | 'introGenerationStage'
   | 'introInstructions'
   | 'introModalVisible'
@@ -65,7 +50,6 @@ type Props = Pick<
   | 'refinePreview'
   | 'refineRequest'
   | 'refineStatusText'
-  | 'savedIntros'
   | 'selectedRefineAsset'
   | 'setEditGenre'
   | 'setEditModalVisible'
@@ -76,8 +60,27 @@ type Props = Pick<
   | 'setGeneratedIntro'
   | 'setIntroInstructions'
   | 'setRefineRequest'
-  | 'updateMetadataMutation'
->;
+> &
+  Pick<ReturnType<typeof useDraftDetailMutations>, 'assetEntries' | 'savedIntros' | 'updateMetadataMutation'> &
+  Pick<
+    ReturnType<typeof useDraftDetailHandlers>,
+    | 'closeAssetEditor'
+    | 'closeIntroModal'
+    | 'closeRefineModal'
+    | 'handleApplyRefinement'
+    | 'handleCancelIntroGeneration'
+    | 'handleCopyAsset'
+    | 'handleDiscardRefinement'
+    | 'handleGenerateAdditionalIntro'
+    | 'handleKeepGeneratedIntro'
+    | 'handleOptimizeRefinement'
+    | 'handleRemoveSavedIntro'
+    | 'handleRunRefine'
+    | 'handleSaveAssetEdit'
+    | 'handleSaveMetadata'
+    | 'handleSelectRefineAsset'
+    | 'handleSetActiveIntro'
+  >;
 
 export default function DraftDetailModals({
   assetEditorVisible,
