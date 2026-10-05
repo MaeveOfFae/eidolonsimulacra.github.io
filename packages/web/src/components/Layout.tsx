@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { CircleHelp, ChevronDown, ChevronRight, Heart, Menu, Sparkles, X } from 'lucide-react';
+import { CircleHelp, ChevronDown, ChevronRight, Heart, Menu, Search, Sparkles, X } from 'lucide-react';
 import { PROJECT_SUPPORT_URL } from '@char-gen/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { helpTopics, resolvePageHelp } from '../lib/help';
@@ -18,11 +18,15 @@ import {
   primaryNavEntries,
   resolveRouteTitle,
 } from '../lib/navigation/route-catalog';
+import { quickActionsShortcutLabel } from '../lib/navigation/quick-actions';
 import HoverHelpPopover from './common/HoverHelpPopover';
+import QuickActionsPalette from './common/QuickActionsPalette';
 
 interface LayoutProps {
   children: ReactNode;
 }
+
+const QUICK_ACTIONS_SHORTCUT = quickActionsShortcutLabel(typeof navigator === 'undefined' ? '' : navigator.platform);
 
 /**
  * The sidebar list, its submenus, the active-route rule, and the heading
@@ -162,6 +166,7 @@ export default function Layout({ children }: LayoutProps) {
   const desktopRuntime = isDesktopRuntime();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const [expandedSubmenus, setExpandedSubmenus] = useState<string[]>([]);
   const toggleSubmenu = (id: string) =>
     setExpandedSubmenus((previous) =>
@@ -226,7 +231,23 @@ export default function Layout({ children }: LayoutProps) {
 
   useEffect(() => {
     setHelpOpen(false);
+    setPaletteOpen(false);
   }, [location.pathname]);
+
+  // ⌘K / Ctrl-K toggles the quick-actions palette from anywhere in the app.
+  useEffect(() => {
+    const handlePaletteShortcut = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        setPaletteOpen((current) => !current);
+      }
+    };
+
+    window.addEventListener('keydown', handlePaletteShortcut);
+    return () => {
+      window.removeEventListener('keydown', handlePaletteShortcut);
+    };
+  }, []);
 
   return (
     <AssistantContextProvider>
@@ -282,6 +303,22 @@ export default function Layout({ children }: LayoutProps) {
 
               {/* Navigation */}
               <nav className="flex-1 space-y-0.5 overflow-y-auto p-3">
+                {/* Quick-actions trigger. The palette itself opens from ⌘K anywhere. */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSidebarOpen(false);
+                    setPaletteOpen(true);
+                  }}
+                  className="mb-2 flex w-full items-center gap-2.5 rounded-lg border border-border/60 bg-background/40 px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+                >
+                  <Search className="h-4 w-4 shrink-0" aria-hidden="true" />
+                  <span className="flex-1 truncate text-left">Quick actions</span>
+                  <kbd className="shrink-0 rounded border border-border/70 bg-background/60 px-1.5 py-0.5 font-mono text-[10px]">
+                    {QUICK_ACTIONS_SHORTCUT}
+                  </kbd>
+                </button>
+
                 {/* Collapsible sections (Characters, Worlds) come from the catalog. */}
                 {navSubmenuGroups.map((group) => (
                   <CollapsibleSubmenu
@@ -443,6 +480,11 @@ export default function Layout({ children }: LayoutProps) {
               onClose={() => setHelpOpen(false)}
             />
           )}
+          <QuickActionsPalette
+            isOpen={paletteOpen}
+            onClose={() => setPaletteOpen(false)}
+            drafts={draftsData?.drafts ?? []}
+          />
           <GuidedTourOverlay />
         </div>
       </GuidedTourProvider>
