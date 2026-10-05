@@ -9,7 +9,7 @@
 import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 
-export function verifyMove({ source, dir, modules, extraTransforms = [] }) {
+export function verifyMove({ source, dir, modules, keepRange, extraTransforms = [] }) {
   const head = execSync(`git show HEAD:${source}`, { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 }).split(/\r?\n/);
 
   const isComment = (line) => /^\s*(\/\*|\*|\/\/)/.test(line);
@@ -20,21 +20,24 @@ export function verifyMove({ source, dir, modules, extraTransforms = [] }) {
     }
     return out.trim();
   };
-  const keep = (line) => line.trim() !== '' && !isComment(line);
+  const keepLine = (line) => line.trim() !== '' && !isComment(line);
 
-  const original = modules
+  const original = [...modules, ...(keepRange ? [keepRange] : [])]
     .flatMap(({ from, to }) => head.slice(from - 1, to))
     .map(normalize)
-    .filter(keep);
+    .filter(keepLine);
 
-  const moved = modules
-    .flatMap(({ file }) => {
-      const lines = readFileSync(`${dir}/${file}`, 'utf8').split(/\r?\n/);
-      const lastImport = lines.findLastIndex((line) => /^(\} from |import |export type )/.test(line));
-      return lines.slice(lastImport + 1);
-    })
+  /** Everything after the generated import/re-export block. */
+  const readBody = (path) => {
+    const lines = readFileSync(path, 'utf8').split(/\r?\n/);
+    const lastImport = lines.findLastIndex((line) => /^(\} from |import |export \{|export type \{)/.test(line));
+    return lines.slice(lastImport + 1);
+  };
+
+  const moved = [...modules.map(({ file }) => readBody(`${dir}/${file}`)), ...(keepRange ? [readBody(source)] : [])]
+    .flat()
     .map(normalize)
-    .filter(keep);
+    .filter(keepLine);
 
   const count = (list) => {
     const map = new Map();
