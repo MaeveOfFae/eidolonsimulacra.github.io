@@ -222,6 +222,7 @@ export default function ThemeImportDialog({
               value={importDraft.targetName}
               onChange={(event) => onTargetNameChange(event.target.value)}
               placeholder="new preset name"
+              aria-label="New preset name"
               className="min-w-[220px] flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
             />
             <button

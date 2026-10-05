@@ -225,12 +225,14 @@ export default function ReviewWorldAttachmentsSection({
                     value={pendingRelationshipLabel}
                     onChange={(event) => onPendingRelationshipLabelChange(event.target.value)}
                     placeholder="Relationship label"
+                    aria-label="Relationship label"
                     className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground"
                   />
                   <textarea
                     value={pendingRelationshipNotes}
                     onChange={(event) => onPendingRelationshipNotesChange(event.target.value)}
                     placeholder="Relationship notes"
+                    aria-label="Relationship notes"
                     className="min-h-20 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground"
                   />
                   <button

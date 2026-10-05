@@ -265,6 +265,7 @@ export default function Blueprints() {
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Search by name, description, or path"
+                aria-label="Search blueprints"
                 className="w-full rounded-md border border-input bg-background py-2 pl-10 pr-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
             </div>
@@ -565,6 +566,7 @@ export default function Blueprints() {
                 onChange={(e) => setDuplicateName(e.target.value)}
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 placeholder="Blueprint name"
+                aria-label="Blueprint name"
               />
             </div>
             <div className="mt-6 flex justify-end gap-2">

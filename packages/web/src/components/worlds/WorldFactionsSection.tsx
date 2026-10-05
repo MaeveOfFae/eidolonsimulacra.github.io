@@ -184,18 +184,21 @@ export default function WorldFactionsSection({
               value={factionForm.name}
               onChange={(event) => setFactionForm((previous) => ({ ...previous, name: event.target.value }))}
               placeholder="Faction name"
+              aria-label="Faction name"
               className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
             <input
               value={factionForm.role}
               onChange={(event) => setFactionForm((previous) => ({ ...previous, role: event.target.value }))}
               placeholder="Role / pressure"
+              aria-label="Role or pressure"
               className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
             <textarea
               value={factionForm.description}
               onChange={(event) => setFactionForm((previous) => ({ ...previous, description: event.target.value }))}
               placeholder="Faction description"
+              aria-label="Faction description"
               className="min-h-20 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
             <div className="space-y-2 rounded-lg border border-border/50 bg-background/40 p-3">

@@ -253,6 +253,7 @@ export default function ChatPanel({ draftId, assetName, onAssetRefined }: ChatPa
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSend())}
             placeholder="Ask for changes..."
+            aria-label="Message"
             className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             disabled={isStreaming}
           />

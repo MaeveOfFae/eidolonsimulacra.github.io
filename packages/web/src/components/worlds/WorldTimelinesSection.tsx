@@ -276,12 +276,14 @@ export default function WorldTimelinesSection({
               value={timelineForm.name}
               onChange={(event) => setTimelineForm((previous) => ({ ...previous, name: event.target.value }))}
               placeholder="Timeline name"
+              aria-label="Timeline name"
               className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
             <textarea
               value={timelineForm.description}
               onChange={(event) => setTimelineForm((previous) => ({ ...previous, description: event.target.value }))}
               placeholder="Timeline description"
+              aria-label="Timeline description"
               className="min-h-20 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
             <button
@@ -397,18 +399,21 @@ export default function WorldTimelinesSection({
                   value={eventForm.title}
                   onChange={(event) => setEventForm((previous) => ({ ...previous, title: event.target.value }))}
                   placeholder="Event title"
+                  aria-label="Event title"
                   className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
                 <input
                   value={eventForm.eventDate}
                   onChange={(event) => setEventForm((previous) => ({ ...previous, eventDate: event.target.value }))}
                   placeholder="Event date (optional)"
+                  aria-label="Event date"
                   className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
                 <textarea
                   value={eventForm.description}
                   onChange={(event) => setEventForm((previous) => ({ ...previous, description: event.target.value }))}
                   placeholder="Event description"
+                  aria-label="Event description"
                   className="min-h-20 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 />
                 <button

@@ -142,18 +142,21 @@ export default function WorldCharactersSection({
               value={characterForm.characterName}
               onChange={(event) => setCharacterForm((previous) => ({ ...previous, characterName: event.target.value }))}
               placeholder="Character name"
+              aria-label="Character name"
               className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
             <input
               value={characterForm.role}
               onChange={(event) => setCharacterForm((previous) => ({ ...previous, role: event.target.value }))}
               placeholder="Role"
+              aria-label="Role"
               className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
             <textarea
               value={characterForm.notes}
               onChange={(event) => setCharacterForm((previous) => ({ ...previous, notes: event.target.value }))}
               placeholder="Character notes"
+              aria-label="Character notes"
               className="min-h-20 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
             <button

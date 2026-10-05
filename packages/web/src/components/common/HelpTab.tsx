@@ -262,6 +262,7 @@ export default function HelpTab({ pageHelp, relatedTopics }: HelpTabProps) {
                     }
                   }}
                   placeholder="Ask for help..."
+                  aria-label="Question"
                   className="flex-1 rounded-md border border-input bg-background px-2 py-1.5 text-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                   disabled={isStreaming}
                 />

@@ -63,6 +63,7 @@ export default function ReviewHero({
                 value={editName}
                 onChange={(event) => onEditNameChange(event.target.value)}
                 placeholder="Character name"
+                aria-label="Character name"
                 className="w-full min-w-0 rounded-xl border border-input bg-background px-3 py-2 text-xl font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-w-[18rem] sm:text-2xl"
                 style={{ fontFamily: '"Space Grotesk", sans-serif' }}
               />

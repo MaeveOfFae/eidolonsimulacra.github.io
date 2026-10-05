@@ -240,6 +240,7 @@ export function DraftListSidebar({
           <input
             type="text"
             placeholder="Search drafts..."
+            aria-label="Search drafts"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full rounded-md border border-input bg-background py-1.5 pl-8 pr-8 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"

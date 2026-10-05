@@ -97,6 +97,7 @@ export default function WorldDetailsSection({
           onChange={(event) => setMetadataForm((previous) => ({ ...previous, name: event.target.value }))}
           disabled={!canEdit || saveWorld.isPending}
           placeholder="World name"
+          aria-label="World name"
           className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
         />
         <input
@@ -104,6 +105,7 @@ export default function WorldDetailsSection({
           onChange={(event) => setMetadataForm((previous) => ({ ...previous, genre: event.target.value }))}
           disabled={!canEdit || saveWorld.isPending}
           placeholder="Genre"
+          aria-label="Genre"
           className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
         />
         <input
@@ -111,6 +113,7 @@ export default function WorldDetailsSection({
           onChange={(event) => setMetadataForm((previous) => ({ ...previous, setting: event.target.value }))}
           disabled={!canEdit || saveWorld.isPending}
           placeholder="Setting"
+          aria-label="Setting"
           className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
         />
         <textarea
@@ -118,6 +121,7 @@ export default function WorldDetailsSection({
           onChange={(event) => setMetadataForm((previous) => ({ ...previous, description: event.target.value }))}
           disabled={!canEdit || saveWorld.isPending}
           placeholder="Description"
+          aria-label="Description"
           className="min-h-24 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
         />
         <textarea
@@ -125,6 +129,7 @@ export default function WorldDetailsSection({
           onChange={(event) => setMetadataForm((previous) => ({ ...previous, notes: event.target.value }))}
           disabled={!canEdit || saveWorld.isPending}
           placeholder="World notes"
+          aria-label="World notes"
           className="min-h-32 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
         />
         {canEdit && (

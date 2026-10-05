@@ -182,12 +182,14 @@ export default function WorldRelationshipsSection({
               value={relationshipForm.label}
               onChange={(event) => setRelationshipForm((previous) => ({ ...previous, label: event.target.value }))}
               placeholder="Relationship label"
+              aria-label="Relationship label"
               className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
             <textarea
               value={relationshipForm.notes}
               onChange={(event) => setRelationshipForm((previous) => ({ ...previous, notes: event.target.value }))}
               placeholder="Relationship notes"
+              aria-label="Relationship notes"
               className="min-h-20 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
             <button

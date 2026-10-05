@@ -185,18 +185,21 @@ export default function WorldLocationsSection({
               value={locationForm.name}
               onChange={(event) => setLocationForm((previous) => ({ ...previous, name: event.target.value }))}
               placeholder="Location name"
+              aria-label="Location name"
               className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
             <input
               value={locationForm.category}
               onChange={(event) => setLocationForm((previous) => ({ ...previous, category: event.target.value }))}
               placeholder="Category"
+              aria-label="Category"
               className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
             <textarea
               value={locationForm.description}
               onChange={(event) => setLocationForm((previous) => ({ ...previous, description: event.target.value }))}
               placeholder="Location description"
+              aria-label="Location description"
               className="min-h-20 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
             <div className="space-y-2 rounded-lg border border-border/50 bg-background/40 p-3">

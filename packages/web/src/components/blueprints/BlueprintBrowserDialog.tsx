@@ -235,6 +235,7 @@ export default function BlueprintBrowserDialog({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search blueprints by name or description..."
+              aria-label="Search blueprints"
               className="w-full rounded-md border border-input bg-background py-2 pl-10 pr-4 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
           </div>
