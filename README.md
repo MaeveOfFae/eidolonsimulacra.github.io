@@ -63,7 +63,7 @@ The web app currently exposes the main workflows directly in the browser:
 - Run offspring and similarity workflows
 - Manage themes, browser-stored data, and app settings
 - Move around without the mouse: ⌘K / Ctrl-K opens the command palette over every route and recent draft, `?` opens help for the current page, Escape and Tab behave the same in all 14 dialogs, and the tab order is covered by a test on every route
-- Read release notes, the Help Center, and the info/legal documents, all rendered from `packages/shared`
+- Read release notes, the Help Center, and the info/legal documents, all rendered from `packages/shared` — the current release's longer write-up and the suggested text for its git tag live in [`docs/RELEASE_NOTES.md`](docs/RELEASE_NOTES.md)
 - Reach the `/download` page, which offers the desktop installers and the Android APK with their file names, sizes, requirements and caveats — the visitor-facing view of the same shared data the mobile app renders (build-from-source steps stay in this README and `docs/DOWNLOADS.md`)
 
 The home screen also calls out the current browser-first operating mode explicitly: no backend or local API server is involved.
