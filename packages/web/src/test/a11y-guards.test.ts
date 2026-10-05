@@ -102,6 +102,34 @@ export function findPositiveTabIndex(sources: Record<string, string>): string[] 
   return violations;
 }
 
+/**
+ * Overlays must go through `ModalOverlay`.
+ *
+ * Before it existed, 13 dialogs each rendered their own full-screen backdrop and
+ * only one handled Escape, so a keyboard user could open a dialog and Tab into
+ * the page behind it. A new dialog copy-pasting the old markup would reintroduce
+ * exactly that, and no rendered test would notice — so the shape is banned in
+ * source instead. `ModalOverlay` itself is the one allowed owner.
+ */
+export function findHandRolledModalBackdrops(sources: Record<string, string>): string[] {
+  const violations: string[] = [];
+
+  for (const [key, raw] of Object.entries(sources)) {
+    if (key.includes('.test.') || key.includes('ModalOverlay.tsx')) {
+      continue;
+    }
+
+    const text = blankOutNonCode(raw);
+
+    for (const match of text.matchAll(/absolute inset-0 bg-black/g)) {
+      const line = text.slice(0, match.index).split('\n').length;
+      violations.push(`${key.replace('../', '')}:${line}`);
+    }
+  }
+
+  return violations;
+}
+
 describe('a11y source guards', () => {
   it('loaded the component sources', () => {
     expect(Object.keys(componentSources).length).toBeGreaterThan(100);
@@ -113,6 +141,10 @@ describe('a11y source guards', () => {
 
   it('finds no positive tabIndex', () => {
     expect(findPositiveTabIndex(componentSources)).toEqual([]);
+  });
+
+  it('finds no dialog backdrop outside ModalOverlay', () => {
+    expect(findHandRolledModalBackdrops(componentSources)).toEqual([]);
   });
 });
 
@@ -156,5 +188,14 @@ describe('a11y guard self-checks', () => {
     };
 
     expect(findPositiveTabIndex(sources)).toEqual(['Bad.tsx:1 tabIndex={3}']);
+  });
+
+  it('catches a hand-rolled backdrop but spares ModalOverlay', () => {
+    const sources = {
+      'OldDialog.tsx': '<div className="absolute inset-0 bg-black/50" onClick={close} />',
+      'ModalOverlay.tsx': '<div className="absolute inset-0 bg-black/50" aria-hidden="true" />',
+    };
+
+    expect(findHandRolledModalBackdrops(sources)).toEqual(['OldDialog.tsx:1']);
   });
 });

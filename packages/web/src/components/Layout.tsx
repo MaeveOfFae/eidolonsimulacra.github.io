@@ -19,6 +19,7 @@ import {
   resolveRouteTitle,
 } from '../lib/navigation/route-catalog';
 import { quickActionsShortcutLabel } from '../lib/navigation/quick-actions';
+import { HELP_SHORTCUT_ARIA, isHelpShortcut, isPaletteShortcut, PALETTE_SHORTCUT_ARIA } from '../lib/shortcuts';
 import {
   clearStoredWorkspaceMode,
   orderEntriesForMode,
@@ -269,20 +270,28 @@ export default function Layout({ children }: LayoutProps) {
     setPaletteOpen(false);
   }, [location.pathname]);
 
-  // ⌘K / Ctrl-K toggles the quick-actions palette from anywhere in the app.
+  // ⌘K / Ctrl-K toggles the quick-actions palette; `?` opens help for this page.
+  // Both decisions live in `@/lib/shortcuts` so they are testable without the
+  // app shell — in particular the rule that `?` is ignored while typing.
   useEffect(() => {
-    const handlePaletteShortcut = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+    const handleShortcuts = (event: KeyboardEvent) => {
+      if (isPaletteShortcut(event)) {
         event.preventDefault();
         setPaletteOpen((current) => !current);
+        return;
+      }
+
+      if (isHelpShortcut(event) && pageHelp) {
+        event.preventDefault();
+        setHelpOpen(true);
       }
     };
 
-    window.addEventListener('keydown', handlePaletteShortcut);
+    window.addEventListener('keydown', handleShortcuts);
     return () => {
-      window.removeEventListener('keydown', handlePaletteShortcut);
+      window.removeEventListener('keydown', handleShortcuts);
     };
-  }, []);
+  }, [pageHelp]);
 
   return (
     <AssistantContextProvider>
@@ -366,6 +375,8 @@ export default function Layout({ children }: LayoutProps) {
                     setSidebarOpen(false);
                     setPaletteOpen(true);
                   }}
+                  aria-keyshortcuts={PALETTE_SHORTCUT_ARIA}
+                  title={`Quick actions (${QUICK_ACTIONS_SHORTCUT})`}
                   className="mb-2 flex w-full items-center gap-2.5 rounded-lg border border-border/60 bg-background/40 px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
                 >
                   <Search className="h-4 w-4 shrink-0" aria-hidden="true" />
@@ -471,6 +482,8 @@ export default function Layout({ children }: LayoutProps) {
                   <button
                     type="button"
                     onClick={() => setHelpOpen(true)}
+                    aria-keyshortcuts={HELP_SHORTCUT_ARIA}
+                    title="Help for this page (?)"
                     className="ml-auto inline-flex items-center gap-2 rounded-lg border border-border/60 bg-background/50 px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:border-primary/40 hover:text-primary"
                   >
                     <CircleHelp className="h-3.5 w-3.5" />
