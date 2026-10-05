@@ -8,7 +8,6 @@ import { configManager } from '../config/manager';
 import { readPersistedJson } from '../persistence/storage.js';
 
 const BLUEPRINT_OVERRIDES_STORAGE_KEY = 'eidolon.web.blueprints.overrides';
-const LEGACY_BLUEPRINT_OVERRIDES_STORAGE_KEYS = ['bpui.web.blueprints.overrides'];
 
 const bundledBlueprintModules = import.meta.glob('../../../../../blueprints/**/*.md', {
   query: '?raw',
@@ -53,10 +52,7 @@ function resolveBlueprintPath(nameOrPath: string): string {
 }
 
 function getStoredBlueprintOverride(path: string): string | undefined {
-  const overrides = readPersistedJson<Record<string, string>>(
-    [BLUEPRINT_OVERRIDES_STORAGE_KEY, ...LEGACY_BLUEPRINT_OVERRIDES_STORAGE_KEYS],
-    {},
-  );
+  const overrides = readPersistedJson<Record<string, string>>([BLUEPRINT_OVERRIDES_STORAGE_KEY], {});
   const override = overrides[path];
   if (typeof override === 'string' && override.trim().length > 0) {
     return override;

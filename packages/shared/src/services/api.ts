@@ -59,7 +59,6 @@ interface BrowserStorageLike {
 type HeaderInput = ConstructorParameters<typeof Headers>[0];
 
 const API_KEYS_STORAGE_KEY = 'eidolon.web.apiKeys';
-const LEGACY_API_KEYS_STORAGE_KEYS = ['bpui.web.apiKeys'];
 const API_KEYS_HEADER = 'X-BPUI-API-KEYS';
 
 function getBrowserStorage(): BrowserStorageLike | null {
@@ -97,7 +96,7 @@ function getBrowserApiKeysHeader(): Record<string, string> {
   }
 
   try {
-    for (const key of [API_KEYS_STORAGE_KEY, ...LEGACY_API_KEYS_STORAGE_KEYS]) {
+    for (const key of [API_KEYS_STORAGE_KEY]) {
       const raw = storage.getItem(key);
       if (!raw) {
         continue;

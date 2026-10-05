@@ -19,9 +19,7 @@ import { readPersistedJson, writePersistedJson } from '../persistence/storage.js
 import { parseBlueprintFrontmatter, type TemplateAsset, templateToAssets } from '../prompting/blueprint.js';
 
 const CUSTOM_TEMPLATES_STORAGE_KEY = 'eidolon.web.templates.custom';
-const LEGACY_CUSTOM_TEMPLATES_STORAGE_KEYS = ['bpui.web.templates.custom'];
 const BLUEPRINT_OVERRIDES_STORAGE_KEY = 'eidolon.web.blueprints.overrides';
-const LEGACY_BLUEPRINT_OVERRIDES_STORAGE_KEYS = ['bpui.web.blueprints.overrides'];
 
 const blueprintModules = import.meta.glob('../../../../../blueprints/**/*.md', {
   query: '?raw',
@@ -198,14 +196,11 @@ function buildDefaultBlueprintCatalog(): Map<string, BrowserBlueprint> {
 }
 
 export function getBlueprintOverrides(): Record<string, string> {
-  return readStorage<Record<string, string>>(
-    [BLUEPRINT_OVERRIDES_STORAGE_KEY, ...LEGACY_BLUEPRINT_OVERRIDES_STORAGE_KEYS],
-    {},
-  );
+  return readStorage<Record<string, string>>([BLUEPRINT_OVERRIDES_STORAGE_KEY], {});
 }
 
 export function saveBlueprintOverrides(overrides: Record<string, string>): void {
-  writeStorage(BLUEPRINT_OVERRIDES_STORAGE_KEY, LEGACY_BLUEPRINT_OVERRIDES_STORAGE_KEYS, overrides);
+  writeStorage(BLUEPRINT_OVERRIDES_STORAGE_KEY, [], overrides);
 }
 
 export function isCustomBlueprintPath(path: string): boolean {
@@ -275,7 +270,7 @@ export function findBlueprintContent(fileName?: string): string {
 }
 
 export function getStoredTemplates(): StoredTemplateRecord[] {
-  const stored = readStorage<unknown>([CUSTOM_TEMPLATES_STORAGE_KEY, ...LEGACY_CUSTOM_TEMPLATES_STORAGE_KEYS], []);
+  const stored = readStorage<unknown>([CUSTOM_TEMPLATES_STORAGE_KEY], []);
   const coerced = coerceStoredTemplateRecords(stored);
   const normalized = coerced.map((record) =>
     normalizeStoredTemplateRecord(record, {
@@ -284,7 +279,7 @@ export function getStoredTemplates(): StoredTemplateRecord[] {
   );
 
   if (JSON.stringify(stored) !== JSON.stringify(normalized)) {
-    writeStorage(CUSTOM_TEMPLATES_STORAGE_KEY, LEGACY_CUSTOM_TEMPLATES_STORAGE_KEYS, normalized);
+    writeStorage(CUSTOM_TEMPLATES_STORAGE_KEY, [], normalized);
   }
 
   return normalized;
@@ -293,7 +288,7 @@ export function getStoredTemplates(): StoredTemplateRecord[] {
 export function saveStoredTemplates(records: StoredTemplateRecord[]): void {
   writeStorage(
     CUSTOM_TEMPLATES_STORAGE_KEY,
-    LEGACY_CUSTOM_TEMPLATES_STORAGE_KEYS,
+    [],
     records.map((record) =>
       normalizeStoredTemplateRecord(record, {
         resolveBuiltinContent: findBlueprintContent,

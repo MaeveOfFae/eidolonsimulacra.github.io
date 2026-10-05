@@ -38,9 +38,7 @@ export interface FavoriteSeedRecord {
 }
 
 const SEED_HISTORY_STORAGE_KEY = 'eidolon.web.seedGenerator.history';
-const LEGACY_SEED_HISTORY_STORAGE_KEYS = ['bpui.web.seedGenerator.history'];
 const SEED_FAVORITES_STORAGE_KEY = 'eidolon.web.seedGenerator.favorites';
-const LEGACY_SEED_FAVORITES_STORAGE_KEYS = ['bpui.web.seedGenerator.favorites'];
 const SEED_FAVORITES_SYNC_STATE_STORAGE_KEY = 'eidolon.web.seedGenerator.favorites.syncState';
 const ARCHIVED_SEED_RUNS_SYNC_STATE_STORAGE_KEY = 'eidolon.web.seedGenerator.archivedSeedRuns.syncState';
 const MAX_SEED_HISTORY = 12;
@@ -183,10 +181,7 @@ function writeArchivedSeedRunSyncState(state: FavoriteSeedSyncState): void {
 }
 
 export function getAllFavoriteSeeds(): FavoriteSeedRecord[] {
-  const stored = readStorage<FavoriteSeedRecord[]>(
-    [SEED_FAVORITES_STORAGE_KEY, ...LEGACY_SEED_FAVORITES_STORAGE_KEYS],
-    [],
-  );
+  const stored = readStorage<FavoriteSeedRecord[]>([SEED_FAVORITES_STORAGE_KEY], []);
   return normalizeFavoriteSeeds(stored);
 }
 
@@ -204,7 +199,7 @@ function writeFavoriteSeeds(
 ): FavoriteSeedRecord[] {
   const { markChanged = true, markSynced = false, timestamp = new Date().toISOString() } = options;
   const normalized = normalizeFavoriteSeeds(favorites);
-  writeStorage(SEED_FAVORITES_STORAGE_KEY, LEGACY_SEED_FAVORITES_STORAGE_KEYS, normalized);
+  writeStorage(SEED_FAVORITES_STORAGE_KEY, [], normalized);
 
   const nextSyncState = readFavoriteSeedSyncState();
   if (markChanged) {
@@ -379,7 +374,7 @@ function normalizeSeedRunRecords(records: readonly unknown[]): SeedRunRecord[] {
 }
 
 function getAllSeedRuns(): SeedRunRecord[] {
-  const stored = readStorage<SeedRunRecord[]>([SEED_HISTORY_STORAGE_KEY, ...LEGACY_SEED_HISTORY_STORAGE_KEYS], []);
+  const stored = readStorage<SeedRunRecord[]>([SEED_HISTORY_STORAGE_KEY], []);
   return normalizeSeedRunRecords(stored);
 }
 
@@ -394,7 +389,7 @@ function getArchivedSeedRunRecords(records: readonly SeedRunRecord[]): SeedRunRe
 function writeSeedRunHistory(records: SeedRunRecord[], options: WriteSeedRunHistoryOptions = {}): SeedRunRecord[] {
   const { markArchivedChanged = false, markSynced = false, timestamp = new Date().toISOString() } = options;
   const normalized = normalizeSeedRunRecords(records);
-  writeStorage(SEED_HISTORY_STORAGE_KEY, LEGACY_SEED_HISTORY_STORAGE_KEYS, normalized);
+  writeStorage(SEED_HISTORY_STORAGE_KEY, [], normalized);
 
   if (markArchivedChanged || markSynced) {
     const nextSyncState = readArchivedSeedRunSyncState();

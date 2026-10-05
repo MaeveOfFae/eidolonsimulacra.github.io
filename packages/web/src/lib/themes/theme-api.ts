@@ -4,10 +4,9 @@
  * Extracted from `EidolonBrowserAPI` (4.7.0), beside the already-extracted
  * builtin catalogue (`themes/builtin-themes.ts`). Custom themes persist
  * through the desktop-aware JSON storage layer under
- * `eidolon.web.themes.custom` (with the legacy `bpui.` key still read);
- * builtins are never mutated — updating or deleting one 404s or leaves the
- * builtin in place. Behavior is pinned by `api.themes.test.ts` through the
- * facade.
+ * `eidolon.web.themes.custom`; builtins are never mutated — updating or deleting
+ * one 404s or leaves the builtin in place. Behavior is pinned by
+ * `api.themes.test.ts` through the facade.
  */
 
 import type {
@@ -24,7 +23,6 @@ import { readPersistedJson, writePersistedJson } from '../persistence/storage.js
 import { builtinThemes } from './builtin-themes.js';
 
 const CUSTOM_THEMES_STORAGE_KEY = 'eidolon.web.themes.custom';
-const LEGACY_CUSTOM_THEMES_STORAGE_KEYS = ['bpui.web.themes.custom'];
 
 function readStorage<T>(keys: string | readonly string[], fallback: T): T {
   return readPersistedJson(keys, fallback);
@@ -35,11 +33,11 @@ function writeStorage<T>(key: string, legacyKeys: readonly string[], value: T): 
 }
 
 function getCustomThemes(): ThemePreset[] {
-  return readStorage<ThemePreset[]>([CUSTOM_THEMES_STORAGE_KEY, ...LEGACY_CUSTOM_THEMES_STORAGE_KEYS], []);
+  return readStorage<ThemePreset[]>([CUSTOM_THEMES_STORAGE_KEY], []);
 }
 
 function saveCustomThemes(themes: ThemePreset[]): void {
-  writeStorage(CUSTOM_THEMES_STORAGE_KEY, LEGACY_CUSTOM_THEMES_STORAGE_KEYS, themes);
+  writeStorage(CUSTOM_THEMES_STORAGE_KEY, [], themes);
 }
 
 function getAllThemes(): ThemePreset[] {
