@@ -2,9 +2,7 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   ArrowRight,
-  Dice1,
   FolderOpen,
-  GitCompare,
   Layers,
   PlayCircle,
   RotateCcw,
@@ -12,12 +10,12 @@ import {
   Settings,
   ShieldCheck,
   Sparkles,
-  ScissorsLineDashed,
   Zap,
 } from 'lucide-react';
 import type { DraftMetadata } from '@char-gen/shared';
 import { api } from '@/lib/api';
 import { GETTING_STARTED_GUIDE_ID, getGuidedTour, gettingStartedSteps, guidedTours } from '@/lib/help';
+import { findRouteEntry, type RouteIcon } from '@/lib/navigation/route-catalog';
 import { isDesktopRuntime } from '@/lib/runtime';
 import CollapsibleSection from './common/CollapsibleSection';
 import GettingStartedGuide from './common/GettingStartedGuide';
@@ -61,38 +59,35 @@ const WORKFLOW_LANES = [
   },
 ] as const;
 
-const EXPLORATION_ACTIONS = [
-  {
-    to: '/seed-generator',
-    label: 'Seed Generator',
-    description: 'Generate concepts quickly.',
-    icon: Dice1,
-  },
-  {
-    to: '/validation',
-    label: 'Validation',
-    description: 'Check draft structure.',
-    icon: ShieldCheck,
-  },
-  {
-    to: '/optimize',
-    label: 'Token Optimization',
-    description: 'Shorten text without losing relevant data.',
-    icon: ScissorsLineDashed,
-  },
-  {
-    to: '/batch',
-    label: 'Batch',
-    description: 'Run multiple seeds in sequence.',
-    icon: Layers,
-  },
-  {
-    to: '/similarity',
-    label: 'Similarity',
-    description: 'Check overlap across drafts.',
-    icon: GitCompare,
-  },
-] as const;
+interface ExplorationAction {
+  to: string;
+  label: string;
+  description: string;
+  icon: RouteIcon;
+}
+
+/**
+ * Home's curated order and copy, with `label` and `icon` read from the route
+ * catalog so a rename there cannot leave this list stale. It previously called
+ * `/similarity` "Compare" — a name `/compare` already owned — and gave it the
+ * Offspring icon. A target with no catalog entry is dropped rather than thrown
+ * on; `Home.test.tsx` asserts all five survive.
+ *
+ * Uses the catalog's `title` rather than its sidebar `label`, because these are
+ * standalone cards: "Token Optimization", not the nav's truncated "Optimize".
+ */
+const EXPLORATION_COPY: Record<string, string> = {
+  '/seed-generator': 'Generate concepts quickly.',
+  '/validation': 'Check draft structure.',
+  '/optimize': 'Shorten text without losing relevant data.',
+  '/batch': 'Run multiple seeds in sequence.',
+  '/similarity': 'Check overlap across drafts.',
+};
+
+const EXPLORATION_ACTIONS: ExplorationAction[] = Object.entries(EXPLORATION_COPY).flatMap(([to, description]) => {
+  const entry = findRouteEntry(to);
+  return entry ? [{ to, label: entry.title, description, icon: entry.icon }] : [];
+});
 
 interface MetricTileProps {
   label: string;

@@ -10,11 +10,13 @@ import {
   moveActiveIndex,
   type QuickAction,
 } from '@/lib/navigation/quick-actions';
+import type { WorkspaceModeId } from '@/lib/navigation/workspace-modes';
 
 interface QuickActionsPaletteProps {
   isOpen: boolean;
   onClose: () => void;
   drafts: readonly DraftMetadata[];
+  modeId?: WorkspaceModeId | null;
 }
 
 const LIST_ID = 'quick-actions-list';
@@ -26,13 +28,13 @@ const LIST_ID = 'quick-actions-list';
  * highlight moves with `aria-activedescendant`, so the list items are options
  * rather than extra tab stops.
  */
-export default function QuickActionsPalette({ isOpen, onClose, drafts }: QuickActionsPaletteProps) {
+export default function QuickActionsPalette({ isOpen, onClose, drafts, modeId = null }: QuickActionsPaletteProps) {
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const sections = useMemo(() => buildQuickActionsSections({ query, drafts }), [query, drafts]);
+  const sections = useMemo(() => buildQuickActionsSections({ query, drafts, modeId }), [query, drafts, modeId]);
   const actions = useMemo(() => flattenQuickActions(sections), [sections]);
   const indexByActionId = useMemo(() => new Map(actions.map((action, index) => [action.id, index])), [actions]);
   const safeActiveIndex = clampActiveIndex(activeIndex, actions.length);

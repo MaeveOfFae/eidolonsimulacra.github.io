@@ -146,3 +146,34 @@ describe('QuickActionsPalette', () => {
     expect(document.body).not.toHaveClass('modal-open');
   });
 });
+
+describe('QuickActionsPalette workspace modes', () => {
+  function renderPaletteWithMode(modeId: 'draft' | 'review' | 'bulk') {
+    return render(
+      <MemoryRouter initialEntries={['/']}>
+        <Routes>
+          <Route path="/" element={<QuickActionsPalette isOpen onClose={vi.fn()} drafts={[]} modeId={modeId} />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+  }
+
+  it('opens on the active mode screens', () => {
+    renderPaletteWithMode('bulk');
+
+    expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('Batch'),
+        expect.stringContaining('Compare'),
+        expect.stringContaining('Insights'),
+      ]),
+    );
+    expect(selectedOptions()[0]).toHaveTextContent('Batch');
+  });
+
+  it('promotes the review screens instead in review mode', () => {
+    renderPaletteWithMode('review');
+
+    expect(selectedOptions()[0]).toHaveTextContent('Library');
+  });
+});

@@ -186,6 +186,20 @@ describe('quick-actions search', () => {
     );
   });
 
+  it('also hides wildcard routes, which have no literal target', () => {
+    // `/blueprints/edit/*` has no `:`, so a `:`-only filter let the palette offer
+    // it and navigate to a literal `*` path.
+    expect(searchRouteCatalog('', { limit: 40 }).map((result) => result.entry.path)).not.toContain(
+      '/blueprints/edit/*',
+    );
+    expect(searchRouteCatalog('blueprint editor', { limit: 40 }).map((r) => r.entry.path)).not.toContain(
+      '/blueprints/edit/*',
+    );
+    expect(searchRouteCatalog('blueprint editor', { includeParameterised: true }).map((r) => r.entry.path)).toContain(
+      '/blueprints/edit/*',
+    );
+  });
+
   it('opens with a bounded default list', () => {
     const results = searchRouteCatalog('   ', { limit: 5 });
 
@@ -195,5 +209,76 @@ describe('quick-actions search', () => {
 
   it('returns nothing for a query that matches no route', () => {
     expect(searchRouteCatalog('zzzzz')).toEqual([]);
+  });
+});
+
+describe('mode-aware search', () => {
+  it('promotes the active mode screens into the default list', () => {
+    expect(searchRouteCatalog('', { modeId: 'bulk', limit: 4 }).map((result) => result.entry.path)).toEqual([
+      '/batch',
+      '/compare',
+      '/insights',
+      '/',
+    ]);
+  });
+
+  it('promotes a screen that would otherwise fall outside the default list', () => {
+    expect(searchRouteCatalog('', { limit: 8 }).map((result) => result.entry.path)).not.toContain('/batch');
+    expect(searchRouteCatalog('', { modeId: 'bulk', limit: 8 }).map((result) => result.entry.path)).toContain('/batch');
+  });
+
+  it('still requires a promoted screen to match the query', () => {
+    // The bonus must never rescue a non-match, or Bulk mode would list Batch for
+    // every search.
+    expect(searchRouteCatalog('zzzzz', { modeId: 'bulk' })).toEqual([]);
+  });
+
+  it('leaves results identical when no mode is set', () => {
+    expect(searchRouteCatalog('backup', { modeId: null })).toEqual(searchRouteCatalog('backup'));
+  });
+});
+
+describe('mode drift guard', () => {
+  const modes = [
+    {
+      id: 'draft' as const,
+      label: 'Draft',
+      description: '',
+      icon: routeCatalog[0].icon,
+      defaultRoute: '/generate',
+      primaryPaths: ['/generate'],
+    },
+  ];
+
+  it('accepts the real mode configuration', () => {
+    expect(validateRouteCatalog(routeCatalog, declaredRoutes)).toEqual([]);
+  });
+
+  it('reports a mode that promotes a path with no catalog entry', () => {
+    const issues = validateRouteCatalog(routeCatalog, declaredRoutes, [
+      { ...modes[0], primaryPaths: ['/generate', '/ghost'] },
+    ]);
+
+    expect(issues).toEqual(['Workspace mode draft promotes a path with no catalog entry: /ghost']);
+  });
+
+  it('reports two modes claiming the same screen', () => {
+    const issues = validateRouteCatalog(routeCatalog, declaredRoutes, [
+      modes[0],
+      { ...modes[0], id: 'review', label: 'Review', primaryPaths: ['/generate'] },
+    ]);
+
+    expect(issues).toEqual(['Workspace modes draft and review both promote: /generate']);
+  });
+
+  it('reports a promoted parameterised path and a bad default route', () => {
+    const issues = validateRouteCatalog(routeCatalog, declaredRoutes, [
+      { ...modes[0], primaryPaths: ['/drafts/:id'], defaultRoute: '/ghost' },
+    ]);
+
+    expect(issues).toEqual([
+      'Workspace mode draft promotes a parameterised path: /drafts/:id',
+      'Workspace mode draft has a default route with no catalog entry: /ghost',
+    ]);
   });
 });

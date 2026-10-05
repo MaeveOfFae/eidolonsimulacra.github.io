@@ -47,6 +47,14 @@ import {
   Users,
 } from 'lucide-react';
 
+import {
+  isModePrimaryPath,
+  orderByMode,
+  WORKSPACE_MODES,
+  type WorkspaceMode,
+  type WorkspaceModeId,
+} from './workspace-modes';
+
 export type RouteIcon = ComponentType<{ className?: string }>;
 
 /** Sidebar section a route belongs to. `main` is the always-visible list. */
@@ -553,10 +561,27 @@ function scoreEntry(entry: RouteCatalogEntry, needle: string): number {
   return 0;
 }
 
+/**
+ * Tie-break weight for a screen the active workspace mode promotes. Small enough
+ * that it only separates equal-scoring matches — a promoted screen that does not
+ * match the query still scores 0 and stays out of the results.
+ */
+const MODE_MATCH_BONUS = 5;
+
+/** A route that cannot be navigated to on its own: it needs a `:param` or a trailing `*`. */
+function isNonNavigableRoute(path: string): boolean {
+  return path.includes(':') || path.endsWith('/*');
+}
+
 export interface RouteSearchOptions {
   limit?: number;
-  /** Parameterised routes (`/drafts/:id`) have no navigable target, so they are hidden by default. */
+  /**
+   * Include routes that need parameters. Off by default: `/drafts/:id` has no id
+   * to use, and `/blueprints/edit/*` would navigate to a literal `*` path.
+   */
   includeParameterised?: boolean;
+  /** Promotes the active mode's screens: to the front when browsing, tie-break when searching. */
+  modeId?: WorkspaceModeId | null;
 }
 
 /**
@@ -564,16 +589,26 @@ export interface RouteSearchOptions {
  * first `limit` navigable routes so the palette opens with a useful default list.
  */
 export function searchRouteCatalog(query: string, options: RouteSearchOptions = {}): RouteSearchResult[] {
-  const { limit = 8, includeParameterised = false } = options;
+  const { limit = 8, includeParameterised = false, modeId = null } = options;
   const needle = query.trim().toLowerCase();
-  const candidates = includeParameterised ? routeCatalog : routeCatalog.filter((entry) => !entry.path.includes(':'));
+  const candidates = includeParameterised
+    ? routeCatalog
+    : routeCatalog.filter((entry) => !isNonNavigableRoute(entry.path));
 
   if (needle.length === 0) {
-    return candidates.slice(0, limit).map((entry) => ({ entry, score: 0 }));
+    // Order *before* slicing, so a promoted screen that sits deep in the catalog
+    // (Data Manager is 12th of 16) still makes the default list.
+    return orderByMode(candidates, modeId, (entry) => entry.path)
+      .slice(0, limit)
+      .map((entry) => ({ entry, score: 0 }));
   }
 
   return candidates
-    .map((entry) => ({ entry, score: scoreEntry(entry, needle) }))
+    .map((entry) => {
+      const base = scoreEntry(entry, needle);
+      const bonus = base > 0 && modeId && isModePrimaryPath(modeId, entry.path) ? MODE_MATCH_BONUS : 0;
+      return { entry, score: base + bonus };
+    })
     .filter((result) => result.score > 0)
     .sort((left, right) => right.score - left.score)
     .slice(0, limit);
@@ -587,6 +622,7 @@ export function searchRouteCatalog(query: string, options: RouteSearchOptions = 
 export function validateRouteCatalog(
   entries: readonly RouteCatalogEntry[],
   declaredRoutes: readonly string[],
+  modes: readonly WorkspaceMode[] = WORKSPACE_MODES,
 ): string[] {
   const issues: string[] = [];
   const seenPaths = new Set<string>();
@@ -643,6 +679,35 @@ export function validateRouteCatalog(
   for (const pattern of catalogPatterns) {
     if (!declared.includes(pattern)) {
       issues.push(`Catalog entry does not match any app route: ${pattern}`);
+    }
+  }
+
+  // Workspace modes must promote real, literal routes, and no route may be
+  // claimed by two modes — that disjointness is what makes "which mode am I in"
+  // answerable instead of a guess. `modes` is injected rather than read from the
+  // module so this is testable, the same mistake the icon check above once made.
+  const claimedPaths = new Map<string, WorkspaceModeId>();
+  for (const mode of modes) {
+    for (const modePath of mode.primaryPaths) {
+      if (/[:*]/.test(modePath)) {
+        issues.push(`Workspace mode ${mode.id} promotes a parameterised path: ${modePath}`);
+        continue;
+      }
+
+      if (!catalogPatterns.has(modePath)) {
+        issues.push(`Workspace mode ${mode.id} promotes a path with no catalog entry: ${modePath}`);
+      }
+
+      const owner = claimedPaths.get(modePath);
+      if (owner) {
+        issues.push(`Workspace modes ${owner} and ${mode.id} both promote: ${modePath}`);
+      } else {
+        claimedPaths.set(modePath, mode.id);
+      }
+    }
+
+    if (!catalogPatterns.has(mode.defaultRoute)) {
+      issues.push(`Workspace mode ${mode.id} has a default route with no catalog entry: ${mode.defaultRoute}`);
     }
   }
 

@@ -19,8 +19,18 @@ import {
   resolveRouteTitle,
 } from '../lib/navigation/route-catalog';
 import { quickActionsShortcutLabel } from '../lib/navigation/quick-actions';
+import {
+  clearStoredWorkspaceMode,
+  orderEntriesForMode,
+  readStoredWorkspaceMode,
+  resolveActiveWorkspaceMode,
+  WORKSPACE_MODES,
+  writeStoredWorkspaceMode,
+  type WorkspaceModeId,
+} from '../lib/navigation/workspace-modes';
 import HoverHelpPopover from './common/HoverHelpPopover';
 import QuickActionsPalette from './common/QuickActionsPalette';
+import WorkspaceModeSwitcher from './common/WorkspaceModeSwitcher';
 
 interface LayoutProps {
   children: ReactNode;
@@ -167,6 +177,9 @@ export default function Layout({ children }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  // The explicit choice is null until the user picks a mode, in which case the
+  // active mode simply follows the screen they are on.
+  const [explicitModeId, setExplicitModeId] = useState<WorkspaceModeId | null>(() => readStoredWorkspaceMode());
   const [expandedSubmenus, setExpandedSubmenus] = useState<string[]>([]);
   const toggleSubmenu = (id: string) =>
     setExpandedSubmenus((previous) =>
@@ -192,6 +205,19 @@ export default function Layout({ children }: LayoutProps) {
   const workspaceSummary =
     pageHelp?.summary ?? 'Move between generation, review, editing, and export surfaces without breaking focus.';
   const workspaceStateLabel = desktopRuntime ? 'Device-link ready' : 'Local workspace';
+  const activeModeId = resolveActiveWorkspaceMode(explicitModeId, location.pathname);
+  const activeMode = WORKSPACE_MODES.find((mode) => mode.id === activeModeId) ?? null;
+  const ActiveModeIcon = activeMode?.icon ?? null;
+  // A mode reorders the sidebar; it never removes anything from it.
+  const navEntries = orderEntriesForMode(primaryNavEntries, activeModeId);
+  const selectWorkspaceMode = (modeId: WorkspaceModeId | null) => {
+    setExplicitModeId(modeId);
+    if (modeId) {
+      writeStoredWorkspaceMode(modeId);
+    } else {
+      clearStoredWorkspaceMode();
+    }
+  };
 
   useEffect(() => {
     const handleDraftsSynced = () => {
@@ -303,6 +329,13 @@ export default function Layout({ children }: LayoutProps) {
 
               {/* Navigation */}
               <nav className="flex-1 space-y-0.5 overflow-y-auto p-3">
+                {/* Workspace mode: reorders the list below, hides nothing. */}
+                <WorkspaceModeSwitcher
+                  explicitModeId={explicitModeId}
+                  activeModeId={activeModeId}
+                  onSelect={selectWorkspaceMode}
+                />
+
                 {/* Quick-actions trigger. The palette itself opens from ⌘K anywhere. */}
                 <button
                   type="button"
@@ -336,7 +369,7 @@ export default function Layout({ children }: LayoutProps) {
                 ))}
 
                 {/* Regular nav items */}
-                {primaryNavEntries.map((item) => {
+                {navEntries.map((item) => {
                   const isActive = isNavPathActive(location.pathname, item.path);
                   return (
                     <NavItem
@@ -436,6 +469,16 @@ export default function Layout({ children }: LayoutProps) {
                       <span className="inline-flex items-center rounded-full border border-border/70 bg-background/70 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                         {desktopRuntime ? 'Native shell' : 'Web runtime'}
                       </span>
+                      {ActiveModeIcon && activeMode ? (
+                        <Link
+                          to={activeMode.defaultRoute}
+                          title={`Go to the ${activeMode.label} workspace`}
+                          className="inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary transition-colors hover:border-primary/50 hover:bg-primary/15"
+                        >
+                          <ActiveModeIcon className="h-3 w-3" aria-hidden="true" />
+                          {activeMode.label}
+                        </Link>
+                      ) : null}
                     </div>
                     <h1
                       className="mt-3 text-3xl font-semibold tracking-tight text-foreground"
@@ -484,6 +527,7 @@ export default function Layout({ children }: LayoutProps) {
             isOpen={paletteOpen}
             onClose={() => setPaletteOpen(false)}
             drafts={draftsData?.drafts ?? []}
+            modeId={activeModeId}
           />
           <GuidedTourOverlay />
         </div>

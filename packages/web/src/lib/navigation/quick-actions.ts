@@ -14,6 +14,7 @@ import type { DraftMetadata } from '@char-gen/shared';
 import { FileText } from 'lucide-react';
 import type { RouteCatalogEntry, RouteIcon } from './route-catalog';
 import { searchRouteCatalog } from './route-catalog';
+import type { WorkspaceModeId } from './workspace-modes';
 
 export type QuickActionKind = 'route' | 'draft';
 
@@ -103,6 +104,8 @@ export interface QuickActionsInput {
   drafts: readonly DraftMetadata[];
   screenLimit?: number;
   draftLimit?: number;
+  /** Screens the active workspace mode promotes rank first. */
+  modeId?: WorkspaceModeId | null;
 }
 
 /** Empty sections are dropped so the palette only shows what the query reaches. */
@@ -111,12 +114,13 @@ export function buildQuickActionsSections({
   drafts,
   screenLimit = DEFAULT_SCREEN_LIMIT,
   draftLimit = RECENT_DRAFT_LIMIT,
+  modeId = null,
 }: QuickActionsInput): QuickActionsSection[] {
   const sections: QuickActionsSection[] = [
     {
       id: 'screens',
       label: 'Screens',
-      actions: searchRouteCatalog(query, { limit: screenLimit }).map((result) => routeAction(result.entry)),
+      actions: searchRouteCatalog(query, { limit: screenLimit, modeId }).map((result) => routeAction(result.entry)),
     },
     {
       id: 'recent-drafts',

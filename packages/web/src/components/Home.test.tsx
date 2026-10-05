@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
+import { findRouteEntry } from '@/lib/navigation/route-catalog';
 import Home from './Home';
 
 // `vi.mock` factories are hoisted, so shared mutable state has to be created
@@ -118,5 +119,27 @@ describe('Home supporting tools', () => {
     // `/compare` is the multi-model comparison screen; only one thing may be
     // called Compare, and it is not this tile.
     expect(screen.queryByRole('link', { name: /^Compare\b/ })).not.toBeInTheDocument();
+  });
+});
+
+describe('Home route targets', () => {
+  it('points every internal link at a catalog route', async () => {
+    renderHome();
+    fireEvent.click(await screen.findByRole('button', { name: /Supporting tools/i }));
+
+    const hrefs = [
+      ...new Set(
+        screen
+          .getAllByRole('link')
+          .map((link) => link.getAttribute('href') ?? '')
+          .filter((href) => href.startsWith('/')),
+      ),
+    ];
+
+    // The workflow lanes render expanded by default, so this covers both lists.
+    expect(hrefs.length).toBeGreaterThanOrEqual(9);
+    for (const href of hrefs) {
+      expect(findRouteEntry(href), `Home links to ${href}, which has no catalog entry`).not.toBeNull();
+    }
   });
 });
