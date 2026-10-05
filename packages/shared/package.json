@@ -20,7 +20,7 @@
     }
   },
   "scripts": {
-    "build": "tsup && tsc --emitDeclarationOnly --project tsconfig.json",
+    "build": "tsup && tsc --emitDeclarationOnly --project tsconfig.build.json",
     "dev": "tsup --watch",
     "test": "vitest run",
     "lint": "eslint src/",
