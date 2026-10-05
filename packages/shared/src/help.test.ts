@@ -137,3 +137,44 @@ describe('guided tours', () => {
     }
   });
 });
+
+/**
+ * `help.ts` is now a barrel over `./help/*` — the types and ids, the guide and topic
+ * content, the tours, the per-page entries, and the lookups over them.
+ *
+ * The content moved verbatim: verified line-by-line against the pre-split file, 1,259
+ * code lines in and 1,259 out with zero differences. The surface is what a barrel can
+ * silently drop, and twenty-one modules import this path, so it is pinned here. The
+ * nine interfaces have no runtime presence and are checked by the shared build's
+ * declaration step at each use.
+ */
+const HELP_SURFACE = [
+  'BLUEPRINTS_SAFETY_TOUR_ID',
+  'DRAFT_LIBRARY_TOUR_ID',
+  'GETTING_STARTED_GUIDE_ID',
+  'GETTING_STARTED_TOUR_ID',
+  'REVIEW_EXPORT_TOUR_ID',
+  'SAFE_STORAGE_TOUR_ID',
+  'VALIDATION_TOUR_ID',
+  'appRouteHelpCoverage',
+  'getGuidedTour',
+  'gettingStartedSteps',
+  'guidedTourTargetCatalog',
+  'guidedTours',
+  'helpCategories',
+  'helpTopics',
+  'isGuidedTourStepActive',
+  'pageHelpEntries',
+  'resolvePageHelp',
+  'routeCoverageManifest',
+  'validateGuidedTourConfiguration',
+  'validateHelpRouteCoverage',
+].sort();
+
+describe('help barrel', () => {
+  it('exposes exactly the values the single module used to', async () => {
+    const surface = await import('./help');
+
+    expect(Object.keys(surface).sort()).toEqual(HELP_SURFACE);
+  });
+});

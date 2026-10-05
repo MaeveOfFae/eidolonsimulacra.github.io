@@ -17,10 +17,30 @@ const execFileAsync = promisify(execFile);
 
 const CATEGORY_RULES = [
   { id: 'theme', label: 'theme', pluralLabel: 'themes', keywords: ['theme', 'themes', 'palette', 'color'] },
-  { id: 'docs', label: 'documentation', pluralLabel: 'documentation', keywords: ['readme', 'security', 'license', 'terms', 'privacy', 'conduct', 'docs', 'documentation'] },
-  { id: 'ui', label: 'UI', pluralLabel: 'UI', keywords: ['home', 'layout', 'page', 'pages', 'widget', 'button', 'sidebar', 'screen'] },
-  { id: 'template', label: 'template', pluralLabel: 'templates', keywords: ['template', 'blueprint', 'export', 'preset'] },
-  { id: 'runtime', label: 'runtime', pluralLabel: 'runtime', keywords: ['api', 'provider', 'openrouter', 'llm', 'storage', 'fetch', 'router', 'build'] },
+  {
+    id: 'docs',
+    label: 'documentation',
+    pluralLabel: 'documentation',
+    keywords: ['readme', 'security', 'license', 'terms', 'privacy', 'conduct', 'docs', 'documentation'],
+  },
+  {
+    id: 'ui',
+    label: 'UI',
+    pluralLabel: 'UI',
+    keywords: ['home', 'layout', 'page', 'pages', 'widget', 'button', 'sidebar', 'screen'],
+  },
+  {
+    id: 'template',
+    label: 'template',
+    pluralLabel: 'templates',
+    keywords: ['template', 'blueprint', 'export', 'preset'],
+  },
+  {
+    id: 'runtime',
+    label: 'runtime',
+    pluralLabel: 'runtime',
+    keywords: ['api', 'provider', 'openrouter', 'llm', 'storage', 'fetch', 'router', 'build'],
+  },
 ];
 
 function parseArgs(argv) {
@@ -120,9 +140,7 @@ function escapeSingleQuoted(value) {
 }
 
 function formatEntry(entry) {
-  const highlightsBlock = entry.highlights
-    .map((highlight) => `      '${escapeSingleQuoted(highlight)}',`)
-    .join('\n');
+  const highlightsBlock = entry.highlights.map((highlight) => `      '${escapeSingleQuoted(highlight)}',`).join('\n');
   const linksBlock = entry.links
     .map((link) => `      { label: '${escapeSingleQuoted(link.label)}', to: '${escapeSingleQuoted(link.to)}' },`)
     .join('\n');
@@ -145,7 +163,9 @@ function formatEntry(entry) {
 }
 
 function printHelp() {
-  console.log(`Usage: pnpm release:notes [options]\n\nOptions:\n  --version <x.y.z>     Explicit release version; overrides automatic bumping\n  --bump <type>         Version bump type: patch, minor, or major (default: patch)\n  --date <YYYY-MM-DD>   Defaults to today's date\n  --badge <label>       Defaults to "Current release"\n  --headline <text>     Release title\n  --summary <text>      One-paragraph summary\n  --highlights <a|b|c>  Pipe-separated highlights\n  --links <Label:/path|Label:/path>  Pipe-separated action links\n  --derive-from-commits Derive headline, summary, and highlights from git commits\n  --from-ref <ref>      Start of git range when deriving from commits\n  --to-ref <ref>        End of git range when deriving from commits (defaults to HEAD)\n  --commits <n>         Use the latest n commits when deriving without an explicit range\n  --allow-dirty         Permit writes when the git worktree already has changes\n  --dry-run             Print the generated entry without writing\n  --help                Show this message`);
+  console.log(
+    `Usage: pnpm release:notes [options]\n\nOptions:\n  --version <x.y.z>     Explicit release version; overrides automatic bumping\n  --bump <type>         Version bump type: patch, minor, or major (default: patch)\n  --date <YYYY-MM-DD>   Defaults to today's date\n  --badge <label>       Defaults to "Current release"\n  --headline <text>     Release title\n  --summary <text>      One-paragraph summary\n  --highlights <a|b|c>  Pipe-separated highlights\n  --links <Label:/path|Label:/path>  Pipe-separated action links\n  --derive-from-commits Derive headline, summary, and highlights from git commits\n  --from-ref <ref>      Start of git range when deriving from commits\n  --to-ref <ref>        End of git range when deriving from commits (defaults to HEAD)\n  --commits <n>         Use the latest n commits when deriving without an explicit range\n  --allow-dirty         Permit writes when the git worktree already has changes\n  --dry-run             Print the generated entry without writing\n  --help                Show this message`,
+  );
 }
 
 function escapeMarkdown(value) {
@@ -153,12 +173,8 @@ function escapeMarkdown(value) {
 }
 
 function formatChangelogEntry(entry) {
-  const linksBlock = entry.links
-    .map((link) => `- [${escapeMarkdown(link.label)}](${link.to})`)
-    .join('\n');
-  const highlightsBlock = entry.highlights
-    .map((highlight) => `- ${highlight}`)
-    .join('\n');
+  const linksBlock = entry.links.map((link) => `- [${escapeMarkdown(link.label)}](${link.to})`).join('\n');
+  const highlightsBlock = entry.highlights.map((highlight) => `- ${highlight}`).join('\n');
 
   return [
     `## v${entry.version} - ${entry.releasedOn}`,
@@ -207,7 +223,10 @@ function bumpSemver(version, bumpType) {
 
 function normalizeCommitSubject(subject) {
   const trimmed = subject.trim();
-  const withoutPrefix = trimmed.replace(/^(feat|fix|docs|refactor|chore|build|ci|test|perf|style)(\([^)]*\))?:\s*/i, '');
+  const withoutPrefix = trimmed.replace(
+    /^(feat|fix|docs|refactor|chore|build|ci|test|perf|style)(\([^)]*\))?:\s*/i,
+    '',
+  );
   const normalized = withoutPrefix.replace(/\s+/g, ' ').trim();
 
   return normalized ? normalized[0].toUpperCase() + normalized.slice(1) : '';
@@ -249,9 +268,7 @@ function deriveReleaseContent(commitSubjects) {
     throw new Error('No commits found for the requested range.');
   }
 
-  const normalizedSubjects = commitSubjects
-    .map(normalizeCommitSubject)
-    .filter(Boolean);
+  const normalizedSubjects = commitSubjects.map(normalizeCommitSubject).filter(Boolean);
 
   if (normalizedSubjects.length === 0) {
     throw new Error('Commit derivation produced no usable subjects.');
@@ -269,9 +286,10 @@ function deriveReleaseContent(commitSubjects) {
   const rankedCategories = [...categoryCounts.values()].sort((left, right) => right.count - left.count);
   const primary = rankedCategories[0]?.category ?? { label: 'platform', pluralLabel: 'platform' };
   const secondary = rankedCategories[1]?.category;
-  const headline = secondary && secondary.id !== primary.id
-    ? `${capitalize(primary.pluralLabel)} and ${secondary.pluralLabel} update`
-    : `${capitalize(primary.label)} update`;
+  const headline =
+    secondary && secondary.id !== primary.id
+      ? `${capitalize(primary.pluralLabel)} and ${secondary.pluralLabel} update`
+      : `${capitalize(primary.label)} update`;
   const summaryTopics = rankedCategories.slice(0, 3).map((entry) => entry.category.pluralLabel);
   const summary = `This release packages ${normalizedSubjects.length} recent commits focused on ${joinPhrase(summaryTopics)}.`;
   const highlights = normalizedSubjects.slice(0, 5);
@@ -376,7 +394,9 @@ async function ensureCleanWorktree(options) {
   const { stdout } = await execFileAsync('git', ['status', '--porcelain'], { cwd: repoRoot });
 
   if (stdout.trim()) {
-    throw new Error('Refusing to write release notes with a dirty git worktree. Commit or stash your changes, or rerun with --allow-dirty.');
+    throw new Error(
+      'Refusing to write release notes with a dirty git worktree. Commit or stash your changes, or rerun with --allow-dirty.',
+    );
   }
 }
 
@@ -402,12 +422,8 @@ async function updateChangelog(entry) {
     source = `${header}${source.trimStart()}`;
   }
 
-  const normalizedHeader = source.startsWith(header)
-    ? header
-    : header.replace(/\n/g, '\r\n');
-  const insertAt = source.startsWith(normalizedHeader)
-    ? normalizedHeader.length
-    : source.indexOf('\n\n') + 2;
+  const normalizedHeader = source.startsWith(header) ? header : header.replace(/\n/g, '\r\n');
+  const insertAt = source.startsWith(normalizedHeader) ? normalizedHeader.length : source.indexOf('\n\n') + 2;
   const prefix = source.slice(0, insertAt);
   const suffix = source.slice(insertAt).replace(/^\n+/, '');
 
@@ -513,9 +529,13 @@ async function main() {
   // it in place; a generated release is then format-clean by construction.
   // Run the workspace-local Prettier through node so this works on Windows
   // (where `npx` is a .cmd shim execFile cannot spawn) and in CI alike.
-  await execFileAsync(process.execPath, [path.join(repoRoot, 'node_modules/prettier/bin/prettier.cjs'), '--write', releaseNotesPath], {
-    cwd: repoRoot,
-  });
+  await execFileAsync(
+    process.execPath,
+    [path.join(repoRoot, 'node_modules/prettier/bin/prettier.cjs'), '--write', releaseNotesPath],
+    {
+      cwd: repoRoot,
+    },
+  );
   console.log(`Bumped package versions to ${targetVersion}`);
   console.log(`Added release note ${entry.version} to ${path.relative(repoRoot, releaseNotesPath)}`);
   console.log(`Updated ${path.relative(repoRoot, changelogPath)}`);

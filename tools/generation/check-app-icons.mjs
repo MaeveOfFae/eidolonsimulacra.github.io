@@ -95,7 +95,6 @@ async function checkWeb() {
     }
   }
 
-
   notes.push(`web: favicon, ${iconFiles.length} icon file(s), manifest + index.html links resolve`);
 }
 

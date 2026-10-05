@@ -116,7 +116,6 @@ async function checkWeb(problems, notes) {
   notes.push(`web: dist with ${assets.length} asset(s) and ${publishedDownloads.length} published download(s)`);
 }
 
-
 async function checkDesktop(problems, notes) {
   const { version } = await readJson('packages/web/package.json');
   const bundleRoot = path.join(repoRoot, 'packages/web/src-tauri/target/release/bundle');

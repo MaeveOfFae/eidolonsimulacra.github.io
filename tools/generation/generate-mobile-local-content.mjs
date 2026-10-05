@@ -11,13 +11,15 @@ const isCheckMode = process.argv.includes('--check');
 
 async function collectFiles(rootDir, predicate) {
   const entries = await fs.readdir(rootDir, { withFileTypes: true });
-  const nested = await Promise.all(entries.map(async (entry) => {
-    const fullPath = path.join(rootDir, entry.name);
-    if (entry.isDirectory()) {
-      return collectFiles(fullPath, predicate);
-    }
-    return predicate(fullPath) ? [fullPath] : [];
-  }));
+  const nested = await Promise.all(
+    entries.map(async (entry) => {
+      const fullPath = path.join(rootDir, entry.name);
+      if (entry.isDirectory()) {
+        return collectFiles(fullPath, predicate);
+      }
+      return predicate(fullPath) ? [fullPath] : [];
+    }),
+  );
 
   // Sort by repo-relative POSIX paths with a plain codepoint comparison:
   // `localeCompare` is locale/ICU-dependent and absolute paths differ by OS
@@ -37,21 +39,25 @@ function toRepoRelative(filePath) {
 }
 
 async function buildContentMap(files) {
-  const pairs = await Promise.all(files.map(async (filePath) => {
-    // Normalise at read time, before the content is stringified: CRLF inside
-    // a JSON string becomes the literal escape text `\r\n`, which the check's
-    // whole-file EOL normalisation cannot see. Without this, a Windows
-    // checkout (CRLF on disk) and a Linux checkout (LF) produce different
-    // generated files and CI fails with no real drift.
-    const contents = (await fs.readFile(filePath, 'utf8')).replace(/\r\n/g, '\n');
-    return [toRepoRelative(filePath), contents];
-  }));
+  const pairs = await Promise.all(
+    files.map(async (filePath) => {
+      // Normalise at read time, before the content is stringified: CRLF inside
+      // a JSON string becomes the literal escape text `\r\n`, which the check's
+      // whole-file EOL normalisation cannot see. Without this, a Windows
+      // checkout (CRLF on disk) and a Linux checkout (LF) produce different
+      // generated files and CI fails with no real drift.
+      const contents = (await fs.readFile(filePath, 'utf8')).replace(/\r\n/g, '\n');
+      return [toRepoRelative(filePath), contents];
+    }),
+  );
 
   return Object.fromEntries(pairs);
 }
 
 const blueprintFiles = await collectFiles(blueprintsRoot, (filePath) => filePath.endsWith('.md'));
-const templateManifestFiles = await collectFiles(path.join(blueprintsRoot, 'templates'), (filePath) => filePath.endsWith('template.toml'));
+const templateManifestFiles = await collectFiles(path.join(blueprintsRoot, 'templates'), (filePath) =>
+  filePath.endsWith('template.toml'),
+);
 
 const blueprintContents = await buildContentMap(blueprintFiles);
 const templateManifestContents = await buildContentMap(templateManifestFiles);

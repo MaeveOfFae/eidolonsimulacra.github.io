@@ -79,9 +79,7 @@ async function main() {
     }
 
     const importPattern = new RegExp(`from\\s+['"][^'"]*\\b${moduleName}['"]`);
-    const isWired = sources.some(
-      (entry) => entry.file !== placeholderFile && importPattern.test(entry.content),
-    );
+    const isWired = sources.some((entry) => entry.file !== placeholderFile && importPattern.test(entry.content));
 
     if (!isWired) {
       unwired.push(path.relative(repoRoot, placeholderFile).split(path.sep).join('/'));
