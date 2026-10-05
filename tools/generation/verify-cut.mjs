@@ -58,6 +58,3 @@ console.log(`added by the splitter: ${added.length}`);
 for (const line of added.slice(0, 8)) {
   console.log(`  + ${line}`);
 }
-
-
-
