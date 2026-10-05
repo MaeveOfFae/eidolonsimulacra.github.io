@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useMemo, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { CircleHelp, ChevronDown, ChevronRight, Heart, Menu, Search, Sparkles, X } from 'lucide-react';
 import { PROJECT_SUPPORT_URL } from '@char-gen/shared';
@@ -177,6 +177,7 @@ export default function Layout({ children }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const sidebarCloseButtonRef = useRef<HTMLButtonElement>(null);
   // The explicit choice is null until the user picks a mode, in which case the
   // active mode simply follows the screen they are on.
   const [explicitModeId, setExplicitModeId] = useState<WorkspaceModeId | null>(() => readStoredWorkspaceMode());
@@ -242,6 +243,14 @@ export default function Layout({ children }: LayoutProps) {
     }
   }, [activeSubmenuId, expandedSubmenus]);
 
+  // The mobile drawer covers the page, so it takes focus on open. That is also
+  // what makes its Escape handler work: the keydown fires on the drawer itself.
+  useEffect(() => {
+    if (sidebarOpen) {
+      sidebarCloseButtonRef.current?.focus();
+    }
+  }, [sidebarOpen]);
+
   useEffect(() => {
     const refreshSeedCount = () => {
       setSeedsCount(getFavoriteSeeds().length);
@@ -279,16 +288,29 @@ export default function Layout({ children }: LayoutProps) {
     <AssistantContextProvider>
       <GuidedTourProvider>
         <div className="app-shell flex min-h-dvh bg-background text-foreground lg:h-dvh lg:items-stretch lg:overflow-hidden">
+          {/* Keyboard-first: reach the page content without walking the nav. */}
+          <a
+            href="#main-content"
+            className="sr-only focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-[100] focus:rounded-lg focus:border focus:border-primary/40 focus:bg-card focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-foreground focus:shadow-lg"
+          >
+            Skip to main content
+          </a>
           {/* Mobile sidebar backdrop */}
           {sidebarOpen && (
             <div
               className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+              aria-hidden="true"
               onClick={() => setSidebarOpen(false)}
             />
           )}
 
           {/* Sidebar */}
           <aside
+            onKeyDown={(event) => {
+              if (event.key === 'Escape' && sidebarOpen) {
+                setSidebarOpen(false);
+              }
+            }}
             className={cn(
               'fixed inset-y-0 left-0 z-50 w-[min(18rem,calc(100vw-1rem))] max-w-[calc(100vw-1rem)] bg-card/80 backdrop-blur-xl border-r border-border transition-[transform,background-color,box-shadow,border-color] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] lg:order-0 lg:static lg:w-[18rem] lg:max-w-none lg:translate-x-0',
               'app-sidebar',
@@ -318,6 +340,7 @@ export default function Layout({ children }: LayoutProps) {
                   </div>
                 </Link>
                 <button
+                  ref={sidebarCloseButtonRef}
                   type="button"
                   aria-label="Close sidebar"
                   className="rounded-lg p-2 transition-colors hover:bg-accent lg:hidden"
@@ -426,7 +449,7 @@ export default function Layout({ children }: LayoutProps) {
           </aside>
 
           {/* Main content */}
-          <main className="min-w-0 flex-1 overflow-hidden">
+          <main id="main-content" tabIndex={-1} className="min-w-0 flex-1 overflow-hidden outline-none">
             <div className="flex h-full min-h-0 flex-col">
               {/* Mobile header */}
               <header className="app-frame-panel sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border/50 px-3 lg:hidden">
