@@ -310,6 +310,7 @@ export default function WorldTimelinesSection({
                 {editingTimelineId === timeline.id ? (
                   <div className="space-y-2">
                     <input
+                      aria-label="Timeline name"
                       value={editingTimelineForm.name}
                       onChange={(event) =>
                         setEditingTimelineForm((previous) => ({ ...previous, name: event.target.value }))
@@ -317,6 +318,7 @@ export default function WorldTimelinesSection({
                       className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     />
                     <textarea
+                      aria-label="Timeline description"
                       value={editingTimelineForm.description}
                       onChange={(event) =>
                         setEditingTimelineForm((previous) => ({ ...previous, description: event.target.value }))
@@ -431,6 +433,7 @@ export default function WorldTimelinesSection({
                   {editingEventId === event.id ? (
                     <div className="space-y-2">
                       <input
+                        aria-label="Event title"
                         value={editingEventForm.title}
                         onChange={(eventChange) =>
                           setEditingEventForm((previous) => ({ ...previous, title: eventChange.target.value }))
@@ -438,6 +441,7 @@ export default function WorldTimelinesSection({
                         className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       />
                       <input
+                        aria-label="Event date"
                         value={editingEventForm.eventDate}
                         onChange={(eventChange) =>
                           setEditingEventForm((previous) => ({ ...previous, eventDate: eventChange.target.value }))
@@ -445,6 +449,7 @@ export default function WorldTimelinesSection({
                         className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       />
                       <textarea
+                        aria-label="Event description"
                         value={editingEventForm.description}
                         onChange={(eventChange) =>
                           setEditingEventForm((previous) => ({

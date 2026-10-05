@@ -208,6 +208,7 @@ export default function WorldLocationsSection({
               </div>
               <div className="flex flex-col gap-2 sm:flex-row">
                 <select
+                  aria-label="Linked drafts"
                   value={pendingLocationDraftId}
                   onChange={(event) => setPendingLocationDraftId(event.target.value)}
                   className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -277,6 +278,7 @@ export default function WorldLocationsSection({
                 {editingLocationId === location.id ? (
                   <div className="space-y-2">
                     <input
+                      aria-label="Location name"
                       value={editingLocationForm.name}
                       onChange={(event) =>
                         setEditingLocationForm((previous) => ({ ...previous, name: event.target.value }))
@@ -284,6 +286,7 @@ export default function WorldLocationsSection({
                       className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     />
                     <input
+                      aria-label="Location category"
                       value={editingLocationForm.category}
                       onChange={(event) =>
                         setEditingLocationForm((previous) => ({ ...previous, category: event.target.value }))
@@ -291,6 +294,7 @@ export default function WorldLocationsSection({
                       className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     />
                     <textarea
+                      aria-label="Location description"
                       value={editingLocationForm.description}
                       onChange={(event) =>
                         setEditingLocationForm((previous) => ({ ...previous, description: event.target.value }))
@@ -306,6 +310,7 @@ export default function WorldLocationsSection({
                       </div>
                       <div className="flex flex-col gap-2 sm:flex-row">
                         <select
+                          aria-label="Linked drafts"
                           value={editingLocationPendingDraftId}
                           onChange={(event) => setEditingLocationPendingDraftId(event.target.value)}
                           className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"

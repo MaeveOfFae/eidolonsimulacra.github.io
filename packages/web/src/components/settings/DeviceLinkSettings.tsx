@@ -512,10 +512,11 @@ export default function DeviceLinkSettings() {
               <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Incoming Sender Policy
               </div>
-              <label className="mt-3 block text-sm font-medium text-foreground">
+              <label htmlFor="untrusted-sender-policy" className="mt-3 block text-sm font-medium text-foreground">
                 When a sender is untrusted or unknown
               </label>
               <select
+                id="untrusted-sender-policy"
                 value={policySettings.untrustedSenderPolicy}
                 onChange={(event) =>
                   handlePolicyChange(event.target.value as DesktopCompanionPolicySettings['untrustedSenderPolicy'])

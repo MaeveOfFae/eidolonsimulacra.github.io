@@ -386,6 +386,7 @@ export default function Insights() {
               <h2 className="text-lg font-semibold text-foreground">Breakdown</h2>
               <select
                 className="rounded-lg border bg-transparent px-2 py-1 text-sm text-foreground"
+                aria-label="Group usage by"
                 value={groupBy}
                 onChange={(event) => setGroupBy(event.target.value as UsageGroupBy)}
               >

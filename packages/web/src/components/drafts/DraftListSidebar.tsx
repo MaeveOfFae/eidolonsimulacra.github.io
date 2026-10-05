@@ -351,6 +351,7 @@ export function DraftListSidebar({
 
         <div className="flex max-w-full items-center gap-1">
           <select
+            aria-label="Sort by"
             value={sortField}
             onChange={(e) => setSortField(e.target.value as SortField)}
             title="Sort by"

@@ -207,6 +207,7 @@ export default function WorldFactionsSection({
               </div>
               <div className="flex flex-col gap-2 sm:flex-row">
                 <select
+                  aria-label="Linked drafts"
                   value={pendingFactionDraftId}
                   onChange={(event) => setPendingFactionDraftId(event.target.value)}
                   className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -276,6 +277,7 @@ export default function WorldFactionsSection({
                 {editingFactionId === faction.id ? (
                   <div className="space-y-2">
                     <input
+                      aria-label="Faction name"
                       value={editingFactionForm.name}
                       onChange={(event) =>
                         setEditingFactionForm((previous) => ({ ...previous, name: event.target.value }))
@@ -283,6 +285,7 @@ export default function WorldFactionsSection({
                       className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     />
                     <input
+                      aria-label="Faction role"
                       value={editingFactionForm.role}
                       onChange={(event) =>
                         setEditingFactionForm((previous) => ({ ...previous, role: event.target.value }))
@@ -290,6 +293,7 @@ export default function WorldFactionsSection({
                       className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     />
                     <textarea
+                      aria-label="Faction description"
                       value={editingFactionForm.description}
                       onChange={(event) =>
                         setEditingFactionForm((previous) => ({ ...previous, description: event.target.value }))
@@ -305,6 +309,7 @@ export default function WorldFactionsSection({
                       </div>
                       <div className="flex flex-col gap-2 sm:flex-row">
                         <select
+                          aria-label="Linked drafts"
                           value={editingFactionPendingDraftId}
                           onChange={(event) => setEditingFactionPendingDraftId(event.target.value)}
                           className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"

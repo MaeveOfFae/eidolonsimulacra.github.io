@@ -143,6 +143,7 @@ export default function WorldRelationshipsSection({
         ) : canEdit ? (
           <div className="space-y-2 rounded-lg border border-border/50 bg-background/60 p-3">
             <select
+              aria-label="Source character"
               value={relationshipForm.sourceCharacterId}
               onChange={(event) =>
                 setRelationshipForm((previous) => ({
@@ -162,6 +163,7 @@ export default function WorldRelationshipsSection({
               ))}
             </select>
             <select
+              aria-label="Target character"
               value={relationshipForm.targetCharacterId}
               onChange={(event) =>
                 setRelationshipForm((previous) => ({ ...previous, targetCharacterId: event.target.value }))
@@ -224,6 +226,7 @@ export default function WorldRelationshipsSection({
                   {editingRelationshipId === relationship.id ? (
                     <div className="space-y-2">
                       <select
+                        aria-label="Source character"
                         value={editingRelationshipForm.sourceCharacterId}
                         onChange={(event) =>
                           setEditingRelationshipForm((previous) => ({
@@ -243,6 +246,7 @@ export default function WorldRelationshipsSection({
                         ))}
                       </select>
                       <select
+                        aria-label="Target character"
                         value={editingRelationshipForm.targetCharacterId}
                         onChange={(event) =>
                           setEditingRelationshipForm((previous) => ({
@@ -261,6 +265,7 @@ export default function WorldRelationshipsSection({
                         ))}
                       </select>
                       <input
+                        aria-label="Relationship label"
                         value={editingRelationshipForm.label}
                         onChange={(event) =>
                           setEditingRelationshipForm((previous) => ({ ...previous, label: event.target.value }))
@@ -268,6 +273,7 @@ export default function WorldRelationshipsSection({
                         className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       />
                       <textarea
+                        aria-label="Relationship notes"
                         value={editingRelationshipForm.notes}
                         onChange={(event) =>
                           setEditingRelationshipForm((previous) => ({ ...previous, notes: event.target.value }))

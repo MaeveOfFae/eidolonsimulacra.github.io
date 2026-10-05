@@ -75,6 +75,7 @@ export function DraftComparisonCards({
           </button>
           {leftSnapshots.length ? (
             <select
+              aria-label="Left draft revision"
               value={selectedLeftSnapshotId}
               onChange={(event) => onSelectLeftSnapshot(event.target.value)}
               className="mt-2 w-full rounded-md border border-input bg-background px-2 py-2 text-xs text-foreground"
@@ -112,6 +113,7 @@ export function DraftComparisonCards({
           </button>
           {rightSnapshots.length ? (
             <select
+              aria-label="Right draft revision"
               value={selectedRightSnapshotId}
               onChange={(event) => onSelectRightSnapshot(event.target.value)}
               className="mt-2 w-full rounded-md border border-input bg-background px-2 py-2 text-xs text-foreground"

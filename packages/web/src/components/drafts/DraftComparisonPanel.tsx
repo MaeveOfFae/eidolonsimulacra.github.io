@@ -881,6 +881,7 @@ export function DraftComparisonPanel({
                       <div className="flex flex-wrap items-center gap-2">
                         {leftDraft.data?.metadata.revision_snapshots?.length ? (
                           <select
+                            aria-label="Left draft revision"
                             value={selectedLeftSnapshotId}
                             onChange={(event) => setSelectedLeftSnapshotId(event.target.value)}
                             className="rounded-md border border-input bg-background px-2 py-2 text-xs text-foreground"
@@ -904,6 +905,7 @@ export function DraftComparisonPanel({
                       <div className="flex flex-wrap items-center gap-2">
                         {rightDraft.data?.metadata.revision_snapshots?.length ? (
                           <select
+                            aria-label="Right draft revision"
                             value={selectedRightSnapshotId}
                             onChange={(event) => setSelectedRightSnapshotId(event.target.value)}
                             className="rounded-md border border-input bg-background px-2 py-2 text-xs text-foreground"
