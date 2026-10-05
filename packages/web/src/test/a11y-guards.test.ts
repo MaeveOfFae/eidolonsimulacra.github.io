@@ -130,6 +130,49 @@ export function findHandRolledModalBackdrops(sources: Record<string, string>): s
   return violations;
 }
 
+/**
+ * Buttons whose only content is an icon and which carry no name.
+ *
+ * The rule is deliberately narrow. A regex cannot evaluate JSX, so a body like
+ * `{isSaving ? 'Saving…' : 'Save'}` looks empty to naive matching — the audit's
+ * first pass reported 17 hits that way and 16 were false positives. Only a body
+ * with **no text and no expression at all** is *certainly* nameless, so that is
+ * all this flags.
+ */
+export function findUnnamedIconButtons(sources: Record<string, string>): string[] {
+  const violations: string[] = [];
+
+  for (const [key, raw] of Object.entries(sources)) {
+    if (key.includes('.test.')) {
+      continue;
+    }
+
+    const text = blankOutNonCode(raw);
+
+    for (const match of text.matchAll(/<button\b([\s\S]*?)>([\s\S]*?)<\/button>/g)) {
+      const attrs = match[1];
+      const body = match[2];
+
+      if (/aria-label=|aria-labelledby=|\btitle=/.test(attrs)) {
+        continue;
+      }
+
+      const hasText = body.replace(/<[^>]*>/g, '').trim().length > 0;
+      const hasExpression = body.includes('{');
+      const hasElement = /<[A-Za-z]/.test(body);
+
+      if (hasText || hasExpression || !hasElement) {
+        continue;
+      }
+
+      const line = text.slice(0, match.index).split('\n').length;
+      violations.push(`${key.replace('../', '')}:${line}`);
+    }
+  }
+
+  return violations;
+}
+
 describe('a11y source guards', () => {
   it('loaded the component sources', () => {
     expect(Object.keys(componentSources).length).toBeGreaterThan(100);
@@ -145,6 +188,10 @@ describe('a11y source guards', () => {
 
   it('finds no dialog backdrop outside ModalOverlay', () => {
     expect(findHandRolledModalBackdrops(componentSources)).toEqual([]);
+  });
+
+  it('finds no icon-only button without an accessible name', () => {
+    expect(findUnnamedIconButtons(componentSources)).toEqual([]);
   });
 });
 
@@ -197,5 +244,18 @@ describe('a11y guard self-checks', () => {
     };
 
     expect(findHandRolledModalBackdrops(sources)).toEqual(['OldDialog.tsx:1']);
+  });
+
+  it('catches an icon-only button and spares ones that can render a name', () => {
+    const sources = {
+      Nameless: '<button type="button"><Star className="h-4 w-4" /></button>',
+      Labelled: '<button aria-label="Favourite"><Star className="h-4 w-4" /></button>',
+      Titled: '<button title="Favourite"><Star className="h-4 w-4" /></button>',
+      Text: '<button>Favourite</button>',
+      // The JSX-expression case that made the first audit report 16 false positives.
+      Expression: "<button>{isSaving ? 'Saving…' : 'Save'}</button>",
+    };
+
+    expect(findUnnamedIconButtons(sources)).toEqual(['Nameless:1']);
   });
 });
