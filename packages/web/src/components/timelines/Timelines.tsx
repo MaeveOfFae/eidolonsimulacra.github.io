@@ -4,12 +4,9 @@ import HoverHelpPopover from '../common/HoverHelpPopover';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
 import GenerationHistoryPanel from './GenerationHistoryPanel';
 
+// Event storage, ordering, and editing shipped inside the world editor
+// (Worlds → each timeline), so they are no longer listed as staged here.
 const PLANNED_TIMELINE_MODULES = [
-  {
-    name: 'Event timeline',
-    status: 'Staged',
-    description: 'World event storage, ordering, and editing are not live in the current browser flow.',
-  },
   {
     name: 'Continuity assistant',
     status: 'Staged',
@@ -77,8 +74,8 @@ export default function Timelines() {
             <div>
               <h2 className="text-lg font-semibold">Staged timeline modules</h2>
               <p className="text-sm text-muted-foreground">
-                The live chronology view currently stops at draft history. These modules stay hidden from the main
-                workflow until their data layer exists.
+                The live chronology view here stops at draft history. World events and their ordering are edited on the
+                Worlds screen, inside each timeline; what is still staged is listed below.
               </p>
             </div>
             <span className="app-pill app-pill-muted">Not live</span>

@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Calendar, Clock, MapPin } from 'lucide-react';
+import { Calendar, MapPin } from 'lucide-react';
 import HoverHelpPopover from '../common/HoverHelpPopover';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
 
+// Event editing already ships in the world editor's timeline section, so it is not
+// listed here as planned.
 const PLANNED_EVENT_MODULES = [
   { label: 'Calendar view', icon: Calendar },
-  { label: 'Event editor', icon: Clock },
   { label: 'Categories', icon: MapPin },
 ] as const;
 
@@ -27,7 +28,8 @@ export default function Events() {
             <p className="app-page-eyebrow">Events</p>
             <h1 className="app-page-title">Event tracking is staged, not live.</h1>
             <p className="app-page-summary">
-              This route is reserved for date-aware world changes, incidents, and shared chronology.
+              This route is reserved for a date-aware overview across worlds. Editing events themselves already works on
+              the Worlds screen, inside each timeline.
             </p>
           </div>
           <div className="app-panel-muted p-4 sm:p-5">

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, CheckCircle2, Globe, ShieldCheck, Users, MapPin, BookOpen, Lock } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, BookOpen, Lock } from 'lucide-react';
 import { api } from '@/lib/api';
 import { isSelfContainedDesktopRuntime } from '@/lib/runtime';
 import HoverHelpPopover from '../common/HoverHelpPopover';
@@ -8,12 +8,17 @@ import { useAssistantScreenContext } from '../common/useAssistantContext';
 import WorldDetailEditorPanel from './WorldDetailEditorPanel';
 import LorebookGeneratorPanel from './LorebookGeneratorPanel';
 
+/**
+ * Only what is genuinely still missing.
+ *
+ * This list used to advertise relationships, factions, locations, worldbook
+ * generation and universe notes as "planned" — but all of them are live: the
+ * editors are in the world editor on this page and the lorebook generator is
+ * below it. A stale "planned" list is worse than no list, because it tells users
+ * that a feature they can already use does not exist.
+ */
 const PLANNED_WORLD_MODULES = [
   { label: 'Canon library', icon: BookOpen },
-  { label: 'Worldbook', icon: Globe },
-  { label: 'Relationships', icon: Users },
-  { label: 'Factions', icon: ShieldCheck },
-  { label: 'Locations', icon: MapPin },
   { label: 'Universe notes', icon: BookOpen },
   { label: 'Canon locks', icon: Lock },
 ] as const;
@@ -470,7 +475,8 @@ export default function Worlds() {
           <div>
             <h2 className="text-lg font-semibold">Planned modules</h2>
             <p className="text-sm text-muted-foreground">
-              These are the systems intended to land here once world data becomes editable.
+              What is still missing here, now that the world editor above covers details, characters, factions,
+              locations, relationships, timelines, and events.
             </p>
           </div>
           <span className="app-pill app-pill-muted">Not live</span>
