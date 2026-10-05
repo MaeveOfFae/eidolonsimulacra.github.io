@@ -1,0 +1,2 @@
+import{j as t}from"./react-vendor-C34M-SVW.js";import{A as r,Q as m,H as s}from"./index-BOjqpSKd.js";import{r as i}from"./info-DHfMXJXF.js";import{D as n}from"./DocumentPage-CA8GgJ9h.js";import"./vendor-iRZcK8kN.js";import"./query-vendor-CCn4XbwE.js";import"./router-vendor-8eoVtoOt.js";import"./markdownComponents-CnW90k5b.js";import"./markdown-vendor-CUIDncqb.js";function y(){const e=i(),o=r("license");return t.jsx(n,{eyebrow:o.eyebrow,title:o.title,summary:s("license",e),markdown:m("license",e)})}export{y as default};
+//# sourceMappingURL=LicensePage-DiWHBMVb.js.map
