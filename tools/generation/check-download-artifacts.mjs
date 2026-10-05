@@ -14,6 +14,12 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
  *
  * Absolute `https://` downloads are ignored here: they are somebody else's
  * uptime, and nothing in this repository can verify them.
+ *
+ * Its other job is the published version. `download.ts` names one release's assets, and that
+ * version must never lead the app's own — the app version is bumped first, so a leading
+ * download version points at a release that cannot exist yet and every button 404s. Lagging
+ * is legitimate, because the binaries are uploaded by hand, but it is announced rather than
+ * silent: that is how the page came to advertise filenames it was not serving.
  */
 
 const __filename = fileURLToPath(import.meta.url);
@@ -37,9 +43,43 @@ async function loadSharedModule() {
   }
 }
 
+/** -1, 0 or 1 for how two `x.y.z` versions order. */
+function compareVersions(left, right) {
+  const parts = (value) => value.split('.').map((part) => Number.parseInt(part, 10));
+  const [leftParts, rightParts] = [parts(left), parts(right)];
+
+  for (let index = 0; index < Math.max(leftParts.length, rightParts.length); index += 1) {
+    const difference = (leftParts[index] ?? 0) - (rightParts[index] ?? 0);
+
+    if (difference !== 0) {
+      return Math.sign(difference);
+    }
+  }
+
+  return 0;
+}
+
 async function main() {
-  const { downloadChannels, isSiteRelativeDownload, listChannelDownloadUrls } = await loadSharedModule();
+  const { downloadChannels, downloadReleaseVersion, isSiteRelativeDownload, listChannelDownloadUrls } =
+    await loadSharedModule();
   const problems = [];
+
+  const appVersion = JSON.parse(await fs.readFile(path.join(repoRoot, 'packages/web/package.json'), 'utf8')).version;
+  const leading = compareVersions(downloadReleaseVersion, appVersion);
+
+  if (leading > 0) {
+    throw new Error(
+      `download.ts serves release v${downloadReleaseVersion}, ahead of the app's ${appVersion}: ` +
+        'the app version is bumped first, so that release cannot exist yet and every download button would 404.',
+    );
+  }
+
+  if (leading < 0) {
+    console.warn(
+      `  note: downloads still serve release v${downloadReleaseVersion} while the app is ${appVersion}. ` +
+        'Publish the release assets, then bump RELEASE_VERSION (docs/DOWNLOADS.md).',
+    );
+  }
   /** Unique site-hosted files, so one file shared by two links is checked once. */
   const declared = new Map();
 
@@ -98,6 +138,8 @@ async function main() {
       ].join('\n'),
     );
   }
+
+  console.log(`  published downloads serve release v${downloadReleaseVersion} (app ${appVersion}).`);
 
   console.log(
     declared.size === 0

@@ -24,8 +24,8 @@ The APK keeps its fixed `app-release.apk` name on purpose: each release uploads 
    ```
 
 2. Create a GitHub release tagged `v<version>` on the release commit and upload the artifacts as assets with dot-separated names (`Eidolon.Simulacra_<version>_x64-setup.exe` and `…_x64_en-US.msi` — uploading normalizes the Tauri bundle's spaces to dots; the APK stays `app-release.apk`). **Create the release before pushing the `download.ts` change**, or the download buttons 404 until the assets exist.
-3. Update `packages/shared/src/info/download.ts`: bump `RELEASE_VERSION` and the `approxSize` labels. `buildReleaseAssetUrl` handles space encoding and the tag.
-4. Run `pnpm test:shared` — the URL-shape test pins the repository, the `vX.Y.Z` tag, and space encoding, because `pnpm downloads:check` deliberately cannot verify absolute URLs (they are GitHub's uptime, not this repository's). `pnpm downloads:check` still guards the (currently empty) set of site-relative downloads should any return.
+3. Update `packages/shared/src/info/download.ts`: bump `RELEASE_VERSION` and the `approxSize` labels. `buildReleaseAssetUrl` handles space encoding and the tag, and the desktop `filename` fields interpolate the same constant — so the page names exactly the file it serves. Only site-hosted artifacts use the `{version}` placeholder, which the surfaces substitute with their own build version.
+4. Run `pnpm test:shared` and `pnpm downloads:check` — the URL-shape test pins the repository, the `vX.Y.Z` tag, and space encoding, and a second test pins that each link's last path segment equals the filename the page displays, because `pnpm downloads:check` deliberately cannot verify absolute URLs (they are GitHub's uptime, not this repository's). `downloads:check` also compares `RELEASE_VERSION` with the app version: leading it fails, since that release cannot exist yet; lagging it prints a note, which is how the page spent three releases advertising files it was not serving. It still guards the (currently empty) set of site-relative downloads should any return.
 
 ## The custom domain (Porkbun) — separate from Pages
 

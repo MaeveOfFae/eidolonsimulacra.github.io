@@ -11,7 +11,12 @@ export type DownloadChannelId = 'desktop' | 'android' | 'ios';
 
 export interface DownloadArtifact {
   label: string;
-  /** `{version}` is substituted by the caller's own build version. */
+  /**
+   * The name the visitor gets. For an artifact served from a release asset this is
+   * the published name, version and all — never a placeholder, so the page can only
+   * ever name the file it links to. `{version}` remains for site-hosted artifacts,
+   * whose file the deploy produces at the caller's build version.
+   */
   filename: string;
   /** Approximate, and labelled as such, so a new build cannot make the page lie. */
   approxSize: string;
@@ -56,12 +61,22 @@ export const downloadPathPrefix = '/downloads/';
 export const downloadRepositoryUrl = PROJECT_REPOSITORY_URL;
 
 /**
- * Version of the GitHub release that carries the published artifacts. Bump
- * this (and the `approxSize` labels) as part of the release recipe in
- * `docs/DOWNLOADS.md`.
+ * Version of the GitHub release that carries the published artifacts. Bump this
+ * (and the `approxSize` labels) as part of the release recipe in
+ * `docs/DOWNLOADS.md` — creating the release and uploading the assets *first*,
+ * or every download button 404s until they exist.
+ *
+ * It is also the version the page *names*: a release-asset artifact reports its
+ * published filename rather than the caller's build version, because a page that
+ * displays 5.0.0 and serves 4.7.0 is worse than one that says it is serving
+ * 4.7.0. `pnpm downloads:check` fails when this is ahead of the app version and
+ * warns while it is behind.
  */
-const RELEASE_VERSION = '4.7.0';
+const RELEASE_VERSION = '5.0.0';
 const RELEASE_TAG = `v${RELEASE_VERSION}`;
+
+/** The release whose assets are published, for callers that want to say so. */
+export const downloadReleaseVersion = RELEASE_VERSION;
 
 /**
  * Download URL for an artifact uploaded as an asset on this repository's
@@ -87,13 +102,13 @@ export const downloadChannels: DownloadChannel[] = [
     artifacts: [
       {
         label: 'Windows installer (recommended)',
-        filename: 'Eidolon.Simulacra_{version}_x64-setup.exe',
+        filename: `Eidolon.Simulacra_${RELEASE_VERSION}_x64-setup.exe`,
         approxSize: '≈5 MB',
         downloadUrl: buildReleaseAssetUrl(`Eidolon.Simulacra_${RELEASE_VERSION}_x64-setup.exe`),
       },
       {
         label: 'Windows installer (MSI)',
-        filename: 'Eidolon.Simulacra_{version}_x64_en-US.msi',
+        filename: `Eidolon.Simulacra_${RELEASE_VERSION}_x64_en-US.msi`,
         approxSize: '≈7 MB',
         downloadUrl: buildReleaseAssetUrl(`Eidolon.Simulacra_${RELEASE_VERSION}_x64_en-US.msi`),
       },
@@ -151,7 +166,7 @@ export function getDownloadChannel(id: DownloadChannelId): DownloadChannel {
   return channel;
 }
 
-/** Substitutes the caller's build version into an artifact filename. */
+/** Substitutes the caller's build version into a site-hosted artifact filename. */
 export function formatArtifactFilename(filename: string, version: string): string {
   return filename.replace('{version}', version);
 }

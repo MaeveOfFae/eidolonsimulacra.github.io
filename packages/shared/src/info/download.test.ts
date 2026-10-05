@@ -15,6 +15,9 @@ import {
 } from './download';
 import { getInfoPage, getInfoPageByPath, getInfoPageSummary } from './pages';
 
+/** The filename a download link actually serves, decoded. */
+const basenameOf = (url: string) => decodeURIComponent(url.split('/').pop() ?? '');
+
 describe('download channels', () => {
   it('describes each channel with the copy the pages render', () => {
     expect(downloadChannels.length).toBeGreaterThanOrEqual(3);
@@ -129,13 +132,34 @@ describe('download channels', () => {
     });
   });
 
-  it('substitutes the build version into artifact filenames', () => {
-    const desktop = getDownloadChannel('desktop');
-    const setup = desktop.artifacts.find((artifact) => artifact.filename.includes('{version}'));
+  it('names the file it actually serves', () => {
+    // The bug this pins: both download surfaces rendered artifact filenames with their own
+    // build version while the links pointed at the release tag's assets, so the page
+    // advertised `…_5.0.0_x64-setup.exe` and served `…_4.7.0_x64-setup.exe` — a name that
+    // was not the name of anything. A release asset's published filename is fixed, so the
+    // displayed name and the link's last path segment have to be the same string.
+    for (const channel of listPublishedDownloads()) {
+      for (const artifact of channel.artifacts) {
+        if (!artifact.downloadUrl || isSiteRelativeDownload(artifact.downloadUrl)) {
+          continue;
+        }
 
-    expect(setup).toBeDefined();
-    expect(formatArtifactFilename(setup?.filename ?? '', '4.0.0')).toContain('4.0.0');
-    expect(formatArtifactFilename(setup?.filename ?? '', '4.0.0')).not.toContain('{version}');
+        expect(basenameOf(artifact.downloadUrl)).toBe(artifact.filename);
+        expect(artifact.filename).not.toContain('{version}');
+      }
+
+      if (channel.downloadUrl && !isSiteRelativeDownload(channel.downloadUrl)) {
+        expect(channel.artifacts.map((artifact) => artifact.filename)).toContain(basenameOf(channel.downloadUrl));
+      }
+    }
+  });
+
+  it('substitutes the build version into a site-hosted artifact filename', () => {
+    // Still the helper for the site-hosted case, where the deploy produces the file at the
+    // caller's build version. No published artifact uses a placeholder today.
+    expect(formatArtifactFilename('Eidolon.Simulacra_{version}_x64-setup.exe', '4.0.0')).toBe(
+      'Eidolon.Simulacra_4.0.0_x64-setup.exe',
+    );
     expect(formatArtifactFilename('app-release.apk', '4.0.0')).toBe('app-release.apk');
   });
 
