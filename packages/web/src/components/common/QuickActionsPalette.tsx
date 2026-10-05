@@ -98,7 +98,7 @@ export default function QuickActionsPalette({ isOpen, onClose, drafts, modeId = 
             aria-activedescendant={activeAction ? `${LIST_ID}-${safeActiveIndex}` : undefined}
             aria-label="Search screens and recent drafts"
             placeholder="Search screens and recent drafts"
-            className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+            className="min-w-0 flex-1 rounded-sm bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
           />
           <kbd className="hidden shrink-0 rounded border border-border/70 bg-background/60 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground sm:block">
             Esc
