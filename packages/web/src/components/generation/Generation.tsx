@@ -546,8 +546,11 @@ export default function Generation() {
                   bodyClassName="space-y-4"
                 >
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">Enter a seed</label>
+                    <label htmlFor="generation-seed" className="text-sm font-medium">
+                      Enter a seed
+                    </label>
                     <textarea
+                      id="generation-seed"
                       value={seed}
                       onChange={(e) => setSeed(e.target.value)}
                       placeholder="e.g., a lonely space pirate searching for redemption"

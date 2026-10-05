@@ -27,9 +27,12 @@ export default function BasicInfoStep({ name, version, description, onChange, er
       <div className="space-y-4 pl-11">
         {/* Template Name */}
         <div>
-          <label className="block text-sm font-medium mb-1.5">Template Name *</label>
+          <label htmlFor="template-name" className="block text-sm font-medium mb-1.5">
+            Template Name *
+          </label>
           <input
             type="text"
+            id="template-name"
             value={name}
             onChange={(e) => onChange('name', e.target.value)}
             placeholder="e.g., fantasy_character, sci_fi_npc"
@@ -44,9 +47,12 @@ export default function BasicInfoStep({ name, version, description, onChange, er
 
         {/* Version */}
         <div>
-          <label className="block text-sm font-medium mb-1.5">Version *</label>
+          <label htmlFor="template-version" className="block text-sm font-medium mb-1.5">
+            Version *
+          </label>
           <input
             type="text"
+            id="template-version"
             value={version}
             onChange={(e) => onChange('version', e.target.value)}
             placeholder="e.g., 1.0"
@@ -61,8 +67,11 @@ export default function BasicInfoStep({ name, version, description, onChange, er
 
         {/* Description */}
         <div>
-          <label className="block text-sm font-medium mb-1.5">Description</label>
+          <label htmlFor="template-description" className="block text-sm font-medium mb-1.5">
+            Description
+          </label>
           <textarea
+            id="template-description"
             value={description}
             onChange={(e) => onChange('description', e.target.value)}
             placeholder="Describe what this template is for and what kind of characters it generates"

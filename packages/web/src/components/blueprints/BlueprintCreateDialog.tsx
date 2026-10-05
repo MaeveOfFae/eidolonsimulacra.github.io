@@ -105,9 +105,12 @@ Expected output structure
           )}
 
           <div>
-            <label className="block text-sm font-medium mb-1.5">Name *</label>
+            <label htmlFor="blueprint-name" className="block text-sm font-medium mb-1.5">
+              Name *
+            </label>
             <input
               type="text"
+              id="blueprint-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -116,8 +119,11 @@ Expected output structure
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1.5">Description</label>
+            <label htmlFor="blueprint-description" className="block text-sm font-medium mb-1.5">
+              Description
+            </label>
             <textarea
+              id="blueprint-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}

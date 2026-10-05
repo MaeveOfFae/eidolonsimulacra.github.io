@@ -204,9 +204,12 @@ export default function AssetDesignerDialog({
 
             {/* Asset Name */}
             <div>
-              <label className="block text-sm font-medium mb-1.5">Asset Name *</label>
+              <label htmlFor="asset-name" className="block text-sm font-medium mb-1.5">
+                Asset Name *
+              </label>
               <input
                 type="text"
+                id="asset-name"
                 value={name}
                 onChange={(e) => {
                   setName(e.target.value);
@@ -220,8 +223,11 @@ export default function AssetDesignerDialog({
 
             {/* Description */}
             <div>
-              <label className="block text-sm font-medium mb-1.5">Description</label>
+              <label htmlFor="asset-description" className="block text-sm font-medium mb-1.5">
+                Description
+              </label>
               <textarea
+                id="asset-description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Brief description of this asset"
@@ -284,6 +290,7 @@ export default function AssetDesignerDialog({
                 {blueprintSource === 'custom' && (
                   <input
                     type="text"
+                    aria-label="Custom blueprint path"
                     value={customBlueprint}
                     onChange={(e) => setCustomBlueprint(e.target.value)}
                     placeholder="e.g., assets/character_sheet.md"
@@ -335,9 +342,12 @@ export default function AssetDesignerDialog({
             )}
 
             <div>
-              <label className="block text-sm font-medium mb-1.5">Import Aliases</label>
+              <label htmlFor="import-aliases" className="block text-sm font-medium mb-1.5">
+                Import Aliases
+              </label>
               <input
                 type="text"
+                id="import-aliases"
                 value={importAliases}
                 onChange={(e) => setImportAliases(e.target.value)}
                 placeholder="e.g., creator_notes, character_book, extensions.chub.full_path"
@@ -390,8 +400,11 @@ export default function AssetDesignerDialog({
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1.5">Blueprint Content</label>
+              <label htmlFor="blueprint-content" className="block text-sm font-medium mb-1.5">
+                Blueprint Content
+              </label>
               <textarea
+                id="blueprint-content"
                 value={blueprintContentValue}
                 onChange={(e) => setBlueprintContentValue(e.target.value)}
                 placeholder="Paste or edit the blueprint content that should be saved with this template asset"

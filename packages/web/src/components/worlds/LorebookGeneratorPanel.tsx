@@ -510,8 +510,11 @@ export default function LorebookGeneratorPanel({
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium">Optional focus</label>
+              <label htmlFor="lorebook-focus" className="mb-2 block text-sm font-medium">
+                Optional focus
+              </label>
               <textarea
+                id="lorebook-focus"
                 value={focus}
                 onChange={(event) => setFocus(event.target.value)}
                 disabled={isGenerating}
@@ -521,8 +524,11 @@ export default function LorebookGeneratorPanel({
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium">Promotion world name</label>
+              <label htmlFor="promotion-world-name" className="mb-2 block text-sm font-medium">
+                Promotion world name
+              </label>
               <input
+                id="promotion-world-name"
                 value={promotionWorldName}
                 onChange={(event) => setPromotionWorldName(event.target.value)}
                 disabled={isGenerating || isPromoting}
@@ -642,6 +648,7 @@ export default function LorebookGeneratorPanel({
               </button>
             </div>
             <textarea
+              aria-label="Generated lorebook output"
               value={output}
               onChange={(event) => setOutput(event.target.value)}
               placeholder="Generated lorebook/worldbook output will appear here."

@@ -145,6 +145,7 @@ export default function SettingsAccessSection({
           <div className="relative mt-4">
             <input
               type={showKeys[selectedProvider] ? 'text' : 'password'}
+              aria-label="Provider API key"
               value={activeProviderKey}
               onChange={(e) => onApiKeyChange(selectedProvider, e.target.value)}
               placeholder={

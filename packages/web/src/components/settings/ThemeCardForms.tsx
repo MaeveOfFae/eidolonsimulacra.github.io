@@ -76,6 +76,7 @@ export default function ThemeCardForms({
           <div className="grid gap-3 md:grid-cols-2">
             <input
               type="text"
+              aria-label="Display name"
               value={metadataDraft.displayName}
               onChange={(event) => onMetadataDraftChange({ ...metadataDraft, displayName: event.target.value })}
               placeholder="display name"
@@ -83,6 +84,7 @@ export default function ThemeCardForms({
             />
             <input
               type="text"
+              aria-label="Author"
               value={metadataDraft.author}
               onChange={(event) => onMetadataDraftChange({ ...metadataDraft, author: event.target.value })}
               placeholder="author"
@@ -90,6 +92,7 @@ export default function ThemeCardForms({
             />
           </div>
           <textarea
+            aria-label="Description"
             value={metadataDraft.description}
             onChange={(event) => onMetadataDraftChange({ ...metadataDraft, description: event.target.value })}
             rows={2}
@@ -99,6 +102,7 @@ export default function ThemeCardForms({
           <div className="grid gap-3 md:grid-cols-2">
             <input
               type="text"
+              aria-label="Based on"
               value={metadataDraft.basedOn}
               onChange={(event) => onMetadataDraftChange({ ...metadataDraft, basedOn: event.target.value })}
               placeholder="based on"
@@ -106,6 +110,7 @@ export default function ThemeCardForms({
             />
             <input
               type="text"
+              aria-label="Tags"
               value={metadataDraft.tags}
               onChange={(event) => onMetadataDraftChange({ ...metadataDraft, tags: event.target.value })}
               placeholder="warm, editorial, night"
@@ -138,6 +143,7 @@ export default function ThemeCardForms({
           <div className="grid gap-3 md:grid-cols-2">
             <input
               type="text"
+              aria-label="New theme name"
               value={duplicateDraft.newName}
               onChange={(event) => onDuplicateDraftChange({ ...duplicateDraft, newName: event.target.value })}
               placeholder="theme name"
@@ -145,6 +151,7 @@ export default function ThemeCardForms({
             />
             <input
               type="text"
+              aria-label="Display name"
               value={duplicateDraft.displayName}
               onChange={(event) => onDuplicateDraftChange({ ...duplicateDraft, displayName: event.target.value })}
               placeholder="display name"
@@ -152,6 +159,7 @@ export default function ThemeCardForms({
             />
           </div>
           <textarea
+            aria-label="Description"
             value={duplicateDraft.description}
             onChange={(event) => onDuplicateDraftChange({ ...duplicateDraft, description: event.target.value })}
             rows={2}
@@ -161,6 +169,7 @@ export default function ThemeCardForms({
           <div className="grid gap-3 md:grid-cols-2">
             <input
               type="text"
+              aria-label="Author"
               value={duplicateDraft.author}
               onChange={(event) => onDuplicateDraftChange({ ...duplicateDraft, author: event.target.value })}
               placeholder="author"
@@ -168,6 +177,7 @@ export default function ThemeCardForms({
             />
             <input
               type="text"
+              aria-label="Based on"
               value={duplicateDraft.basedOn}
               onChange={(event) => onDuplicateDraftChange({ ...duplicateDraft, basedOn: event.target.value })}
               placeholder="based on"
@@ -176,6 +186,7 @@ export default function ThemeCardForms({
           </div>
           <input
             type="text"
+            aria-label="Tags"
             value={duplicateDraft.tags}
             onChange={(event) => onDuplicateDraftChange({ ...duplicateDraft, tags: event.target.value })}
             placeholder="warm, editorial, night"
@@ -207,6 +218,7 @@ export default function ThemeCardForms({
           <div className="grid gap-3 md:grid-cols-2">
             <input
               type="text"
+              aria-label="New theme name"
               value={renameDraft.newName}
               onChange={(event) => onRenameDraftChange({ ...renameDraft, newName: event.target.value })}
               placeholder="theme name"
@@ -214,6 +226,7 @@ export default function ThemeCardForms({
             />
             <input
               type="text"
+              aria-label="Display name"
               value={renameDraft.displayName}
               onChange={(event) => onRenameDraftChange({ ...renameDraft, displayName: event.target.value })}
               placeholder="display name"

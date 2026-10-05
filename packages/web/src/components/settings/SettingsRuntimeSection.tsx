@@ -150,9 +150,12 @@ export default function SettingsRuntimeSection({
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium">Custom model ID</label>
+          <label htmlFor="custom-model-id" className="text-sm font-medium">
+            Custom model ID
+          </label>
           <input
             type="text"
+            id="custom-model-id"
             value={currentModel}
             onChange={(e) => onModelSelect(e.target.value)}
             placeholder="e.g., openrouter/openai/gpt-4o-mini"
@@ -233,6 +236,7 @@ export default function SettingsRuntimeSection({
             </div>
             <input
               type="text"
+              aria-label="Base URL"
               value={baseUrl || ''}
               onChange={(e) => onBaseUrlChange(e.target.value)}
               placeholder="e.g., https://your-proxy.example.com/v1"
@@ -245,6 +249,7 @@ export default function SettingsRuntimeSection({
             <div className="relative">
               <input
                 type={showProxyKey ? 'text' : 'password'}
+                aria-label="Proxy API key"
                 value={apiProxyKey || ''}
                 onChange={(e) => onProxyKeyChange(e.target.value)}
                 placeholder="Enter proxy API key if required"

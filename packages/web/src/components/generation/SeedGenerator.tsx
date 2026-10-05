@@ -482,12 +482,15 @@ export default function SeedGenerator() {
             </div>
 
             <div>
-              <label className="text-sm font-medium text-foreground">Genre or Theme Lines</label>
+              <label htmlFor="seed-genre-lines" className="text-sm font-medium text-foreground">
+                Genre or Theme Lines
+              </label>
               <p className="mt-1 text-xs text-muted-foreground">
                 Use one line per genre or tone cluster. Inline tags like realism, slow-burn, low-magic, moreau, or
                 count=12 can stay in place.
               </p>
               <textarea
+                id="seed-genre-lines"
                 value={genreLines}
                 onChange={(event) => {
                   setGenreLines(event.target.value);

@@ -194,6 +194,7 @@ export default function TokenOptimization() {
               </div>
 
               <textarea
+                aria-label="Text to optimize"
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
                 placeholder="Paste prompt, blueprint, asset text, or other content you want tightened without losing relevant information."
@@ -241,6 +242,7 @@ export default function TokenOptimization() {
               </div>
 
               <textarea
+                aria-label="Optimized text"
                 value={output}
                 onChange={(event) => setOutput(event.target.value)}
                 placeholder="Optimized text will appear here."

@@ -498,6 +498,7 @@ export default function DeviceLinkSettings() {
               <label className="mt-3 block text-sm font-medium text-foreground">Desktop name</label>
               <input
                 type="text"
+                aria-label="Desktop name"
                 value={desktopIdentity.name}
                 onChange={(event) => handleDesktopNameChange(event.target.value)}
                 className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"

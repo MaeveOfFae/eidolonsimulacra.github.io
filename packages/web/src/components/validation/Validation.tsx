@@ -101,6 +101,7 @@ export default function Validation() {
           <div className="flex flex-col gap-2 sm:flex-row">
             <input
               type="text"
+              aria-label="Draft path"
               value={path}
               onChange={(event) => setPath(event.target.value)}
               placeholder="drafts/20260307_203638_unnamed_character"

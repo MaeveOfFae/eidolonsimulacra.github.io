@@ -427,6 +427,7 @@ export default function BatchGenerate() {
 
         <div className="space-y-2">
           <textarea
+            aria-label="Seeds, one per line"
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             placeholder="Enter seeds, one per line...&#10;Example:&#10;Space pirate captain with a secret&#10;Medieval healer with forbidden knowledge&#10;Cyberpunk hacker on the run"
