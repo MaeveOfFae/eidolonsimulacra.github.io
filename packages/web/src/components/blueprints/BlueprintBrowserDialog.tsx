@@ -19,6 +19,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { markdownComponents } from '../common/markdownComponents';
 import { cn } from '../../utils/cn';
+import ModalOverlay from '../common/ModalOverlay';
 
 interface BlueprintBrowserDialogProps {
   open: boolean;
@@ -198,11 +199,11 @@ export default function BlueprintBrowserDialog({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-
-      {/* Modal */}
+    <ModalOverlay
+      onClose={onClose}
+      label="Browse blueprints"
+      className="z-50 flex items-center justify-center p-3 sm:p-6"
+    >
       <div className="relative flex h-[min(88dvh,56rem)] w-full max-w-6xl flex-col overflow-hidden rounded-lg border border-border bg-card/95 shadow-2xl backdrop-blur-xl">
         {/* Header */}
         <div className="flex items-start justify-between gap-4 border-b border-border/70 px-4 py-4 sm:px-5">
@@ -346,6 +347,6 @@ export default function BlueprintBrowserDialog({
           </div>
         </div>
       </div>
-    </div>
+    </ModalOverlay>
   );
 }

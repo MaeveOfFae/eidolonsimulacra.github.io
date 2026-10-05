@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, Check, FolderOpen, Edit3, Plus } from 'lucide-react';
 import { type AssetDefinition, type Blueprint } from '@char-gen/shared';
 import BlueprintBrowserDialog from '../blueprints/BlueprintBrowserDialog';
+import ModalOverlay from '../common/ModalOverlay';
 import { cn } from '../../utils/cn';
 
 interface AssetDesignerDialogProps {
@@ -173,11 +174,11 @@ export default function AssetDesignerDialog({
         existingAssets={[]}
       />
 
-      <div className="fixed inset-0 z-50 flex items-center justify-center">
-        {/* Backdrop */}
-        <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-
-        {/* Modal */}
+      <ModalOverlay
+        onClose={onClose}
+        label={asset ? 'Edit asset' : 'Add asset'}
+        className="z-50 flex items-center justify-center"
+      >
         <div className="relative bg-card border border-border rounded-lg shadow-lg w-full max-w-lg mx-4 max-h-[90vh] overflow-hidden flex flex-col">
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-border">
@@ -414,7 +415,7 @@ export default function AssetDesignerDialog({
             </button>
           </div>
         </div>
-      </div>
+      </ModalOverlay>
     </>
   );
 }

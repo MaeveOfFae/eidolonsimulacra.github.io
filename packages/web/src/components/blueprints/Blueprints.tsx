@@ -17,6 +17,7 @@ import {
 import type { Blueprint } from '@char-gen/shared';
 import { api } from '@/lib/api';
 import CollapsibleSection from '../common/CollapsibleSection';
+import ModalOverlay from '../common/ModalOverlay';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
 import BlueprintLintPanel from './BlueprintLintPanel';
 import BlueprintSandboxPanel from './BlueprintSandboxPanel';
@@ -499,8 +500,12 @@ export default function Blueprints() {
 
       {/* Confirm Reset/Delete Dialog */}
       {confirmAction && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/50" onClick={() => !isProcessing && setConfirmAction(null)} />
+        <ModalOverlay
+          onClose={() => setConfirmAction(null)}
+          label={confirmAction.type === 'reset' ? 'Reset blueprint' : 'Delete blueprint'}
+          className="z-50 flex items-center justify-center"
+          dismissible={!isProcessing}
+        >
           <div className="relative mx-4 w-full max-w-md rounded-lg border border-border bg-card p-5 shadow-xl sm:p-6">
             <h3 className="text-lg font-semibold">
               {confirmAction.type === 'reset' ? 'Reset Blueprint?' : 'Delete Blueprint?'}
@@ -533,13 +538,17 @@ export default function Blueprints() {
               </button>
             </div>
           </div>
-        </div>
+        </ModalOverlay>
       )}
 
       {/* Duplicate Dialog */}
       {duplicateDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/50" onClick={() => !isProcessing && setDuplicateDialog(null)} />
+        <ModalOverlay
+          onClose={() => setDuplicateDialog(null)}
+          label="Duplicate blueprint"
+          className="z-50 flex items-center justify-center"
+          dismissible={!isProcessing}
+        >
           <div className="relative mx-4 w-full max-w-md rounded-lg border border-border bg-card p-5 shadow-xl sm:p-6">
             <h3 className="text-lg font-semibold">Duplicate Blueprint</h3>
             <p className="mt-2 text-sm text-muted-foreground">
@@ -575,7 +584,7 @@ export default function Blueprints() {
               </button>
             </div>
           </div>
-        </div>
+        </ModalOverlay>
       )}
 
       <BlueprintCreateDialog

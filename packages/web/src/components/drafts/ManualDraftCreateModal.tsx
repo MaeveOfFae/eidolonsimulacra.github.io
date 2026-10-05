@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { X } from 'lucide-react';
 import type { Template } from '@char-gen/shared';
 import type { CreateDraftRequest } from '@/lib/api';
+import ModalOverlay from '../common/ModalOverlay';
 
 interface ManualDraftCreateModalProps {
   templates: Template[];
@@ -71,9 +72,12 @@ export default function ManualDraftCreateModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center p-3 sm:items-center sm:p-4">
-      <div className="absolute inset-0 bg-black/50" onClick={isSubmitting ? undefined : onClose} />
-
+    <ModalOverlay
+      onClose={onClose}
+      label="Create draft"
+      className="z-50 flex items-end justify-center p-3 sm:items-center sm:p-4"
+      dismissible={!isSubmitting}
+    >
       <div className="relative flex h-[calc(100dvh-1.5rem)] min-h-0 w-full max-w-2xl flex-col overflow-hidden rounded-lg border border-border bg-card shadow-lg sm:h-auto sm:max-h-[min(88vh,56rem)]">
         <div className="shrink-0 border-b border-border p-4">
           <div className="flex items-center justify-between gap-3">
@@ -208,6 +212,6 @@ export default function ManualDraftCreateModal({
           </div>
         </form>
       </div>
-    </div>
+    </ModalOverlay>
   );
 }

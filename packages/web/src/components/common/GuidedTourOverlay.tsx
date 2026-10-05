@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { CheckCircle2, ChevronLeft, ChevronRight, Compass, MapPinned, ScanSearch, X } from 'lucide-react';
 import { getGuidedTour, isGuidedTourStepActive } from '@/lib/help';
 import { useGuidedTour } from './GuidedTourContext';
+import ModalOverlay from './ModalOverlay';
 import { useLocation } from 'react-router-dom';
 
 const ACTIVE_TOUR_TARGET_SELECTOR = '[data-guided-tour-active="true"]';
@@ -53,8 +54,7 @@ export default function GuidedTourOverlay() {
   const isLastStep = activeStepIndex === activeTour.steps.length - 1;
 
   return (
-    <>
-      <div className="fixed inset-0 z-[70] bg-black/55" onClick={closeTour} />
+    <ModalOverlay onClose={closeTour} label="Guided tour" className="z-[80]" trapFocus={false}>
       <section className="fixed inset-x-3 bottom-3 z-[80] max-h-[calc(100dvh-1.5rem)] overflow-hidden rounded-3xl border border-border/60 bg-card/95 shadow-2xl shadow-black/40 backdrop-blur-md sm:inset-x-auto sm:right-4 sm:w-[28rem]">
         <div className="flex items-start justify-between gap-4 border-b border-border/50 px-5 py-4">
           <div>
@@ -160,6 +160,6 @@ export default function GuidedTourOverlay() {
           </div>
         </div>
       </section>
-    </>
+    </ModalOverlay>
   );
 }

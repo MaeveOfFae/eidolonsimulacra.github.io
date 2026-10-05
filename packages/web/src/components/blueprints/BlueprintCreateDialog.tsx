@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, Loader2 } from 'lucide-react';
 import { api } from '@/lib/api';
+import ModalOverlay from '../common/ModalOverlay';
 
 interface BlueprintCreateDialogProps {
   open: boolean;
@@ -76,8 +77,12 @@ Expected output structure
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50" onClick={() => !isCreating && onClose()} />
+    <ModalOverlay
+      onClose={onClose}
+      label="Create blueprint"
+      className="z-50 flex items-center justify-center"
+      dismissible={!isCreating}
+    >
       <div className="relative bg-card border border-border rounded-lg shadow-xl w-full max-w-lg mx-4">
         <div className="flex items-center justify-between p-4 border-b border-border">
           <h2 className="text-lg font-semibold">Create New Blueprint</h2>
@@ -143,6 +148,6 @@ Expected output structure
           </button>
         </div>
       </div>
-    </div>
+    </ModalOverlay>
   );
 }

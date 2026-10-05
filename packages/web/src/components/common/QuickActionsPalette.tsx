@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import type { DraftMetadata } from '@char-gen/shared';
@@ -11,6 +11,7 @@ import {
   type QuickAction,
 } from '@/lib/navigation/quick-actions';
 import type { WorkspaceModeId } from '@/lib/navigation/workspace-modes';
+import ModalOverlay from './ModalOverlay';
 
 interface QuickActionsPaletteProps {
   isOpen: boolean;
@@ -32,7 +33,6 @@ export default function QuickActionsPalette({ isOpen, onClose, drafts, modeId = 
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   const sections = useMemo(() => buildQuickActionsSections({ query, drafts, modeId }), [query, drafts, modeId]);
   const actions = useMemo(() => flattenQuickActions(sections), [sections]);
@@ -45,14 +45,10 @@ export default function QuickActionsPalette({ isOpen, onClose, drafts, modeId = 
       return;
     }
 
+    // Escape, initial focus, the focus trap, the body scroll lock, and returning
+    // focus to the trigger all come from `ModalOverlay`.
     setQuery('');
     setActiveIndex(0);
-    document.body.classList.add('modal-open');
-    inputRef.current?.focus();
-
-    return () => {
-      document.body.classList.remove('modal-open');
-    };
   }, [isOpen]);
 
   if (!isOpen) {
@@ -77,31 +73,19 @@ export default function QuickActionsPalette({ isOpen, onClose, drafts, modeId = 
       if (activeAction) {
         runAction(activeAction);
       }
-      return;
-    }
-
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      onClose();
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center p-3 pt-[10vh] sm:p-4">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-
-      {/* Palette */}
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label="Quick actions"
-        className="relative flex max-h-[min(70vh,32rem)] w-full max-w-xl flex-col overflow-hidden rounded-xl border border-border bg-card shadow-lg"
-      >
+    <ModalOverlay
+      onClose={onClose}
+      label="Quick actions"
+      className="z-50 flex items-start justify-center p-3 pt-[10vh] sm:p-4"
+    >
+      <div className="relative flex max-h-[min(70vh,32rem)] w-full max-w-xl flex-col overflow-hidden rounded-xl border border-border bg-card shadow-lg">
         <div className="flex shrink-0 items-center gap-3 border-b border-border px-4 py-3">
           <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
           <input
-            ref={inputRef}
             value={query}
             onChange={(event) => {
               setQuery(event.target.value);
@@ -163,6 +147,6 @@ export default function QuickActionsPalette({ isOpen, onClose, drafts, modeId = 
           )}
         </div>
       </div>
-    </div>
+    </ModalOverlay>
   );
 }

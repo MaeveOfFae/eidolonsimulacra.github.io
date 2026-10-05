@@ -46,11 +46,13 @@ function SortableAsset({
     >
       {/* Drag Handle */}
       <button
+        type="button"
+        aria-label={`Reorder ${asset.name}`}
         {...attributes}
         {...listeners}
         className="text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing"
       >
-        <GripVertical className="h-4 w-4" />
+        <GripVertical className="h-4 w-4" aria-hidden="true" />
       </button>
 
       {/* Asset Info */}

@@ -7,6 +7,7 @@ import BasicInfoStep from './wizard/BasicInfoStep';
 import AssetSelectionStep from './wizard/AssetSelectionStep';
 import DependenciesStep from './wizard/DependenciesStep';
 import ReviewStep from './wizard/ReviewStep';
+import ModalOverlay from '../common/ModalOverlay';
 
 interface TemplateWizardProps {
   open: boolean;
@@ -174,11 +175,11 @@ export default function TemplateWizard({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-
-      {/* Modal */}
+    <ModalOverlay
+      onClose={onClose}
+      label={forkMode ? 'Create template copy' : isEditMode ? 'Edit template' : 'Create template'}
+      className="z-50 flex items-center justify-center"
+    >
       <div className="relative bg-card border border-border rounded-lg shadow-xl w-full max-w-3xl mx-4 max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border">
@@ -330,6 +331,6 @@ export default function TemplateWizard({
           </div>
         )}
       </div>
-    </div>
+    </ModalOverlay>
   );
 }

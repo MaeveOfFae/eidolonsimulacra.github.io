@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback } from 'react';
 import { X, Upload, FileText, AlertCircle, CheckCircle2, ChevronDown, ChevronRight } from 'lucide-react';
 import type { ImportedCharacter, Template } from '@char-gen/shared';
 import { detectAndParseCharacter, formatSourceLabel } from '@char-gen/shared';
 import { pickFile } from '../../utils/download';
+import ModalOverlay from './ModalOverlay';
 
 interface ImportCharacterModalProps {
   onClose: () => void;
@@ -21,13 +22,6 @@ export default function ImportCharacterModal({ onClose, onImport, template }: Im
   const [isDragOver, setIsDragOver] = useState(false);
   const [expandedAssets, setExpandedAssets] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    document.body.classList.add('modal-open');
-    return () => {
-      document.body.classList.remove('modal-open');
-    };
-  }, []);
 
   const processFile = useCallback(
     async (file: File) => {
@@ -116,11 +110,12 @@ export default function ImportCharacterModal({ onClose, onImport, template }: Im
   const unmappedNames = importedCharacter?.unmappedFields ? Object.keys(importedCharacter.unmappedFields) : [];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center p-3 sm:items-center sm:p-4">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50" onClick={step === 'done' ? onClose : undefined} />
-
-      {/* Modal */}
+    <ModalOverlay
+      onClose={onClose}
+      label="Import character"
+      className="z-50 flex items-end justify-center p-3 sm:items-center sm:p-4"
+      dismissible={step === 'done'}
+    >
       <div className="relative flex h-[calc(100dvh-1.5rem)] min-h-0 w-full max-w-lg flex-col overflow-hidden rounded-lg border border-border bg-card shadow-lg sm:h-auto sm:max-h-[min(85vh,52rem)]">
         {/* Header */}
         <div className="shrink-0 border-b border-border p-4">
@@ -330,6 +325,6 @@ export default function ImportCharacterModal({ onClose, onImport, template }: Im
           </div>
         </div>
       </div>
-    </div>
+    </ModalOverlay>
   );
 }

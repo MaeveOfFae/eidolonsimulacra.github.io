@@ -15,6 +15,7 @@ import { api } from '@/lib/api';
 import { buildExportReadinessSummary } from '@/lib/drafts/export-readiness';
 import { saveDownload } from '../../utils/download';
 import ExportPreviewPlaceholder from './ExportPreviewPlaceholder';
+import ModalOverlay from './ModalOverlay';
 import PublishingPlaceholder from './PublishingPlaceholder';
 
 // `ExportPresetSummary` already carries `format`. Do not re-declare it here: a local
@@ -145,11 +146,11 @@ export default function ExportModal({ draftId, characterName, onClose }: ExportM
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center p-3 sm:items-center sm:p-4">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-
-      {/* Modal */}
+    <ModalOverlay
+      onClose={onClose}
+      label="Export character"
+      className="z-50 flex items-end justify-center p-3 sm:items-center sm:p-4"
+    >
       <div className="relative flex h-[calc(100dvh-1.5rem)] min-h-0 w-full max-w-md flex-col overflow-hidden rounded-lg border border-border bg-card shadow-lg sm:h-auto sm:max-h-[min(80vh,48rem)]">
         {/* Header */}
         <div className="shrink-0 border-b border-border p-4">
@@ -380,6 +381,6 @@ export default function ExportModal({ draftId, characterName, onClose }: ExportM
           </div>
         </div>
       </div>
-    </div>
+    </ModalOverlay>
   );
 }

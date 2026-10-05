@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight, BookOpen, TriangleAlert, X } from 'lucide-react';
 import type { HelpTopic, PageHelpEntry } from '../../lib/help';
+import ModalOverlay from './ModalOverlay';
 
 interface ContextualHelpPanelProps {
   entry: PageHelpEntry;
@@ -15,12 +16,8 @@ export default function ContextualHelpPanel({ entry, topics, isOpen, onClose }: 
   }
 
   return (
-    <>
-      <div className="fixed inset-0 z-30 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <aside
-        aria-label="Contextual help"
-        className="fixed right-0 top-0 z-40 flex h-dvh w-full max-w-[24rem] flex-col border-l border-border bg-card/96 shadow-2xl backdrop-blur-md transition-transform duration-300 ease-out translate-x-0"
-      >
+    <ModalOverlay onClose={onClose} label="Contextual help" className="z-40">
+      <aside className="fixed right-0 top-0 z-40 flex h-dvh w-full max-w-[24rem] flex-col border-l border-border bg-card/96 shadow-2xl backdrop-blur-md transition-transform duration-300 ease-out translate-x-0">
         <div className="flex items-start justify-between gap-4 border-b border-border/60 p-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Contextual Help</p>
@@ -123,6 +120,6 @@ export default function ContextualHelpPanel({ entry, topics, isOpen, onClose }: 
           )}
         </div>
       </aside>
-    </>
+    </ModalOverlay>
   );
 }

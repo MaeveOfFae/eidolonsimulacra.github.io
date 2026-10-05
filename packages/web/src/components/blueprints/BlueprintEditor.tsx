@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import type { Blueprint } from '@char-gen/shared';
 import { api } from '@/lib/api';
+import ModalOverlay from '../common/ModalOverlay';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import Editor from 'react-simple-code-editor';
@@ -635,8 +636,11 @@ export default function BlueprintEditor() {
 
       {/* Diff Dialog */}
       {showDiff && originalContent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setShowDiff(false)} />
+        <ModalOverlay
+          onClose={() => setShowDiff(false)}
+          label="Compare original and current blueprint"
+          className="z-50 flex items-center justify-center"
+        >
           <div className="relative bg-card border border-border rounded-lg shadow-xl w-full max-w-6xl mx-4 max-h-[85vh] flex flex-col">
             <div className="flex items-center justify-between p-4 border-b border-border">
               <h2 className="text-lg font-semibold">Compare: Original vs Current</h2>
@@ -680,13 +684,17 @@ export default function BlueprintEditor() {
               </button>
             </div>
           </div>
-        </div>
+        </ModalOverlay>
       )}
 
       {/* Confirm Dialog */}
       {showConfirmDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/50" onClick={() => !isProcessing && setShowConfirmDialog(null)} />
+        <ModalOverlay
+          onClose={() => setShowConfirmDialog(null)}
+          label={showConfirmDialog === 'reset' ? 'Reset blueprint' : 'Delete blueprint'}
+          className="z-50 flex items-center justify-center"
+          dismissible={!isProcessing}
+        >
           <div className="relative bg-card border border-border rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
             <h3 className="text-lg font-semibold">
               {showConfirmDialog === 'reset' ? 'Reset Blueprint?' : 'Delete Blueprint?'}
@@ -714,7 +722,7 @@ export default function BlueprintEditor() {
               </button>
             </div>
           </div>
-        </div>
+        </ModalOverlay>
       )}
     </div>
   );
