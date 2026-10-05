@@ -4,8 +4,6 @@
  */
 
 import type {
-  ApiKeys,
-  Config,
   Draft,
   GenerateRequest,
   GenerateAssetRequest,
@@ -13,15 +11,25 @@ import type {
   OffspringRequest,
   SeedGenerationRequest,
   ChatMessage,
-  LLMProvider,
   TokenUsage,
 } from '@char-gen/shared';
-import { detectProviderFromModel, parseBlueprintOutput as parseGeneratedBlueprintOutput } from '@char-gen/shared';
+import { parseBlueprintOutput as parseGeneratedBlueprintOutput } from '@char-gen/shared';
 import { createEngine } from '../llm/factory.js';
-import { stripReasoningArtifacts, unwrapSingleCodeFence } from '../content-format.js';
+import { unwrapSingleCodeFence } from '../content-format.js';
 import { configManager } from '../config/manager.js';
 import { DraftStorage } from '../storage/draft-db.js';
 import { beginUsageCapture, errorMessageOf } from './usage-capture.js';
+import {
+  appendVisibleChunk,
+  createConfiguredEngine,
+  createStreamDisplayState,
+  getFallbackApiKey,
+  resolveConfiguredProvider,
+  resolveGenerationMaxTokens,
+  sanitizeGeneratedSeed,
+  sanitizeModelContent,
+} from './generation/engine.js';
+import { generateReviewId, parseBlueprintOutput, parseCharacterProfile } from './generation/parsing.js';
 import {
   buildOrchestratorPrompt,
   buildAssetPrompt,
@@ -83,86 +91,10 @@ interface GenerationRunOptions {
   signal?: AbortSignal;
 }
 
-const DEFAULT_GENERATION_MAX_TOKENS = 4096;
-
-interface StreamDisplayState {
-  rawContent: string;
-  visibleContent: string;
-}
-
 /**
  * Generation Service
  */
 export class GenerationService {
-  private static createStreamDisplayState(): StreamDisplayState {
-    return {
-      rawContent: '',
-      visibleContent: '',
-    };
-  }
-
-  private static sanitizeModelContent(content: string): string {
-    return stripReasoningArtifacts(content);
-  }
-
-  private static appendVisibleChunk(state: StreamDisplayState, chunkContent: string): string {
-    state.rawContent += chunkContent;
-    const nextVisibleContent = this.sanitizeModelContent(state.rawContent);
-    const visibleDelta = nextVisibleContent.startsWith(state.visibleContent)
-      ? nextVisibleContent.slice(state.visibleContent.length)
-      : '';
-
-    state.visibleContent = nextVisibleContent;
-    return visibleDelta;
-  }
-
-  private static resolveGenerationMaxTokens(config: Config): number {
-    const configuredMaxTokens =
-      typeof config.max_tokens === 'number' && Number.isFinite(config.max_tokens)
-        ? Math.max(1, Math.round(config.max_tokens))
-        : DEFAULT_GENERATION_MAX_TOKENS;
-
-    return configuredMaxTokens;
-  }
-
-  private static resolveConfiguredProvider(config: Config): LLMProvider | undefined {
-    if (config.engine_mode === 'explicit' && config.engine !== 'auto' && config.engine !== 'openai_compatible') {
-      return config.engine as LLMProvider;
-    }
-
-    return config.model ? detectProviderFromModel(config.model) : undefined;
-  }
-
-  private static getFallbackApiKey(apiKeys: ApiKeys): string | undefined {
-    return Object.values(apiKeys).find(
-      (value): value is string => typeof value === 'string' && value.trim().length > 0,
-    );
-  }
-
-  private static createConfiguredEngine(override?: { model: string }) {
-    const apiKeys = configManager.getApiKeys();
-    const config = configManager.getConfig();
-    const model = override?.model ?? config.model;
-    // Comparison candidates resolve their provider from the model string so a
-    // single run can span providers without touching the global config.
-    const provider = override ? detectProviderFromModel(model) : this.resolveConfiguredProvider(config);
-
-    return createEngine({
-      model,
-      apiKey: provider ? apiKeys[provider] : this.getFallbackApiKey(apiKeys),
-      apiKeys,
-      provider,
-      baseUrl: config.base_url,
-      proxyKey: config.api_proxy_key,
-      temperature: config.temperature,
-      maxTokens: this.resolveGenerationMaxTokens(config),
-    });
-  }
-
-  private static sanitizeGeneratedSeed(content: string): string {
-    return unwrapSingleCodeFence(this.sanitizeModelContent(content)).replace(/^['"]|['"]$/g, '');
-  }
-
   private static getOffspringCarryRules(): string[] {
     return [
       'Treat this seed as an offspring outcome shaped by two parent suites, not a disconnected standalone premise.',
@@ -193,7 +125,7 @@ export class GenerationService {
 
     yield { type: 'status', stage: 'initializing' };
 
-    const engine = this.createConfiguredEngine(model_override ? { model: model_override } : undefined);
+    const engine = createConfiguredEngine(model_override ? { model: model_override } : undefined);
 
     // Get template assets
     const templateDefinition = template ? resolveTemplateDefinition(template) : undefined;
@@ -229,10 +161,10 @@ export class GenerationService {
 
     try {
       if (stream) {
-        const streamState = this.createStreamDisplayState();
+        const streamState = createStreamDisplayState();
         for await (const chunk of engine.generateStream(messages, { signal: options.signal })) {
           if (chunk.content) {
-            const visibleChunk = this.appendVisibleChunk(streamState, chunk.content);
+            const visibleChunk = appendVisibleChunk(streamState, chunk.content);
             fullContent = streamState.visibleContent;
             if (visibleChunk) {
               yield {
@@ -249,7 +181,7 @@ export class GenerationService {
 
         if (!fullContent.trim() && !options.signal?.aborted) {
           const fallbackResult = await engine.generate(messages, { signal: options.signal });
-          fullContent = this.sanitizeModelContent(fallbackResult.content);
+          fullContent = sanitizeModelContent(fallbackResult.content);
           engineUsage = fallbackResult.usage ?? engineUsage;
           if (fullContent) {
             yield {
@@ -260,7 +192,7 @@ export class GenerationService {
         }
       } else {
         const result = await engine.generate(messages, { signal: options.signal });
-        fullContent = this.sanitizeModelContent(result.content);
+        fullContent = sanitizeModelContent(result.content);
         engineUsage = result.usage;
       }
     } catch (error) {
@@ -293,15 +225,15 @@ export class GenerationService {
     try {
       assets = templateDefinition
         ? parseGeneratedBlueprintOutput(fullContent, templateDefinition).assets
-        : this.parseBlueprintOutput(fullContent);
+        : parseBlueprintOutput(fullContent);
     } catch {
-      assets = this.parseBlueprintOutput(fullContent);
+      assets = parseBlueprintOutput(fullContent);
     }
 
     yield { type: 'status', stage: 'saving' };
 
     // Save draft
-    const reviewId = this.generateReviewId();
+    const reviewId = generateReviewId();
     const characterName = inferCharacterDisplayNameForTemplate(assets, template);
     const draft: Draft = {
       path: reviewId,
@@ -362,16 +294,16 @@ export class GenerationService {
       try {
         assets = templateDefinition
           ? parseGeneratedBlueprintOutput(input.content, templateDefinition).assets
-          : this.parseBlueprintOutput(input.content);
+          : parseBlueprintOutput(input.content);
       } catch {
-        assets = this.parseBlueprintOutput(input.content);
+        assets = parseBlueprintOutput(input.content);
       }
 
       if (Object.keys(assets).length === 0) {
         return undefined;
       }
 
-      const reviewId = this.generateReviewId();
+      const reviewId = generateReviewId();
       const draft: Draft = {
         path: reviewId,
         metadata: {
@@ -436,7 +368,7 @@ export class GenerationService {
 
     yield { type: 'status', stage: 'initializing' };
 
-    const engine = this.createConfiguredEngine();
+    const engine = createConfiguredEngine();
 
     yield { type: 'status', stage: 'building_prompt' };
 
@@ -476,10 +408,10 @@ export class GenerationService {
 
     try {
       if (stream) {
-        const streamState = this.createStreamDisplayState();
+        const streamState = createStreamDisplayState();
         for await (const chunk of engine.generateStream(messages, { signal: options.signal })) {
           if (chunk.content) {
-            const visibleChunk = this.appendVisibleChunk(streamState, chunk.content);
+            const visibleChunk = appendVisibleChunk(streamState, chunk.content);
             fullContent = streamState.visibleContent;
             if (visibleChunk) {
               yield {
@@ -497,12 +429,12 @@ export class GenerationService {
 
         if (!fullContent.trim() && !options.signal?.aborted) {
           const fallbackResult = await engine.generate(messages, { signal: options.signal });
-          fullContent = this.sanitizeModelContent(fallbackResult.content);
+          fullContent = sanitizeModelContent(fallbackResult.content);
           engineUsage = fallbackResult.usage ?? engineUsage;
         }
       } else {
         const result = await engine.generate(messages, { signal: options.signal });
-        fullContent = this.sanitizeModelContent(result.content);
+        fullContent = sanitizeModelContent(result.content);
         engineUsage = result.usage;
       }
     } catch (error) {
@@ -553,7 +485,7 @@ export class GenerationService {
 
     yield { type: 'status', stage: 'building_prompt' };
 
-    const engine = this.createConfiguredEngine();
+    const engine = createConfiguredEngine();
 
     // Build offspring prompt - respects settings and override
     const [systemPrompt, userPrompt] = await buildOffspringPrompt(
@@ -573,14 +505,14 @@ export class GenerationService {
     // Generate seed
     const messages = formatMessages(systemPrompt, userPrompt);
     let fullContent = '';
-    const streamState = this.createStreamDisplayState();
+    const streamState = createStreamDisplayState();
     const usageCapture = beginUsageCapture(engine, { kind: 'offspring-seed', templateName: request.template });
     let engineUsage: TokenUsage | undefined;
 
     try {
       for await (const chunk of engine.generateStream(messages, { signal: options.signal })) {
         if (chunk.content) {
-          const visibleChunk = this.appendVisibleChunk(streamState, chunk.content);
+          const visibleChunk = appendVisibleChunk(streamState, chunk.content);
           fullContent = streamState.visibleContent;
           if (visibleChunk) {
             yield {
@@ -597,7 +529,7 @@ export class GenerationService {
 
       if (!fullContent.trim() && !options.signal?.aborted) {
         const fallbackResult = await engine.generate(messages, { signal: options.signal });
-        fullContent = this.sanitizeModelContent(fallbackResult.content);
+        fullContent = sanitizeModelContent(fallbackResult.content);
         engineUsage = fallbackResult.usage ?? engineUsage;
         if (fullContent) {
           yield {
@@ -620,7 +552,7 @@ export class GenerationService {
       usage: engineUsage,
     });
 
-    const offspringSeed = this.sanitizeGeneratedSeed(fullContent);
+    const offspringSeed = sanitizeGeneratedSeed(fullContent);
 
     yield {
       type: 'complete',
@@ -749,7 +681,7 @@ export class GenerationService {
 
     yield { type: 'status', stage: 'building_prompt' };
 
-    const engine = this.createConfiguredEngine();
+    const engine = createConfiguredEngine();
     const [systemPrompt, userPrompt] = await buildLorebookPrompt(referenceSuites, {
       focus: request.focus,
       blueprintContent: request.blueprint_content,
@@ -759,14 +691,14 @@ export class GenerationService {
 
     const messages = formatMessages(systemPrompt, userPrompt);
     let fullContent = '';
-    const streamState = this.createStreamDisplayState();
+    const streamState = createStreamDisplayState();
     const usageCapture = beginUsageCapture(engine, { kind: 'lorebook' });
     let engineUsage: TokenUsage | undefined;
 
     try {
       for await (const chunk of engine.generateStream(messages, { signal: options.signal })) {
         if (chunk.content) {
-          const visibleChunk = this.appendVisibleChunk(streamState, chunk.content);
+          const visibleChunk = appendVisibleChunk(streamState, chunk.content);
           fullContent = streamState.visibleContent;
           if (visibleChunk) {
             yield {
@@ -783,7 +715,7 @@ export class GenerationService {
 
       if (!fullContent.trim() && !options.signal?.aborted) {
         const fallbackResult = await engine.generate(messages, { signal: options.signal });
-        fullContent = this.sanitizeModelContent(fallbackResult.content);
+        fullContent = sanitizeModelContent(fallbackResult.content);
         engineUsage = fallbackResult.usage ?? engineUsage;
         if (fullContent) {
           yield {
@@ -827,15 +759,15 @@ export class GenerationService {
     const config = configManager.getConfig();
 
     // Create engine
-    const provider = this.resolveConfiguredProvider(config);
+    const provider = resolveConfiguredProvider(config);
     const engine = createEngine({
       model: config.model,
-      apiKey: provider ? apiKeys[provider] : this.getFallbackApiKey(apiKeys),
+      apiKey: provider ? apiKeys[provider] : getFallbackApiKey(apiKeys),
       apiKeys,
       provider,
       baseUrl: config.base_url,
       temperature: config.temperature,
-      maxTokens: this.resolveGenerationMaxTokens(config),
+      maxTokens: resolveGenerationMaxTokens(config),
     });
 
     yield { type: 'status', stage: 'building_prompt' };
@@ -854,7 +786,7 @@ export class GenerationService {
       usageCapture.finish({ status: 'ok', usage: result.usage });
 
       // Parse seeds (one per line)
-      const seeds = parseSeedGenerationResponse(this.sanitizeModelContent(result.content));
+      const seeds = parseSeedGenerationResponse(sanitizeModelContent(result.content));
 
       yield {
         type: 'complete',
@@ -881,15 +813,15 @@ export class GenerationService {
     const config = configManager.getConfig();
 
     // Create engine
-    const provider = this.resolveConfiguredProvider(config);
+    const provider = resolveConfiguredProvider(config);
     const engine = createEngine({
       model: config.model,
-      apiKey: provider ? apiKeys[provider] : this.getFallbackApiKey(apiKeys),
+      apiKey: provider ? apiKeys[provider] : getFallbackApiKey(apiKeys),
       apiKeys,
       provider,
       baseUrl: config.base_url,
       temperature: config.temperature,
-      maxTokens: this.resolveGenerationMaxTokens(config),
+      maxTokens: resolveGenerationMaxTokens(config),
     });
 
     yield { type: 'status', stage: 'generating' };
@@ -904,11 +836,11 @@ export class GenerationService {
     let engineUsage: TokenUsage | undefined;
 
     try {
-      const streamState = this.createStreamDisplayState();
+      const streamState = createStreamDisplayState();
 
       for await (const chunk of engine.generateStream(chatMessages)) {
         if (chunk.content) {
-          const visibleChunk = this.appendVisibleChunk(streamState, chunk.content);
+          const visibleChunk = appendVisibleChunk(streamState, chunk.content);
           fullContent = streamState.visibleContent;
           if (visibleChunk) {
             yield {
@@ -925,7 +857,7 @@ export class GenerationService {
 
       if (!fullContent.trim()) {
         const fallbackResult = await engine.generate(chatMessages);
-        fullContent = this.sanitizeModelContent(fallbackResult.content);
+        fullContent = sanitizeModelContent(fallbackResult.content);
         engineUsage = fallbackResult.usage ?? engineUsage;
         if (fullContent) {
           yield {
@@ -960,23 +892,23 @@ export class GenerationService {
     }
 
     // Extract character profiles from character sheets
-    const profile1 = this.parseCharacterProfile(draft1.assets.character_sheet || '');
-    const profile2 = this.parseCharacterProfile(draft2.assets.character_sheet || '');
+    const profile1 = parseCharacterProfile(draft1.assets.character_sheet || '');
+    const profile2 = parseCharacterProfile(draft2.assets.character_sheet || '');
 
     // Get API keys and config
     const apiKeys = configManager.getApiKeys();
     const config = configManager.getConfig();
 
     // Create engine
-    const provider = this.resolveConfiguredProvider(config);
+    const provider = resolveConfiguredProvider(config);
     const engine = createEngine({
       model: config.model,
-      apiKey: provider ? apiKeys[provider] : this.getFallbackApiKey(apiKeys),
+      apiKey: provider ? apiKeys[provider] : getFallbackApiKey(apiKeys),
       apiKeys,
       provider,
       baseUrl: config.base_url,
       temperature: config.temperature,
-      maxTokens: this.resolveGenerationMaxTokens(config),
+      maxTokens: resolveGenerationMaxTokens(config),
     });
 
     // Build similarity prompt
@@ -990,7 +922,7 @@ export class GenerationService {
       const result = await engine.generate(messages);
       usageCapture.finish({ status: 'ok', usage: result.usage });
 
-      const sanitizedContent = this.sanitizeModelContent(result.content);
+      const sanitizedContent = sanitizeModelContent(result.content);
 
       // Parse JSON response
       try {
@@ -1003,124 +935,6 @@ export class GenerationService {
       usageCapture.finish({ status: 'error', errorMessage: errorMessageOf(error) });
       throw error;
     }
-  }
-
-  /**
-   * Parse blueprint output into asset dictionary
-   */
-  private static parseBlueprintOutput(content: string): Record<string, string> {
-    const assets: Record<string, string> = {};
-
-    // Look for code blocks with asset names
-    // Format: ```asset_name ... content ... ```
-    const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
-
-    // Known asset names in order
-    const knownAssets = [
-      'Adjustment Note',
-      'system_prompt',
-      'post_history',
-      'character_sheet',
-      'intro_scene',
-      'creator_notes',
-      'intro_page',
-      'a1111',
-      'suno',
-    ];
-
-    // Try to match code blocks with asset name
-    let match: RegExpExecArray | null;
-    while ((match = codeBlockRegex.exec(content)) !== null) {
-      const assetName = match[1];
-      const assetContent = match[2]?.trim();
-
-      if (assetName && assetContent && knownAssets.includes(assetName)) {
-        assets[assetName] = assetContent;
-      }
-    }
-
-    // If no code blocks found, try to parse by known sections
-    if (Object.keys(assets).length === 0) {
-      for (let i = 0; i < knownAssets.length; i++) {
-        const asset = knownAssets[i];
-        const nextAsset = knownAssets[i + 1];
-
-        const startRegex = new RegExp(`^##\\s*${asset}`, 'im');
-        const startMatch = content.search(startRegex);
-
-        if (startMatch === -1) continue;
-
-        let endMatch: number;
-        if (nextAsset) {
-          const endRegex = new RegExp(`^##\\s*${nextAsset}`, 'im');
-          const endSearch = content.slice(startMatch).search(endRegex);
-          endMatch = endSearch === -1 ? content.length : startMatch + endSearch;
-        } else {
-          endMatch = content.length;
-        }
-
-        const assetContent = content.slice(startMatch, endMatch).trim();
-        if (assetContent) {
-          assets[asset] = assetContent;
-        }
-      }
-    }
-
-    return assets;
-  }
-
-  /**
-   * Parse character sheet into profile object
-   */
-  private static parseCharacterProfile(characterSheet: string): Record<string, unknown> {
-    const profile: Record<string, unknown> = {};
-
-    // Simple key-value parsing from character sheet
-    // Format: Key: Value
-    const lines = characterSheet.split('\n');
-    let currentKey: string | null = null;
-    let currentValue: string[] = [];
-
-    for (const line of lines) {
-      const keyMatch = line.match(/^([A-Z][A-Za-z\s]+):\s*(.+)$/);
-      if (keyMatch) {
-        // Save previous key-value pair
-        if (currentKey && currentValue.length > 0) {
-          profile[currentKey] = currentValue.join('\n').trim();
-        }
-
-        currentKey = keyMatch[1].trim().toLowerCase().replace(/\s+/g, '_');
-        currentValue = [keyMatch[2].trim()];
-      } else if (currentKey && line.trim()) {
-        currentValue.push(line.trim());
-      }
-    }
-
-    // Save last key-value pair
-    if (currentKey && currentValue.length > 0) {
-      profile[currentKey] = currentValue.join('\n').trim();
-    }
-
-    // Extract arrays from comma-separated values
-    for (const key of ['personality_traits', 'core_values', 'goals', 'fears', 'motivations']) {
-      if (typeof profile[key] === 'string') {
-        profile[key] = (profile[key] as string)
-          .split(',')
-          .map((s) => s.trim())
-          .filter((s) => s.length > 0);
-      }
-    }
-
-    return profile;
-  }
-
-  /**
-   * Generate a unique review ID
-   */
-  private static generateReviewId(): string {
-    const timestamp = Date.now();
-    const random = Math.random().toString(36).substring(2, 9);
-    return `${timestamp}_${random}`;
   }
 }
 
