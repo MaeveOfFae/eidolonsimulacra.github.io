@@ -125,9 +125,9 @@ Nothing shipped. Outstanding: collaborative review notes; shared workspaces; com
 
 ### UX and Platform Surfaces — `partial`
 
-Shipped: responsive web layout, native mobile navigation, desktop shell, help center, guided tours.
+Shipped: responsive web layout, native mobile navigation, desktop shell, help center, guided tours, the quick-actions palette, workspace modes (solo drafting / review / bulk), keyboard-first navigation with a focus and accessibility audit, and mobile-first review/approval.
 
-Outstanding: mobile-first review/approval; desktop drag-and-drop import/export; responsive split-pane editor; keyboard-first workflows; quick actions palette; pinned dashboard widgets; customizable home screen; workspace modes.
+Outstanding: desktop drag-and-drop import/export; responsive split-pane editor; pinned dashboard widgets; customizable home screen.
 
 ### Assistant and Automation — `partial`
 

@@ -21,20 +21,6 @@ export interface RoadmapGroup {
 
 export const roadmapGroups: RoadmapGroup[] = [
   {
-    id: 'workspace-release',
-    title: '5.0 Workspace Release',
-    status: 'planned',
-    ownerFiles: ['packages/web/src/components/worlds/WorldDetailEditorPanel.tsx', 'packages/web/src/App.tsx'],
-    items: [
-      'Decompose every screen over roughly a thousand lines into focused, testable sections',
-      'Information-architecture pass over the routes with a quick-actions palette and workspace modes',
-      'Keyboard-first navigation and a focus and accessibility audit for all primary flows',
-      'Mobile-first review and approval flow riding the approvals and checkpoint foundations',
-      'A visible visual refresh riding the existing theme-token system',
-      'Retire legacy storage keys and decide each staged surface: ship it or remove it',
-    ],
-  },
-  {
     id: 'generation-workflow',
     title: 'Generation Workflow',
     status: 'partial',
@@ -209,14 +195,10 @@ export const roadmapGroups: RoadmapGroup[] = [
       'packages/mobile/src/screens',
     ],
     items: [
-      'Mobile-first review and approval flow for draft triage on smaller screens',
       'Desktop-native drag-and-drop import/export flows',
       'Responsive split-pane editor optimized for wide and narrow displays',
-      'Keyboard-first review workflows across web, mobile, and desktop surfaces',
-      'Quick actions palette for jumping to drafts, templates, exports, and tools',
       'Pinned dashboard widgets for recent drafts, saved searches, and active queues',
       'Customizable home screen tailored to the most common workflow',
-      'Workspace mode for switching between solo drafting, review, and bulk operations',
     ],
   },
   {

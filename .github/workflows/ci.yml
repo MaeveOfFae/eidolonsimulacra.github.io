@@ -55,6 +55,9 @@ jobs:
       - name: Check placeholder wiring
         run: pnpm check:placeholders
 
+      - name: Check roadmap sync
+        run: pnpm check:roadmap
+
       - name: Check formatting
         run: pnpm format:check
 

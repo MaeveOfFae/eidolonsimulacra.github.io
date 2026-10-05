@@ -225,11 +225,12 @@ pnpm format:check
 
 Notes:
 
-- The current CI path runs release-notes parity, info-document parity, placeholder-wiring checks, formatting checks, lint, web/mobile typechecking, tests for all three packages, the shared/web build, and a web preview smoke test.
+- The current CI path runs release-notes parity, info-document parity, roadmap-sync and placeholder-wiring checks, formatting checks, lint, web/mobile typechecking, tests for all three packages, the shared/web build, and a web preview smoke test.
 - Mobile native store/distribution builds stay outside the default CI path; mobile typecheck and lint do run.
 - Every package has a Vitest suite: `pnpm test:web` (components, prompting, config, templates, character import, help and tours), `pnpm test:shared`, and `pnpm test:mobile` (logic only).
 - Formatting is enforced in CI via `pnpm format:check`, and `.prettierignore` excludes build output plus generated native projects. `pnpm format` rewrites every matching file in `packages/`, so prefer scoping it to the files you touched (`pnpm exec prettier --write <paths>`).
 - `pnpm check:placeholders` fails when a `*Placeholder` component exists without being imported anywhere. Deliberate staging must be added to the allowlist in `tools/generation/check-placeholders.mjs`.
+- `pnpm check:roadmap` fails when the in-app roadmap panel (`packages/web/src/lib/roadmap.ts`) and `docs/ROADMAP.md` disagree about an area's title or status, when a `shipped` area still lists outstanding work (or a live one lists none), and when an `ownerFiles` path does not exist. It does not read the wording of individual items — that is prose against prose.
 - Lint runs through Turbo across `shared`, `web`, and `mobile` with shared ignore rules: Tauri build output (`src-tauri/target`, `src-tauri/gen`) is excluded, and `_`-prefixed bindings are treated as intentionally unused.
 
 ## Generation Model
