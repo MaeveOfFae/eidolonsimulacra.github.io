@@ -120,9 +120,12 @@ export function split(config) {
       .replace(/^type\s+/, '')
       .trim();
 
-    // Default and namespace imports have no name list to filter.
+    // Default, namespace (`* as X`) and any other clause: find the bound identifier.
     if (!clause.startsWith('{')) {
-      return uses(clause) ? statement.text : null;
+      const target = clause.replace(/^\*\s*as\s+/, '').match(/[A-Za-z_$][\w$]*/)?.[0];
+      // Unparseable clauses are kept rather than dropped: lint will flag an unused one,
+      // whereas dropping a used one breaks the build with no clue why.
+      return !target || uses(target) ? statement.text : null;
     }
 
     const inner = clause.slice(clause.indexOf('{') + 1, clause.lastIndexOf('}'));
