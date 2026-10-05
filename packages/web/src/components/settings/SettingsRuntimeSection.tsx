@@ -258,6 +258,7 @@ export default function SettingsRuntimeSection({
               <button
                 type="button"
                 onClick={() => onToggleShowKey('proxy')}
+                aria-label={showProxyKey ? 'Hide proxy API key' : 'Show proxy API key'}
                 className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 transition-colors hover:bg-accent"
               >
                 {showProxyKey ? (

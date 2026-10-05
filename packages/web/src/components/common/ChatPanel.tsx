@@ -260,6 +260,7 @@ export default function ChatPanel({ draftId, assetName, onAssetRefined }: ChatPa
           <button
             onClick={selectedAsset ? handleRefineAsset : handleSend}
             disabled={!input.trim() || isStreaming}
+            aria-label={selectedAsset ? 'Refine asset with this message' : 'Send message'}
             className="inline-flex items-center justify-center rounded-md bg-primary px-3 py-2 text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
             {isStreaming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}

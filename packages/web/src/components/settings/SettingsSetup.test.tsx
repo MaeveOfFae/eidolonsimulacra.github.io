@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import Settings from './Settings';
+import { assertTabOrderAfter, findUnnamedTabStops, formatTabStops } from '../../test/tab-order';
 import { api } from '../../lib/api.js';
 import { configManager } from '../../lib/config/manager';
 import { ALL_PROVIDERS, PROVIDER_LABELS } from '../../lib/llm/providers';
@@ -52,6 +53,25 @@ describe('Settings setup access column', () => {
     sessionStorage.clear();
     configManager.clearAll();
     vi.mocked(api.updateConfig).mockClear();
+  });
+
+  it('tabs through the setup section in visual order', async () => {
+    renderSetupSettings();
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Access' })).toBeInTheDocument();
+    });
+
+    const sequence = formatTabStops();
+
+    // The section nav reads before the section content it switches to.
+    assertTabOrderAfter(sequence, 'Setup', 'Providers');
+    assertTabOrderAfter(sequence, 'Device Link', 'Auto');
+
+    // The nav appears twice in this sequence on purpose: Settings renders a compact
+    // (`sm:hidden`) and a wide nav, and only one is visible at any viewport. The
+    // duplicate is a test-environment artefact, not a keyboard defect.
+    expect(findUnnamedTabStops(sequence)).toEqual([]);
   });
 
   it('lists every provider in the grid and warns once keys are persisted', async () => {

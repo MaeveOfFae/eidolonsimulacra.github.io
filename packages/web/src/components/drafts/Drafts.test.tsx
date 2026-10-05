@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import { api } from '@/lib/api';
 import type { FavoriteSeedRecord, SeedRunRecord } from '@/lib/seed-generator';
+import { assertTabOrderAfter, findUnnamedTabStops, formatTabStops } from '@/test/tab-order';
 import Drafts from './Drafts';
 
 const seedState = vi.hoisted(() => ({
@@ -132,6 +133,23 @@ describe('Drafts library screen', () => {
     seedState.history = [];
     seedState.archivedSeeds = [];
     seedState.archivedRuns = [];
+  });
+
+  it('tabs through the library chrome in visual order', async () => {
+    renderDrafts();
+
+    await waitFor(() => {
+      expect(screen.getByText('Browse saved work')).toBeInTheDocument();
+    });
+
+    const sequence = formatTabStops();
+
+    // The draft list's own controls read search -> filters -> sort, which is the
+    // order they appear in the sidebar.
+    assertTabOrderAfter(sequence, 'Search drafts', 'Sort by');
+
+    // Nothing focusable may announce as nothing.
+    expect(findUnnamedTabStops(sequence)).toEqual([]);
   });
 
   it('renders the library hero and overview for saved drafts', async () => {

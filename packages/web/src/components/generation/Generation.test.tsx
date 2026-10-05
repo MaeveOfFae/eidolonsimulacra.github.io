@@ -1,6 +1,7 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
+import { assertTabOrderAfter, findUnnamedTabStops, formatTabStops } from '@/test/tab-order';
 import Generation from './Generation';
 import { api } from '@/lib/api';
 
@@ -92,6 +93,37 @@ describe('Generation', () => {
         favorite_drafts: 0,
       },
     } as never);
+  });
+
+  it('tabs through the compose column in visual order', async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={['/generate']}>
+          <Generation />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'New Draft' })).toBeInTheDocument();
+    });
+
+    const sequence = formatTabStops();
+
+    // The mode strip reads first, then the compose fields, then the Setup section
+    // that configures the same run — i.e. DOM order matches the column.
+    assertTabOrderAfter(sequence, 'New Draft', 'Refine Draft');
+    assertTabOrderAfter(sequence, 'Refine Draft', 'Assets');
+    assertTabOrderAfter(sequence, 'Assets', 'Enter a seed');
+    assertTabOrderAfter(sequence, 'Enter a seed', 'Template');
+
+    // The generate button is disabled until the form is valid, and a disabled
+    // button is not focusable — so the primary action correctly joins the tab
+    // order only once it can actually do something.
+    expect(sequence).not.toContain('button: Generate Character');
+    expect(findUnnamedTabStops(sequence)).toEqual([]);
   });
 
   it('renders the universal asset workspace from the Assets tab', async () => {

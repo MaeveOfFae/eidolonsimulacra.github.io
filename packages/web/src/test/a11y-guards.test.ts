@@ -133,11 +133,18 @@ export function findHandRolledModalBackdrops(sources: Record<string, string>): s
 /**
  * Buttons whose only content is an icon and which carry no name.
  *
- * The rule is deliberately narrow. A regex cannot evaluate JSX, so a body like
- * `{isSaving ? 'Saving…' : 'Save'}` looks empty to naive matching — the audit's
- * first pass reported 17 hits that way and 16 were false positives. Only a body
- * with **no text and no expression at all** is *certainly* nameless, so that is
- * all this flags.
+ * The rule is deliberately narrow, and it has a **known blind spot** worth stating:
+ * a body that is a conditional icon with no string literal — `{shown ? <EyeOff /> :
+ * <Eye />}` — is certainly nameless, but telling it apart from `{copied ? <>Copied</>
+ * : <>Copy</>}`, which *does* render a name, needs a real JSX parser. Every
+ * regex-only attempt at it produced more false positives than hits (one version
+ * flagged 5 sites and 4 rendered text), and a guard that cries wolf gets ignored.
+ *
+ * So this flags only a body with no text and no expression at all, which is
+ * unambiguous; the conditional-icon shape is caught instead by
+ * `findUnnamedTabStops` in the per-screen tab-order sweep, which renders the screen
+ * and reads the real sequence. That is how the three settings key toggles and the
+ * chat send button were found.
  */
 export function findUnnamedIconButtons(sources: Record<string, string>): string[] {
   const violations: string[] = [];
@@ -254,6 +261,11 @@ describe('a11y guard self-checks', () => {
       Text: '<button>Favourite</button>',
       // The JSX-expression case that made the first audit report 16 false positives.
       Expression: "<button>{isSaving ? 'Saving…' : 'Save'}</button>",
+      // Known blind spot, by design: a conditional icon is nameless but
+      // indistinguishable from a conditional *fragment of text* without a parser,
+      // so the sweep's `findUnnamedTabStops` owns this shape instead.
+      ConditionalIcon: '<button type="button">{shown ? <EyeOff className="h-4" /> : <Eye className="h-4" />}</button>',
+      ConditionalText: '<button>{copied ? <>Copied</> : <>Copy</>}</button>',
     };
 
     expect(findUnnamedIconButtons(sources)).toEqual(['Nameless:1']);

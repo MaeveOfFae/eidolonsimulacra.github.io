@@ -158,6 +158,7 @@ export default function SettingsAccessSection({
             <button
               type="button"
               onClick={() => onToggleShowKey(selectedProvider)}
+              aria-label={showKeys[selectedProvider] ? 'Hide API key' : 'Show API key'}
               className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 transition-colors hover:bg-accent"
             >
               {showKeys[selectedProvider] ? (

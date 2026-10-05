@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import type { DraftMetadata, UsageRecord } from '@char-gen/shared';
+import { formatTabStops } from '@/test/tab-order';
 import Compare from './Compare';
 
 // The mocked generation service pushes into this state so the group and usage
@@ -75,6 +76,41 @@ describe('Compare page', () => {
     state.groupDrafts.length = 0;
     state.usageRecords.length = 0;
     state.generateCalls.length = 0;
+  });
+
+  it('tabs through the launcher in visual order', async () => {
+    renderCompare();
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Add/ })).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText('Seed'), { target: { value: 'a seed for compare' } });
+    const candidates = screen.getByLabelText(/Candidate models/);
+    fireEvent.change(candidates, { target: { value: 'gpt-4o' } });
+    fireEvent.click(screen.getByRole('button', { name: /Add/ }));
+    fireEvent.change(candidates, { target: { value: 'gpt-4o-mini' } });
+    fireEvent.click(screen.getByRole('button', { name: /Add/ }));
+
+    // A disabled button is not focusable, so the run button only joins the tab
+    // order once a run is actually possible — which is why two candidates go in
+    // first. This is the order the form reads in.
+    const sequence = formatTabStops();
+
+    expect(sequence).toEqual([
+      'textarea: Seed',
+      'select: Template',
+      'select: Content mode',
+      'select: Candidate provider',
+      'input: Candidate models (2/4)',
+      'button: Add',
+      // Each added candidate's row controls come next, in the order the rows are
+      // rendered, and the run button is last because it acts on all of them.
+      'button: Use current (gpt-4o)',
+      'button: Remove gpt-4o',
+      'button: Remove gpt-4o-mini',
+      'button: Run comparison (2)',
+    ]);
   });
 
   it('renders the launcher and keeps the run button disabled until ready', async () => {

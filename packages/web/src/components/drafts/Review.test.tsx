@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { assertTabOrderAfter, findUnnamedTabStops, formatTabStops } from '@/test/tab-order';
 import Review from './Review';
 import { getGuidedTour, REVIEW_EXPORT_TOUR_ID } from '@/lib/help';
 
@@ -101,6 +102,57 @@ function renderReview() {
     </MemoryRouter>,
   );
 }
+
+describe('Review tab order', () => {
+  beforeEach(() => {
+    mockUseQuery.mockReset();
+    mockUseMutation.mockReset();
+    mockUseQueryClient.mockReset();
+    mockUseGuidedTour.mockReset();
+    mutationResults = [];
+    worldsResponse = { worlds: [] };
+    draftResponse = createDraftResponse();
+    mockIsSelfContainedDesktop.mockReturnValue(false);
+
+    mockUseQuery.mockImplementation((options?: { queryKey?: unknown[] }) => {
+      const key = Array.isArray(options?.queryKey) ? options.queryKey[0] : undefined;
+
+      if (key === 'templates') {
+        return { data: templatesResponse, isLoading: false, error: null };
+      }
+
+      return { data: draftResponse, isLoading: false, error: null };
+    });
+    mockUseMutation.mockReturnValue(createMutationResult());
+    mockUseQueryClient.mockReturnValue({ invalidateQueries: vi.fn() });
+    mockUseGuidedTour.mockReturnValue({
+      activeTourId: null,
+      activeStepIndex: 0,
+      closeTour: vi.fn(),
+      goToCurrentStep: vi.fn(),
+      isTourCompleted: () => true,
+      restartTour: vi.fn(),
+      startTour: vi.fn(),
+    });
+  });
+
+  it('tabs through the header actions in visual order', () => {
+    renderReview();
+
+    const sequence = formatTabStops();
+
+    // Back to the library, then the name action, then the actions that operate on
+    // the draft — the order the header reads in.
+    assertTabOrderAfter(sequence, 'Back to Library', 'Edit Name');
+    assertTabOrderAfter(sequence, 'Edit Name', 'Validate');
+    assertTabOrderAfter(sequence, 'Validate', 'Export');
+
+    // Every stop must announce as something: the hidden file input that opens the
+    // image picker is `display: none` and correctly stays out of the sequence.
+    expect(findUnnamedTabStops(sequence)).toEqual([]);
+    expect(sequence).not.toContain('input: Attach PNG image');
+  });
+});
 
 describe('Review export modal behavior', () => {
   const writeText = vi.fn();
