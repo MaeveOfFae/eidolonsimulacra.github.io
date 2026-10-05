@@ -69,6 +69,8 @@ The next major is scoped as a UI overhaul with measurable bars, not feature accu
 
 ### Staged for 5.1
 
+- **Mobile screen decomposition, which the 5.0 screen bar never covered.** The bar above was applied to the web screens; the mobile screens were never measured, and four of them are over the same ~1,000-line line: `DraftDetailScreen` **3,757**, `SettingsScreen` 2,449, `DraftsScreen` 1,211, `GenerateScreen` 1,080. The first is the largest file in the repo — larger than anything on the storage list above — and it grew by 65 lines while item 4 was being built, which is the honest shape of "we closed the cross-surface gap": the flow now exists on the phone, inside a file that is itself a 5.1 problem. Splitting these is a different job than the web screens were: `packages/mobile` runs a **logic-only** Vitest suite (`environment: 'node'`, no jsdom), so extracted sections cannot lean on the characterization tests the web splits used. The move is therefore logic first — to `mobile/src/lib`, where it can be tested — and the presentational remainder after that.
+
 - **Storage and service layer decomposition** — `lib/storage/draft-db.ts`, `lib/storage/desktop-lore-db.ts` and `lib/services/generation.ts` are the three remaining files over the ~1,000-line bar. They are storage/service layers rather than screens, so the seam is per-store/per-service modules (splitting `draft-db` by table, for example). Scheduled to ship with or before 5.1; explicitly not a 5.0 bar.
 
 ## Outstanding work by area
