@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import AssetRegenerator from './AssetRegenerator';
 import { api } from '@/lib/api';
 import { GenerationService } from '@/lib/services/generation';
+import { findUnnamedTabStops, formatTabStops } from '@/test/tab-order';
 
 const mockNavigate = vi.fn();
 
@@ -125,6 +126,13 @@ describe('AssetRegenerator', () => {
     vi.mocked(GenerationService.generateAsset).mockReset();
   });
 
+  it('keeps every tab stop named', async () => {
+    createWrapper();
+
+    await screen.findByText('Current Active Asset');
+
+    expect(findUnnamedTabStops(formatTabStops())).toEqual([]);
+  });
   it('generates and applies a candidate for the selected asset', async () => {
     vi.mocked(GenerationService.generateAsset).mockImplementation(async function* () {
       yield { type: 'chunk', content: 'regenerated ' } as never;
@@ -279,7 +287,9 @@ describe('AssetRegenerator', () => {
 
     expect(await screen.findByText('Current Active Asset')).toBeInTheDocument();
 
-    fireEvent.click(screen.getAllByRole('button', { name: '' })[0]);
+    // Expand the blueprint panel. This used to be identified by its *empty*
+    // accessible name — the toggle is now labelled, so it is queried by name.
+    fireEvent.click(screen.getByRole('button', { name: /Expand blueprint panel/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
     fireEvent.change(screen.getByRole('textbox', { name: 'Edit blueprint content' }), {
       target: { value: 'custom blueprint override' },

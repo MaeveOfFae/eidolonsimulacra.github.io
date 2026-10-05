@@ -129,6 +129,8 @@ export function BlueprintPanel({
           <button
             type="button"
             onClick={() => setIsExpanded(!isExpanded)}
+            aria-label={isExpanded ? 'Collapse blueprint panel' : 'Expand blueprint panel'}
+            aria-expanded={isExpanded}
             className="inline-flex items-center justify-center p-1.5 rounded-md hover:bg-background/60 transition-colors"
           >
             {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}

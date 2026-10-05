@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import { api } from '@/lib/api';
 import Themes from './Themes';
+import { findUnnamedTabStops, formatTabStops } from '../../test/tab-order';
 
 vi.mock('@/lib/api', () => ({
   api: {
@@ -64,6 +65,15 @@ function renderThemes() {
 }
 
 describe('Themes manager', () => {
+  it('keeps every tab stop named', async () => {
+    renderThemes();
+
+    await waitFor(() => {
+      expect((document.body.textContent ?? '').trim().length).toBeGreaterThan(100);
+    });
+
+    expect(findUnnamedTabStops(formatTabStops())).toEqual([]);
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(api.getConfig).mockResolvedValue({ theme_name: 'ember_night' } as never);

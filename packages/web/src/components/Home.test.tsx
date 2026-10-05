@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import { findRouteEntry } from '@/lib/navigation/route-catalog';
+import { findUnnamedTabStops, formatTabStops } from '@/test/tab-order';
 import Home from './Home';
 
 // `vi.mock` factories are hoisted, so shared mutable state has to be created
@@ -123,6 +124,16 @@ describe('Home supporting tools', () => {
 });
 
 describe('Home route targets', () => {
+  it('keeps every tab stop named', async () => {
+    renderHome();
+
+    await waitFor(() => {
+      expect((document.body.textContent ?? '').trim().length).toBeGreaterThan(100);
+    });
+
+    expect(findUnnamedTabStops(formatTabStops())).toEqual([]);
+  });
+
   it('points every internal link at a catalog route', async () => {
     renderHome();
     fireEvent.click(await screen.findByRole('button', { name: /Supporting tools/i }));

@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import Insights from './Insights';
+import { findUnnamedTabStops, formatTabStops } from '@/test/tab-order';
 
 const apiMocks = vi.hoisted(() => ({
   getModelPricing: vi.fn(() => [] as Array<Record<string, unknown>>),
@@ -78,6 +79,16 @@ function renderInsights() {
 }
 
 describe('Insights page', () => {
+  it('keeps every tab stop named', async () => {
+    renderInsights();
+
+    await waitFor(() => {
+      expect((document.body.textContent ?? '').trim().length).toBeGreaterThan(100);
+    });
+
+    expect(findUnnamedTabStops(formatTabStops())).toEqual([]);
+  });
+
   it('renders totals, the provider breakdown, and recent calls', async () => {
     renderInsights();
 
