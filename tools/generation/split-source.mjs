@@ -15,6 +15,7 @@
  */
 import { execSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, relative } from 'node:path';
 
 const KIND_RE = /^(?:export )?(async function|function|const|let|class|interface|type) (\w+)/;
 const TYPE_KINDS = new Set(['interface', 'type']);
@@ -218,13 +219,17 @@ export function split(config) {
 
   const byModule = new Map();
   const missing = [];
-  // With `keep`, names declared in the retained body stay in the source file, so they
-  // are not expected to have a new home.
-  const keepBodyText = config.keep ? slice(config.keep.from, config.keep.to) : '';
+  // Names declared in the retained part of the file stay where they are, so they are not
+  // expected to have a new home — this applies to `keep` and to a `cut`.
+  const keepBodyText = config.keep
+    ? slice(config.keep.from, config.keep.to)
+    : config.cut
+      ? lines.filter((_, index) => !config.cut.some(({ from, to }) => index + 1 >= from && index + 1 <= to)).join('\n')
+      : '';
   for (const decl of publicDecls) {
     const home = built.find((module) => module.decls.some((d) => d.name === decl.name));
     if (!home) {
-      if (config.keep && new RegExp(`\\b${decl.name}\\b`).test(keepBodyText)) {
+      if ((config.keep || config.cut) && new RegExp(`\\b${decl.name}\\b`).test(keepBodyText)) {
         continue;
       }
       missing.push(decl.name);
@@ -370,6 +375,85 @@ export function split(config) {
 
     const module = config.cutModule;
     const wrap = module.wrap;
+
+    /** Strip the common leading indent so a range taken from inside a function becomes
+     *  module-level code. */
+    const dedent = (text) => {
+      const rows = text.split('\n').filter((line) => line.trim() !== '');
+      const indent = Math.min(...rows.map((line) => line.match(/^ */)[0].length));
+      return text
+        .split('\n')
+        .map((line) => line.slice(indent))
+        .join('\n');
+    };
+
+    // A cut with no `wrap` is a plain module: the range is dedented, exported, and the
+    // source imports whatever it still uses.
+    if (!wrap) {
+      const dedented = dedent(cutBody);
+      const cutDecls = [
+        ...dedented.matchAll(/^(?:export )?(async function|function|const|let|class|interface|type) (\w+)/gm),
+      ].map((match) => ({ kind: match[1], name: match[2] }));
+      const exportedBody = exportify(
+        dedented,
+        cutDecls.map((decl) => decl.name),
+      );
+
+      const moduleImports = sourceImports
+        .map((statement) => selectNames(statement, (name) => new RegExp(`\\b${name}\\b`).test(stripComments(dedented))))
+        .filter(Boolean)
+        .map((statement) => deepen(statement));
+
+      for (const group of config.external ?? []) {
+        const needed = group.names.filter((name) => new RegExp(`\\b${name}\\b`).test(stripComments(dedented)));
+        if (needed.length > 0) {
+          moduleImports.push(
+            `import ${group.typeOnly ? 'type ' : ''}{\n${needed.map((n) => `  ${n},`).join('\n')}\n} from '${group.specifier}';`,
+          );
+        }
+      }
+
+      const relDir = relative(dirname(config.source), config.dir).replace(/\\/g, '/');
+      const moduleSpec = `${relDir.startsWith('.') ? relDir : `./${relDir}`}/${module.file.replace(/\.tsx?$/, config.extension ?? '.js')}`;
+      const retainedUses = (name) => new RegExp(`\\b${name}\\b`).test(stripComments(retainedBody));
+      const values = cutDecls.filter((decl) => !TYPE_KINDS.has(decl.kind) && retainedUses(decl.name));
+      const types = cutDecls.filter((decl) => TYPE_KINDS.has(decl.kind) && retainedUses(decl.name));
+      const importLines = [
+        ...(values.length > 0
+          ? [`import {\n${values.map((decl) => `  ${decl.name},`).join('\n')}\n} from '${moduleSpec}';`]
+          : []),
+        ...(types.length > 0
+          ? [`import type {\n${types.map((decl) => `  ${decl.name},`).join('\n')}\n} from '${moduleSpec}';`]
+          : []),
+      ];
+
+      const sourceImportsFor = sourceImports
+        .map((statement) =>
+          selectNames(statement, (name) => new RegExp(`\\b${name}\\b`).test(stripComments(retainedBody))),
+        )
+        .filter(Boolean);
+
+      mkdirSync(config.dir, { recursive: true });
+      writeFileSync(
+        `${config.dir}/${module.file}`,
+        `${module.doc}\n\n${moduleImports.join('\n')}\n\n${exportedBody}\n`.replace(/\n/g, eol),
+        'utf8',
+      );
+      writeFileSync(
+        config.source,
+        `${header}\n\n${sourceImportsFor.join('\n')}\n${importLines.join('\n')}\n\n${retainedBody}\n`.replace(
+          /\n/g,
+          eol,
+        ),
+        'utf8',
+      );
+
+      return {
+        files: [`${module.file}: ${cutDecls.length} declarations`],
+        exports: publicDecls.length,
+        kept: `${retainedBody.split('\n').length} lines retained, ${cutDecls.length} moved to a module`,
+      };
+    }
 
     // Values the retained body needs handed back. Anchored at one indent level, which is
     // where a component body keeps its state and handlers — matching column 0 here (as
