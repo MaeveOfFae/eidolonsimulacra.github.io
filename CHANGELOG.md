@@ -3,6 +3,25 @@
 Generated release history for the browser app.
 
 
+## v5.0.0 - 2026-10-04
+
+### The workspace release: a command palette, workspace modes, and a keyboard-first pass
+
+5.0 is the workspace release. A Cmd/Ctrl-K palette reaches all 36 routes plus recent drafts, workspace modes (solo drafting, review, bulk) promote the screens they own, and every dialog now handles Escape, captures focus, wraps Tab and returns focus on close. Mobile gains the same approval decisions the review screen already had, and state colours come from four theme tokens that carry their own dark values.
+
+### Highlights
+- Cmd/Ctrl-K opens a palette over every route plus recent drafts, with a ranked search
+- Workspace modes - solo drafting, review, and bulk - promote their screens and name themselves in the app frame
+- One dialog shell gives all 14 overlays Escape, focus capture, Tab wrapping and focus return
+- Around 101 form controls gained accessible names, and a tab-order test over all 35 routes found four unnamed tab stops
+- Mobile review and approval: approve, request changes, or undo, with decisions that go stale when the asset changes
+- State colours are theme tokens in both themes; 381 hand-written utilities and 88 dark: overrides went with them
+- No source file is over 1,000 lines, and the legacy bpui.* storage keys are retired behind one migration
+
+### Links
+- [Open the library](/drafts)
+- [Open generation](/generate)
+- [Open What's New](/whats-new)
 ## v4.8.0 - 2026-10-04
 
 ### Checkpointed generation sessions
@@ -237,6 +256,7 @@ This release packages recent commits focused on platform, templates, and themes.
 ### Links
 - [Open generation](/generate)
 - [Review templates](/templates)
+
 
 
 

@@ -15,6 +15,7 @@ The repo is centered on a strict blueprint contract: start from one seed, genera
 - Multi-model comparison runs: `/compare` sends one seed and template through up to four candidate models, saves each result as a linked draft, and lines the candidates up with their token and time cost from the usage records.
 - Generation launcher polish: save the launcher's template, mode, and instructions as named scenario presets that apply in one click; compose additional-instruction lines from a pickable constraint catalog (tone, pacing, style, content handling, framing); fold 2–4 favorite seeds into one premise line; and keep tagged inspiration fragments on the seed generator's idea board.
 - Draft library at scale: save the library's filter set as named searches, edit metadata across selected drafts in one batched write, and scan for duplicates by seed, character name, and similarity score.
+- The 5.0 workspace layer: a ⌘K / Ctrl-K command palette reaches every route plus recent drafts with a ranked search, workspace modes (solo drafting / review / bulk) promote the screens they own and name themselves in the app frame, `?` opens help for the current page, and every dialog shares one shell for Escape, focus capture, Tab wrapping and focus return. State colours (success, warning, info, destructive) come from theme tokens that carry their own dark values, so the two modes are no longer written by hand at each call site.
 - One built-in runtime template is currently loaded from `blueprints/templates/`:
   - `V2/V3 Card` with `system_prompt`, `post_history`, `character_sheet`, `intro_scene`, `creator_notes`, and `a1111`
 - Aksho reference material is checked in under `dev/official_aksho/`, but it is not currently loaded as a built-in browser template manifest. (`dev/` is git-ignored, so it only exists in checkouts that have it locally.)
@@ -61,6 +62,7 @@ The web app currently exposes the main workflows directly in the browser:
 - Browse and edit templates and blueprint source
 - Run offspring and similarity workflows
 - Manage themes, browser-stored data, and app settings
+- Move around without the mouse: ⌘K / Ctrl-K opens the command palette over every route and recent draft, `?` opens help for the current page, Escape and Tab behave the same in all 14 dialogs, and the tab order is covered by a test on every route
 - Read release notes, the Help Center, and the info/legal documents, all rendered from `packages/shared`
 - Reach the `/download` page, which offers the desktop installers and the Android APK with their file names, sizes, requirements and caveats — the visitor-facing view of the same shared data the mobile app renders (build-from-source steps stay in this README and `docs/DOWNLOADS.md`)
 
@@ -90,6 +92,7 @@ Notes:
 - The current mobile flow stores drafts, templates, blueprint overrides, settings, and keys locally on-device.
 - Use the mobile Settings screen to import a workspace bundle exported from the PC app or browser workspace when you want to mirror data across devices, or pair with the desktop companion for LAN transfer.
 - Generation talks directly to the configured provider from the device; mobile has no backend dependency.
+- The draft detail screen carries the same approval decisions as the web review screen — approve, request changes, or undo, with changes-requested and stale assets sorted to the top — because both surfaces call the shared approvals engine rather than keeping two implementations.
 - Parity status against the web app — what already matches, what is missing, and the recommended order — is scoped in [`docs/MOBILE_PARITY.md`](docs/MOBILE_PARITY.md). Tiers 1 and 2 are complete: release notes, help, themes, and info/legal content all render from shared modules, so the mobile app — every screen — retints live from the selected theme and shows the same guidance, help center, and legal documents as the browser. Tier 3 (worlds, factions, locations, timelines) is closed by decision rather than pending — mobile worldbuilding is desktop-only, recorded in [`docs/WORLDBUILDING_DECISION.md`](docs/WORLDBUILDING_DECISION.md).
 
 ## Desktop App

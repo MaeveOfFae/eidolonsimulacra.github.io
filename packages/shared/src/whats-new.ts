@@ -16,9 +16,31 @@ export interface ReleaseNoteEntry {
 // Generated and maintained by tools/generation/generate-release-notes.mjs.
 export const releaseNotes: ReleaseNoteEntry[] = [
   {
-    version: '4.8.0',
+    version: '5.0.0',
     releasedOn: '2026-10-04',
     badge: 'Current release',
+    headline: 'The workspace release: a command palette, workspace modes, and a keyboard-first pass',
+    summary:
+      '5.0 is the workspace release. A Cmd/Ctrl-K palette reaches all 36 routes plus recent drafts, workspace modes (solo drafting, review, bulk) promote the screens they own, and every dialog now handles Escape, captures focus, wraps Tab and returns focus on close. Mobile gains the same approval decisions the review screen already had, and state colours come from four theme tokens that carry their own dark values.',
+    highlights: [
+      'Cmd/Ctrl-K opens a palette over every route plus recent drafts, with a ranked search',
+      'Workspace modes - solo drafting, review, and bulk - promote their screens and name themselves in the app frame',
+      'One dialog shell gives all 14 overlays Escape, focus capture, Tab wrapping and focus return',
+      'Around 101 form controls gained accessible names, and a tab-order test over all 35 routes found four unnamed tab stops',
+      'Mobile review and approval: approve, request changes, or undo, with decisions that go stale when the asset changes',
+      'State colours are theme tokens in both themes; 381 hand-written utilities and 88 dark: overrides went with them',
+      'No source file is over 1,000 lines, and the legacy bpui.* storage keys are retired behind one migration',
+    ],
+    links: [
+      { label: 'Open the library', to: '/drafts' },
+      { label: 'Open generation', to: '/generate' },
+      { label: "Open What's New", to: '/whats-new' },
+    ],
+  },
+  {
+    version: '4.8.0',
+    releasedOn: '2026-10-04',
+    badge: 'Previous release',
     headline: 'Checkpointed generation sessions',
     summary:
       'Generation runs are now checkpointed end to end. The per-asset run can pause mid-stream and resume from the paused asset with the approved prefix as context, any approved asset can become a restart point that regenerates everything downstream, and a paused session restores after reload without auto-resuming. Single-shot runs (batch, comparison, API callers) checkpoint by salvage - closed asset blocks from a dying stream are saved as a marked partial draft, and batch errors name it - while mobile persists a per-asset checkpoint with a Resume generation card that restores imported sources and can restart from any completed asset.',

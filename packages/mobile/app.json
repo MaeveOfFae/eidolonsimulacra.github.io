@@ -2,7 +2,7 @@
   "expo": {
     "name": "Eidolon Simulacra",
     "slug": "eidolon-simulacra",
-    "version": "4.8.0",
+    "version": "5.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "icon": "./assets/icon.png",
