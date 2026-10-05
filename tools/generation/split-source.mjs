@@ -70,7 +70,8 @@ export function split(config) {
       if (sibling.file === module.file) {
         continue;
       }
-      const spec = `./${sibling.file.replace(/\.tsx?$/, '.js')}`;
+      const extension = config.extension ?? '.js';
+      const spec = `./${sibling.file.replace(/\.tsx?$/, extension)}`;
       const wanted = sibling.decls.filter((decl) => uses(decl.name));
       const values = wanted
         .filter((decl) => !TYPE_KINDS.has(decl.kind))
@@ -123,7 +124,8 @@ export function split(config) {
 
   const barrelBody = [...byModule]
     .map(([file, decls]) => {
-      const spec = `./${config.dir.split('/').pop()}/${file.replace(/\.tsx?$/, '.js')}`;
+      const extension = config.extension ?? '.js';
+      const spec = `./${config.dir.split('/').pop()}/${file.replace(/\.tsx?$/, extension)}`;
       const values = decls.filter((d) => !TYPE_KINDS.has(d.kind)).map((d) => d.name);
       const types = decls.filter((d) => TYPE_KINDS.has(d.kind)).map((d) => d.name);
       const blocks = [];
