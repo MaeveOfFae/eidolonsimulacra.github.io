@@ -542,12 +542,12 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
       case 'generating':
         return <Loader2 className="h-4 w-4 text-primary animate-spin" />;
       case 'reviewing':
-        return <FileText className="h-4 w-4 text-amber-500" />;
+        return <FileText className="h-4 w-4 text-warning" />;
       case 'saving':
         return <Loader2 className="h-4 w-4 text-primary animate-spin" />;
       case 'idle':
       default:
-        return <CheckCircle2 className="h-4 w-4 text-green-500" />;
+        return <CheckCircle2 className="h-4 w-4 text-success" />;
     }
   };
 
@@ -571,7 +571,7 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
         </select>
 
         {resumeNotice && (
-          <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+          <div className="mt-4 rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning">
             {resumeNotice}
           </div>
         )}
@@ -670,7 +670,7 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
                   key={assetName}
                   className={`rounded-xl border ${
                     isReviewing
-                      ? 'border-amber-500/50 bg-amber-500/5'
+                      ? 'border-warning/50 bg-warning/5'
                       : hasChanges
                         ? 'border-primary/50 bg-primary/5'
                         : 'border-border/50'
@@ -691,7 +691,7 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="font-medium capitalize">{assetName.replace(/_/g, ' ')}</span>
                         {!assetExists && (
-                          <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium uppercase tracking-[0.14em] text-amber-700 dark:text-amber-300">
+                          <span className="rounded-full border border-warning/40 bg-warning/10 px-2 py-0.5 text-[11px] font-medium uppercase tracking-[0.14em] text-warning">
                             Missing
                           </span>
                         )}
@@ -707,7 +707,7 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
                     </div>
                     <div className="flex items-center gap-2">
                       {isGenerating && <span className="text-xs text-muted-foreground">Generating...</span>}
-                      {isReviewing && <span className="text-xs text-amber-500">Review changes</span>}
+                      {isReviewing && <span className="text-xs text-warning">Review changes</span>}
                       {isSaving && <span className="text-xs text-muted-foreground">Saving...</span>}
                     </div>
                   </button>
@@ -833,7 +833,7 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
                               <>
                                 <button
                                   onClick={() => void acceptRegenerated(assetName)}
-                                  className="inline-flex items-center gap-2 rounded-md bg-green-600 px-3 py-2 text-sm text-white hover:bg-green-700"
+                                  className="inline-flex items-center gap-2 rounded-md bg-success px-3 py-2 text-sm text-success-foreground hover:bg-success/90"
                                 >
                                   <CheckCircle2 className="h-4 w-4" />
                                   {reviewLabel}

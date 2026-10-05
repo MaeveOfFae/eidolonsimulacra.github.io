@@ -186,7 +186,7 @@ export default function Validation() {
               <p className="text-sm text-muted-foreground">{result.path}</p>
             </div>
             <span
-              className={`rounded-full px-3 py-1 text-sm font-medium ${result.success ? 'bg-green-500/15 text-green-600 dark:text-green-400' : 'bg-destructive/15 text-destructive'}`}
+              className={`rounded-full px-3 py-1 text-sm font-medium ${result.success ? 'bg-success/15 text-success' : 'bg-destructive/15 text-destructive'}`}
             >
               {result.success ? 'Passed' : 'Failed'}
             </span>
@@ -202,11 +202,11 @@ export default function Validation() {
                     key={line}
                     className={
                       line.startsWith('OK')
-                        ? 'text-green-700 dark:text-green-400'
+                        ? 'text-success'
                         : line.startsWith('VALIDATION FAILED')
                           ? 'font-semibold text-destructive'
                           : line.startsWith('- ')
-                            ? 'text-yellow-700 dark:text-yellow-400'
+                            ? 'text-warning'
                             : 'text-muted-foreground'
                     }
                   >

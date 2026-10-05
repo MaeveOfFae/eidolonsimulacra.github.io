@@ -54,11 +54,7 @@ function formatCost(value: number, currency: string): string {
 
 function StatusBadge({ status }: { status: UsageRecord['status'] }) {
   const className =
-    status === 'ok'
-      ? 'text-emerald-600 dark:text-emerald-400'
-      : status === 'aborted'
-        ? 'text-muted-foreground'
-        : 'text-red-600 dark:text-red-400';
+    status === 'ok' ? 'text-success' : status === 'aborted' ? 'text-muted-foreground' : 'text-destructive';
 
   return <span className={`text-xs font-medium ${className}`}>{status}</span>;
 }
@@ -150,7 +146,7 @@ function PricingEditor({ pricingTable }: { pricingTable: ModelPricing[] }) {
                       <button
                         type="button"
                         aria-label={`Delete pricing for ${entry.model}`}
-                        className="inline-flex items-center rounded p-1 text-red-600 hover:bg-accent"
+                        className="inline-flex items-center rounded p-1 text-destructive hover:bg-accent"
                         onClick={() => api.deleteModelPricing(entry.id)}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -225,7 +221,7 @@ function PricingEditor({ pricingTable }: { pricingTable: ModelPricing[] }) {
             ) : null}
           </div>
         </form>
-        {error ? <p className="text-xs text-red-600 dark:text-red-400">{error}</p> : null}
+        {error ? <p className="text-xs text-destructive">{error}</p> : null}
       </div>
     </details>
   );
@@ -332,7 +328,7 @@ export default function Insights() {
           </button>
           <button
             type="button"
-            className="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-sm text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50 dark:border-red-900 dark:hover:bg-red-950"
+            className="inline-flex items-center gap-2 rounded-lg border border-destructive/30 px-3 py-2 text-sm text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
             onClick={() => {
               if (window.confirm('Delete every stored usage record on this device?')) {
                 clearMutation.mutate();
@@ -500,7 +496,7 @@ export default function Insights() {
                     <span className="text-muted-foreground">{formatDuration(record.durationMs)}</span>
                     <span className="ml-auto text-xs text-muted-foreground">{formatTime(record.timestamp)}</span>
                     {record.errorMessage ? (
-                      <span className="w-full text-xs text-red-600 dark:text-red-400">{record.errorMessage}</span>
+                      <span className="w-full text-xs text-destructive">{record.errorMessage}</span>
                     ) : null}
                   </li>
                 ))}

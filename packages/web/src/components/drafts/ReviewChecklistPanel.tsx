@@ -195,15 +195,13 @@ export function ReviewChecklistPanel({ draftId }: ReviewChecklistPanelProps) {
         <div className="mt-4 space-y-2">
           {checklist.map((item) => (
             <div key={item.label} className="flex items-center gap-2 rounded-md border border-border px-3 py-2.5">
-              <CheckCircle2
-                className={`h-4 w-4 shrink-0 ${item.passed ? 'text-green-500' : 'text-muted-foreground'}`}
-              />
+              <CheckCircle2 className={`h-4 w-4 shrink-0 ${item.passed ? 'text-success' : 'text-muted-foreground'}`} />
               <span className={item.passed ? 'text-foreground' : 'text-muted-foreground'}>{item.label}</span>
             </div>
           ))}
 
           {validationQuery.data && !validationQuery.data.success && (
-            <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-amber-700 dark:text-amber-300">
+            <div className="rounded-md border border-warning/40 bg-warning/10 p-3 text-warning">
               {validationQuery.data.output}
             </div>
           )}

@@ -566,7 +566,7 @@ export default function Drafts() {
         <div
           className={`app-note flex items-start gap-3 px-4 py-3 ${
             notice.type === 'success'
-              ? 'border-green-500/50 bg-green-500/10 text-green-700 dark:text-green-400'
+              ? 'border-success/50 bg-success/10 text-success'
               : 'border-destructive/50 bg-destructive/10 text-destructive'
           }`}
         >

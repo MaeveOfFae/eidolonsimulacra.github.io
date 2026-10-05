@@ -33,7 +33,7 @@ export default function DeviceLinkRememberedMobiles({
               <div>
                 <div className="text-sm font-medium text-foreground">{mobile.name}</div>
                 <div
-                  className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${mobile.trusted ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' : 'bg-amber-500/15 text-amber-800 dark:text-amber-200'}`}
+                  className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${mobile.trusted ? 'bg-success/15 text-success' : 'bg-warning/15 text-warning'}`}
                 >
                   {mobile.trusted ? 'Trusted' : 'Untrusted'}
                 </div>
@@ -61,7 +61,7 @@ export default function DeviceLinkRememberedMobiles({
               <button
                 type="button"
                 onClick={() => onForget(mobile)}
-                className="rounded-md border border-red-500/40 px-2.5 py-1 text-xs text-red-600 hover:bg-red-500/10 dark:text-red-300"
+                className="rounded-md border border-destructive/40 px-2.5 py-1 text-xs text-destructive hover:bg-destructive/10"
               >
                 Forget
               </button>

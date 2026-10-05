@@ -770,7 +770,7 @@ export function DraftComparisonPanel({
                   : 'No reviewer summary saved.'}
               </div>
               {leftReviewSummary && leftReviewSummary.lowScoreEntries.length > 0 && (
-                <div className="mt-2 text-amber-700 dark:text-amber-300">
+                <div className="mt-2 text-warning">
                   Low-score assets:{' '}
                   {leftReviewSummary.lowScoreEntries
                     .map(({ assetName, score }) => `${formatAssetLabel(assetName)} (${score}/5)`)
@@ -786,7 +786,7 @@ export function DraftComparisonPanel({
                   : 'No reviewer summary saved.'}
               </div>
               {rightReviewSummary && rightReviewSummary.lowScoreEntries.length > 0 && (
-                <div className="mt-2 text-amber-700 dark:text-amber-300">
+                <div className="mt-2 text-warning">
                   Low-score assets:{' '}
                   {rightReviewSummary.lowScoreEntries
                     .map(({ assetName, score }) => `${formatAssetLabel(assetName)} (${score}/5)`)

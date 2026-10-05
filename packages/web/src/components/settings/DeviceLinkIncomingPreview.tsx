@@ -33,7 +33,7 @@ export default function DeviceLinkIncomingPreview({
         <>
           {preview.source && (
             <div
-              className={`mt-3 rounded-md border px-3 py-2 text-xs ${incomingSourceTrusted ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : 'border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-200'}`}
+              className={`mt-3 rounded-md border px-3 py-2 text-xs ${incomingSourceTrusted ? 'border-success/30 bg-success/10 text-success' : 'border-warning/30 bg-warning/10 text-warning'}`}
             >
               Incoming from {preview.source.name} ({preview.source.platform}/{preview.source.runtime})
               {incomingSourceTrusted ? ' • trusted sender' : ' • untrusted sender'}.

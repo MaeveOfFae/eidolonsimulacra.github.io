@@ -109,7 +109,7 @@ export default function LibrarySeedsTab({
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-amber-600 dark:text-amber-400">
+                    <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-warning">
                       <Star className="h-3.5 w-3.5 fill-current" />
                       Favorite Seed
                     </div>

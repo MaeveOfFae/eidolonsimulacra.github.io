@@ -205,7 +205,7 @@ export default function DraftSendConfigPanel({
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium capitalize">{formatAssetLabel(assetName)}</span>
                     {!assetExists && (
-                      <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium uppercase tracking-[0.14em] text-amber-700 dark:text-amber-300">
+                      <span className="rounded-full border border-warning/40 bg-warning/10 px-2 py-0.5 text-[11px] font-medium uppercase tracking-[0.14em] text-warning">
                         Missing
                       </span>
                     )}
@@ -249,7 +249,7 @@ export default function DraftSendConfigPanel({
         </div>
 
         {sendOrderWarnings.length > 0 && (
-          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-950 dark:text-amber-100">
+          <div className="rounded-xl border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning">
             <div className="flex items-center gap-2 font-medium">
               <AlertTriangle className="h-4 w-4" />
               Dependency warnings

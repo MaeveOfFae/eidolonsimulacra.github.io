@@ -144,15 +144,15 @@ export default function HelpTab({ pageHelp, relatedTopics }: HelpTabProps) {
 
             {/* Pitfalls */}
             {pageHelp.pitfalls.length > 0 && (
-              <section className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
+              <section className="rounded-lg border border-warning/30 bg-warning/10 p-3">
                 <div className="flex items-center gap-2 text-foreground">
-                  <TriangleAlert className="h-3.5 w-3.5 text-amber-500" />
+                  <TriangleAlert className="h-3.5 w-3.5 text-warning" />
                   <h4 className="text-xs font-semibold">Avoid</h4>
                 </div>
                 <div className="mt-2 space-y-1.5">
                   {pageHelp.pitfalls.slice(0, 3).map((pitfall) => (
                     <div key={pitfall} className="flex items-start gap-2 text-xs text-muted-foreground">
-                      <div className="mt-1.5 h-1 w-1 flex-shrink-0 rounded-full bg-amber-500" />
+                      <div className="mt-1.5 h-1 w-1 flex-shrink-0 rounded-full bg-warning" />
                       <p className="leading-5">{pitfall}</p>
                     </div>
                   ))}

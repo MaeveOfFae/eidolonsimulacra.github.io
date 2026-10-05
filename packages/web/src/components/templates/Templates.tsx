@@ -219,7 +219,7 @@ export default function Templates() {
             className={`app-note p-4 text-sm ${
               feedback.type === 'error'
                 ? 'border-destructive/40 bg-destructive/10 text-destructive'
-                : 'border-green-600/30 bg-green-600/10 text-green-700 dark:text-green-400'
+                : 'border-success/30 bg-success/10 text-success'
             }`}
           >
             {feedback.message}
@@ -321,7 +321,7 @@ export default function Templates() {
                 <div className="app-panel-muted p-3 text-sm">
                   {validationResults[template.name].errors.length === 0 &&
                   validationResults[template.name].warnings.length === 0 ? (
-                    <p className="text-green-700 dark:text-green-400">No validation issues found.</p>
+                    <p className="text-success">No validation issues found.</p>
                   ) : (
                     <div className="space-y-2">
                       {validationResults[template.name].errors.length > 0 && (
@@ -336,8 +336,8 @@ export default function Templates() {
                       )}
                       {validationResults[template.name].warnings.length > 0 && (
                         <div>
-                          <p className="font-medium text-yellow-700 dark:text-yellow-400">Warnings</p>
-                          <ul className="list-disc pl-5 text-yellow-700 dark:text-yellow-400">
+                          <p className="font-medium text-warning">Warnings</p>
+                          <ul className="list-disc pl-5 text-warning">
                             {validationResults[template.name].warnings.map((issue) => (
                               <li key={issue}>{issue}</li>
                             ))}

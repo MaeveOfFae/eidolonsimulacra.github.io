@@ -63,11 +63,11 @@ export default function ThemeImportDialog({
   onImportRenamed,
 }: ThemeImportDialogProps) {
   return (
-    <section className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-5">
+    <section className="rounded-lg border border-warning/30 bg-warning/10 p-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h2 className="flex items-center gap-2 text-lg font-semibold">
-            <AlertTriangle className="h-5 w-5 text-amber-500" />
+            <AlertTriangle className="h-5 w-5 text-warning" />
             Import conflict detected
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">

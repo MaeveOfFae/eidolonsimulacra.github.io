@@ -555,7 +555,7 @@ export default function DeviceLinkSettings() {
                 ))}
               </div>
               {!publishSelectionReady && (
-                <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">
+                <p className="mt-2 text-xs text-warning">
                   Select at least one publish domain before using Publish Live Sync.
                 </p>
               )}
@@ -591,13 +591,13 @@ export default function DeviceLinkSettings() {
             <div className="rounded-md border border-border bg-background/40 p-4 text-sm text-muted-foreground">
               <div className="grid gap-3 md:grid-cols-2">
                 <div
-                  className={`rounded-md border px-3 py-2 ${companionStatus?.outgoingBundleAvailable ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : 'border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-200'}`}
+                  className={`rounded-md border px-3 py-2 ${companionStatus?.outgoingBundleAvailable ? 'border-success/30 bg-success/10 text-success' : 'border-warning/30 bg-warning/10 text-warning'}`}
                 >
                   <div className="text-xs font-medium uppercase tracking-wide">Mobile pull</div>
                   <div className="mt-1 text-xs">{mobilePullStatus}</div>
                 </div>
                 <div
-                  className={`rounded-md border px-3 py-2 ${companionStatus?.incomingBundleAvailable ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : 'border-border/60 bg-background/70 text-muted-foreground'}`}
+                  className={`rounded-md border px-3 py-2 ${companionStatus?.incomingBundleAvailable ? 'border-success/30 bg-success/10 text-success' : 'border-border/60 bg-background/70 text-muted-foreground'}`}
                 >
                   <div className="text-xs font-medium uppercase tracking-wide">Desktop apply</div>
                   <div className="mt-1 text-xs">{incomingApplyStatus}</div>
@@ -622,12 +622,12 @@ export default function DeviceLinkSettings() {
                 </div>
               </div>
               {companionStatus?.lastError && (
-                <div className="mt-2 text-red-600 dark:text-red-400">Companion error: {companionStatus.lastError}</div>
+                <div className="mt-2 text-destructive">Companion error: {companionStatus.lastError}</div>
               )}
             </div>
 
             {companionStatus?.incomingBundleAvailable && (
-              <div className="rounded-md border border-emerald-500/40 bg-emerald-500/10 p-4 text-sm text-emerald-800 shadow-sm dark:text-emerald-200">
+              <div className="rounded-md border border-success/40 bg-success/10 p-4 text-sm text-success shadow-sm">
                 <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                   <div>
                     <div className="text-xs font-semibold uppercase tracking-wide">Incoming mobile sync is waiting</div>
@@ -642,7 +642,7 @@ export default function DeviceLinkSettings() {
                       </p>
                     )}
                     {incomingBlockedByPolicy && (
-                      <p className="mt-2 text-xs text-amber-800 dark:text-amber-200">
+                      <p className="mt-2 text-xs text-warning">
                         Apply is blocked by policy until this sender is trusted or the incoming sender policy changes.
                       </p>
                     )}
@@ -651,7 +651,7 @@ export default function DeviceLinkSettings() {
                     type="button"
                     onClick={() => void handleApplyIncomingBundle()}
                     disabled={incomingLoading || !companionStatus.running || incomingBlockedByPolicy}
-                    className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+                    className="inline-flex shrink-0 items-center justify-center gap-2 rounded-md bg-success px-4 py-2 text-sm font-medium text-success-foreground hover:bg-success/90 disabled:opacity-50"
                   >
                     <Download className="h-4 w-4" />
                     {incomingLoading ? 'Applying…' : 'Apply Incoming Sync'}
@@ -732,7 +732,7 @@ export default function DeviceLinkSettings() {
                 {incomingLoading ? 'Applying…' : 'Apply Incoming Mobile Sync'}
               </button>
               {incomingBlockedByPolicy && (
-                <span className="text-xs text-amber-700 dark:text-amber-300">
+                <span className="text-xs text-warning">
                   Apply is blocked by the incoming sender policy until this sender is trusted.
                 </span>
               )}
@@ -751,7 +751,7 @@ export default function DeviceLinkSettings() {
       )}
 
       {error && (
-        <div className="app-note border-red-500/50 bg-red-500/10 p-3 text-sm text-red-600 dark:text-red-400">
+        <div className="app-note border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
           {error}
           <button onClick={clearMessages} className="ml-2 opacity-50 hover:opacity-100">
             ×
@@ -760,7 +760,7 @@ export default function DeviceLinkSettings() {
       )}
 
       {success && (
-        <div className="app-note border-green-500/50 bg-green-500/10 p-3 text-sm text-green-600 dark:text-green-400">
+        <div className="app-note border-success/50 bg-success/10 p-3 text-sm text-success">
           {success}
           <button onClick={clearMessages} className="ml-2 opacity-50 hover:opacity-100">
             ×

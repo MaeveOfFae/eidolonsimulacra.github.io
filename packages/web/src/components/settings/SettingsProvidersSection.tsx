@@ -165,7 +165,7 @@ export default function SettingsProvidersSection({
             <div
               className={`rounded-lg border px-4 py-3 text-sm ${
                 testResult.success
-                  ? 'border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-300'
+                  ? 'border-success/30 bg-success/10 text-success'
                   : 'border-destructive/30 bg-destructive/10 text-destructive'
               }`}
             >

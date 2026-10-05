@@ -660,11 +660,11 @@ export default function GenerationProgress({
   const getAssetIcon = (status: AssetProgress['status']) => {
     switch (status) {
       case 'complete':
-        return <CheckCircle2 className="h-4 w-4 text-green-500" />;
+        return <CheckCircle2 className="h-4 w-4 text-success" />;
       case 'generating':
         return <Loader2 className="h-4 w-4 text-primary animate-spin" />;
       case 'reviewing':
-        return <FileText className="h-4 w-4 text-amber-500" />;
+        return <FileText className="h-4 w-4 text-warning" />;
       case 'error':
         return <XCircle className="h-4 w-4 text-destructive" />;
       default:
@@ -758,9 +758,9 @@ export default function GenerationProgress({
             asset.status === 'generating'
               ? 'border-primary bg-primary/10'
               : asset.status === 'reviewing'
-                ? 'border-amber-500/50 bg-amber-500/10'
+                ? 'border-warning/50 bg-warning/10'
                 : asset.status === 'complete'
-                  ? 'border-green-500/50 bg-green-500/10'
+                  ? 'border-success/50 bg-success/10'
                   : 'border-border'
           }`;
 

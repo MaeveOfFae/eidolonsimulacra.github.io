@@ -226,19 +226,19 @@ export default function ExportModal({ draftId, characterName, onClose }: ExportM
             </div>
 
             {selectedPreset === 'png' && !hasPngCardImage && (
-              <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">
+              <div className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-warning">
                 PNG export needs an attached draft card image. Attach one from draft review first.
               </div>
             )}
 
             <section
-              className={`rounded-lg border p-4 ${requiresAcknowledgement ? 'border-amber-500/40 bg-amber-500/10' : 'border-emerald-500/30 bg-emerald-500/10'}`}
+              className={`rounded-lg border p-4 ${requiresAcknowledgement ? 'border-warning/40 bg-warning/10' : 'border-success/30 bg-success/10'}`}
             >
               <div className="flex items-start gap-3">
                 {requiresAcknowledgement ? (
-                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-300" />
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
                 ) : (
-                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-300" />
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" />
                 )}
                 <div className="min-w-0">
                   <h3 className="text-sm font-semibold text-foreground">Export readiness</h3>
@@ -278,7 +278,7 @@ export default function ExportModal({ draftId, characterName, onClose }: ExportM
               </div>
 
               {exportReadiness.blockingWarnings.length > 0 && (
-                <div className="mt-3 space-y-2 rounded-md border border-amber-500/40 bg-background/60 p-3 text-xs text-amber-800 dark:text-amber-200">
+                <div className="mt-3 space-y-2 rounded-md border border-warning/40 bg-background/60 p-3 text-xs text-warning">
                   {exportReadiness.blockingWarnings.map((warning) => (
                     <div key={warning}>{warning}</div>
                   ))}
@@ -345,7 +345,7 @@ export default function ExportModal({ draftId, characterName, onClose }: ExportM
             )}
 
             {successMessage && (
-              <div className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
+              <div className="rounded-md border border-success/40 bg-success/10 px-3 py-2 text-sm text-success">
                 <div className="flex items-start gap-2">
                   <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
                   <span>{successMessage}</span>

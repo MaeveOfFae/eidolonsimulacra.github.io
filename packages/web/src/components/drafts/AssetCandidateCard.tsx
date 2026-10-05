@@ -107,7 +107,7 @@ export default function AssetCandidateCard({
               onClick={() => void onCopy(candidate.id, candidate.content)}
               className="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-sm hover:bg-accent"
             >
-              {isCopied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+              {isCopied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
               {isCopied ? 'Copied' : 'Copy'}
             </button>
 

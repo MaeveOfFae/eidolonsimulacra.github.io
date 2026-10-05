@@ -37,9 +37,9 @@ export function BlueprintLintPanel({ blueprintPath }: BlueprintLintPanelProps) {
           <p className="mt-1">Checks frontmatter and structural issues for the selected blueprint.</p>
         </div>
         {issues.length === 0 && data ? (
-          <CheckCircle2 className="h-5 w-5 text-green-500" />
+          <CheckCircle2 className="h-5 w-5 text-success" />
         ) : (
-          <FileWarning className="h-5 w-5 text-amber-500" />
+          <FileWarning className="h-5 w-5 text-warning" />
         )}
       </div>
 
@@ -64,7 +64,7 @@ export function BlueprintLintPanel({ blueprintPath }: BlueprintLintPanelProps) {
           </div>
 
           {issues.length === 0 ? (
-            <div className="rounded-md border border-green-500/40 bg-green-500/10 p-3 text-green-700 dark:text-green-300">
+            <div className="rounded-md border border-success/40 bg-success/10 p-3 text-success">
               No obvious issues found.
             </div>
           ) : (
@@ -72,7 +72,7 @@ export function BlueprintLintPanel({ blueprintPath }: BlueprintLintPanelProps) {
               {issues.map((issue) => (
                 <div
                   key={`${issue.severity}-${issue.message}`}
-                  className={`flex items-start gap-2 rounded-md border p-3 ${issue.severity === 'error' ? 'border-destructive/40 bg-destructive/10 text-destructive' : 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300'}`}
+                  className={`flex items-start gap-2 rounded-md border p-3 ${issue.severity === 'error' ? 'border-destructive/40 bg-destructive/10 text-destructive' : 'border-warning/40 bg-warning/10 text-warning'}`}
                 >
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                   <span>{issue.message}</span>

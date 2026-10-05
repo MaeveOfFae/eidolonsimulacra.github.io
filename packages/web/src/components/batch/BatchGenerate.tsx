@@ -719,7 +719,7 @@ export default function BatchGenerate() {
                     {job.status === 'complete' && (
                       <a
                         href={`/drafts/${encodeURIComponent(job.draftPath || '')}`}
-                        className="flex items-center gap-1 text-green-500 hover:underline"
+                        className="flex items-center gap-1 text-success hover:underline"
                       >
                         <CheckCircle className="h-4 w-4" />
                         View

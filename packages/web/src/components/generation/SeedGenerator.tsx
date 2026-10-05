@@ -589,7 +589,7 @@ export default function SeedGenerator() {
                       onClick={() => handleToggleFavorite(seed)}
                       className={`app-button !px-3 !py-2 !text-xs ${
                         favoriteSeeds.has(seed)
-                          ? 'border border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-300'
+                          ? 'border border-warning/50 bg-warning/10 text-warning'
                           : 'app-button-secondary'
                       }`}
                     >
@@ -827,7 +827,7 @@ export default function SeedGenerator() {
         )}
 
         {blueprintError && !blueprintLoading && (
-          <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+          <div className="rounded-lg border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-warning">
             {blueprintError}
           </div>
         )}

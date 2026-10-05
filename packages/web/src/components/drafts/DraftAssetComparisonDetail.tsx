@@ -67,7 +67,7 @@ export function DraftAssetComparisonDetail({
       </div>
 
       {reviewComparison?.hasDifferences && (
-        <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
+        <div className="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs text-warning">
           <div className="flex items-start gap-2">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <div>
@@ -85,7 +85,7 @@ export function DraftAssetComparisonDetail({
       )}
 
       {promotionNotice && (
-        <div className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-300">
+        <div className="rounded-md border border-success/40 bg-success/10 px-3 py-2 text-xs text-success">
           {promotionNotice}
         </div>
       )}

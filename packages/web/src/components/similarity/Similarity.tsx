@@ -75,21 +75,21 @@ export default function Similarity() {
   };
 
   const getScoreColor = (score: number) => {
-    if (score >= 0.75) return 'text-green-500';
-    if (score >= 0.5) return 'text-yellow-500';
-    return 'text-red-500';
+    if (score >= 0.75) return 'text-success';
+    if (score >= 0.5) return 'text-warning';
+    return 'text-destructive';
   };
 
   const getCompatibilityColor = (compat: string) => {
     switch (compat) {
       case 'high':
-        return 'bg-green-500/20 text-green-400';
+        return 'bg-success/20 text-success';
       case 'medium':
-        return 'bg-yellow-500/20 text-yellow-400';
+        return 'bg-warning/20 text-warning';
       case 'low':
-        return 'bg-orange-500/20 text-orange-400';
+        return 'bg-warning/20 text-warning';
       case 'conflict':
-        return 'bg-red-500/20 text-red-400';
+        return 'bg-destructive/20 text-destructive';
       default:
         return 'bg-muted text-muted-foreground';
     }
@@ -266,7 +266,7 @@ export default function Similarity() {
             <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
               <div className="app-panel min-w-0 overflow-hidden p-6">
                 <h3 className="font-semibold mb-4 flex items-center gap-2">
-                  <CheckCircle className="h-5 w-5 text-green-500" />
+                  <CheckCircle className="h-5 w-5 text-success" />
                   Commonalities
                 </h3>
                 {result.commonalities.length > 0 ? (
@@ -284,7 +284,7 @@ export default function Similarity() {
 
               <div className="app-panel min-w-0 overflow-hidden p-6">
                 <h3 className="font-semibold mb-4 flex items-center gap-2">
-                  <Users className="h-5 w-5 text-blue-500" />
+                  <Users className="h-5 w-5 text-info" />
                   Differences
                 </h3>
                 {result.differences.length > 0 ? (

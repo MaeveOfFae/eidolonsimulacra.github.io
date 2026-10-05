@@ -18,22 +18,27 @@
     --muted-foreground: 240 3.8% 44%;
     --accent: 240 4.8% 95.9%;
     --accent-foreground: 240 5.9% 10%;
-    /* red-500 measured 3.61:1 against its own foreground, so every destructive
-       button failed AA; red-600 clears it. */
-    --destructive: 0 72% 51%;
+    /* States serve three roles from two tokens — text on the page (~90 sites),
+       text on a 14% tint of themselves (the pill and callout shape, ~120 sites),
+       and a solid fill carrying their -foreground (~8 sites) — and the values are
+       picked to clear AA in all three, which token-contrast.test.ts enforces.
+       --destructive is deepened to red-700 because it is overwhelmingly *text*
+       (92 sites): red-500 measured 3.61:1 against its own foreground, and red-600
+       still missed AA on a tint. */
+    --destructive: 0 74% 42%;
     --destructive-foreground: 0 0% 98%;
     /* Semantic states. Of the 407 Tailwind palette utilities still in the
        components, 381 carry one of three meanings — amber/yellow/orange for
        warning, emerald/green for success, red/rose for destructive — hand-written
        per call site with a `dark:` shade beside each one. These tokens carry the
        same hues, so migrating them is mechanical and each mode gets its own
-       readable foreground: --*-foreground is the text colour on a 14% tint of the
-       base, which is how the pills and callouts use them. The other 26 are
-       decorative or data-viz. */
-    --success: 161 94% 30%;
-    --success-foreground: 163 88% 20%;
-    --warning: 32 95% 44%;
-    --warning-foreground: 28 83% 31%;
+       readable value. The other 26 are decorative or data-viz. */
+    --success: 163 88% 20%;
+    --success-foreground: 0 0% 98%;
+    --warning: 28 83% 31%;
+    --warning-foreground: 0 0% 98%;
+    --info: 201 96% 32%;
+    --info-foreground: 0 0% 98%;
     --border: 240 5.9% 90%;
     --input: 240 5.9% 90%;
     --ring: 262 83% 58%;
@@ -65,12 +70,17 @@
     --muted-foreground: 240 5% 64.9%;
     --accent: 240 3.7% 15.9%;
     --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --success: 160 84% 39%;
-    --success-foreground: 158 64% 67%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 46 97% 65%;
+    /* In dark mode the state colours invert to light hues so they still read as
+       text on a near-black page, which means their -foreground (the text on a
+       solid fill of them) has to be dark rather than white. */
+    --destructive: 0 91% 71%;
+    --destructive-foreground: 240 6% 10%;
+    --success: 158 64% 67%;
+    --success-foreground: 240 6% 10%;
+    --warning: 46 97% 65%;
+    --warning-foreground: 240 6% 10%;
+    --info: 199 89% 74%;
+    --info-foreground: 240 6% 10%;
     --border: 240 3.7% 15.9%;
     --input: 240 3.7% 15.9%;
     --ring: 262 83% 58%;
@@ -377,12 +387,17 @@ body.modal-open [data-global-assistant-root='true'] {
 
   .app-pill-amber {
     background: color-mix(in srgb, hsl(var(--warning)) 14%, transparent);
-    color: hsl(var(--warning-foreground));
+    color: hsl(var(--warning));
   }
 
   .app-pill-emerald {
     background: color-mix(in srgb, hsl(var(--success)) 14%, transparent);
-    color: hsl(var(--success-foreground));
+    color: hsl(var(--success));
+  }
+
+  .app-pill-info {
+    background: color-mix(in srgb, hsl(var(--info)) 14%, transparent);
+    color: hsl(var(--info));
   }
 
   .app-button {

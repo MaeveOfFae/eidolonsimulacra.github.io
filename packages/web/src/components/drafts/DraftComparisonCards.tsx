@@ -136,7 +136,7 @@ export function DraftComparisonCards({
       )}
 
       {branchNotice && (
-        <div className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-300">
+        <div className="rounded-md border border-success/40 bg-success/10 px-3 py-2 text-xs text-success">
           {branchNotice}
         </div>
       )}

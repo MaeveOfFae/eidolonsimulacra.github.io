@@ -276,7 +276,7 @@ export default function ImportCharacterModal({ onClose, onImport, template }: Im
             {/* Step: Done */}
             {step === 'done' && (
               <div className="flex flex-col items-center gap-3 py-6 text-center">
-                <CheckCircle2 className="h-12 w-12 text-emerald-500" />
+                <CheckCircle2 className="h-12 w-12 text-success" />
                 <div>
                   <p className="text-lg font-semibold">Character Imported</p>
                   <p className="mt-1 text-sm text-muted-foreground">

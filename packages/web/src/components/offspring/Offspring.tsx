@@ -604,7 +604,7 @@ export default function Offspring() {
         )}
 
         {blueprintError && !blueprintLoading && (
-          <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+          <div className="rounded-lg border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-warning">
             {blueprintError}
           </div>
         )}
@@ -724,12 +724,12 @@ export default function Offspring() {
             </p>
           )}
           {sharedParentTemplate && template === sharedParentTemplate && (
-            <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
+            <div className="rounded-md border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
               Both parents use {sharedParentTemplate}, so offspring defaults to that same layout.
             </div>
           )}
           {isThirdTemplateChoice && (
-            <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-300">
+            <div className="rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
               Parent templates differ: {parent1TemplateName} and {parent2TemplateName}. You selected {template}, so the
               offspring will be compiled into a third layout.
             </div>
@@ -780,7 +780,7 @@ export default function Offspring() {
         preview={getStageLabel(stage)}
         meta={
           <span
-            className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${stage === 'error' ? 'bg-destructive/10 text-destructive' : stage === 'complete' ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : stage === 'cancelled' ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300' : 'bg-muted text-muted-foreground'}`}
+            className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${stage === 'error' ? 'bg-destructive/10 text-destructive' : stage === 'complete' ? 'bg-success/10 text-success' : stage === 'cancelled' ? 'bg-warning/10 text-warning' : 'bg-muted text-muted-foreground'}`}
           >
             {getStageLabel(stage)}
           </span>
@@ -788,7 +788,7 @@ export default function Offspring() {
         defaultExpanded={stage !== 'idle' || Boolean(offspringSeed) || Boolean(output) || Boolean(result)}
       >
         {stage === 'cancelled' && (
-          <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-300">
+          <div className="rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
             Offspring generation was cancelled before completion.
           </div>
         )}
@@ -802,12 +802,12 @@ export default function Offspring() {
             return (
               <div
                 key={entry.key}
-                className={`min-w-0 rounded-md border p-4 ${isCurrent ? 'border-primary bg-primary/5' : isComplete ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-border bg-background/40'}`}
+                className={`min-w-0 rounded-md border p-4 ${isCurrent ? 'border-primary bg-primary/5' : isComplete ? 'border-success/30 bg-success/5' : 'border-border bg-background/40'}`}
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="text-sm font-medium text-foreground">{entry.label}</div>
                   <div
-                    className={`h-2.5 w-2.5 rounded-full ${isCurrent ? 'bg-primary' : isComplete ? 'bg-emerald-500' : 'bg-muted-foreground/40'}`}
+                    className={`h-2.5 w-2.5 rounded-full ${isCurrent ? 'bg-primary' : isComplete ? 'bg-success' : 'bg-muted-foreground/40'}`}
                   />
                 </div>
                 <p className="mt-2 text-xs text-muted-foreground">{entry.detail}</p>
@@ -831,7 +831,7 @@ export default function Offspring() {
           subtitle="Edit the synthesized offspring seed before compiling assets"
           preview={offspringSeed.slice(0, 140) + (offspringSeed.length > 140 ? '...' : '')}
           meta={
-            <span className="shrink-0 rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-300">
+            <span className="shrink-0 rounded-full bg-warning/10 px-2.5 py-1 text-xs font-medium text-warning">
               Seed Ready
             </span>
           }
@@ -882,11 +882,11 @@ export default function Offspring() {
           subtitle={result.characterName}
           preview={`${getParentName(parent1)} + ${getParentName(parent2)}`}
           defaultExpanded
-          className="app-note border-green-500/50 bg-green-500/10 text-green-700 dark:text-green-400"
+          className="app-note border-success/50 bg-success/10 text-success"
         >
           <div className="flex items-center gap-2 mb-4">
-            <CheckCircle className="h-5 w-5 text-green-500" />
-            <h2 className="text-lg font-semibold text-green-500">Offspring Created!</h2>
+            <CheckCircle className="h-5 w-5 text-success" />
+            <h2 className="text-lg font-semibold text-success">Offspring Created!</h2>
           </div>
           <p className="text-sm mb-2">
             <strong>Character:</strong> {result.characterName}

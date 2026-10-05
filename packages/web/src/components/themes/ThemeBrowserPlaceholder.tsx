@@ -33,8 +33,8 @@ export default function ThemeBrowserPlaceholder({ showHeader = true }: ThemeBrow
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-xl border border-border bg-card p-4">
           <div className="flex items-center gap-3 mb-3">
-            <div className="p-2 rounded-lg bg-blue-500/10">
-              <Search className="h-5 w-5 text-blue-500" />
+            <div className="p-2 rounded-lg bg-info/10">
+              <Search className="h-5 w-5 text-info" />
             </div>
             <h4 className="font-medium">Search & Filter</h4>
           </div>
@@ -43,8 +43,8 @@ export default function ThemeBrowserPlaceholder({ showHeader = true }: ThemeBrow
 
         <div className="rounded-xl border border-border bg-card p-4">
           <div className="flex items-center gap-3 mb-3">
-            <div className="p-2 rounded-lg bg-green-500/10">
-              <TrendingUp className="h-5 w-5 text-green-500" />
+            <div className="p-2 rounded-lg bg-success/10">
+              <TrendingUp className="h-5 w-5 text-success" />
             </div>
             <h4 className="font-medium">Trending Themes</h4>
           </div>
@@ -53,8 +53,8 @@ export default function ThemeBrowserPlaceholder({ showHeader = true }: ThemeBrow
 
         <div className="rounded-xl border border-border bg-card p-4">
           <div className="flex items-center gap-3 mb-3">
-            <div className="p-2 rounded-lg bg-amber-500/10">
-              <Clock className="h-5 w-5 text-amber-500" />
+            <div className="p-2 rounded-lg bg-warning/10">
+              <Clock className="h-5 w-5 text-warning" />
             </div>
             <h4 className="font-medium">Recent Uploads</h4>
           </div>

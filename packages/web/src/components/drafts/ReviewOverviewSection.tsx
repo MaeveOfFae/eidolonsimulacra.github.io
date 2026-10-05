@@ -111,15 +111,15 @@ export default function ReviewOverviewSection({
       ) : null}
 
       <div
-        className={`rounded-xl border p-4 text-sm ${exportReadiness.requiresAcknowledgement ? 'border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-100' : 'border-emerald-500/30 bg-emerald-500/10 text-muted-foreground'}`}
+        className={`rounded-xl border p-4 text-sm ${exportReadiness.requiresAcknowledgement ? 'border-warning/40 bg-warning/10 text-warning' : 'border-success/30 bg-success/10 text-muted-foreground'}`}
       >
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               {exportReadiness.requiresAcknowledgement ? (
-                <AlertTriangle className="h-4 w-4 shrink-0 text-amber-700 dark:text-amber-300" />
+                <AlertTriangle className="h-4 w-4 shrink-0 text-warning" />
               ) : (
-                <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-300" />
+                <ShieldCheck className="h-4 w-4 shrink-0 text-success" />
               )}
               <div className="font-medium text-foreground">Export readiness</div>
             </div>
@@ -161,7 +161,7 @@ export default function ReviewOverviewSection({
         ) : null}
 
         {exportReadiness.blockingWarnings.length > 0 ? (
-          <div className="mt-3 space-y-2 rounded-lg border border-amber-500/40 bg-background/60 p-3 text-xs text-amber-800 dark:text-amber-200">
+          <div className="mt-3 space-y-2 rounded-lg border border-warning/40 bg-background/60 p-3 text-xs text-warning">
             {exportReadiness.blockingWarnings.map((warning) => (
               <div key={warning}>{warning}</div>
             ))}

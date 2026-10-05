@@ -410,7 +410,7 @@ export function DraftListSidebar({
                 onChange={(e) => setUndoableOnly(e.target.checked)}
                 className="rounded border-input"
               />
-              <Clock className="h-3.5 w-3.5 text-emerald-500" />
+              <Clock className="h-3.5 w-3.5 text-success" />
               Undoable merges only
             </label>
           )}
@@ -678,9 +678,9 @@ export function DraftListSidebar({
                               className={cn(
                                 'rounded px-1.5 py-0.5 text-[9px] font-medium',
                                 badge.tone === 'warning'
-                                  ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300'
+                                  ? 'bg-warning/10 text-warning'
                                   : badge.tone === 'success'
-                                    ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                                    ? 'bg-success/10 text-success'
                                     : 'bg-muted text-muted-foreground',
                               )}
                             >

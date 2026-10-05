@@ -221,7 +221,7 @@ export default function ChatPanel({ draftId, assetName, onAssetRefined }: ChatPa
           <div className="flex gap-2">
             <button
               onClick={handleApplyRefinement}
-              className="flex-1 inline-flex items-center justify-center gap-1 rounded bg-green-600 px-3 py-1.5 text-xs text-white hover:bg-green-700"
+              className="flex-1 inline-flex items-center justify-center gap-1 rounded bg-success px-3 py-1.5 text-xs text-success-foreground hover:bg-success/90"
             >
               <Check className="h-3 w-3" />
               Apply

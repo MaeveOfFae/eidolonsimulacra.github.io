@@ -74,15 +74,15 @@ export default function HoverHelpPopover({
         )}
 
         {pitfalls.length > 0 && (
-          <section className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3">
+          <section className="mt-3 rounded-xl border border-warning/30 bg-warning/10 p-3">
             <div className="flex items-center gap-2 text-foreground">
-              <TriangleAlert className="h-3.5 w-3.5 text-amber-500" />
+              <TriangleAlert className="h-3.5 w-3.5 text-warning" />
               <h4 className="text-xs font-semibold uppercase tracking-[0.14em]">Avoid</h4>
             </div>
             <div className="mt-2 space-y-2">
               {pitfalls.slice(0, 2).map((item) => (
                 <div key={item} className="flex items-start gap-2 text-xs text-muted-foreground">
-                  <div className="mt-1.5 h-1.5 w-1.5 rounded-full bg-amber-500" />
+                  <div className="mt-1.5 h-1.5 w-1.5 rounded-full bg-warning" />
                   <p className="leading-5">{item}</p>
                 </div>
               ))}

@@ -135,7 +135,7 @@ function CollapsibleSubmenu({
                 </span>
               )}
               {seedsCount > 0 && (
-                <span className="rounded-md bg-amber-500/20 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
+                <span className="rounded-md bg-warning/20 px-2 py-0.5 text-[10px] font-medium text-warning">
                   {seedsCount} seeds
                 </span>
               )}

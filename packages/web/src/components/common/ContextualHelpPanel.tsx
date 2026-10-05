@@ -50,15 +50,15 @@ export default function ContextualHelpPanel({ entry, topics, isOpen, onClose }: 
             </div>
           </section>
 
-          <section className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3.5">
+          <section className="rounded-lg border border-warning/30 bg-warning/10 p-3.5">
             <div className="flex items-center gap-2 text-foreground">
-              <TriangleAlert className="h-4 w-4 text-amber-500" />
+              <TriangleAlert className="h-4 w-4 text-warning" />
               <h3 className="font-semibold">Common mistakes to avoid</h3>
             </div>
             <div className="mt-3 space-y-3">
               {entry.pitfalls.map((pitfall) => (
                 <div key={pitfall} className="flex items-start gap-3 text-sm text-muted-foreground">
-                  <div className="mt-2 h-1.5 w-1.5 rounded-full bg-amber-500" />
+                  <div className="mt-2 h-1.5 w-1.5 rounded-full bg-warning" />
                   <p className="leading-6">{pitfall}</p>
                 </div>
               ))}

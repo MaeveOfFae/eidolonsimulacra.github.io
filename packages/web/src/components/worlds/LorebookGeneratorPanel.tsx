@@ -409,7 +409,7 @@ export default function LorebookGeneratorPanel({
     <section className="space-y-6">
       <div className="app-panel p-4 sm:p-6">
         <div className="mb-4 flex items-start gap-3">
-          <div className="rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 p-3 text-white shadow-lg shadow-emerald-500/20">
+          <div className="rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 p-3 text-white shadow-lg shadow-success/20">
             <BookOpen className="h-5 w-5" />
           </div>
           <div>
@@ -561,7 +561,7 @@ export default function LorebookGeneratorPanel({
                 type="button"
                 onClick={() => void handlePromoteToWorld()}
                 disabled={isGenerating || isPromoting || !output.trim() || !canPromote}
-                className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-xs font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-xl bg-success px-3 py-2 text-xs font-medium text-success-foreground hover:bg-success/90 disabled:opacity-50"
               >
                 {isPromoting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <BookOpen className="h-3.5 w-3.5" />}
                 {isPromoting ? 'Promoting world…' : 'Promote to persisted world'}

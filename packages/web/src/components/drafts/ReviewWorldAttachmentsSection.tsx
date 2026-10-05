@@ -109,7 +109,7 @@ export default function ReviewWorldAttachmentsSection({
       </div>
 
       {hasMultipleWorldAttachments ? (
-        <div className="mt-3 space-y-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-100">
+        <div className="mt-3 space-y-2 rounded-lg border border-warning/40 bg-warning/10 p-3 text-xs text-warning">
           <div className="font-medium text-foreground">Multiple world links found</div>
           <div>
             This draft is linked to more than one persisted world character. Review-side move and detach actions are

@@ -52,6 +52,8 @@ describe('theme tokens', () => {
         'success-foreground',
         'warning',
         'warning-foreground',
+        'info',
+        'info-foreground',
       ]) {
         expect(tokens[name], `${mode} (${selector}) is missing --${name}`).toBeDefined();
       }
@@ -72,19 +74,22 @@ describe('theme tokens', () => {
         ['primary-foreground on primary', rgb('primary-foreground'), rgb('primary')],
         ['secondary-foreground on secondary', rgb('secondary-foreground'), rgb('secondary')],
         ['accent-foreground on accent', rgb('accent-foreground'), rgb('accent')],
-        ['destructive-foreground on destructive', rgb('destructive-foreground'), rgb('destructive')],
-        // The pill/callout shape: text token over a 14% tint of its base colour.
-        [
-          'success-foreground on a success tint',
-          rgb('success-foreground'),
-          compositeOver(rgb('background'), rgb('success'), TINT_ALPHA),
-        ],
-        [
-          'warning-foreground on a warning tint',
-          rgb('warning-foreground'),
-          compositeOver(rgb('background'), rgb('warning'), TINT_ALPHA),
-        ],
       ];
+
+      // Each state token is used three ways, so each is checked three ways:
+      // as text on the page, as a solid fill carrying its own foreground, and as
+      // text on a 14% tint of itself — the pill and callout shape the components
+      // write as `bg-<state>/10` with `text-<state>`.
+      for (const state of ['success', 'warning', 'info', 'destructive']) {
+        const base = rgb(state);
+
+        pairs.push(
+          [`${state} on background`, base, rgb('background')],
+          [`${state} on card`, base, rgb('card')],
+          [`${state}-foreground on a solid ${state}`, rgb(`${state}-foreground`), base],
+          [`${state} on a 14% ${state} tint`, base, compositeOver(rgb('background'), base, TINT_ALPHA)],
+        );
+      }
 
       for (const [label, foreground, background] of pairs) {
         const ratio = contrastRatio(foreground, background);

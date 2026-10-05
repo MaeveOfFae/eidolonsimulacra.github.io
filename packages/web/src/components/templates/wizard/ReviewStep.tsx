@@ -81,14 +81,14 @@ export default function ReviewStep({ templateData }: ReviewStepProps) {
       <div className="pl-11 space-y-6">
         {/* Warnings */}
         {warnings.length > 0 && (
-          <div className="rounded-lg border border-yellow-500 bg-yellow-500/10 p-4">
-            <div className="flex items-start gap-2 text-yellow-500 mb-2">
+          <div className="rounded-lg border border-warning bg-warning/10 p-4">
+            <div className="flex items-start gap-2 text-warning mb-2">
               <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
               <h4 className="font-semibold">Warnings</h4>
             </div>
             <ul className="text-sm space-y-1">
               {warnings.map((warning, index) => (
-                <li key={index} className="text-yellow-500/80">
+                <li key={index} className="text-warning">
                   {warning}
                 </li>
               ))}

@@ -242,15 +242,15 @@ export default function TemplateWizard({
           )}
 
           {forkMode && (
-            <div className="mb-4 rounded-lg border border-blue-500/40 bg-blue-500/10 p-4 text-sm text-blue-700 dark:text-blue-300">
+            <div className="mb-4 rounded-lg border border-info/40 bg-info/10 p-4 text-sm text-info">
               Built-in templates are copied on save. The original stays unchanged.
             </div>
           )}
 
           {created ? (
             <div className="flex flex-col items-center justify-center h-full py-12">
-              <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mb-4">
-                <CheckCircle2 className="h-8 w-8 text-green-500" />
+              <div className="w-16 h-16 rounded-full bg-success/20 flex items-center justify-center mb-4">
+                <CheckCircle2 className="h-8 w-8 text-success" />
               </div>
               <h3 className="text-xl font-semibold mb-2">
                 {forkMode ? 'Template Copy Saved!' : isEditMode ? 'Template Updated!' : 'Template Created!'}

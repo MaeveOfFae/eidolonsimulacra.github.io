@@ -145,7 +145,7 @@ export default function SettingsRuntimeSection({
                   ? `Loaded ${modelsLoadedCount} models.`
                   : 'Showing built-in suggestions.'}
             </p>
-            {modelsNotice && <p className="text-xs text-amber-700 dark:text-amber-300">{modelsNotice}</p>}
+            {modelsNotice && <p className="text-xs text-warning">{modelsNotice}</p>}
           </div>
         </div>
 
@@ -208,17 +208,17 @@ export default function SettingsRuntimeSection({
           bodyClassName="space-y-4"
         >
           {selectedProvider === 'openai' && (
-            <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-900 dark:text-amber-100">
+            <div className="rounded-lg border border-warning/20 bg-warning/10 p-3 text-sm text-warning">
               Direct OpenAI calls from this browser app are blocked by CORS on api.openai.com. Use OpenRouter for
               browser-direct usage, or point the base URL at your own proxy or relay.
             </div>
           )}
 
           {selectedProvider === 'ollama' && (
-            <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 p-3 text-sm text-blue-900 dark:text-blue-100">
+            <div className="rounded-lg border border-info/20 bg-info/10 p-3 text-sm text-info">
               Ollama runs locally on your machine. Make sure Ollama is running on{' '}
-              <code className="rounded bg-blue-500/20 px-1 py-0.5">http://localhost:11434</code> or configure a custom
-              base URL.
+              <code className="rounded bg-info/20 px-1 py-0.5">http://localhost:11434</code> or configure a custom base
+              URL.
             </div>
           )}
 

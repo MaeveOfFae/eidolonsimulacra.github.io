@@ -314,7 +314,7 @@ export default function BlueprintBrowserDialog({
                     </div>
 
                     {isExistingAsset(selectedBlueprint) && (
-                      <div className="rounded-lg border border-yellow-500/40 bg-yellow-500/10 p-3 text-sm text-yellow-600 dark:text-yellow-300">
+                      <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning">
                         This blueprint is already in use. Please select a different one.
                       </div>
                     )}

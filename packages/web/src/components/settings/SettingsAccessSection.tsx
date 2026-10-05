@@ -71,7 +71,7 @@ export default function SettingsAccessSection({
         </label>
 
         {persistKeys && (
-          <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 text-sm text-amber-900 dark:text-amber-100">
+          <div className="rounded-lg border border-warning/20 bg-warning/10 p-3 text-sm text-warning">
             {desktopRuntime
               ? 'Stored in desktop app data on this device. Use caution on shared devices.'
               : 'Stored in local browser storage on this device. Use caution on shared devices.'}
@@ -170,7 +170,7 @@ export default function SettingsAccessSection({
           </div>
 
           {selectedProvider === 'openai' && (
-            <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">
+            <p className="mt-3 text-xs text-warning">
               Browser-direct OpenAI requests usually need a proxy or OpenRouter because of CORS.
             </p>
           )}

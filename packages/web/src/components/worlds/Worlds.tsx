@@ -236,7 +236,7 @@ export default function Worlds() {
           </div>
 
           {auditIssueCount === 0 ? (
-            <div className="app-note flex items-start gap-3 border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-800 dark:text-emerald-200">
+            <div className="app-note flex items-start gap-3 border-success/40 bg-success/10 px-4 py-3 text-sm text-success">
               <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" />
               <span>No duplicate or stale draft-to-world character links or broken relationships found.</span>
             </div>
@@ -276,7 +276,7 @@ export default function Worlds() {
               <div className="grid gap-4 xl:grid-cols-3">
                 <div className="space-y-3 rounded-xl border border-border/60 bg-background/40 p-3">
                   <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                    <AlertTriangle className="h-4 w-4 text-amber-500" />
+                    <AlertTriangle className="h-4 w-4 text-warning" />
                     Duplicate draft links
                   </div>
                   {duplicateCharacterLinkGroups.length > 0 ? (
@@ -319,7 +319,7 @@ export default function Worlds() {
 
                 <div className="space-y-3 rounded-xl border border-border/60 bg-background/40 p-3">
                   <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                    <AlertTriangle className="h-4 w-4 text-amber-500" />
+                    <AlertTriangle className="h-4 w-4 text-warning" />
                     Stale character links
                   </div>
                   {staleCharacterLinks.length > 0 ? (
@@ -350,7 +350,7 @@ export default function Worlds() {
 
                 <div className="space-y-3 rounded-xl border border-border/60 bg-background/40 p-3">
                   <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                    <AlertTriangle className="h-4 w-4 text-amber-500" />
+                    <AlertTriangle className="h-4 w-4 text-warning" />
                     Broken relationships
                   </div>
                   {worldRelationshipAuditIssues.length > 0 ? (

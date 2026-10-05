@@ -34,9 +34,9 @@ function formatDuration(ms: number): string {
 function StatusPill({ status }: { status: ComparisonCandidateStatus | 'running' }) {
   const className =
     status === 'ok'
-      ? 'text-emerald-600 dark:text-emerald-400'
+      ? 'text-success'
       : status === 'error'
-        ? 'text-red-600 dark:text-red-400'
+        ? 'text-destructive'
         : status === 'running'
           ? 'text-primary'
           : 'text-muted-foreground';
@@ -275,7 +275,7 @@ export default function Compare() {
           )}
         </div>
 
-        {runError ? <p className="text-sm text-red-600 dark:text-red-400">{runError}</p> : null}
+        {runError ? <p className="text-sm text-destructive">{runError}</p> : null}
 
         <button
           type="button"
@@ -315,7 +315,7 @@ export default function Compare() {
                     <td className="px-3 py-2">
                       <StatusPill status={runningModel === summary.model ? 'running' : summary.status} />
                       {summary.errorMessage ? (
-                        <span className="ml-2 text-xs text-red-600 dark:text-red-400">{summary.errorMessage}</span>
+                        <span className="ml-2 text-xs text-destructive">{summary.errorMessage}</span>
                       ) : null}
                     </td>
                     <td className="px-3 py-2">

@@ -61,7 +61,7 @@ function SortableAsset({
           <span className={cn('font-medium', asset.required ? 'text-primary' : '')}>
             {asset.name.replace(/_/g, ' ')}
           </span>
-          {asset.required && <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />}
+          {asset.required && <Star className="h-3 w-3 fill-yellow-500 text-yellow-500" />}
         </div>
         {asset.description && <p className="text-xs text-muted-foreground truncate">{asset.description}</p>}
         {asset.import_aliases && asset.import_aliases.length > 0 && (
@@ -242,7 +242,7 @@ export default function AssetSelectionStep({
         <div className="pl-11">
           <div className="flex gap-4 text-xs text-muted-foreground">
             <div className="flex items-center gap-1.5">
-              <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
+              <Star className="h-3 w-3 fill-yellow-500 text-yellow-500" />
               Required
             </div>
             <div className="flex items-center gap-1.5">

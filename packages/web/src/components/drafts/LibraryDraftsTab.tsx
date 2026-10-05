@@ -208,9 +208,7 @@ export default function LibraryDraftsTab({
                           </p>
                           <p className="mt-1 text-xs text-muted-foreground">Assets: {entry.asset_names.join(', ')}</p>
                           {hasUndo && (
-                            <p className="mt-1 text-xs text-emerald-700 dark:text-emerald-300">
-                              Undo available via safeguard snapshot.
-                            </p>
+                            <p className="mt-1 text-xs text-success">Undo available via safeguard snapshot.</p>
                           )}
                         </div>
                         <div className="flex flex-wrap gap-2">

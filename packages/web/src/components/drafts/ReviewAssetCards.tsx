@@ -96,7 +96,7 @@ export default function ReviewAssetCards({
             {(assetEntry.required || !assetExists || approvalStatus !== 'unapproved') && (
               <div className="flex flex-wrap items-center gap-1.5">
                 {!assetExists && (
-                  <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-700 dark:text-amber-300">
+                  <span className="rounded-full border border-warning/40 bg-warning/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-warning">
                     Missing
                   </span>
                 )}
@@ -106,12 +106,12 @@ export default function ReviewAssetCards({
                   </span>
                 )}
                 {assetExists && approvalStatus === 'approved' && (
-                  <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-emerald-700 dark:text-emerald-300">
+                  <span className="rounded-full border border-success/40 bg-success/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-success">
                     Approved
                   </span>
                 )}
                 {approvalStatus === 'changes_requested' && (
-                  <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-amber-700 dark:text-amber-300">
+                  <span className="rounded-full border border-warning/40 bg-warning/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-warning">
                     Changes requested
                   </span>
                 )}

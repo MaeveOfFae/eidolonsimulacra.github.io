@@ -497,7 +497,7 @@ export function VersionHistoryPanel({ draftId, assetName, snapshotId }: VersionH
             )}
 
             {notice && (
-              <div className="mt-3 rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-300">
+              <div className="mt-3 rounded-md border border-success/40 bg-success/10 px-3 py-2 text-xs text-success">
                 {notice}
               </div>
             )}
@@ -676,7 +676,7 @@ export function VersionHistoryPanel({ draftId, assetName, snapshotId }: VersionH
             )}
           </div>
 
-          <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300">
+          <div className="rounded-md border border-warning/30 bg-warning/10 p-3 text-xs text-warning">
             Manual restore points are now live. True historical diffs and branch-aware timeline visuals are still
             planned.
           </div>

@@ -495,19 +495,17 @@ export default function BlueprintEditor() {
 
       {/* Modified Warning */}
       {modified && (
-        <div className="rounded-lg border border-yellow-500 bg-yellow-500/10 px-4 py-2 text-sm text-yellow-500">
+        <div className="rounded-lg border border-warning bg-warning/10 px-4 py-2 text-sm text-warning">
           You have unsaved changes
         </div>
       )}
 
       {notice && (
-        <div className="rounded-lg border border-green-600/30 bg-green-600/10 px-4 py-3 text-sm text-green-700 dark:text-green-400">
-          {notice}
-        </div>
+        <div className="rounded-lg border border-success/30 bg-success/10 px-4 py-3 text-sm text-success">{notice}</div>
       )}
 
       {saveCreatesCopy && (
-        <div className="rounded-lg border border-blue-500/40 bg-blue-500/10 px-4 py-3 text-sm text-blue-700 dark:text-blue-300">
+        <div className="rounded-lg border border-info/40 bg-info/10 px-4 py-3 text-sm text-info">
           This is a built-in blueprint. Saving will create a custom copy in local storage or your synced account instead
           of overwriting the default.
         </div>
@@ -559,9 +557,9 @@ export default function BlueprintEditor() {
                 </p>
               </div>
               {lintIssues.length === 0 ? (
-                <CheckCircle2 className="h-5 w-5 text-green-500" />
+                <CheckCircle2 className="h-5 w-5 text-success" />
               ) : (
-                <FileWarning className="h-5 w-5 text-amber-500" />
+                <FileWarning className="h-5 w-5 text-warning" />
               )}
             </div>
 
@@ -571,7 +569,7 @@ export default function BlueprintEditor() {
             </div>
 
             {lintIssues.length === 0 ? (
-              <div className="mt-4 rounded-md border border-green-500/40 bg-green-500/10 p-3 text-green-700 dark:text-green-300">
+              <div className="mt-4 rounded-md border border-success/40 bg-success/10 p-3 text-success">
                 No obvious lint issues found.
               </div>
             ) : (
@@ -581,7 +579,7 @@ export default function BlueprintEditor() {
                     key={`${issue.severity}-${issue.line}-${issue.message}`}
                     type="button"
                     onClick={() => handleLintIssueClick(issue)}
-                    className={`flex items-start gap-2 rounded-md border p-3 ${issue.severity === 'error' ? 'border-destructive/40 bg-destructive/10 text-destructive' : 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300'}`}
+                    className={`flex items-start gap-2 rounded-md border p-3 ${issue.severity === 'error' ? 'border-destructive/40 bg-destructive/10 text-destructive' : 'border-warning/40 bg-warning/10 text-warning'}`}
                   >
                     <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                     <span className="flex-1 text-left">{issue.message}</span>
