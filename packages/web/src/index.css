@@ -13,11 +13,27 @@
     --secondary: 240 4.8% 95.9%;
     --secondary-foreground: 240 5.9% 10%;
     --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
+    /* 46.1% measured 4.40:1 against --muted, just under AA for body text; 44%
+       clears it on both --muted and --background. */
+    --muted-foreground: 240 3.8% 44%;
     --accent: 240 4.8% 95.9%;
     --accent-foreground: 240 5.9% 10%;
-    --destructive: 0 84.2% 60.2%;
+    /* red-500 measured 3.61:1 against its own foreground, so every destructive
+       button failed AA; red-600 clears it. */
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 98%;
+    /* Semantic states. Of the 407 Tailwind palette utilities still in the
+       components, 381 carry one of three meanings — amber/yellow/orange for
+       warning, emerald/green for success, red/rose for destructive — hand-written
+       per call site with a `dark:` shade beside each one. These tokens carry the
+       same hues, so migrating them is mechanical and each mode gets its own
+       readable foreground: --*-foreground is the text colour on a 14% tint of the
+       base, which is how the pills and callouts use them. The other 26 are
+       decorative or data-viz. */
+    --success: 161 94% 30%;
+    --success-foreground: 163 88% 20%;
+    --warning: 32 95% 44%;
+    --warning-foreground: 28 83% 31%;
     --border: 240 5.9% 90%;
     --input: 240 5.9% 90%;
     --ring: 262 83% 58%;
@@ -51,6 +67,10 @@
     --accent-foreground: 0 0% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
+    --success: 160 84% 39%;
+    --success-foreground: 158 64% 67%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 46 97% 65%;
     --border: 240 3.7% 15.9%;
     --input: 240 3.7% 15.9%;
     --ring: 262 83% 58%;
@@ -356,21 +376,13 @@ body.modal-open [data-global-assistant-root='true'] {
   }
 
   .app-pill-amber {
-    background: color-mix(in srgb, #f59e0b 14%, transparent);
-    color: #b45309;
-  }
-
-  .dark .app-pill-amber {
-    color: #fcd34d;
+    background: color-mix(in srgb, hsl(var(--warning)) 14%, transparent);
+    color: hsl(var(--warning-foreground));
   }
 
   .app-pill-emerald {
-    background: color-mix(in srgb, #10b981 14%, transparent);
-    color: #047857;
-  }
-
-  .dark .app-pill-emerald {
-    color: #6ee7b7;
+    background: color-mix(in srgb, hsl(var(--success)) 14%, transparent);
+    color: hsl(var(--success-foreground));
   }
 
   .app-button {
