@@ -4,6 +4,7 @@
  */
 
 import type { ComfyRenderRecord } from '../comfyui/history';
+import type { ChubPublishRecord } from '../chub/publish-record';
 
 // ============================================================================
 // Configuration Types
@@ -196,6 +197,7 @@ export interface Config {
   help?: HelpState;
   feature_blueprints?: FeatureBlueprintDefaults;
   comfyui?: ComfyUIConfig;
+  chub?: ChubConfig;
 }
 
 // ============================================================================
@@ -225,6 +227,28 @@ export interface ComfyUIConfig {
   height: number;
   /** Use the draft's attached card image as the IPAdapter reference. */
   use_card_image_as_reference: boolean;
+}
+
+// ============================================================================
+// Chub Publishing
+// ============================================================================
+
+export interface ChubConfig {
+  /** Gateway base URL, e.g. `https://gateway.chub.ai`. */
+  base_url: string;
+  /** Session/API token pasted by the user (sent as `Authorization: Bearer` + `ch-api-key`). */
+  api_token: string;
+  /**
+   * Scoped token minted via `POST /account/tokens/projects` after verification;
+   * preferred for publish calls. Falls back to `api_token` when empty.
+   */
+  publish_token: string;
+  /** Username from the last successful verification (display + resolve scoping). */
+  username: string;
+  /** Subscription tier from `GET /oauth/userinfo` (None/Basic/Full/Max). */
+  subscription: string;
+  /** ISO timestamp of the last successful verification. */
+  verified_at: string;
 }
 
 // ============================================================================
@@ -372,6 +396,8 @@ export interface DraftMetadata {
   comparison_group?: string;
   /** Render history from the ComfyUI handoff, newest first (see `comfyui/history.ts`). */
   comfy_renders?: ComfyRenderRecord[];
+  /** Chub publication record for this draft (see `chub/publish-record.ts`). */
+  chub_publish?: ChubPublishRecord;
 }
 
 export interface Draft {

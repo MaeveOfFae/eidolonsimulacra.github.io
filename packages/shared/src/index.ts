@@ -381,6 +381,59 @@ export { MAX_COMFY_RENDER_HISTORY, appendComfyRenderRecord, normalizeComfyRender
 
 export { DEFAULT_COMFY_BASE_URL, createDefaultComfyUIConfig, resolveComfyWorkflow } from './comfyui/defaults';
 
+// ============================================================================
+// Chub Publishing
+// ============================================================================
+
+export {
+  ChubApiError,
+  chubCreateCharacter,
+  chubGetCharacter,
+  chubMintProjectsToken,
+  chubResolvePublished,
+  chubSearchCharacters,
+  chubUpdateCharacter,
+  chubVerifyIdentity,
+  extractPublishedRef,
+  normalizeChubBaseUrl,
+  parseChubErrorDetail,
+} from './chub/client';
+
+export {
+  buildChubCharacterCreate,
+  buildChubCharacterUpdate,
+  chubAvatarValue,
+  chubGreetingStart,
+  defaultChubPublishForm,
+  normalizeChubTags,
+  type ChubDraftSource,
+  type ChubPublishForm,
+  type ChubPublishRating,
+  type ChubPublishVisibility,
+} from './chub/payload';
+
+export { chubPreflightHasErrors, runChubPreflight, type ChubPreflightIssue } from './chub/validate';
+
+export {
+  chubCharacterUrl,
+  normalizeChubPublishRecord,
+  recordChubPublish,
+  type ChubPublishRecord,
+} from './chub/publish-record';
+
+export { DEFAULT_CHUB_BASE_URL, chubActiveToken, createDefaultChubConfig } from './chub/defaults';
+
+export type {
+  ChubApiResult,
+  ChubCharacterCreate,
+  ChubCharacterUpdate,
+  ChubClientOptions,
+  ChubFetch,
+  ChubIdentity,
+  ChubPublishedRef,
+  ChubSearchNode,
+} from './chub/types';
+
 export {
   buildDanbooruTagIndex,
   findSimilarTagNames,
