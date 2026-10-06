@@ -51,9 +51,8 @@ export const roadmapGroups: RoadmapGroup[] = [
       'packages/web/src/components/settings/SettingsImagePipelineSection.tsx',
     ],
     items: [
-      'Mobile linting surface running on the bundled core Danbooru index',
+      'Variation batches launched from the render panel (seed pinning itself is live)',
       'Render history and a saved-render gallery attached to each draft',
-      'Seed pinning and variation batches launched from the render panel',
       'WebSocket progress streaming during renders instead of history polling',
       'Render outputs saved as draft assets rather than living only in the ComfyUI output folder',
     ],

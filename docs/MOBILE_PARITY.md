@@ -18,6 +18,7 @@ Status legend: **parity** (already works on mobile), **gap** (missing, portable)
 | Templates: list, detail, create, update, delete, validate, export, import-from-text | `TemplatesScreen`, `api.*Template*` |
 | Blueprints: browse + edit | `BlueprintsScreen`, `BlueprintEditorScreen`, `api.updateBlueprint` |
 | Similarity, lineage, validation, token optimization | `SimilarityScreen`, `LineageScreen`, `ValidationScreen`, `TokenOptimizationScreen` |
+| A1111 tag linting on the bundled core Danbooru index (web additionally fetches the full index with alias resolution) | `DraftDetailScreen` → `A1111TagLintTray`, `src/lib/a1111-tag-lint.ts` |
 | Config: provider, model, keys, connection test, model list/refresh | `SettingsScreen`, `api.getConfig` / `updateConfig` / `testConnection` |
 | Cross-device transfer: workspace bundles + desktop companion pairing | `src/local/device-link.ts`, `src/local/desktop-companion.ts`, `SettingsScreen` |
 | Basic first-run guide + help state | `HomeScreen`, `HelpState` in `src/storage/device-config.ts` |

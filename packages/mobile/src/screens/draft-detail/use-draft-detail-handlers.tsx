@@ -719,6 +719,26 @@ export function useDraftDetailHandlers(
     }
   };
 
+  /**
+   * Apply the a1111 tag linter's mechanical corrections (alias / pseudo-tag / duplicate)
+   * through the same safeguard-snapshot + update path as a manual edit, so approval
+   * fingerprints correctly go stale when the content changes.
+   */
+  const handleApplyA1111TagFixes = async (nextContent: string) => {
+    setIsSavingAsset(true);
+    try {
+      if ((draft?.assets.a1111 ?? '').trim() !== nextContent.trim()) {
+        await createSafeguardSnapshot('Before applying a1111 tag fixes', 'pre-asset-edit:a1111');
+      }
+      await api.updateAsset(draftId, 'a1111', nextContent);
+      invalidateDraftQueries();
+    } catch (error) {
+      Alert.alert('Error', getErrorMessage(error, 'Failed to apply the tag fixes'));
+    } finally {
+      setIsSavingAsset(false);
+    }
+  };
+
   const handleOptimizeRefinement = () => {
     if (!selectedRefineAsset || !refinePreview.trim()) {
       return;
@@ -863,6 +883,7 @@ export function useDraftDetailHandlers(
     closeIntroModal,
     closeRefineModal,
     executeExportPreset,
+    handleApplyA1111TagFixes,
     handleApplyRefinement,
     handleArchive,
     handleAttachCardImage,

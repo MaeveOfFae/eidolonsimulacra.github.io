@@ -4,6 +4,7 @@ import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Tex
 import { type DraftAssetReviewScore } from '@char-gen/shared';
 import CollapsibleTray from '../components/CollapsibleTray';
 import ReviewApprovalTray from '../components/ReviewApprovalTray';
+import A1111TagLintTray from '../components/A1111TagLintTray';
 import { ChatBubbleIcon, ClipboardDocumentIcon, PencilIcon, SparklesIcon, CheckIcon } from '../components/Icons';
 import { useDraftDetailDerived } from './draft-detail/use-draft-detail-derived';
 import { useDraftDetailHandlers } from './draft-detail/use-draft-detail-handlers';
@@ -105,6 +106,7 @@ export default function DraftDetailScreen() {
     closeAssetEditor,
     closeIntroModal,
     closeRefineModal,
+    handleApplyA1111TagFixes,
     handleApplyRefinement,
     handleArchive,
     handleAttachCardImage,
@@ -874,6 +876,13 @@ export default function DraftDetailScreen() {
                   <Text style={styles.assetPlaceholderText}>No saved content yet.</Text>
                 )}
               </View>
+              {assetName === 'a1111' && assetExists ? (
+                <A1111TagLintTray
+                  content={assetContent}
+                  disabled={isSavingAsset}
+                  onApplyFixes={handleApplyA1111TagFixes}
+                />
+              ) : null}
             </CollapsibleTray>
           );
         })}

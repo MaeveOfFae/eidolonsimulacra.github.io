@@ -53,7 +53,26 @@ describe('ComfyRenderPanel', () => {
     const call = mockedRun.mock.calls[0]![0];
     expect(call.a1111Content).toBe(CONTENT);
     expect(call.config.base_url).toBe('http://127.0.0.1:8188');
+    expect('seed' in call).toBe(false);
+    // The used seed is pinned into the input so Render again is reproducible.
+    expect((screen.getByLabelText('Seed') as HTMLInputElement).value).toBe('42');
     expect(screen.getByRole('button', { name: /render again/i })).toBeInTheDocument();
+  });
+
+  it('passes a pinned seed through to the render', async () => {
+    mockedRun.mockResolvedValue({
+      promptId: 'prompt-87654321',
+      seed: 777,
+      images: [{ filename: 'out.png', subfolder: '', type: 'output' }],
+      objectUrls: ['blob:render-2'],
+    });
+
+    renderPanel(true);
+    fireEvent.change(screen.getByLabelText('Seed'), { target: { value: '777' } });
+    fireEvent.click(screen.getByRole('button', { name: /send to comfyui/i }));
+
+    await waitFor(() => expect(screen.getByRole('img', { name: /comfyui render 1/i })).toBeInTheDocument());
+    expect(mockedRun.mock.calls[0]![0].seed).toBe(777);
   });
 
   it('shows the mapped transport error on failure', async () => {

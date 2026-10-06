@@ -27,6 +27,7 @@ type RenderState =
 
 export default function ComfyRenderPanel({ content, approved, referenceImageDataUrl }: ComfyRenderPanelProps) {
   const [state, setState] = useState<RenderState>({ phase: 'idle' });
+  const [seedInput, setSeedInput] = useState('');
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -47,13 +48,18 @@ export default function ComfyRenderPanel({ content, approved, referenceImageData
     abortRef.current = controller;
     setState({ phase: 'rendering' });
 
+    const pinnedSeed = Number.parseInt(seedInput, 10);
     try {
       const result = await runComfyRender({
         config: configManager.getConfig().comfyui ?? createDefaultComfyUIConfig(),
         a1111Content: content,
         referenceImageDataUrl,
+        ...(Number.isFinite(pinnedSeed) ? { seed: pinnedSeed } : {}),
         signal: controller.signal,
       });
+      // Surface the used seed so "Render again" iterates on it reproducibly; clearing
+      // the field returns to random seeds.
+      setSeedInput(String(result.seed));
       setState({ phase: 'done', result });
     } catch (error) {
       if (controller.signal.aborted) {
@@ -104,6 +110,24 @@ export default function ComfyRenderPanel({ content, approved, referenceImageData
           Approve the a1111 asset first — only approved prompts are sent to the image pipeline.
         </p>
       )}
+      <div className="mt-2 flex items-center gap-2">
+        <label htmlFor="comfy-seed" className="text-xs font-medium text-muted-foreground">
+          Seed
+        </label>
+        <input
+          id="comfy-seed"
+          type="number"
+          min={0}
+          className="w-32 rounded-lg border border-input bg-background px-2 py-1 text-xs"
+          value={seedInput}
+          placeholder="random"
+          onChange={(event) => setSeedInput(event.target.value)}
+          disabled={state.phase === 'rendering'}
+        />
+        <span className="text-xs text-muted-foreground">
+          {seedInput.trim().length > 0 ? 'pinned — renders repeat this seed' : 'leave empty for a random seed'}
+        </span>
+      </div>
       {state.phase === 'rendering' && (
         <p className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -137,7 +161,8 @@ export default function ComfyRenderPanel({ content, approved, referenceImageData
             ))}
           </div>
           <p className="text-xs text-muted-foreground">
-            Saved to the ComfyUI output folder; review here, keep the seed to iterate.
+            Saved to the ComfyUI output folder. The seed is pinned above — Render again iterates on it, or clear it for
+            a new roll.
           </p>
         </div>
       )}
