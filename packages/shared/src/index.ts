@@ -314,6 +314,64 @@ export {
   lookupPseudoTagCorrection,
 } from './a1111/pseudo-tags';
 
+// ============================================================================
+// ComfyUI Handoff
+// ============================================================================
+
+export {
+  COMFY_PRESET_LABELS,
+  type ComfyHistoryEntry,
+  type ComfyHistoryImage,
+  type ComfyHistoryOutputEntry,
+  type ComfyHistoryStatus,
+  type ComfyNode,
+  type ComfyNodeMeta,
+  type ComfyQueuePromptResponse,
+  type ComfyUploadedImage,
+  type ComfyWorkflowGraph,
+  type ComfyWorkflowPresetId,
+} from './comfyui/types';
+
+export {
+  BUILTIN_COMFY_WORKFLOW_DEFAULT,
+  BUILTIN_COMFY_WORKFLOW_DUAL_ENCODER_IPADAPTER,
+  DEFAULT_COMFY_NEGATIVE_PROMPT,
+  getBuiltinComfyWorkflow,
+} from './comfyui/workflows';
+
+export {
+  describeComfyBindingIssues,
+  resolveComfyWorkflowBindings,
+  type ComfyWorkflowBindings,
+} from './comfyui/binding';
+
+export {
+  buildComfyPositivePrompt,
+  buildComfyPromptPayload,
+  type ComfyPromptBuildRequest,
+  type ComfyPromptBuildResult,
+} from './comfyui/payload';
+
+export {
+  comfyGetHistory,
+  comfyListCheckpoints,
+  comfyQueuePrompt,
+  comfySystemStats,
+  comfyUploadImage,
+  comfyViewUrl,
+  comfyWaitForImages,
+  describeComfyValidationError,
+  normalizeComfyBaseUrl,
+  type ComfyClientOptions,
+  type ComfyFetch,
+  type ComfySystemStats,
+  type ComfyWaitOptions,
+} from './comfyui/client';
+
+export { parseComfyWorkflowJson } from './comfyui/workflow-json';
+
+export { DEFAULT_COMFY_BASE_URL, createDefaultComfyUIConfig, resolveComfyWorkflow } from './comfyui/defaults';
+
 export {
   buildDanbooruTagIndex,
   findSimilarTagNames,

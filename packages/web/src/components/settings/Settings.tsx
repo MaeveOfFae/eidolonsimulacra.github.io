@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Save, XCircle, Shield, Server } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import type { Config, FeatureCategory, ModelInfo } from '@char-gen/shared';
+import { createDefaultComfyUIConfig } from '@char-gen/shared';
 import { api } from '../../lib/api.js';
 import {
   CONFIG_MANAGER_CHANGED_EVENT,
@@ -19,14 +20,16 @@ import SettingsGenerationSection from './SettingsGenerationSection';
 import SettingsHelpSection from './SettingsHelpSection';
 import SettingsRuntimeSection from './SettingsRuntimeSection';
 import SettingsProvidersSection from './SettingsProvidersSection';
+import SettingsImagePipelineSection from './SettingsImagePipelineSection';
 import { getBlueprintsForFeature } from '@/lib/blueprints/featureSelection';
 
-type SettingsSectionId = 'setup' | 'providers' | 'generation' | 'help' | 'sync';
+type SettingsSectionId = 'setup' | 'providers' | 'generation' | 'image' | 'help' | 'sync';
 
 const SETTINGS_SECTIONS: Array<{ id: SettingsSectionId; label: string }> = [
   { id: 'setup', label: 'Setup' },
   { id: 'providers', label: 'Providers' },
   { id: 'generation', label: 'Generation' },
+  { id: 'image', label: 'Image Pipeline' },
   { id: 'help', label: 'Help' },
   { id: 'sync', label: 'Device Link' },
 ];
@@ -605,6 +608,21 @@ export default function Settings() {
           featureBlueprints={localConfig.feature_blueprints}
           onFeatureBlueprintChange={handleFeatureBlueprintChange}
           featureBlueprintOptions={featureBlueprintOptions}
+        />
+      )}
+
+      {activeSection === 'image' && (
+        <SettingsImagePipelineSection
+          comfyui={localConfig.comfyui}
+          onChange={(updates) =>
+            setLocalConfig((previous) => ({
+              ...previous,
+              comfyui: {
+                ...(previous.comfyui ?? createDefaultComfyUIConfig()),
+                ...updates,
+              },
+            }))
+          }
         />
       )}
 

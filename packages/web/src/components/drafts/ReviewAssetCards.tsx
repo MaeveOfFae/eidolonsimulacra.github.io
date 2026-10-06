@@ -5,6 +5,7 @@ import { buildAssetApprovalSummary, type DraftAssetApprovalDecision } from '@cha
 import { formatAssetLabel } from '@/lib/drafts/asset-display';
 import CollapsibleSection from '../common/CollapsibleSection';
 import A1111TagLintPanel from './A1111TagLintPanel';
+import ComfyRenderPanel from './ComfyRenderPanel';
 import { summarizeText } from '@/lib/drafts/asset-display';
 
 /**
@@ -235,6 +236,18 @@ export default function ReviewAssetCards({
                 content={assets[assetName] ?? ''}
                 onApplyFixes={onApplyA1111Fixes}
                 isSaving={isSaving}
+              />
+            )}
+
+            {assetName === 'a1111' && assetExists && editingAsset !== assetName && (
+              <ComfyRenderPanel
+                content={assets[assetName] ?? ''}
+                approved={approvalStatus === 'approved'}
+                referenceImageDataUrl={
+                  typeof assets.card_image === 'string' && assets.card_image.startsWith('data:')
+                    ? assets.card_image
+                    : undefined
+                }
               />
             )}
           </CollapsibleSection>

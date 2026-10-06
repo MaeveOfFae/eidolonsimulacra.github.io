@@ -24,7 +24,7 @@ export default function A1111TagLintPanel({ content, onApplyFixes, isSaving = fa
     enabled: content.trim().length > 0,
   });
 
-  const issues = lintQuery.data?.issues ?? [];
+  const issues = useMemo(() => lintQuery.data?.issues ?? [], [lintQuery.data]);
   const fixCount = useMemo(
     () =>
       issues.filter((issue) => issue.code === 'alias' || issue.code === 'pseudo-tag' || issue.code === 'duplicate-tag')

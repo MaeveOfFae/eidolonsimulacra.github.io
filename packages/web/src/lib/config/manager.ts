@@ -4,6 +4,7 @@
  */
 
 import type { ApiKeys, Config, FeatureBlueprintDefaults, HelpState } from '@char-gen/shared';
+import { createDefaultComfyUIConfig, type ComfyUIConfig } from '@char-gen/shared';
 import { readPersistedString, removePersistedValues, writePersistedString } from '../persistence/storage.js';
 import { DEFAULT_FEATURE_BLUEPRINT_PATHS } from '@/lib/blueprints/defaults';
 
@@ -160,6 +161,10 @@ export class ConfigManager {
         ...defaults.feature_blueprints,
         ...(normalizeFeatureBlueprintDefaults(config.feature_blueprints) ?? {}),
       },
+      comfyui: {
+        ...defaults.comfyui!,
+        ...(config.comfyui ?? {}),
+      },
     };
   }
 
@@ -233,6 +238,7 @@ export class ConfigManager {
       feature_blueprints: {
         ...DEFAULT_FEATURE_BLUEPRINT_PATHS,
       },
+      comfyui: createDefaultComfyUIConfig(),
     };
   }
 
@@ -420,8 +426,24 @@ export class ConfigManager {
         ...(this.config.feature_blueprints ?? {}),
         ...(normalizeFeatureBlueprintDefaults(updates.feature_blueprints) ?? {}),
       },
+      comfyui: {
+        ...(this.config.comfyui ?? createDefaultComfyUIConfig()),
+        ...(updates.comfyui ?? {}),
+      },
     });
     this.saveConfig();
+  }
+
+  /**
+   * Update the ComfyUI handoff settings (Settings → Image Pipeline and the render panel).
+   */
+  updateComfyUIConfig(updates: Partial<ComfyUIConfig>): void {
+    this.updateConfig({
+      comfyui: {
+        ...(this.config.comfyui ?? createDefaultComfyUIConfig()),
+        ...updates,
+      },
+    });
   }
 
   updateHelpState(updates: Partial<HelpState>): void {

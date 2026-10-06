@@ -193,6 +193,36 @@ export interface Config {
   theme?: ThemeOverride;
   help?: HelpState;
   feature_blueprints?: FeatureBlueprintDefaults;
+  comfyui?: ComfyUIConfig;
+}
+
+// ============================================================================
+// ComfyUI Handoff
+// ============================================================================
+
+export type ComfyWorkflowSelection = 'default' | 'dual-encoder-ipadapter' | 'custom';
+
+export interface ComfyUIConfig {
+  /** ComfyUI server base URL, e.g. `http://127.0.0.1:8188`. */
+  base_url: string;
+  /** Which workflow graph to render with: built-in presets or the imported `workflow_json`. */
+  workflow_preset: ComfyWorkflowSelection;
+  /** Custom API-format workflow graph ("Save (API Format)"), used when preset is `custom`. */
+  workflow_json: string;
+  /** Default negative prompt injected into the workflow's negative nodes. */
+  negative_prompt: string;
+  /** Base checkpoint filename; must exist in the ComfyUI install's models/checkpoints. */
+  checkpoint: string;
+  /** Refiner checkpoint for the dual-encoder preset. */
+  refiner_checkpoint: string;
+  /** IPAdapter reference strength (0–1) for the dual-encoder preset. */
+  ipadapter_strength: number;
+  steps: number;
+  cfg: number;
+  width: number;
+  height: number;
+  /** Use the draft's attached card image as the IPAdapter reference. */
+  use_card_image_as_reference: boolean;
 }
 
 // ============================================================================
