@@ -51,7 +51,9 @@ export const DEFAULT_HELP_STATE: HelpState = {
 export const DEFAULT_DEVICE_CONFIG: Config = {
   engine: 'openai_compatible',
   engine_mode: 'auto',
-  model: 'openrouter/openai/gpt-4o-mini',
+  // Local-first default, kept in sync with the web ConfigManager: the Ollama
+  // provider targets http://localhost:11434/v1 with no API key required.
+  model: 'gemma4',
   temperature: 0.7,
   max_tokens: 4096,
   api_keys: {},

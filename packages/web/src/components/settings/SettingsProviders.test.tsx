@@ -26,6 +26,7 @@ vi.mock('../../lib/llm/factory.js', () => ({
     deepseek: ['deepseek/chat'],
     zai: ['zai/glm'],
     moonshot: ['moonshot/kimi'],
+    ollama: ['gemma4', 'llama3.1'],
   },
   createEngine: vi.fn(() => ({
     testConnection: vi.fn(async () => ({ success: true })),
@@ -86,8 +87,9 @@ describe('Settings providers section', () => {
   it('links the selected provider to its official API docs', () => {
     renderProviderSettings();
 
+    // The default `gemma4` model opens the editor on Ollama.
     const link = screen.getByRole('link', { name: /API docs/ });
-    expect(link).toHaveAttribute('href', PROVIDER_DOCS.openrouter);
+    expect(link).toHaveAttribute('href', PROVIDER_DOCS.ollama);
     expect(link).toHaveAttribute('target', '_blank');
   });
 
@@ -96,9 +98,16 @@ describe('Settings providers section', () => {
 
     renderProviderSettings();
 
-    // The default model `openrouter/openai/gpt-4o-mini` resolves by its own
-    // `openrouter/` prefix, so the editor opens on the provider that model names.
-    expect(await screen.findByRole('heading', { name: 'OpenRouter' })).toBeInTheDocument();
+    // The default model `gemma4` is an Ollama model, so the editor opens on the
+    // provider that model names — which needs no key and is testable as-is.
+    expect(await screen.findByRole('heading', { name: 'Ollama' })).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Optional for local Ollama; required for Ollama Cloud')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Test connection' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Clear key' })).toBeDisabled();
+
+    // OpenRouter holds a key, so its editor is testable too.
+    fireEvent.click(screen.getByRole('button', { name: /^OpenRouter/ }));
+    expect(screen.getByRole('heading', { name: 'OpenRouter' })).toBeInTheDocument();
     expect(screen.getByPlaceholderText('Enter your openrouter API key')).toHaveValue('sk-test');
     expect(screen.getByRole('button', { name: 'Test connection' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Clear key' })).toBeEnabled();
@@ -109,12 +118,6 @@ describe('Settings providers section', () => {
     expect(screen.getByPlaceholderText('Enter your openai API key')).toHaveValue('');
     expect(screen.getByRole('button', { name: 'Test connection' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Clear key' })).toBeDisabled();
-
-    // Ollama is local, so it is testable without credentials.
-    fireEvent.click(screen.getByRole('button', { name: /^Ollama/ }));
-    expect(screen.getByRole('heading', { name: 'Ollama' })).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('Optional for local Ollama; required for Ollama Cloud')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Test connection' })).toBeEnabled();
   });
 
   it('clears a stored key without switching providers', async () => {
@@ -122,6 +125,8 @@ describe('Settings providers section', () => {
 
     renderProviderSettings();
 
+    // The default `gemma4` model opens the editor on Ollama; move to OpenRouter.
+    fireEvent.click(await screen.findByRole('button', { name: /^OpenRouter/ }));
     expect(await screen.findByRole('heading', { name: 'OpenRouter' })).toBeInTheDocument();
     expect(screen.getByPlaceholderText('Enter your openrouter API key')).toHaveValue('sk-test');
 

@@ -98,6 +98,25 @@ describe('browser api: config', () => {
     }
   });
 
+  it('explains a refused localhost model listing instead of blaming the network', async () => {
+    configManager.updateConfig({ base_url: 'http://localhost:19999/v1' });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new TypeError('Failed to fetch');
+      }),
+    );
+    try {
+      const response = await api.getModels('ollama');
+
+      expect(response.error).toContain('Could not reach the local model server');
+      expect(response.error).toContain('localhost:19999');
+      expect(response.models.length).toBeGreaterThan(0);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('does not sync from a server in browser-only mode', async () => {
     expect(await api.syncConfigFromServer()).toBe(false);
   });

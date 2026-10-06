@@ -103,7 +103,9 @@ export interface DesktopCompanionSyncPreview {
 const DEFAULT_SYNC_CONFIG_BASE = {
   engine: 'openai_compatible',
   engine_mode: 'auto',
-  model: 'openrouter/openai/gpt-4o-mini',
+  // Local-first default, kept in sync with the web ConfigManager and the
+  // mobile DEFAULT_DEVICE_CONFIG (Ollama at http://localhost:11434/v1).
+  model: 'gemma4',
   temperature: 0.7,
   max_tokens: 4096,
   batch: {

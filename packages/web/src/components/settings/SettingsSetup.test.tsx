@@ -29,6 +29,7 @@ vi.mock('../../lib/llm/factory.js', () => ({
     deepseek: ['deepseek/chat'],
     zai: ['zai/glm'],
     moonshot: ['moonshot/kimi'],
+    ollama: ['gemma4', 'llama3.1'],
   },
   createEngine: vi.fn(() => ({
     testConnection: vi.fn(async () => ({ success: true })),
@@ -106,8 +107,11 @@ describe('Settings setup access column', () => {
   it('edits the selected provider key and saves it through the parent draft', async () => {
     renderSetupSettings();
 
-    // The default model resolves to its own `openrouter/` prefix provider.
-    expect(await screen.findByRole('heading', { name: 'OpenRouter access' })).toBeInTheDocument();
+    // The default model `gemma4` resolves to the Ollama provider, so the card
+    // opens there; OpenRouter holds a key and is one click away.
+    expect(await screen.findByRole('heading', { name: 'Ollama access' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /^OpenRouter/ }));
+    expect(screen.getByRole('heading', { name: 'OpenRouter access' })).toBeInTheDocument();
 
     fireEvent.change(screen.getByPlaceholderText('Enter your openrouter API key'), {
       target: { value: 'sk-typed' },
@@ -147,10 +151,10 @@ describe('Settings setup runtime column', () => {
     expect(screen.getByRole('button', { name: 'Auto' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Explicit' })).toBeInTheDocument();
 
-    // The default model is an OpenRouter id, so its `openrouter/` prefix wins.
-    expect(screen.getByLabelText('Provider')).toHaveValue('openrouter');
+    // The default model `gemma4` resolves to the Ollama provider by pattern.
+    expect(screen.getByLabelText('Provider')).toHaveValue('ollama');
     // Target the custom-model field by its accessible name; the placeholder is copy.
-    expect(screen.getByLabelText('Custom model ID')).toHaveValue('openrouter/openai/gpt-4o-mini');
+    expect(screen.getByLabelText('Custom model ID')).toHaveValue('gemma4');
     expect(screen.getByText('Showing built-in suggestions.')).toBeInTheDocument();
 
     expect(screen.getByLabelText('Temperature')).toHaveValue(0.7);

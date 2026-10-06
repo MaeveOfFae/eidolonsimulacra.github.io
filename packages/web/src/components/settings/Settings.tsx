@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Save, XCircle, Shield, Server } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import type { Config, FeatureCategory, ModelInfo } from '@char-gen/shared';
-import { createDefaultChubConfig, createDefaultComfyUIConfig } from '@char-gen/shared';
+import { createDefaultChubConfig, createDefaultComfyUIConfig, detectProviderFromModel } from '@char-gen/shared';
 import { api } from '../../lib/api.js';
 import {
   CONFIG_MANAGER_CHANGED_EVENT,
@@ -123,17 +123,13 @@ export default function Settings() {
       return;
     }
 
-    // Prefer the model's own `provider/` prefix, and only fall back to a loose substring
-    // match: `openrouter/openai/gpt-4o-mini` starts with `openrouter/`, and matching by
-    // substring in list order would otherwise pick `openai` first.
-    const model = config.model || '';
-    const inferredProvider =
-      ALL_PROVIDERS.find((provider) => model.startsWith(`${provider}/`)) ??
-      ALL_PROVIDERS.find((provider) => model.includes(provider));
-
-    if (inferredProvider) {
-      setSelectedProvider(inferredProvider);
-    }
+    // The shared detector owns model -> provider (slash prefixes, bare ids like
+    // `gemma4` / `glm-5.3` / `kimi-k3`, OpenRouter as the default) — the exact
+    // rules engine creation applies — so the panel always shows the provider
+    // that will actually answer for this model. Key-only writes never reach
+    // here (the signature guard above), so a key edit can't bounce the panel.
+    const inferredProvider = detectProviderFromModel(config.model || '');
+    setSelectedProvider(inferredProvider);
   };
 
   // Load config from client-side manager
