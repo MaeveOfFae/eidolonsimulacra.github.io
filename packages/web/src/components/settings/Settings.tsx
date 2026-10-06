@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Save, XCircle, Shield, Server } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import type { Config, FeatureCategory, ModelInfo } from '@char-gen/shared';
-import { createDefaultComfyUIConfig } from '@char-gen/shared';
+import { createDefaultChubConfig, createDefaultComfyUIConfig } from '@char-gen/shared';
 import { api } from '../../lib/api.js';
 import {
   CONFIG_MANAGER_CHANGED_EVENT,
@@ -21,15 +21,17 @@ import SettingsHelpSection from './SettingsHelpSection';
 import SettingsRuntimeSection from './SettingsRuntimeSection';
 import SettingsProvidersSection from './SettingsProvidersSection';
 import SettingsImagePipelineSection from './SettingsImagePipelineSection';
+import SettingsChubSection from './SettingsChubSection';
 import { getBlueprintsForFeature } from '@/lib/blueprints/featureSelection';
 
-type SettingsSectionId = 'setup' | 'providers' | 'generation' | 'image' | 'help' | 'sync';
+type SettingsSectionId = 'setup' | 'providers' | 'generation' | 'image' | 'chub' | 'help' | 'sync';
 
 const SETTINGS_SECTIONS: Array<{ id: SettingsSectionId; label: string }> = [
   { id: 'setup', label: 'Setup' },
   { id: 'providers', label: 'Providers' },
   { id: 'generation', label: 'Generation' },
   { id: 'image', label: 'Image Pipeline' },
+  { id: 'chub', label: 'Chub' },
   { id: 'help', label: 'Help' },
   { id: 'sync', label: 'Device Link' },
 ];
@@ -619,6 +621,21 @@ export default function Settings() {
               ...previous,
               comfyui: {
                 ...(previous.comfyui ?? createDefaultComfyUIConfig()),
+                ...updates,
+              },
+            }))
+          }
+        />
+      )}
+
+      {activeSection === 'chub' && (
+        <SettingsChubSection
+          chub={localConfig.chub}
+          onChange={(updates) =>
+            setLocalConfig((previous) => ({
+              ...previous,
+              chub: {
+                ...(previous.chub ?? createDefaultChubConfig()),
                 ...updates,
               },
             }))

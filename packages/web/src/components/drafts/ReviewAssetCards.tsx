@@ -5,6 +5,7 @@ import { buildAssetApprovalSummary, type DraftAssetApprovalDecision } from '@cha
 import { formatAssetLabel } from '@/lib/drafts/asset-display';
 import CollapsibleSection from '../common/CollapsibleSection';
 import A1111TagLintPanel from './A1111TagLintPanel';
+import ChubPublishPanel from './ChubPublishPanel';
 import ComfyRenderPanel from './ComfyRenderPanel';
 import { summarizeText } from '@/lib/drafts/asset-display';
 
@@ -249,6 +250,10 @@ export default function ReviewAssetCards({
                     : undefined
                 }
               />
+            )}
+
+            {assetName === 'character_sheet' && assetExists && editingAsset !== assetName && (
+              <ChubPublishPanel approved={approvalStatus === 'approved'} />
             )}
           </CollapsibleSection>
         );
