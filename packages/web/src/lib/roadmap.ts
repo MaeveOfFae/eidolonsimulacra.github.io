@@ -40,6 +40,25 @@ export const roadmapGroups: RoadmapGroup[] = [
     ],
   },
   {
+    id: 'image-pipeline',
+    title: 'Image Pipeline',
+    status: 'partial',
+    ownerFiles: [
+      'packages/shared/src/a1111/tag-linter.ts',
+      'packages/shared/src/comfyui/client.ts',
+      'packages/web/src/components/drafts/A1111TagLintPanel.tsx',
+      'packages/web/src/components/drafts/ComfyRenderPanel.tsx',
+      'packages/web/src/components/settings/SettingsImagePipelineSection.tsx',
+    ],
+    items: [
+      'Mobile linting surface running on the bundled core Danbooru index',
+      'Render history and a saved-render gallery attached to each draft',
+      'Seed pinning and variation batches launched from the render panel',
+      'WebSocket progress streaming during renders instead of history polling',
+      'Render outputs saved as draft assets rather than living only in the ComfyUI output folder',
+    ],
+  },
+  {
     id: 'review-and-editing',
     title: 'Review and Editing',
     status: 'partial',

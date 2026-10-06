@@ -16,9 +16,28 @@ export interface ReleaseNoteEntry {
 // Generated and maintained by tools/generation/generate-release-notes.mjs.
 export const releaseNotes: ReleaseNoteEntry[] = [
   {
+    version: '5.1.0',
+    releasedOn: '2026-10-06',
+    badge: 'Current release',
+    headline: 'The image handoff release: a Danbooru tag linter and a direct ComfyUI bridge',
+    summary:
+      '5.1 turns the a1111 asset from copy-paste output into a validated, executable prompt. A local Danbooru tag index (185k tags and 37k aliases fetched on demand, plus a bundled 12k-tag core for offline use) lints every prompt for unknown tags, aliases, deprecated tags, duplicates and line-order drift, and one click applies the mechanical fixes that used to be manual. The approved prompt can then be sent straight to ComfyUI on the actual pipeline - dual-encoder, CLIP skip 2, IPAdapter refs - with the render polled and reviewed inline.',
+    highlights: [
+      'Every a1111 prompt is linted against a local Danbooru index: unknown tags, alias to canonical, deprecated, duplicates',
+      'One-click fixes automate the manual pseudo-tag corrections (fiery_redhead to red_hair)',
+      'Approve, render and review without leaving the app: the a1111 card sends to ComfyUI and shows the outputs inline',
+      'Built-in dual-encoder + CLIP skip 2 + IPAdapter workflow, or import any Save (API Format) graph',
+      'Desktop talks to ComfyUI natively via tauri-plugin-http; the browser path documents the --enable-cors-header requirement',
+    ],
+    links: [
+      { label: 'Open the library', to: '/drafts' },
+      { label: 'Open Settings', to: '/settings' },
+    ],
+  },
+  {
     version: '5.0.0',
     releasedOn: '2026-10-04',
-    badge: 'Current release',
+    badge: 'Previous release',
     headline: 'The workspace release: a command palette, workspace modes, and a keyboard-first pass',
     summary:
       '5.0 is the workspace release. A Cmd/Ctrl-K palette reaches all 36 routes plus recent drafts, workspace modes (solo drafting, review, bulk) promote the screens they own, and every dialog now handles Escape, captures focus, wraps Tab and returns focus on close. Mobile gains the same approval decisions the review screen already had, and state colours come from four theme tokens that carry their own dark values.',

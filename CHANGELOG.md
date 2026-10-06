@@ -3,6 +3,22 @@
 Generated release history for the browser app.
 
 
+## v5.1.0 - 2026-10-06
+
+### The image handoff release: a Danbooru tag linter and a direct ComfyUI bridge
+
+5.1 turns the a1111 asset from copy-paste output into a validated, executable prompt. A local Danbooru tag index (185k tags and 37k aliases fetched on demand, plus a bundled 12k-tag core for offline use) lints every prompt for unknown tags, aliases, deprecated tags, duplicates and line-order drift, and one click applies the mechanical fixes that used to be manual. The approved prompt can then be sent straight to ComfyUI on the actual pipeline - dual-encoder, CLIP skip 2, IPAdapter refs - with the render polled and reviewed inline.
+
+### Highlights
+- Every a1111 prompt is linted against a local Danbooru index: unknown tags, alias to canonical, deprecated, duplicates
+- One-click fixes automate the manual pseudo-tag corrections (fiery_redhead to red_hair)
+- Approve, render and review without leaving the app: the a1111 card sends to ComfyUI and shows the outputs inline
+- Built-in dual-encoder + CLIP skip 2 + IPAdapter workflow, or import any Save (API Format) graph
+- Desktop talks to ComfyUI natively via tauri-plugin-http; the browser path documents the --enable-cors-header requirement
+
+### Links
+- [Open the library](/drafts)
+- [Open Settings](/settings)
 ## v5.0.0 - 2026-10-04
 
 ### The workspace release: a command palette, workspace modes, and a keyboard-first pass
@@ -256,6 +272,7 @@ This release packages recent commits focused on platform, templates, and themes.
 ### Links
 - [Open generation](/generate)
 - [Review templates](/templates)
+
 
 
 

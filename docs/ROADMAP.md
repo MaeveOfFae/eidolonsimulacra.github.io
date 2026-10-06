@@ -48,6 +48,12 @@ Shipped: seed → dependency-ordered draft generation, content modes, streaming 
 
 Outstanding: batch comparison across multiple seeds; batch run history with priorities/retry; assistant seed suggestions; offline/local-model presets.
 
+### Image Pipeline — `partial`
+
+Shipped: the `a1111` asset is no longer an unvalidated copy-paste dead end. Every prompt is linted on the review screen against a local Danbooru tag index — a fetched full index (185k tags, 37k aliases, chain-resolved) with a bundled 12k-tag core as the offline/mobile fallback — flagging unknown tags with near-miss suggestions, alias → canonical, deprecated tags, duplicates, pseudo-tags (`fiery_redhead → red_hair`) and line-order drift against the blueprint's five-line contract, with one-click fixes that route through the normal save/snapshot/approval path. The approved prompt can be sent directly to ComfyUI: `POST /prompt` on a built-in dual-encoder + CLIP skip 2 + IPAdapter workflow or any imported "Save (API Format)" graph (bound by node title, with a structural fallback that follows the sampler links), reference images uploaded for IPAdapter, checkpoints listable from the live server, and the render polled and reviewed inline. The desktop app reaches ComfyUI natively (`tauri-plugin-http`, no CORS limits); the browser path requires `--enable-cors-header` and says so when blocked.
+
+Outstanding: mobile linting surface on the bundled core index; render history and a saved-render gallery per draft; seed pinning and variation batches from the render panel; WebSocket progress streaming instead of history polling; render outputs saved as draft assets rather than living only in the ComfyUI output folder.
+
 ### Review and Editing — `partial`
 
 Shipped: comparison with staged merge branches, review checklist with scoring, export gating, inline notes, revision snapshots and diffs, and asset-by-asset approval decisions — approve / request changes / undo per asset, fingerprinted to the approved content so later edits mark the decision stale, with fresh changes-requested assets joining low scores as export-readiness blockers (4.7.0).
