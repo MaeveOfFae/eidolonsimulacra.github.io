@@ -165,6 +165,28 @@ describe('Settings setup runtime column', () => {
     expect(screen.queryByText('Test Connection')).not.toBeInTheDocument();
   });
 
+  it('warns when the current model is missing from the loaded provider list', async () => {
+    // The panel first resolves the default provider (openrouter) and then infers
+    // ollama from `gemma4`, calling getModels twice — answer per provider.
+    vi.mocked(api.getModels).mockImplementation(async (provider) =>
+      provider === 'ollama'
+        ? {
+            provider: 'ollama',
+            models: [{ id: 'deepseek-v4.1-flash:cloud', name: 'deepseek-v4.1-flash:cloud', provider: 'ollama' }],
+            cached: false,
+          }
+        : { provider, models: [] },
+    );
+
+    try {
+      renderSetupSettings();
+
+      expect(await screen.findByText(/is not in the loaded Ollama list/)).toBeInTheDocument();
+    } finally {
+      vi.mocked(api.getModels).mockImplementation(async (provider) => ({ provider, models: [] }));
+    }
+  });
+
   it('saves engine mode and sampling edits through the parent draft', async () => {
     renderSetupSettings();
 

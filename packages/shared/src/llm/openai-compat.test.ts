@@ -256,6 +256,41 @@ describe('openai-compatible engine streaming usage', () => {
     ]);
   });
 
+  describe('ollama failure hints', () => {
+    it('explains an origin refusal (HTTP 403) with the OLLAMA_ORIGINS fix', async () => {
+      stubFetch(new Response('Forbidden', { status: 403 }));
+
+      const result = await createEngine({ provider: 'ollama', model: 'gemma4' }).testConnection();
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('OLLAMA_ORIGINS');
+    });
+
+    it('explains an unreachable local server with the serve/origins checklist', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async () => {
+          throw new TypeError('Failed to fetch');
+        }),
+      );
+
+      const result = await createEngine({ provider: 'ollama', model: 'gemma4' }).testConnection();
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Could not reach Ollama');
+      expect(result.error).toContain('OLLAMA_ORIGINS');
+    });
+
+    it('passes a missing local model through with the provider message', async () => {
+      stubFetch(jsonResponse({ error: { message: "model 'gemma4' not found, try pulling it first" } }, 404));
+
+      const result = await createEngine({ provider: 'ollama', model: 'gemma4' }).testConnection();
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('try pulling it first');
+    });
+  });
+
   it('omits stream_options for providers without confirmed support but still parses usage', async () => {
     const calls = stubFetch(
       sseResponse([

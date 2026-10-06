@@ -154,6 +154,25 @@ export default function Settings() {
     return MODEL_SUGGESTIONS[selectedProvider] || [];
   }, [availableModels, selectedProvider]);
 
+  // A loaded provider list that lacks the current model means the model isn't
+  // installed/reachable (the fresh-install default before its first `ollama pull`
+  // is the common case) — say so next to the picker. Listing errors win.
+  const modelMissingNotice = useMemo(() => {
+    if (modelsNotice !== null || modelsLoading || availableModels.length === 0 || !localConfig.model) {
+      return null;
+    }
+    // Stored models may carry an app-side provider prefix (`openrouter/openai/…`)
+    // that the provider's own listing does not include.
+    const candidates = [localConfig.model];
+    if (localConfig.model.includes('/')) {
+      candidates.push(localConfig.model.slice(localConfig.model.indexOf('/') + 1));
+    }
+    const present = availableModels.some((model) => candidates.includes(model.id));
+    return present
+      ? null
+      : `Current model "${localConfig.model}" is not in the loaded ${PROVIDER_LABELS[selectedProvider]} list — pick one below or install it.`;
+  }, [modelsNotice, modelsLoading, availableModels, localConfig.model, selectedProvider]);
+
   const updateConfig = async () => {
     const persistedConfig = { ...localConfig };
     delete persistedConfig.api_keys;
@@ -218,7 +237,10 @@ export default function Settings() {
         return;
       }
 
-      const model = modelSuggestions[0] || localConfig.model || 'test-model';
+      // Test the model the user will actually generate with, so a missing local
+      // model (e.g. the default before its first `ollama pull`) fails the test
+      // with the provider's own message instead of a green light on a decoy.
+      const model = localConfig.model || modelSuggestions[0] || 'test-model';
       const engine = createEngine({
         model,
         apiKey,
@@ -550,7 +572,7 @@ export default function Settings() {
             modelSuggestions={modelSuggestions}
             modelsLoading={modelsLoading}
             modelsLoadedCount={availableModels.length}
-            modelsNotice={modelsNotice}
+            modelsNotice={modelsNotice ?? modelMissingNotice}
             temperature={localConfig.temperature ?? 0.7}
             onTemperatureChange={handleTemperatureChange}
             maxTokens={localConfig.max_tokens ?? 4096}

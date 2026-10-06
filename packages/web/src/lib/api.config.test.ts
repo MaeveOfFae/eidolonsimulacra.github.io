@@ -70,6 +70,26 @@ describe('browser api: config', () => {
     }
   });
 
+  it('explains a refused localhost model listing instead of blaming the network', async () => {
+    configManager.updateConfig({ base_url: 'http://localhost:19999/v1' });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new TypeError('Failed to fetch');
+      }),
+    );
+    try {
+      const response = await api.getModels('ollama');
+
+      expect(response.error).toContain('Could not reach the local model server');
+      expect(response.error).toContain('localhost:19999');
+      expect(response.error).toContain('OLLAMA_ORIGINS');
+      expect(response.models.length).toBeGreaterThan(0);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('falls back to suggestions without a key and lists remotely with one', async () => {
     const fetchMock = vi.fn(
       async () =>
@@ -93,25 +113,6 @@ describe('browser api: config', () => {
       expect((init.headers as Record<string, string>)['x-goog-api-key']).toBe('goog-test');
       expect(withKey.models.map((model) => model.id)).toEqual(['gemini-3.8-flash']);
       expect(withKey.error).toBeUndefined();
-    } finally {
-      vi.unstubAllGlobals();
-    }
-  });
-
-  it('explains a refused localhost model listing instead of blaming the network', async () => {
-    configManager.updateConfig({ base_url: 'http://localhost:19999/v1' });
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async () => {
-        throw new TypeError('Failed to fetch');
-      }),
-    );
-    try {
-      const response = await api.getModels('ollama');
-
-      expect(response.error).toContain('Could not reach the local model server');
-      expect(response.error).toContain('localhost:19999');
-      expect(response.models.length).toBeGreaterThan(0);
     } finally {
       vi.unstubAllGlobals();
     }

@@ -159,11 +159,12 @@ export async function loadProviderModels(provider: string, refresh: boolean = fa
   } catch (error) {
     const isNetworkError = error instanceof TypeError && error.message === 'Failed to fetch';
     // The local-first default targets localhost; a refused connection there is
-    // "Ollama isn't running", not a privacy/network block, so say that instead.
+    // either "Ollama isn't running" or "Ollama is blocking this app's origin"
+    // (the desktop app and non-localhost origins get a 403 without OLLAMA_ORIGINS).
     const isLocalTarget = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(?::|\/|$)/i.test(baseUrl);
     const message = isNetworkError
       ? isLocalTarget
-        ? `Could not reach the local model server at ${baseUrl}. Start Ollama or fix the API base URL in Runtime — the built-in suggestions are shown below.`
+        ? `Could not reach the local model server at ${baseUrl}: either it is not running, or it blocked this app's origin — start Ollama with OLLAMA_ORIGINS=* to allow it. The built-in suggestions are shown below.`
         : 'Network request blocked. This may be due to browser privacy settings (common in EU), ad blockers, or firewall restrictions. Try disabling tracking protection for this site or using a different network.'
       : error instanceof Error
         ? error.message

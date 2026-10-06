@@ -233,7 +233,9 @@ export default function SettingsRuntimeSection({
           {selectedProvider === 'ollama' && (
             <div className="rounded-lg border border-info/20 bg-info/10 p-3 text-sm text-info">
               Local server defaults to <code className="rounded bg-info/20 px-1 py-0.5">http://localhost:11434/v1</code>
-              . For Ollama Cloud, set the base URL to{' '}
+              . If this app cannot reach it (desktop app, LAN, or any non-localhost origin), start Ollama with{' '}
+              <code className="rounded bg-info/20 px-1 py-0.5">OLLAMA_ORIGINS=*</code> so it accepts this origin. For
+              Ollama Cloud, set the base URL to{' '}
               <code className="rounded bg-info/20 px-1 py-0.5">https://ollama.com/v1</code> and add your OLLAMA_API_KEY
               in Providers.
             </div>

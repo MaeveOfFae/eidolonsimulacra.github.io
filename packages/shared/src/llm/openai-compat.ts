@@ -469,9 +469,13 @@ export class OpenAICompatEngine implements LLMEngine {
         },
       };
     } catch (e) {
+      const raw = e instanceof Error ? e.message : 'Unknown error';
+      const unreachable = this.config.provider === 'ollama' && /fetch|network|econnrefused|failed/i.test(raw);
       return {
         success: false,
-        error: e instanceof Error ? e.message : 'Unknown error',
+        error: unreachable
+          ? `Could not reach Ollama at ${this.config.baseUrl}. Is \`ollama serve\` running, and does OLLAMA_ORIGINS allow this app's origin (OLLAMA_ORIGINS=* allows every origin)?`
+          : raw,
         modelInfo: {
           name: this.config.model,
         },
@@ -519,6 +523,13 @@ export class OpenAICompatEngine implements LLMEngine {
   }
 
   private async parseErrorResponse(response: Response): Promise<string> {
+    // Ollama answers origin-refusals (desktop app / non-localhost origins, or a
+    // missing OLLAMA_ORIGINS entry) with a bare 403 — say how to fix it instead
+    // of echoing an unparseable body.
+    if (this.config.provider === 'ollama' && response.status === 403) {
+      return 'Ollama refused this app origin (HTTP 403). Restart it with OLLAMA_ORIGINS=* to allow this app and try again.';
+    }
+
     try {
       const data = (await response.json()) as OpenAICompatErrorResponse;
       if (typeof data.error === 'object' && data.error?.message) {
