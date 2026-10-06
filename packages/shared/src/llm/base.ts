@@ -12,6 +12,7 @@ import type {
   LLMChatMessage,
   LLMConnectionTestResult,
 } from './types';
+import { getRuntimeLLMFetch } from './transport';
 
 export abstract class BaseLLMEngine {
   protected config: LLMConfig;
@@ -27,7 +28,7 @@ export abstract class BaseLLMEngine {
 
   protected async performFetch(input: string, init: RequestInit): Promise<Response> {
     try {
-      return await fetch(input, init);
+      return await getRuntimeLLMFetch()(input, init);
     } catch (error) {
       throw this.normalizeRequestError(error);
     }

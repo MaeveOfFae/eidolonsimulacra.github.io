@@ -17,6 +17,7 @@ import type {
 import { ProviderEndpoints } from './types';
 import { isInvalidApiKeyValue, normalizeApiKeyValue } from './api-key';
 import { buildProviderHeaders } from './headers';
+import { getRuntimeLLMFetch } from './transport';
 
 interface OpenAICompatErrorResponse {
   error?: { message?: string } | string;
@@ -276,7 +277,7 @@ export class OpenAICompatEngine implements LLMEngine {
     }
 
     try {
-      return await fetch(url, {
+      return await getRuntimeLLMFetch()(url, {
         ...init,
         signal: controller.signal,
       });

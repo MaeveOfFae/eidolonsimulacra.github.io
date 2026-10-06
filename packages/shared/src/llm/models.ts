@@ -2,6 +2,7 @@ import type { ModelsResponse } from '../types';
 import type { LLMProvider } from './types';
 import { MODEL_SUGGESTIONS, buildProviderHeaders } from './factory';
 import { normalizeModelsPayload, providerModelsUrl } from './openai-compat';
+import { getRuntimeLLMFetch } from './transport';
 
 /** Error envelope only — model entries are normalized by `normalizeModelsPayload`. */
 type ProviderModelsPayload = {
@@ -32,7 +33,7 @@ export async function fetchProviderModels(
     options.includeContentTypeHeader ? { contentType: 'application/json' } : undefined,
   );
 
-  const response = await fetch(providerModelsUrl(provider, baseUrl), {
+  const response = await getRuntimeLLMFetch()(providerModelsUrl(provider, baseUrl), {
     method: 'GET',
     headers,
   });

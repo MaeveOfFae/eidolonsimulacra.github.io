@@ -13,5 +13,6 @@ export {
   createEngine,
   getDefaultBaseUrl,
   getProviderAuthType,
+  getRuntimeLLMFetch,
 } from '@char-gen/shared';
-export type { CreateEngineOptions, ProviderHeaderOptions } from '@char-gen/shared';
+export type { CreateEngineOptions, LLMFetch, ProviderHeaderOptions } from '@char-gen/shared';

@@ -20,6 +20,7 @@ export type { DownloadResponse, GenerationEvent, GenerationEventType } from './s
 export * from './llm/types';
 export * from './llm/factory';
 export * from './llm/models';
+export * from './llm/transport';
 export * from './llm/base';
 export * from './llm/google';
 export * from './llm/anthropic';

@@ -71,6 +71,7 @@ vi.mock('../../lib/llm/factory.js', () => ({
   createEngine: vi.fn(() => ({
     testConnection: vi.fn(async () => ({ success: true })),
   })),
+  getRuntimeLLMFetch: () => fetch,
 }));
 
 vi.mock('../../utils/download', () => ({

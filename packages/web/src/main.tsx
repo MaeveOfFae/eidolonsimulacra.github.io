@@ -4,6 +4,7 @@ import { HashRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { initializePersistentStorage } from './lib/persistence/storage.js';
 import { migrateLegacyStorageKeys } from './lib/persistence/migrate-legacy-keys.js';
+import { installDesktopLLMFetch } from './lib/llm/transport.js';
 import './index.css';
 
 const queryClient = new QueryClient({
@@ -16,6 +17,11 @@ const queryClient = new QueryClient({
 });
 
 async function bootstrap() {
+  // Desktop: route provider HTTP (engines + model listing) through Tauri's
+  // native fetch so local endpoints like Ollama aren't CORS-blocked by the
+  // webview. No-op in the browser.
+  installDesktopLLMFetch();
+
   await initializePersistentStorage();
 
   // Retire the legacy `bpui.*` keys before anything reads storage: the per-module

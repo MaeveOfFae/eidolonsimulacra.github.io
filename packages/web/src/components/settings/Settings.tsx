@@ -12,7 +12,7 @@ import {
   normalizeApiKeyValue,
 } from '../../lib/config/manager.js';
 import { isDesktopRuntime } from '../../lib/runtime.js';
-import { createEngine, MODEL_SUGGESTIONS } from '../../lib/llm/factory.js';
+import { createEngine, getRuntimeLLMFetch, MODEL_SUGGESTIONS } from '../../lib/llm/factory.js';
 import { ALL_PROVIDERS, PROVIDER_LABELS, type Provider } from '../../lib/llm/providers.js';
 import DeviceLinkSettings from './DeviceLinkSettings';
 import SettingsAccessSection from './SettingsAccessSection';
@@ -376,7 +376,7 @@ export default function Settings() {
         headers['Authorization'] = `Bearer ${localConfig.api_proxy_key}`;
       }
 
-      const response = await fetch(`${baseUrl}/models`, {
+      const response = await getRuntimeLLMFetch()(`${baseUrl}/models`, {
         method: 'GET',
         headers,
       });
