@@ -52,7 +52,7 @@ export const roadmapGroups: RoadmapGroup[] = [
     ],
     items: [
       'Variation batches launched from the render panel (seed pinning itself is live)',
-      'Render history and a saved-render gallery attached to each draft',
+      'Saved-render gallery with thumbnails of past renders (the history metadata is live)',
       'WebSocket progress streaming during renders instead of history polling',
       'Render outputs saved as draft assets rather than living only in the ComfyUI output folder',
     ],

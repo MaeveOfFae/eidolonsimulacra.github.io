@@ -3,6 +3,8 @@
  * Mirrors Python dataclasses from bpui.
  */
 
+import type { ComfyRenderRecord } from '../comfyui/history';
+
 // ============================================================================
 // Configuration Types
 // ============================================================================
@@ -368,6 +370,8 @@ export interface DraftMetadata {
   revision_snapshots?: DraftRevisionSnapshot[];
   /** Shared id linking drafts produced by one multi-model comparison run. */
   comparison_group?: string;
+  /** Render history from the ComfyUI handoff, newest first (see `comfyui/history.ts`). */
+  comfy_renders?: ComfyRenderRecord[];
 }
 
 export interface Draft {

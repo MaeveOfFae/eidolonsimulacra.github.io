@@ -1,9 +1,20 @@
-import { useEffect, useRef, useState } from 'react';
-import { Image as ImageIcon, Loader2, RefreshCw, Send } from 'lucide-react';
-import { createDefaultComfyUIConfig } from '@char-gen/shared';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useParams } from 'react-router-dom';
+import { History, Image as ImageIcon, Loader2, RefreshCw, Send } from 'lucide-react';
+import {
+  appendComfyRenderRecord,
+  comfyViewUrl,
+  createDefaultComfyUIConfig,
+  normalizeComfyRenderHistory,
+  type ComfyRenderRecord,
+  type ComfyUIConfig,
+  type Draft,
+} from '@char-gen/shared';
+import { api } from '@/lib/api';
 import type { ComfyRenderResult } from '@/lib/comfyui/run';
 import { runComfyRender } from '@/lib/comfyui/run';
-import { describeComfyTransportError } from '@/lib/comfyui/transport';
+import { describeComfyTransportError, getComfyFetch } from '@/lib/comfyui/transport';
 import { configManager } from '@/lib/config';
 
 /**
@@ -11,6 +22,12 @@ import { configManager } from '@/lib/config';
  * to the configured ComfyUI server, polls until the render finishes, and shows the
  * outputs inline. The send action is gated on the asset's approval decision, matching
  * the review workflow's contract that only approved content flows downstream.
+ *
+ * Every finished render is appended to `metadata.comfy_renders` (newest first, capped),
+ * and the history rows can re-pin their seed or promote their first output to the
+ * draft's card image — which then feeds the IPAdapter reference on the next render.
+ * The panel pulls the draft id from the route and talks to the API directly so the
+ * (line-budgeted) review screen stays untouched.
  */
 export interface ComfyRenderPanelProps {
   content: string;
@@ -25,10 +42,61 @@ type RenderState =
   | { phase: 'done'; result: ComfyRenderResult }
   | { phase: 'error'; message: string };
 
+const MAX_VISIBLE_HISTORY = 5;
+
+function formatRenderAge(iso: string): string {
+  const renderedAt = new Date(iso).getTime();
+  if (!Number.isFinite(renderedAt)) {
+    return '';
+  }
+  const minutes = Math.round((Date.now() - renderedAt) / 60_000);
+  if (minutes < 1) {
+    return 'just now';
+  }
+  if (minutes < 60) {
+    return `${minutes}m ago`;
+  }
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) {
+    return `${hours}h ago`;
+  }
+  return `${Math.round(hours / 24)}d ago`;
+}
+
+async function blobToPngDataUrl(blob: Blob): Promise<string | null> {
+  if (blob.type !== 'image/png') {
+    return null;
+  }
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      resolve(typeof reader.result === 'string' ? reader.result : null);
+    };
+    reader.onerror = () => {
+      resolve(null);
+    };
+    reader.readAsDataURL(blob);
+  });
+}
+
 export default function ComfyRenderPanel({ content, approved, referenceImageDataUrl }: ComfyRenderPanelProps) {
+  const { id: reviewId } = useParams<{ id: string }>();
+  const queryClient = useQueryClient();
   const [state, setState] = useState<RenderState>({ phase: 'idle' });
   const [seedInput, setSeedInput] = useState('');
+  const [cardImageNotice, setCardImageNotice] = useState<string | null>(null);
+  const [promotingPromptId, setPromotingPromptId] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  const draftQuery = useQuery({
+    queryKey: ['draft', reviewId],
+    queryFn: () => api.getDraft(reviewId!),
+    enabled: Boolean(reviewId),
+  });
+  const renderHistory = useMemo(
+    () => normalizeComfyRenderHistory(draftQuery.data?.metadata.comfy_renders),
+    [draftQuery.data?.metadata.comfy_renders],
+  );
 
   useEffect(() => {
     return () => {
@@ -47,11 +115,13 @@ export default function ComfyRenderPanel({ content, approved, referenceImageData
     const controller = new AbortController();
     abortRef.current = controller;
     setState({ phase: 'rendering' });
+    setCardImageNotice(null);
 
+    const config: ComfyUIConfig = configManager.getConfig().comfyui ?? createDefaultComfyUIConfig();
     const pinnedSeed = Number.parseInt(seedInput, 10);
     try {
       const result = await runComfyRender({
-        config: configManager.getConfig().comfyui ?? createDefaultComfyUIConfig(),
+        config,
         a1111Content: content,
         referenceImageDataUrl,
         ...(Number.isFinite(pinnedSeed) ? { seed: pinnedSeed } : {}),
@@ -61,12 +131,60 @@ export default function ComfyRenderPanel({ content, approved, referenceImageData
       // the field returns to random seeds.
       setSeedInput(String(result.seed));
       setState({ phase: 'done', result });
+
+      if (reviewId) {
+        const record: ComfyRenderRecord = {
+          prompt_id: result.promptId,
+          seed: result.seed,
+          rendered_at: new Date().toISOString(),
+          workflow_preset: config.workflow_preset,
+          image_count: result.images.length,
+          images: result.images,
+        };
+        // Read the draft from the query cache at record time: the closure's query data
+        // can be stale if the render finished before the draft query resolved.
+        const cachedDraft = queryClient.getQueryData<Draft>(['draft', reviewId]);
+        api
+          .updateMetadata(reviewId, {
+            comfy_renders: appendComfyRenderRecord(cachedDraft?.metadata.comfy_renders, record),
+          })
+          .then(() => queryClient.invalidateQueries({ queryKey: ['draft', reviewId] }))
+          .catch((historyError: unknown) => {
+            console.warn('Failed to record the ComfyUI render history', historyError);
+          });
+      }
     } catch (error) {
       if (controller.signal.aborted) {
         setState({ phase: 'idle' });
         return;
       }
       setState({ phase: 'error', message: describeComfyTransportError(error) });
+    }
+  };
+
+  const handlePromoteToCardImage = async (record: ComfyRenderRecord) => {
+    if (!reviewId || record.images.length === 0) {
+      return;
+    }
+    const config = configManager.getConfig().comfyui ?? createDefaultComfyUIConfig();
+    setPromotingPromptId(record.prompt_id);
+    setCardImageNotice(null);
+    try {
+      const response = await getComfyFetch()(comfyViewUrl(config.base_url, record.images[0]!));
+      if (!response.ok) {
+        throw new Error(`Fetching the render failed with HTTP ${response.status}.`);
+      }
+      const dataUrl = await blobToPngDataUrl(await response.blob());
+      if (!dataUrl) {
+        throw new Error('Only PNG renders can become the card image.');
+      }
+      await api.updateAsset(reviewId, 'card_image', dataUrl, { overwrite: true });
+      await queryClient.invalidateQueries({ queryKey: ['draft', reviewId] });
+      setCardImageNotice('Render promoted to the draft card image — it now feeds the IPAdapter reference too.');
+    } catch (error) {
+      setCardImageNotice(describeComfyTransportError(error));
+    } finally {
+      setPromotingPromptId(null);
     }
   };
 
@@ -164,6 +282,49 @@ export default function ComfyRenderPanel({ content, approved, referenceImageData
             Saved to the ComfyUI output folder. The seed is pinned above — Render again iterates on it, or clear it for
             a new roll.
           </p>
+        </div>
+      )}
+      {cardImageNotice && (
+        <p className="mt-2 rounded-md border border-border/60 bg-background/60 p-2 text-xs text-muted-foreground">
+          {cardImageNotice}
+        </p>
+      )}
+      {renderHistory.length > 0 && (
+        <div className="mt-2 space-y-1.5">
+          <p className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
+            <History className="h-3.5 w-3.5" />
+            Recent renders ({renderHistory.length})
+          </p>
+          {renderHistory.slice(0, MAX_VISIBLE_HISTORY).map((record) => (
+            <div
+              key={record.prompt_id}
+              className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/60 px-2 py-1.5 text-xs"
+            >
+              <span className="text-muted-foreground">
+                seed <span className="font-mono">{record.seed}</span> · {record.image_count} img ·{' '}
+                {formatRenderAge(record.rendered_at)} · {record.workflow_preset}
+              </span>
+              <span className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setSeedInput(String(record.seed))}
+                  className="rounded-md border border-input bg-background px-1.5 py-0.5 text-xs hover:bg-accent"
+                  aria-label={`Pin seed ${record.seed}`}
+                >
+                  Pin seed
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handlePromoteToCardImage(record)}
+                  disabled={promotingPromptId === record.prompt_id}
+                  className="rounded-md border border-input bg-background px-1.5 py-0.5 text-xs hover:bg-accent disabled:opacity-50"
+                  aria-label={`Use render ${record.prompt_id.slice(0, 8)} as card image`}
+                >
+                  {promotingPromptId === record.prompt_id ? 'Promoting…' : 'Use as card image'}
+                </button>
+              </span>
+            </div>
+          ))}
         </div>
       )}
     </section>

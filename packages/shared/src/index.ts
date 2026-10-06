@@ -2,6 +2,8 @@
 // Core Types
 // ============================================================================
 
+export type { ComfyRenderRecord } from './comfyui/history';
+
 export * from './types';
 
 // ============================================================================
@@ -369,6 +371,8 @@ export {
 } from './comfyui/client';
 
 export { parseComfyWorkflowJson } from './comfyui/workflow-json';
+
+export { MAX_COMFY_RENDER_HISTORY, appendComfyRenderRecord, normalizeComfyRenderHistory } from './comfyui/history';
 
 export { DEFAULT_COMFY_BASE_URL, createDefaultComfyUIConfig, resolveComfyWorkflow } from './comfyui/defaults';
 
