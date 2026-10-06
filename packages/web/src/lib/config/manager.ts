@@ -4,7 +4,12 @@
  */
 
 import type { ApiKeys, Config, FeatureBlueprintDefaults, HelpState } from '@char-gen/shared';
-import { createDefaultChubConfig, createDefaultComfyUIConfig, type ChubConfig, type ComfyUIConfig } from '@char-gen/shared';
+import {
+  createDefaultChubConfig,
+  createDefaultComfyUIConfig,
+  type ChubConfig,
+  type ComfyUIConfig,
+} from '@char-gen/shared';
 import { readPersistedString, removePersistedValues, writePersistedString } from '../persistence/storage.js';
 import { DEFAULT_FEATURE_BLUEPRINT_PATHS } from '@/lib/blueprints/defaults';
 

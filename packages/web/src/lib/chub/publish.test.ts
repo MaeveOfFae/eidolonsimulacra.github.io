@@ -56,7 +56,9 @@ describe('testChubConnection', () => {
   it('verifies identity, mints a scoped token once, and reports the account', async () => {
     const fetchFn = vi
       .fn()
-      .mockResolvedValueOnce(jsonResponse({ identity: 'oid-1', username: 'maeve', scopes: [], credits: 42, subscription: 'Full' }))
+      .mockResolvedValueOnce(
+        jsonResponse({ identity: 'oid-1', username: 'maeve', scopes: [], credits: 42, subscription: 'Full' }),
+      )
       .mockResolvedValueOnce(jsonResponse({ id: 14398, name: 'Maeve', user_name: 'maeve' }))
       .mockResolvedValueOnce(jsonResponse({ token: 'proj_abc' })) as unknown as ChubFetch;
     const result = await testChubConnection(connectedConfig(), fetchFn);
@@ -159,7 +161,9 @@ describe('runChubPublish', () => {
   it('uses a fullPath carried by the create response without searching', async () => {
     const fetchFn = vi
       .fn()
-      .mockResolvedValueOnce(jsonResponse({ success: true, fullPath: 'maeve/alice-x', id: 211501 })) as unknown as ChubFetch;
+      .mockResolvedValueOnce(
+        jsonResponse({ success: true, fullPath: 'maeve/alice-x', id: 211501 }),
+      ) as unknown as ChubFetch;
     const outcome = await runChubPublish({ config: connectedConfig(), draft, form, fetchFn });
     expect(outcome.record).toMatchObject({ full_path: 'maeve/alice-x', username: 'maeve', character_id: 211501 });
     expect(fetchFn).toHaveBeenCalledTimes(1);
@@ -207,4 +211,3 @@ describe('runChubPublish', () => {
     expect(outcome.message).toContain('do not publish again');
   });
 });
-

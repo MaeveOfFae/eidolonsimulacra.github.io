@@ -116,7 +116,12 @@ export async function runChubPublish(options: ChubPublishOptions): Promise<ChubP
   const payload = buildChubCharacterCreate(source, form);
   const issues = runChubPreflight(payload);
   if (chubPreflightHasErrors(issues)) {
-    throw new Error(issues.filter((issue) => issue.severity === 'error').map((issue) => issue.message).join(' '));
+    throw new Error(
+      issues
+        .filter((issue) => issue.severity === 'error')
+        .map((issue) => issue.message)
+        .join(' '),
+    );
   }
 
   const client = { baseUrl: normalizeChubBaseUrl(config.base_url), token, fetchFn };
