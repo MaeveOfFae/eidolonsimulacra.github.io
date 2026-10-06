@@ -144,7 +144,12 @@ export const roadmapGroups: RoadmapGroup[] = [
     id: 'export-and-publishing',
     title: 'Export and Publishing',
     status: 'partial',
-    ownerFiles: ['packages/web/src/components/common/ExportModal.tsx', 'packages/shared/src/export/presets.ts'],
+    ownerFiles: [
+      'packages/web/src/components/common/ExportModal.tsx',
+      'packages/shared/src/export/presets.ts',
+      'packages/shared/src/chub/client.ts',
+      'packages/web/src/components/drafts/ChubPublishPanel.tsx',
+    ],
     items: [
       'Preset preview mode showing exactly which files and names an export will produce',
       'Platform capability matrix for checking which presets work with which templates',

@@ -3,6 +3,23 @@
 Generated release history for the browser app.
 
 
+## v5.2.0 - 2026-10-06
+
+### The publishing release: connect Chub and ship approved drafts as characters
+
+5.2 connects the app to chub.ai. Paste a token in Settings to Chub, hit Test, and the app verifies it against the live gateway, shows who you are signed in as, and mints a scoped projects-CRUD token for publishing. On any draft, approve the character sheet and the publish panel turns the draft into a Chub character: a V2-aware mapping carries the character sheet, creator notes, intro scene, post history and system prompt into the exact fields the gateway spec expects, the preflight list blocks bad publishes before any request is made, and the editable form lets name, tagline, tags, rating and visibility be fixed right there. Publishing again updates the same character - the record of where it lives on Chub rides on the draft - so iterations never duplicate. The gateway's open CORS means plain fetch works from web and desktop alike.
+
+### Highlights
+- Settings to Chub: paste a token, Test verifies it live and mints a scoped projects-CRUD token for publishing
+- Publish an approved draft as a Chub character with the spec's V2 field mapping - sheet to persona, creator notes to notes, intro scene to first message
+- Preflight blocks bad publishes: the 3-tag rule for listed characters, a required greeting, macro hygiene, START-wrapped alternate greetings
+- Republishing updates the same character - the Chub record (full path and id) is stored on the draft, so iterations never duplicate
+- Open CORS on the gateway means plain fetch works from web and desktop - no native plugin
+
+### Links
+- [Open Settings](/settings)
+- [Open the library](/drafts)
+- [Open What's New](/whats-new)
 ## v5.1.0 - 2026-10-06
 
 ### The image handoff release: a Danbooru tag linter and a direct ComfyUI bridge
@@ -272,6 +289,7 @@ This release packages recent commits focused on platform, templates, and themes.
 ### Links
 - [Open generation](/generate)
 - [Review templates](/templates)
+
 
 
 

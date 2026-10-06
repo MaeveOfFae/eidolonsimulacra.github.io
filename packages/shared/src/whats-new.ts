@@ -16,9 +16,29 @@ export interface ReleaseNoteEntry {
 // Generated and maintained by tools/generation/generate-release-notes.mjs.
 export const releaseNotes: ReleaseNoteEntry[] = [
   {
-    version: '5.1.0',
+    version: '5.2.0',
     releasedOn: '2026-10-06',
     badge: 'Current release',
+    headline: 'The publishing release: connect Chub and ship approved drafts as characters',
+    summary:
+      "5.2 connects the app to chub.ai. Paste a token in Settings to Chub, hit Test, and the app verifies it against the live gateway, shows who you are signed in as, and mints a scoped projects-CRUD token for publishing. On any draft, approve the character sheet and the publish panel turns the draft into a Chub character: a V2-aware mapping carries the character sheet, creator notes, intro scene, post history and system prompt into the exact fields the gateway spec expects, the preflight list blocks bad publishes before any request is made, and the editable form lets name, tagline, tags, rating and visibility be fixed right there. Publishing again updates the same character - the record of where it lives on Chub rides on the draft - so iterations never duplicate. The gateway's open CORS means plain fetch works from web and desktop alike.",
+    highlights: [
+      'Settings to Chub: paste a token, Test verifies it live and mints a scoped projects-CRUD token for publishing',
+      "Publish an approved draft as a Chub character with the spec's V2 field mapping - sheet to persona, creator notes to notes, intro scene to first message",
+      'Preflight blocks bad publishes: the 3-tag rule for listed characters, a required greeting, macro hygiene, START-wrapped alternate greetings',
+      'Republishing updates the same character - the Chub record (full path and id) is stored on the draft, so iterations never duplicate',
+      'Open CORS on the gateway means plain fetch works from web and desktop - no native plugin',
+    ],
+    links: [
+      { label: 'Open Settings', to: '/settings' },
+      { label: 'Open the library', to: '/drafts' },
+      { label: "Open What's New", to: '/whats-new' },
+    ],
+  },
+  {
+    version: '5.1.0',
+    releasedOn: '2026-10-06',
+    badge: 'Previous release',
     headline: 'The image handoff release: a Danbooru tag linter and a direct ComfyUI bridge',
     summary:
       '5.1 turns the a1111 asset from copy-paste output into a validated, executable prompt. A local Danbooru tag index (185k tags and 37k aliases fetched on demand, plus a bundled 12k-tag core for offline use) lints every prompt for unknown tags, aliases, deprecated tags, duplicates and line-order drift, and one click applies the mechanical fixes that used to be manual. The approved prompt can then be sent straight to ComfyUI on the actual pipeline - dual-encoder, CLIP skip 2, IPAdapter refs - with the render polled and reviewed inline.',

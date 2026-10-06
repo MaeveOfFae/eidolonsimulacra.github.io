@@ -109,6 +109,7 @@ These are staged or explicitly "planned" on web, so they must not be built for p
 - Multi-model comparison runs (`/compare`, shipped in the 4.2 web/desktop line): mobile ships no Compare screen. The shared comparison contract in `packages/shared/src/comparison.ts` is runtime-free, so a mobile surface can adopt it without forking
 - Saved searches, bulk metadata editing, and the duplicate scan (shipped in the 4.3 web/desktop line): mobile keeps its simple inline filters. The shared filter contract in `packages/shared/src/draft-library.ts` is runtime-free, so the formats cannot fork
 - Generation launcher polish — scenario presets, constraint builder, seed remix, and idea board (shipped in the 4.4 web/desktop line): mobile keeps its plain seed input and genre presets. The shared contracts in `packages/shared/src/generation-launcher.ts` and `seed-studio.ts` are runtime-free, so a mobile surface can adopt them without forking
+- Chub account connection and character publishing (shipped in the 5.2 web/desktop line): mobile ships no Chub settings section or publish tray. The shared client, payload mapper, preflight rules and publish record in `packages/shared/src/chub/` are runtime-free, so a mobile surface can adopt them without forking
 
 ## Recommended sequence
 
