@@ -4,7 +4,7 @@
  */
 
 import type { ApiKeys, Config, FeatureBlueprintDefaults, HelpState } from '@char-gen/shared';
-import { createDefaultComfyUIConfig, type ComfyUIConfig } from '@char-gen/shared';
+import { createDefaultChubConfig, createDefaultComfyUIConfig, type ChubConfig, type ComfyUIConfig } from '@char-gen/shared';
 import { readPersistedString, removePersistedValues, writePersistedString } from '../persistence/storage.js';
 import { DEFAULT_FEATURE_BLUEPRINT_PATHS } from '@/lib/blueprints/defaults';
 
@@ -165,6 +165,10 @@ export class ConfigManager {
         ...defaults.comfyui!,
         ...(config.comfyui ?? {}),
       },
+      chub: {
+        ...defaults.chub!,
+        ...(config.chub ?? {}),
+      },
     };
   }
 
@@ -239,6 +243,7 @@ export class ConfigManager {
         ...DEFAULT_FEATURE_BLUEPRINT_PATHS,
       },
       comfyui: createDefaultComfyUIConfig(),
+      chub: createDefaultChubConfig(),
     };
   }
 
@@ -430,6 +435,10 @@ export class ConfigManager {
         ...(this.config.comfyui ?? createDefaultComfyUIConfig()),
         ...(updates.comfyui ?? {}),
       },
+      chub: {
+        ...(this.config.chub ?? createDefaultChubConfig()),
+        ...(updates.chub ?? {}),
+      },
     });
     this.saveConfig();
   }
@@ -441,6 +450,18 @@ export class ConfigManager {
     this.updateConfig({
       comfyui: {
         ...(this.config.comfyui ?? createDefaultComfyUIConfig()),
+        ...updates,
+      },
+    });
+  }
+
+  /**
+   * Update the Chub account/publish settings (Settings → Chub and the publish panel).
+   */
+  updateChubConfig(updates: Partial<ChubConfig>): void {
+    this.updateConfig({
+      chub: {
+        ...(this.config.chub ?? createDefaultChubConfig()),
         ...updates,
       },
     });
