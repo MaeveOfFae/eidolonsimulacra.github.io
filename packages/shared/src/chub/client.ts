@@ -23,6 +23,10 @@ import type {
 } from './types';
 import { DEFAULT_CHUB_BASE_URL } from './defaults';
 
+// Re-exported so consumers (and tests) can import the transport type from the
+// module that defines the requests it drives.
+export type { ChubFetch } from './types';
+
 /** A gateway error with the HTTP status and the parsed `detail`, when present. */
 export class ChubApiError extends Error {
   readonly status: number;

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { isInvalidApiKeyValue, normalizeApiKeyValue } from './api-key';
 import { AnthropicEngine } from './anthropic';
 import {
@@ -6,6 +6,7 @@ import {
   buildProviderHeaders,
   createEngine,
   getDefaultBaseUrl,
+  getEngineType,
   getProviderAuthType,
 } from './factory';
 import { GoogleEngine } from './google';
@@ -31,16 +32,34 @@ describe('llm engine factory', () => {
     expect(createEngine({ model: 'gemini-1.5-pro' })).toBeInstanceOf(GoogleEngine);
     expect(createEngine({ model: 'claude-3.5-sonnet' })).toBeInstanceOf(AnthropicEngine);
     expect(createEngine({ model: 'deepseek-chat' })).toBeInstanceOf(OpenAICompatEngine);
+    // Current bare model IDs (no vendor slash) detect to their own providers
+    // instead of falling through to the OpenRouter default.
+    expect(createEngine({ model: 'deepseek-flash' }).getProvider()).toBe('deepseek');
+    expect(createEngine({ model: 'glm-5.3' }).getProvider()).toBe('zai');
+    expect(createEngine({ model: 'kimi-k3' }).getProvider()).toBe('moonshot');
+    expect(createEngine({ model: 'gpt-6-astra' }).getProvider()).toBe('openai');
+    expect(createEngine({ model: 'o3-mini' }).getProvider()).toBe('openai');
+    expect(createEngine({ model: 'gpt-oss:20b' }).getProvider()).toBe('ollama');
+    expect(createEngine({ model: 'qwen3.5' }).getProvider()).toBe('ollama');
+    expect(createEngine({ model: 'some-unknown-model' }).getProvider()).toBe('openrouter');
   });
 
   it('defaults base URLs per provider', () => {
     expect(getDefaultBaseUrl('openai')).toBe('https://api.openai.com/v1');
     expect(getDefaultBaseUrl('google')).toBe('https://generativelanguage.googleapis.com/v1beta');
     expect(getDefaultBaseUrl('openrouter')).toBe('https://openrouter.ai/api/v1');
+    expect(getDefaultBaseUrl('anthropic')).toBe('https://api.anthropic.com');
     expect(getDefaultBaseUrl('deepseek')).toBe('https://api.deepseek.com');
-    expect(getDefaultBaseUrl('zai')).toBe('https://open.bigmodel.cn/api/paas/v4');
-    expect(getDefaultBaseUrl('moonshot')).toBe('https://api.moonshot.cn/v1');
+    expect(getDefaultBaseUrl('zai')).toBe('https://api.z.ai/api/paas/v4');
+    expect(getDefaultBaseUrl('moonshot')).toBe('https://api.moonshot.ai/v1');
     expect(getDefaultBaseUrl('ollama')).toBe('http://localhost:11434/v1');
+  });
+
+  it('reports the real engine class per provider', () => {
+    expect(getEngineType('gemini-3.8-flash')).toBe('GoogleEngine (google)');
+    expect(getEngineType('claude-opus-5-5')).toBe('AnthropicEngine (anthropic)');
+    expect(getEngineType('gpt-6-astra')).toBe('OpenAICompatEngine (openai)');
+    expect(getEngineType('anything')).toBe('OpenAICompatEngine (openrouter)');
   });
 
   it('strips the legacy openrouter/ prefix only when the base URL is OpenRouter', () => {
@@ -101,9 +120,41 @@ describe('provider headers', () => {
     expect(buildProviderHeaders('openai')).toEqual({});
   });
 
+  it('sends Ollama Bearer auth only when a key is configured', () => {
+    // Local servers need no key; Ollama Cloud takes Authorization: Bearer.
+    expect(buildProviderHeaders('ollama')).toEqual({});
+    expect(buildProviderHeaders('ollama', 'ollama_test')).toEqual({ Authorization: 'Bearer ollama_test' });
+  });
+
   it('throws instead of sending a corrupted key', () => {
     expect(() => buildProviderHeaders('openai', 'sk-\nbroken')).toThrow(/invalid or corrupted/i);
     expect(() => buildProviderHeaders('openai', 'window.fetch:boom')).toThrow(/invalid or corrupted/i);
+  });
+});
+
+describe('ollama authentication', () => {
+  it('sends the Ollama key as Bearer on generate, and no auth without one', async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ choices: [{ message: { content: 'hi' } }] }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    try {
+      const withKey = createEngine({ provider: 'ollama', model: 'gemma4', apiKeys: { ollama: 'ollama_test' } });
+      await withKey.generate([{ role: 'user', content: 'hi' }]);
+      const firstHeaders = (fetchMock.mock.calls[0] as unknown[])[1]?.headers as Record<string, string>;
+      expect(firstHeaders.Authorization).toBe('Bearer ollama_test');
+
+      const withoutKey = createEngine({ provider: 'ollama', model: 'gemma4' });
+      await withoutKey.generate([{ role: 'user', content: 'hi' }]);
+      const secondHeaders = (fetchMock.mock.calls[1] as unknown[])[1]?.headers as Record<string, string>;
+      expect(secondHeaders.Authorization).toBeUndefined();
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
 

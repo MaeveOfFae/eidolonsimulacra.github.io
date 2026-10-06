@@ -1,6 +1,12 @@
 import type { Config } from '@char-gen/shared';
-import { Eye, EyeOff, Zap } from 'lucide-react';
-import { ALL_PROVIDERS, PROVIDER_COLORS, PROVIDER_LABELS, type Provider } from '../../lib/llm/providers.js';
+import { Eye, EyeOff, ExternalLink, Zap } from 'lucide-react';
+import {
+  ALL_PROVIDERS,
+  PROVIDER_COLORS,
+  PROVIDER_DOCS,
+  PROVIDER_LABELS,
+  type Provider,
+} from '../../lib/llm/providers.js';
 import CollapsibleSection from '../common/CollapsibleSection';
 
 /**
@@ -119,6 +125,15 @@ export default function SettingsRuntimeSection({
                 </option>
               ))}
             </select>
+            <a
+              href={PROVIDER_DOCS[selectedProvider]}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-info hover:underline"
+            >
+              {PROVIDER_LABELS[selectedProvider]} API docs
+              <ExternalLink className="h-3 w-3" />
+            </a>
           </div>
 
           <div className="space-y-2">
@@ -156,9 +171,10 @@ export default function SettingsRuntimeSection({
           <input
             type="text"
             id="custom-model-id"
+            aria-label="Custom model ID"
             value={currentModel}
             onChange={(e) => onModelSelect(e.target.value)}
-            placeholder="e.g., openrouter/openai/gpt-4o-mini"
+            placeholder="e.g., openrouter/openai/gpt-5.2"
             className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
         </div>
@@ -216,9 +232,10 @@ export default function SettingsRuntimeSection({
 
           {selectedProvider === 'ollama' && (
             <div className="rounded-lg border border-info/20 bg-info/10 p-3 text-sm text-info">
-              Ollama runs locally on your machine. Make sure Ollama is running on{' '}
-              <code className="rounded bg-info/20 px-1 py-0.5">http://localhost:11434</code> or configure a custom base
-              URL.
+              Local server defaults to <code className="rounded bg-info/20 px-1 py-0.5">http://localhost:11434/v1</code>
+              . For Ollama Cloud, set the base URL to{' '}
+              <code className="rounded bg-info/20 px-1 py-0.5">https://ollama.com/v1</code> and add your OLLAMA_API_KEY
+              in Providers.
             </div>
           )}
 

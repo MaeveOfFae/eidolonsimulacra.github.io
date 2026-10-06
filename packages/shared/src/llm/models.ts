@@ -1,17 +1,10 @@
 import type { ModelsResponse } from '../types';
 import type { LLMProvider } from './types';
 import { MODEL_SUGGESTIONS, buildProviderHeaders } from './factory';
+import { normalizeModelsPayload, providerModelsUrl } from './openai-compat';
 
+/** Error envelope only — model entries are normalized by `normalizeModelsPayload`. */
 type ProviderModelsPayload = {
-  data?: Array<{
-    id?: string;
-    name?: string;
-    context_length?: number;
-    architecture?: {
-      input_modalities?: string[];
-    };
-    supported_parameters?: string[];
-  }>;
   error?:
     | {
         message?: string;
@@ -39,7 +32,7 @@ export async function fetchProviderModels(
     options.includeContentTypeHeader ? { contentType: 'application/json' } : undefined,
   );
 
-  const response = await fetch(`${baseUrl}/models`, {
+  const response = await fetch(providerModelsUrl(provider, baseUrl), {
     method: 'GET',
     headers,
   });
@@ -61,16 +54,14 @@ export async function fetchProviderModels(
   }
 
   const payload = (await response.json()) as ProviderModelsPayload;
-  const models = (payload.data || [])
-    .filter((model): model is NonNullable<ProviderModelsPayload['data']>[number] & { id: string } => Boolean(model?.id))
-    .map((model) => ({
-      id: model.id,
-      name: model.name || model.id,
-      provider,
-      context_length: model.context_length,
-      supports_vision: model.architecture?.input_modalities?.includes('image') || false,
-      supports_tools: model.supported_parameters?.includes('tools') || false,
-    }));
+  const models = normalizeModelsPayload(payload).map((model) => ({
+    id: model.id,
+    name: model.name || model.id,
+    provider,
+    context_length: model.context_length,
+    supports_vision: model.input_modalities?.includes('image') || false,
+    supports_tools: model.supported_parameters?.includes('tools') || false,
+  }));
 
   return {
     provider,

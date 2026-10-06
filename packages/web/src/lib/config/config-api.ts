@@ -3,11 +3,11 @@
  *
  * Extracted from `EidolonBrowserAPI` (4.7.0). Config reads and writes go
  * through `configManager` (the desktop-aware persisted store); provider-key
- * resolution falls back to the first configured key; `loadProviderModels`
- * caches per provider/baseUrl/auth-shape for 5 minutes and falls back to the
- * static suggestion lists when no key is configured or the provider has no
- * remote listing. Behavior is pinned by `api.config.test.ts` through the
- * facade.
+ * resolution falls back to the first configured key (except Ollama, which never
+ * inherits a foreign key); `loadProviderModels` caches per provider/baseUrl/
+ * auth-shape for 5 minutes and falls back to the static suggestion lists when a
+ * key is missing (Ollama lists keyless). Behavior is pinned by
+ * `api.config.test.ts` through the facade.
  */
 
 import {
@@ -59,6 +59,13 @@ function resolveProviderApiKey(provider: string, apiKeys: ApiKeys): string | und
     return providerKey;
   }
 
+  // Local Ollama needs no key and must never inherit a foreign provider's key
+  // (it would be sent as a Bearer token to localhost). Ollama Cloud users store
+  // their key under `ollama` above.
+  if (provider === 'ollama') {
+    return undefined;
+  }
+
   return getFallbackApiKey(apiKeys);
 }
 
@@ -86,7 +93,8 @@ export async function updateConfig(config: Partial<Config>): Promise<Config> {
 
 export async function testConnection(request: ConnectionTestRequest): Promise<ConnectionTestResult> {
   const apiKey = configManager.getApiKeys()[request.provider];
-  if (!apiKey) {
+  // Local Ollama answers without auth; every other provider needs its key.
+  if (!apiKey && request.provider !== 'ollama') {
     return { success: false, error: `No API key configured for ${request.provider}` };
   }
 
@@ -122,14 +130,17 @@ export async function loadProviderModels(provider: string, refresh: boolean = fa
   }
 
   const fallbackModels = getFallbackModels(typedProvider);
-  const supportsRemoteListing = ['openrouter', 'openai', 'deepseek', 'zai', 'moonshot'].includes(provider);
+  // Every provider supports remote listing (Anthropic via /v1/models, Google via
+  // its models[] payload, Ollama keyless against the local server or with a key
+  // against Ollama Cloud). Only a missing key skips the fetch — Ollama is the
+  // one provider that legitimately runs without one.
+  const needsKey = provider !== 'ollama';
 
-  if (!apiKey || !supportsRemoteListing) {
+  if (needsKey && !apiKey) {
     const response = {
       provider,
       models: fallbackModels,
       cached: true,
-      error: apiKey || supportsRemoteListing ? undefined : 'Provider model listing is not available in browser mode.',
     };
     modelsCache.set(cacheKey, {
       response,
@@ -139,7 +150,7 @@ export async function loadProviderModels(provider: string, refresh: boolean = fa
   }
 
   try {
-    const response = await fetchSharedProviderModels(typedProvider, apiKey, baseUrl);
+    const response = await fetchSharedProviderModels(typedProvider, apiKey ?? '', baseUrl);
     modelsCache.set(cacheKey, {
       response,
       cachedAt: Date.now(),

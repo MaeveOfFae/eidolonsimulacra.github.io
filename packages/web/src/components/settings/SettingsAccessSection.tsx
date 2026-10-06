@@ -1,6 +1,6 @@
 import type { Config } from '@char-gen/shared';
-import { Eye, EyeOff, Lock } from 'lucide-react';
-import { ALL_PROVIDERS, PROVIDER_LABELS, type Provider } from '../../lib/llm/providers.js';
+import { Eye, EyeOff, ExternalLink, Lock } from 'lucide-react';
+import { ALL_PROVIDERS, PROVIDER_DOCS, PROVIDER_LABELS, type Provider } from '../../lib/llm/providers.js';
 
 /**
  * Setup-tab "Access" column for the settings screen.
@@ -124,9 +124,18 @@ export default function SettingsAccessSection({
               <h3 className="text-base font-semibold text-foreground">{PROVIDER_LABELS[selectedProvider]} access</h3>
               <p className="mt-1 text-sm text-muted-foreground">
                 {selectedProvider === 'ollama'
-                  ? 'Ollama does not need an API key unless your local setup is proxied.'
+                  ? 'Local Ollama needs no key; Ollama Cloud takes an OLLAMA_API_KEY.'
                   : `Store or update the ${PROVIDER_LABELS[selectedProvider]} key used by the current runtime.`}
               </p>
+              <a
+                href={PROVIDER_DOCS[selectedProvider]}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-1 inline-flex items-center gap-1 text-xs text-info hover:underline"
+              >
+                {PROVIDER_LABELS[selectedProvider]} API docs
+                <ExternalLink className="h-3 w-3" />
+              </a>
             </div>
             <button
               type="button"
@@ -150,7 +159,7 @@ export default function SettingsAccessSection({
               onChange={(e) => onApiKeyChange(selectedProvider, e.target.value)}
               placeholder={
                 selectedProvider === 'ollama'
-                  ? 'Optional - Ollama runs locally without auth'
+                  ? 'Optional for local Ollama; required for Ollama Cloud'
                   : `Enter your ${selectedProvider} API key`
               }
               className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 pr-12 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"

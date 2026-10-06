@@ -41,6 +41,22 @@ export const PROVIDER_LABELS: Record<Provider, string> = {
   anthropic: 'Anthropic',
   deepseek: 'DeepSeek',
   zai: 'Z.AI',
-  moonshot: 'Moonshot',
+  moonshot: 'Kimi (Moonshot)',
   ollama: 'Ollama',
+};
+
+/**
+ * Official API documentation for each provider, surfaced next to the provider
+ * picker and the key editor so the base URL, model names, and auth model are one
+ * click away.
+ */
+export const PROVIDER_DOCS: Record<Provider, string> = {
+  openai: 'https://openai.com/api/',
+  zai: 'https://docs.z.ai/api-reference/introduction',
+  openrouter: 'https://openrouter.ai/docs/api_reference/overview',
+  google: 'https://ai.google.dev/gemini-api/docs',
+  anthropic: 'https://platform.claude.com/docs/en/api/overview',
+  ollama: 'https://docs.ollama.com/api/introduction',
+  moonshot: 'https://platform.kimi.ai/docs/overview',
+  deepseek: 'https://api-docs.deepseek.com/',
 };

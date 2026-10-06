@@ -103,21 +103,24 @@ export interface LLMEngineConstructor {
 }
 
 /**
- * Provider-specific API endpoints
+ * Provider-specific API endpoints. Kept in sync with `getDefaultBaseUrl` in
+ * `factory.ts` (docs-verified hosts: api.z.ai per docs.z.ai, api.moonshot.ai
+ * per platform.kimi.ai).
  */
 export const ProviderEndpoints: Record<LLMProvider, string> = {
   openai: 'https://api.openai.com/v1',
   google: 'https://generativelanguage.googleapis.com/v1beta',
   openrouter: 'https://openrouter.ai/api/v1',
-  anthropic: 'https://api.anthropic.com/v1',
+  anthropic: 'https://api.anthropic.com',
   deepseek: 'https://api.deepseek.com',
-  zai: 'https://open.bigmodel.cn/api/paas/v4',
-  moonshot: 'https://api.moonshot.cn/v1',
+  zai: 'https://api.z.ai/api/paas/v4',
+  moonshot: 'https://api.moonshot.ai/v1',
   ollama: 'http://localhost:11434/v1',
 } as const;
 
 /**
- * Provider-specific header keys
+ * Provider-specific header keys. Ollama's local server needs no auth; Ollama
+ * Cloud (https://ollama.com/v1) accepts `Authorization: Bearer OLLAMA_API_KEY`.
  */
 export const ProviderAuthHeaders: Record<LLMProvider, string> = {
   openai: 'Authorization',
@@ -127,7 +130,7 @@ export const ProviderAuthHeaders: Record<LLMProvider, string> = {
   deepseek: 'Authorization',
   zai: 'Authorization',
   moonshot: 'Authorization',
-  ollama: '', // No auth required for local Ollama
+  ollama: 'Authorization',
 } as const;
 
 /**
@@ -135,19 +138,16 @@ export const ProviderAuthHeaders: Record<LLMProvider, string> = {
  */
 export function formatAuthHeader(provider: LLMProvider, apiKey: string): string {
   switch (provider) {
-    case 'openai':
-    case 'openrouter':
-    case 'deepseek':
-    case 'zai':
-    case 'moonshot':
-      return `Bearer ${apiKey}`;
     case 'google':
+      return apiKey;
     case 'anthropic':
-      return apiKey;
+      return apiKey; // Sent as the `x-api-key` header value, not `Authorization`.
     case 'ollama':
-      return ''; // No auth required for local Ollama
+      // Local Ollama needs no auth; Ollama Cloud takes a Bearer token.
+      return apiKey ? `Bearer ${apiKey}` : '';
     default:
-      return apiKey;
+      // OpenAI, OpenRouter, DeepSeek, Z.AI and Kimi take `Authorization: Bearer`.
+      return apiKey ? `Bearer ${apiKey}` : '';
   }
 }
 
@@ -162,13 +162,20 @@ export function detectProviderFromModel(model: string): LLMProvider {
   if (modelLower.startsWith('openai/')) return 'openai';
   if (modelLower.startsWith('google/')) return 'google';
   if (modelLower.startsWith('anthropic/')) return 'anthropic';
-  if (modelLower.startsWith('deepseek/')) return 'deepseek';
   if (modelLower.startsWith('zai/')) return 'zai';
   if (modelLower.startsWith('moonshot')) return 'moonshot';
   if (modelLower.startsWith('ollama/')) return 'ollama';
 
+  // Bare provider-prefixed API model IDs: deepseek-flash / deepseek-v4-pro,
+  // glm-5.3, kimi-k3. (`gpt-oss` is an open-weights tag pulled through Ollama,
+  // so it must win over the `gpt-` OpenAI rule below.)
+  if (modelLower.startsWith('deepseek-')) return 'deepseek';
+  if (modelLower.startsWith('glm-')) return 'zai';
+  if (modelLower.startsWith('kimi-')) return 'moonshot';
+  if (modelLower.startsWith('gpt-oss')) return 'ollama';
+
   // Auto-detect based on model name patterns
-  if (modelLower.startsWith('gpt-') || modelLower.startsWith('o1')) {
+  if (modelLower.startsWith('gpt-') || /^o[134](?:[-_.]|$)/.test(modelLower)) {
     return 'openai';
   }
   if (modelLower.startsWith('gemini')) {

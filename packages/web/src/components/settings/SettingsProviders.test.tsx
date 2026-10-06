@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import Settings from './Settings';
 import { configManager } from '../../lib/config/manager';
-import { ALL_PROVIDERS, PROVIDER_LABELS } from '../../lib/llm/providers';
+import { ALL_PROVIDERS, PROVIDER_DOCS, PROVIDER_LABELS } from '../../lib/llm/providers';
 
 vi.mock('../../lib/api.js', () => ({
   api: {
@@ -72,7 +72,8 @@ describe('Settings providers section', () => {
     expect(screen.getByText(`1 / ${ALL_PROVIDERS.length}`)).toBeInTheDocument();
 
     for (const provider of ALL_PROVIDERS) {
-      const name = new RegExp(`^${PROVIDER_LABELS[provider]}`);
+      // Escape the label: "Kimi (Moonshot)" would otherwise read as a group.
+      const name = new RegExp(`^${PROVIDER_LABELS[provider].replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
       expect(screen.getByRole('button', { name })).toBeInTheDocument();
     }
 
@@ -80,6 +81,14 @@ describe('Settings providers section', () => {
     expect(screen.getByText('Configured')).toBeInTheDocument();
     expect(screen.getByText('Local')).toBeInTheDocument();
     expect(screen.getAllByText('Empty')).toHaveLength(ALL_PROVIDERS.length - 2);
+  });
+
+  it('links the selected provider to its official API docs', () => {
+    renderProviderSettings();
+
+    const link = screen.getByRole('link', { name: /API docs/ });
+    expect(link).toHaveAttribute('href', PROVIDER_DOCS.openrouter);
+    expect(link).toHaveAttribute('target', '_blank');
   });
 
   it('opens on the model prefix provider and swaps to another one', async () => {
@@ -104,7 +113,7 @@ describe('Settings providers section', () => {
     // Ollama is local, so it is testable without credentials.
     fireEvent.click(screen.getByRole('button', { name: /^Ollama/ }));
     expect(screen.getByRole('heading', { name: 'Ollama' })).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('Optional - Ollama runs locally without auth')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Optional for local Ollama; required for Ollama Cloud')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Test connection' })).toBeEnabled();
   });
 

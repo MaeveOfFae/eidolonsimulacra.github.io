@@ -8,12 +8,11 @@ import { detectProviderFromModel } from './types';
 import { listModels as listModelsFromProvider, OpenAICompatEngine } from './openai-compat';
 import { GoogleEngine } from './google';
 import { AnthropicEngine } from './anthropic';
-import { isInvalidApiKeyValue, normalizeApiKeyValue } from './api-key';
 
-export interface ProviderHeaderOptions {
-  accept?: string;
-  contentType?: string;
-}
+// Header/auth shaping moved to `headers.ts` so `openai-compat.ts` can share it
+// without importing this factory (which imports `openai-compat`).
+export { buildProviderHeaders, getProviderAuthType } from './headers';
+export type { ProviderHeaderOptions } from './headers';
 
 export interface CreateEngineOptions extends Omit<LLMConfig, 'provider'> {
   provider?: LLMProvider;
@@ -35,13 +34,18 @@ function normalizeOpenAICompatModel(model: string, baseUrl: string): string {
 /**
  * Get API key for a provider from the keys object.
  * Falls back to defaultApiKey if no provider-specific key is found.
+ *
+ * Ollama is the exception: it only ever uses its own key (local servers need
+ * none; Ollama Cloud at `https://ollama.com/v1` needs `OLLAMA_API_KEY`), and
+ * must never inherit an unrelated provider's key — that would leak a foreign
+ * credential to localhost.
  */
 function getApiKey(
   provider: LLMProvider,
   options: Omit<CreateEngineOptions, 'provider' | 'model'>,
 ): string | undefined {
   if (provider === 'ollama') {
-    return undefined;
+    return options.apiKeys?.ollama || options.apiKey || undefined;
   }
 
   if (options.apiKeys?.[provider]) {
@@ -49,60 +53,6 @@ function getApiKey(
   }
 
   return options.apiKey || options.defaultApiKey;
-}
-
-export function getProviderAuthType(provider: LLMProvider): 'bearer' | 'raw' {
-  switch (provider) {
-    case 'google':
-    case 'anthropic':
-      return 'raw';
-    default:
-      return 'bearer';
-  }
-}
-
-export function buildProviderHeaders(
-  provider: LLMProvider,
-  apiKey?: string,
-  options: ProviderHeaderOptions = {},
-): Record<string, string> {
-  const headers: Record<string, string> = {};
-
-  if (options.contentType) {
-    headers['Content-Type'] = options.contentType;
-  }
-
-  if (options.accept) {
-    headers.Accept = options.accept;
-  }
-
-  const normalizedApiKey = typeof apiKey === 'string' ? normalizeApiKeyValue(apiKey) : undefined;
-
-  if (normalizedApiKey) {
-    if (isInvalidApiKeyValue(normalizedApiKey)) {
-      throw new Error('Configured API key is invalid or corrupted. Re-enter it in Settings and try again.');
-    }
-
-    switch (provider) {
-      case 'anthropic':
-        headers['x-api-key'] = normalizedApiKey;
-        headers['anthropic-version'] = '2023-06-01';
-        break;
-      case 'google':
-        headers['x-goog-api-key'] = normalizedApiKey;
-        break;
-      default:
-        headers.Authorization = `Bearer ${normalizedApiKey}`;
-        break;
-    }
-  }
-
-  if (provider === 'openrouter') {
-    headers['HTTP-Referer'] = typeof window !== 'undefined' ? window.location.origin : 'https://eidolon-simulacra.app';
-    headers['X-OpenRouter-Title'] = 'Eidolon Simulacra';
-  }
-
-  return headers;
 }
 
 export function getDefaultBaseUrl(provider: LLMProvider): string {
@@ -117,10 +67,16 @@ export function getDefaultBaseUrl(provider: LLMProvider): string {
       return 'https://api.anthropic.com';
     case 'deepseek':
       return 'https://api.deepseek.com';
+    // docs.z.ai "API Endpoint": the international Z.AI gateway (the older
+    // open.bigmodel.cn host is the China-specific deployment).
     case 'zai':
-      return 'https://open.bigmodel.cn/api/paas/v4';
+      return 'https://api.z.ai/api/paas/v4';
+    // platform.kimi.ai quickstart configures the OpenAI SDK against api.moonshot.ai
+    // (api.moonshot.cn is the China-specific deployment).
     case 'moonshot':
-      return 'https://api.moonshot.cn/v1';
+      return 'https://api.moonshot.ai/v1';
+    // Local server by default; Ollama Cloud is the same OpenAI-compatible surface
+    // at https://ollama.com/v1 with an OLLAMA_API_KEY (set as the API base URL).
     case 'ollama':
       return 'http://localhost:11434/v1';
     default:
@@ -191,7 +147,14 @@ export function createEngine(options: CreateEngineOptions): LLMEngine {
  */
 export function getEngineType(model: string, provider?: LLMProvider): string {
   const detected = provider || detectProviderFromModel(model);
-  return `OpenAICompatEngine (${detected})`;
+  switch (detected) {
+    case 'google':
+      return `GoogleEngine (${detected})`;
+    case 'anthropic':
+      return `AnthropicEngine (${detected})`;
+    default:
+      return `OpenAICompatEngine (${detected})`;
+  }
 }
 
 /**
@@ -199,23 +162,24 @@ export function getEngineType(model: string, provider?: LLMProvider): string {
  */
 export async function listModels(provider: LLMProvider, apiKey?: string, baseUrl?: string): Promise<string[]> {
   const resolvedBaseUrl = baseUrl || getDefaultBaseUrl(provider);
-  return listModelsFromProvider(resolvedBaseUrl, apiKey);
+  return listModelsFromProvider(resolvedBaseUrl, apiKey, provider);
 }
 
+/**
+ * Static fallback suggestions, verified against each provider's official docs
+ * (developers.openai.com, ai.google.dev, openrouter.ai, platform.claude.com,
+ * api-docs.deepseek.com, docs.z.ai, platform.kimi.ai, docs.ollama.com — 2026-10).
+ * Remote listing supersedes these wherever the provider supports it.
+ */
 export const MODEL_SUGGESTIONS: Record<LLMProvider, string[]> = {
-  openai: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo', 'o1-preview'],
-  google: ['gemini-2.0-flash-exp', 'gemini-2.0-flash-thinking-exp', 'gemini-1.5-pro', 'gemini-1.5-flash'],
-  openrouter: [
-    'anthropic/claude-3.5-sonnet',
-    'anthropic/claude-3.5-haiku',
-    'google/gemini-pro-1.5',
-    'openai/gpt-4o-mini',
-  ],
-  anthropic: ['claude-3.5-sonnet', 'claude-3.5-haiku', 'claude-3-opus'],
-  deepseek: ['deepseek-chat', 'deepseek-coder'],
-  zai: ['glm-4', 'glm-4-flash'],
-  moonshot: ['moonshot-v1-8k', 'moonshot-v1-32k', 'moonshot-v1-128k'],
-  ollama: ['llama3.2', 'llama3.1', 'mistral', 'codellama', 'qwen2.5', 'phi3', 'gemma2'],
+  openai: ['gpt-6-astra', 'gpt-6.1-sol', 'gpt-6-luna', 'gpt-5.2'],
+  google: ['gemini-3.8-flash', 'gemini-3.1-pro-preview', 'gemini-3.7-flash', 'gemini-flash-latest'],
+  openrouter: ['openai/gpt-5.2', 'openai/gpt-6.1-sol', 'anthropic/claude-sonnet-5-5', 'google/gemini-3.8-flash'],
+  anthropic: ['claude-opus-5-5', 'claude-sonnet-5-5', 'claude-fable-5-1', 'claude-haiku-4-5-20251001'],
+  deepseek: ['deepseek-flash', 'deepseek-v4-pro'],
+  zai: ['glm-5.3', 'glm-5.3-flash', 'glm-5.2', 'glm-4.7'],
+  moonshot: ['kimi-k3', 'kimi-k2.7-code', 'kimi-k2.6'],
+  ollama: ['gemma4', 'qwen3.5', 'llama3.1', 'qwen3', 'gpt-oss'],
 };
 
 /**

@@ -1,6 +1,12 @@
 import type { Config } from '@char-gen/shared';
-import { Eye, EyeOff, Lock, XCircle, Zap } from 'lucide-react';
-import { ALL_PROVIDERS, PROVIDER_COLORS, PROVIDER_LABELS, type Provider } from '../../lib/llm/providers.js';
+import { Eye, EyeOff, ExternalLink, Lock, XCircle, Zap } from 'lucide-react';
+import {
+  ALL_PROVIDERS,
+  PROVIDER_COLORS,
+  PROVIDER_DOCS,
+  PROVIDER_LABELS,
+  type Provider,
+} from '../../lib/llm/providers.js';
 
 /**
  * Provider credentials tab for the settings screen.
@@ -109,6 +115,15 @@ export default function SettingsProvidersSection({
           <div>
             <h2 className="text-xl font-bold">{PROVIDER_LABELS[selectedProvider]}</h2>
             <p className="text-sm text-muted-foreground">Edit the selected provider without scanning the full list.</p>
+            <a
+              href={PROVIDER_DOCS[selectedProvider]}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-1 inline-flex items-center gap-1 text-xs text-info hover:underline"
+            >
+              {PROVIDER_LABELS[selectedProvider]} API docs
+              <ExternalLink className="h-3 w-3" />
+            </a>
           </div>
         </div>
 
@@ -121,7 +136,7 @@ export default function SettingsProvidersSection({
               onChange={(e) => onApiKeyChange(selectedProvider, e.target.value)}
               placeholder={
                 selectedProvider === 'ollama'
-                  ? 'Optional - Ollama runs locally without auth'
+                  ? 'Optional for local Ollama; required for Ollama Cloud'
                   : `Enter your ${selectedProvider} API key`
               }
               className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 pr-12 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -179,7 +194,7 @@ export default function SettingsProvidersSection({
             {selectedProvider === 'openai' &&
               'Use a proxy or switch to OpenRouter when you want browser-direct generation without CORS issues.'}
             {selectedProvider === 'ollama' &&
-              'Keep Ollama running locally and use a base URL only when your instance is not on the default port.'}
+              'Local server (http://localhost:11434/v1) needs no key. For Ollama Cloud, set the API base URL in Runtime to https://ollama.com/v1 and add your OLLAMA_API_KEY.'}
             {selectedProvider !== 'openrouter' &&
               selectedProvider !== 'openai' &&
               selectedProvider !== 'ollama' &&

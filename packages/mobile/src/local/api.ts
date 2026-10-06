@@ -161,7 +161,8 @@ export class MobileLocalAPI {
     }
 
     const fallbackModels = getFallbackModels(typedProvider);
-    if (!apiKey) {
+    // Local Ollama lists keyless; every other provider needs its key.
+    if (!apiKey && typedProvider !== 'ollama') {
       return {
         provider,
         models: fallbackModels,
@@ -171,7 +172,7 @@ export class MobileLocalAPI {
     }
 
     try {
-      const response = await fetchProviderModels(typedProvider, apiKey, baseUrl, {
+      const response = await fetchProviderModels(typedProvider, apiKey ?? '', baseUrl, {
         includeContentTypeHeader: true,
       });
       modelsCache.set(cacheKey, { response, cachedAt: Date.now() });

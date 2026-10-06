@@ -83,7 +83,12 @@ describe('Settings setup access column', () => {
     expect(screen.getByRole('button', { name: /Manage all providers/ })).toBeInTheDocument();
 
     for (const provider of ALL_PROVIDERS) {
-      expect(screen.getByRole('button', { name: new RegExp(`^${PROVIDER_LABELS[provider]}`) })).toBeInTheDocument();
+      // Escape the label: "Kimi (Moonshot)" would otherwise read as a group.
+      expect(
+        screen.getByRole('button', {
+          name: new RegExp(`^${PROVIDER_LABELS[provider].replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`),
+        }),
+      ).toBeInTheDocument();
     }
 
     // Tests run outside the desktop shell, so keys persist to browser storage.
@@ -144,10 +149,8 @@ describe('Settings setup runtime column', () => {
 
     // The default model is an OpenRouter id, so its `openrouter/` prefix wins.
     expect(screen.getByLabelText('Provider')).toHaveValue('openrouter');
-    // The "Custom model ID" label has no htmlFor, so target the field by placeholder.
-    expect(screen.getByPlaceholderText('e.g., openrouter/openai/gpt-4o-mini')).toHaveValue(
-      'openrouter/openai/gpt-4o-mini',
-    );
+    // Target the custom-model field by its accessible name; the placeholder is copy.
+    expect(screen.getByLabelText('Custom model ID')).toHaveValue('openrouter/openai/gpt-4o-mini');
     expect(screen.getByText('Showing built-in suggestions.')).toBeInTheDocument();
 
     expect(screen.getByLabelText('Temperature')).toHaveValue(0.7);

@@ -16,6 +16,7 @@ import type {
 } from './types';
 import { ProviderEndpoints } from './types';
 import { isInvalidApiKeyValue, normalizeApiKeyValue } from './api-key';
+import { buildProviderHeaders } from './headers';
 
 interface OpenAICompatErrorResponse {
   error?: { message?: string } | string;
@@ -52,14 +53,6 @@ interface OpenAICompatChatCompletionResponse {
   output_text?: unknown;
   error?: { message?: string } | string;
   usage?: OpenAICompatUsage;
-}
-
-interface OpenAICompatModelSummary {
-  id: string;
-}
-
-interface OpenAICompatModelsResponse {
-  data?: OpenAICompatModelSummary[] | null;
 }
 
 function isDisplayContentRecord(record: Record<string, unknown>): boolean {
@@ -542,22 +535,93 @@ export class OpenAICompatEngine implements LLMEngine {
 }
 
 /**
- * List available models from an OpenAI-compatible API endpoint.
+ * The models URL for a provider. Anthropic's Models API is `/v1/models` on a
+ * base URL of `https://api.anthropic.com` (no `/v1`); every other provider
+ * serves `${base}/models`.
  */
-export async function listModels(baseUrl: string, apiKey?: string): Promise<string[]> {
-  const headers: Record<string, string> = {};
+export function providerModelsUrl(provider: LLMProvider, baseUrl: string): string {
+  const trimmed = baseUrl.replace(/\/+$/, '');
+  if (provider === 'anthropic' && !trimmed.endsWith('/v1')) {
+    return `${trimmed}/v1/models`;
+  }
+  return `${trimmed}/models`;
+}
 
-  if (apiKey) {
-    headers['Authorization'] = 'Bearer ' + apiKey;
+/** One model entry as normalized by `normalizeModelsPayload`. */
+export interface NormalizedModelEntry {
+  id: string;
+  name?: string;
+  context_length?: number;
+  input_modalities?: string[];
+  supported_parameters?: string[];
+}
+
+/**
+ * Normalize the two models-list payload shapes:
+ *  - OpenAI-compatible `{ data: [{ id, context_length, ... }] }`
+ *  - Google Gemini `{ models: [{ name: "models/x", inputTokenLimit, ... }] }`
+ */
+export function normalizeModelsPayload(payload: unknown): NormalizedModelEntry[] {
+  if (!payload || typeof payload !== 'object') {
+    return [];
   }
 
-  // OpenRouter-specific headers
-  if (baseUrl.includes('openrouter.ai')) {
-    headers['HTTP-Referer'] = 'https://github.com/maeveoffae/eidolon-simulacra';
-    headers['X-OpenRouter-Title'] = 'Eidolon Simulacra';
+  const record = payload as Record<string, unknown>;
+
+  if (Array.isArray(record.data)) {
+    return record.data
+      .filter((entry): entry is Record<string, unknown> => Boolean(entry) && typeof entry === 'object')
+      .filter((entry) => typeof entry.id === 'string')
+      .map((entry) => {
+        const architecture = entry.architecture as { input_modalities?: unknown } | undefined;
+        const normalized: NormalizedModelEntry = { id: entry.id as string };
+        if (typeof entry.name === 'string') normalized.name = entry.name;
+        if (typeof entry.context_length === 'number') normalized.context_length = entry.context_length;
+        if (Array.isArray(architecture?.input_modalities)) {
+          normalized.input_modalities = architecture.input_modalities as string[];
+        }
+        if (Array.isArray(entry.supported_parameters)) {
+          normalized.supported_parameters = entry.supported_parameters as string[];
+        }
+        return normalized;
+      });
   }
 
-  const response = await fetch(baseUrl + '/models', {
+  if (Array.isArray(record.models)) {
+    return record.models
+      .filter((entry): entry is Record<string, unknown> => Boolean(entry) && typeof entry === 'object')
+      .map((entry) => {
+        const rawName = typeof entry.name === 'string' ? entry.name : '';
+        if (rawName.length === 0) {
+          return null;
+        }
+        const normalized: NormalizedModelEntry = {
+          id: rawName.startsWith('models/') ? rawName.slice('models/'.length) : rawName,
+        };
+        if (typeof entry.displayName === 'string') normalized.name = entry.displayName;
+        if (typeof entry.inputTokenLimit === 'number') normalized.context_length = entry.inputTokenLimit;
+        return normalized;
+      })
+      .filter((entry): entry is NormalizedModelEntry => entry !== null);
+  }
+
+  return [];
+}
+
+/**
+ * List available models from a provider's OpenAI-compatible endpoint.
+ *
+ * `provider` selects the auth header and URL quirks: Anthropic's Models API
+ * lives at `/v1/models` on a base URL that has no `/v1`, and Google authenticates
+ * with `x-goog-api-key` and answers with a `models[]` payload instead of `data[]`.
+ */
+export async function listModels(
+  baseUrl: string,
+  apiKey?: string,
+  provider: LLMProvider = 'openai',
+): Promise<string[]> {
+  const headers = buildProviderHeaders(provider, apiKey);
+  const response = await fetch(providerModelsUrl(provider, baseUrl), {
     method: 'GET',
     headers,
   });
@@ -571,12 +635,7 @@ export async function listModels(baseUrl: string, apiKey?: string): Promise<stri
   }
 
   const responseJson = await response.json();
-  const data = responseJson as OpenAICompatModelsResponse;
-  const dataData = data.data;
-
-  if (dataData && Array.isArray(dataData)) {
-    return dataData.map((model) => model.id).sort();
-  }
-
-  return [];
+  return normalizeModelsPayload(responseJson)
+    .map((model) => model.id)
+    .sort();
 }
