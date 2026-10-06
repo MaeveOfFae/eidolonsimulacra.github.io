@@ -52,6 +52,9 @@ jobs:
       - name: Check mobile content parity
         run: pnpm content:check
 
+      - name: Check Danbooru tag index artifacts
+        run: pnpm tags:check
+
       - name: Check placeholder wiring
         run: pnpm check:placeholders
 

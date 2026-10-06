@@ -679,6 +679,18 @@ export default function Review() {
     }
   };
 
+  const handleApplyA1111Fixes = (nextContent: string) => {
+    if (!draft) {
+      return;
+    }
+    saveAsset.mutate({
+      assetName: 'a1111',
+      content: nextContent,
+      expectedPreviousContent: draft.assets.a1111 ?? null,
+      overwrite: true,
+    });
+  };
+
   const handleAttachCardImage = async () => {
     try {
       const file = await pickFile({ accept: '.png,image/png' }, imageInputRef.current);
@@ -919,6 +931,7 @@ export default function Review() {
         onCancelEdit={handleCancelEdit}
         onEditContentChange={setEditContent}
         onRecordApproval={(assetName, decision) => recordAssetApproval.mutate({ assetName, decision })}
+        onApplyA1111Fixes={handleApplyA1111Fixes}
       />
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">

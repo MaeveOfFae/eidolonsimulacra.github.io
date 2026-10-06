@@ -34,6 +34,8 @@
     "icons:check": "node ./tools/generation/check-app-icons.mjs",
     "content:generate": "node ./tools/generation/generate-mobile-local-content.mjs",
     "content:check": "node ./tools/generation/generate-mobile-local-content.mjs --check",
+    "tags:build": "node ./tools/generation/build-danbooru-index.mjs",
+    "tags:check": "node ./tools/generation/check-danbooru-index.mjs",
     "release:notes:check": "node ./tools/generation/check-release-notes-version.mjs",
     "check:placeholders": "node ./tools/generation/check-placeholders.mjs",
     "check:roadmap": "node ./tools/generation/check-roadmap-sync.mjs",

@@ -4,6 +4,7 @@ import { AlertTriangle, ArrowLeft, Check, Copy, Edit3, RotateCcw, ScissorsLineDa
 import { buildAssetApprovalSummary, type DraftAssetApprovalDecision } from '@char-gen/shared';
 import { formatAssetLabel } from '@/lib/drafts/asset-display';
 import CollapsibleSection from '../common/CollapsibleSection';
+import A1111TagLintPanel from './A1111TagLintPanel';
 import { summarizeText } from '@/lib/drafts/asset-display';
 
 /**
@@ -41,6 +42,8 @@ interface ReviewAssetCardsProps {
   onCancelEdit: () => void;
   onEditContentChange: (value: string) => void;
   onRecordApproval: (assetName: string, decision: DraftAssetApprovalDecision | null) => void;
+  /** Provided when the a1111 tag lint panel should render (saves through the parent's asset mutation). */
+  onApplyA1111Fixes?: (nextContent: string) => void;
 }
 
 export default function ReviewAssetCards({
@@ -60,6 +63,7 @@ export default function ReviewAssetCards({
   onCancelEdit,
   onEditContentChange,
   onRecordApproval,
+  onApplyA1111Fixes,
 }: ReviewAssetCardsProps) {
   const assetApprovalLookup = useMemo(
     () => new Map(assetApprovals.entries.map((entry) => [entry.assetName, entry] as const)),
@@ -225,6 +229,14 @@ export default function ReviewAssetCards({
                 </div>
               )}
             </div>
+
+            {assetName === 'a1111' && assetExists && editingAsset !== assetName && onApplyA1111Fixes && (
+              <A1111TagLintPanel
+                content={assets[assetName] ?? ''}
+                onApplyFixes={onApplyA1111Fixes}
+                isSaving={isSaving}
+              />
+            )}
           </CollapsibleSection>
         );
       })}

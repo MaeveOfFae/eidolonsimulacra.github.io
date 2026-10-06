@@ -17,6 +17,10 @@
     "./services": {
       "types": "./dist/services/index.d.ts",
       "import": "./dist/services/index.js"
+    },
+    "./danbooru-core": {
+      "types": "./dist/a1111/core-index.d.ts",
+      "import": "./dist/danbooru-core.js"
     }
   },
   "scripts": {

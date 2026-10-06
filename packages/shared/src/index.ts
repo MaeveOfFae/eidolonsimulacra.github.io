@@ -289,6 +289,52 @@ export {
 } from './parse/parse-blocks';
 
 // ============================================================================
+// A1111 Tag Linting (Danbooru-backed)
+// ============================================================================
+
+export {
+  A1111_LINE_ROLES,
+  A1111_EXPECTED_LINE_COUNT,
+  applyA1111TagFixes,
+  lintA1111Tags,
+  splitTagTokens,
+  stripTagWeightSyntax,
+  type A1111LineRole,
+  type A1111LintIssue,
+  type A1111LintIssueCode,
+  type A1111LintOptions,
+  type A1111LintSeverity,
+  type A1111TagFixResult,
+} from './a1111/tag-linter';
+
+export {
+  A1111_QUALITY_TOKEN_ALLOWLIST,
+  PSEUDO_TAG_CORRECTIONS,
+  isA1111QualityToken,
+  lookupPseudoTagCorrection,
+} from './a1111/pseudo-tags';
+
+export {
+  buildDanbooruTagIndex,
+  findSimilarTagNames,
+  normalizeBooruTag,
+  parseDanbooruAliasesCsv,
+  parseDanbooruTagsCsv,
+  resolveBooruTag,
+  type BooruTagResolution,
+  type BooruTagStatus,
+  type DanbooruTagEntry,
+  type DanbooruTagIndex,
+  type SimilarTagOptions,
+} from './a1111/tag-index';
+
+// The bundled core index loader lives behind the `@char-gen/shared/danbooru-core`
+// subpath on purpose: it statically imports the ~280 KiB generated CSV, and tsup
+// bundles with `splitting: false`, so exporting it here would drag that CSV into
+// `dist/index.js` — the web app's eagerly-loaded shared chunk. Web dynamic-imports the
+// subpath (a lazy chunk); mobile bundles it directly since it has no static assets.
+
+// ============================================================================
 // Export Presets
 // ============================================================================
 

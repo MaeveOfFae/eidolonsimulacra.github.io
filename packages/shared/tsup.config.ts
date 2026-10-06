@@ -5,6 +5,7 @@ export default defineConfig({
     index: 'src/index.ts',
     'types/index': 'src/types/index.ts',
     'services/index': 'src/services/index.ts',
+    'danbooru-core': 'src/a1111/core-index.ts',
   },
   format: ['esm'],
   dts: false,

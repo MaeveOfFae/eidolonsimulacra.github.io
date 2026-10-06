@@ -60,6 +60,8 @@ async function checkShared(problems, notes) {
     { path: 'packages/shared/dist/index.d.ts', minBytes: 2_048 },
     { path: 'packages/shared/dist/types/index.d.ts', minBytes: 1_024 },
     { path: 'packages/shared/dist/services/index.d.ts', minBytes: 64 },
+    { path: 'packages/shared/dist/danbooru-core.js', minBytes: 100_000 },
+    { path: 'packages/shared/dist/a1111/core-index.d.ts', minBytes: 64 },
   ];
 
   for (const file of files) {
