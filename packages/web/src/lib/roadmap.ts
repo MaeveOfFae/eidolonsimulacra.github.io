@@ -42,20 +42,16 @@ export const roadmapGroups: RoadmapGroup[] = [
   {
     id: 'image-pipeline',
     title: 'Image Pipeline',
-    status: 'partial',
+    status: 'shipped',
     ownerFiles: [
       'packages/shared/src/a1111/tag-linter.ts',
       'packages/shared/src/comfyui/client.ts',
       'packages/web/src/components/drafts/A1111TagLintPanel.tsx',
       'packages/web/src/components/drafts/ComfyRenderPanel.tsx',
+      'packages/web/src/components/drafts/ComfyRenderGallery.tsx',
       'packages/web/src/components/settings/SettingsImagePipelineSection.tsx',
     ],
-    items: [
-      'Variation batches launched from the render panel (seed pinning itself is live)',
-      'Saved-render gallery with thumbnails of past renders (the history metadata is live)',
-      'WebSocket progress streaming during renders instead of history polling',
-      'Render outputs saved as draft assets rather than living only in the ComfyUI output folder',
-    ],
+    items: [],
   },
   {
     id: 'review-and-editing',

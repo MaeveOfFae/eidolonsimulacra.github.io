@@ -17,10 +17,48 @@ import type {
 
 export type ComfyFetch = (url: string, init?: RequestInit) => Promise<Response>;
 
+/**
+ * Minimal structural WebSocket type so tests can inject a fake and environments
+ * without `WebSocket` (older Node) still load this module.
+ */
+export interface ComfyWebSocketLike {
+  close(code?: number, reason?: string): void;
+  onopen: ((event: unknown) => void) | null;
+  onclose: ((event: unknown) => void) | null;
+  onerror: ((event: unknown) => void) | null;
+  onmessage: ((event: { data: unknown }) => void) | null;
+}
+
+export type ComfyWebSocketFactory = (url: string) => ComfyWebSocketLike;
+
+export function defaultComfyWebSocketFactory(): ComfyWebSocketFactory | undefined {
+  if (typeof WebSocket === 'undefined') {
+    return undefined;
+  }
+  return (url) => new WebSocket(url) as unknown as ComfyWebSocketLike;
+}
+
+/** The `/ws` URL for a server base URL, bound to the client id the prompt was queued with. */
+export function comfyWebSocketUrl(baseUrl: string, clientId: string): string {
+  return `${normalizeComfyBaseUrl(baseUrl).replace(/^http/i, 'ws')}/ws?clientId=${encodeURIComponent(clientId)}`;
+}
+
+/** A decoded ComfyUI websocket progress event, flattened for UI consumption. */
+export interface ComfyProgressEvent {
+  kind: 'progress' | 'executing' | 'executed' | 'status';
+  /** Sampler step / total steps for `progress` events. */
+  value?: number;
+  max?: number;
+  /** Node currently executing (null when a prompt finishes). */
+  node?: string | null;
+  promptId?: string;
+}
+
 export interface ComfyClientOptions {
   baseUrl: string;
   fetchFn?: ComfyFetch;
   clientId?: string;
+  webSocketFactory?: ComfyWebSocketFactory | null;
 }
 
 export function normalizeComfyBaseUrl(rawUrl: string): string {
@@ -125,6 +163,89 @@ export interface ComfyWaitOptions {
   pollIntervalMs?: number;
   timeoutMs?: number;
   signal?: AbortSignal;
+  /** Live progress from the `/ws` stream when the transport allows it. */
+  onProgress?: (event: ComfyProgressEvent) => void;
+}
+
+/** Best-effort progress listener over `/ws`; resolution is a no-op when it cannot connect. */
+function attachProgressStream(
+  options: ComfyClientOptions,
+  promptId: string,
+  onProgress: (event: ComfyProgressEvent) => void,
+): { close: () => void } {
+  const clientId = options.clientId ?? 'eidolon-simulacra';
+  const factory =
+    options.webSocketFactory === null ? undefined : (options.webSocketFactory ?? defaultComfyWebSocketFactory());
+  if (!factory) {
+    return { close: () => undefined };
+  }
+
+  let socket: ComfyWebSocketLike | null = null;
+  let settled = false;
+  const close = () => {
+    settled = true;
+    try {
+      socket?.close();
+    } catch {
+      // Closing an already-dead socket is fine.
+    }
+  };
+
+  try {
+    socket = factory(comfyWebSocketUrl(options.baseUrl, clientId));
+  } catch {
+    return { close };
+  }
+
+  // If the socket never opens, stay silent: history polling is the source of truth.
+  const openTimeout = setTimeout(() => {
+    if (!settled) {
+      close();
+    }
+  }, 2500);
+
+  socket.onopen = () => undefined;
+  socket.onclose = () => {
+    clearTimeout(openTimeout);
+  };
+  socket.onerror = () => {
+    clearTimeout(openTimeout);
+    close();
+  };
+  socket.onmessage = (event) => {
+    if (typeof event.data !== 'string') {
+      return; // Binary previews are out of scope for progress.
+    }
+    try {
+      const payload = JSON.parse(event.data) as {
+        type?: string;
+        data?: { value?: number; max?: number; node?: string | null; prompt_id?: string };
+      };
+      if (
+        payload.type === 'progress' ||
+        payload.type === 'executing' ||
+        payload.type === 'executed' ||
+        payload.type === 'status'
+      ) {
+        onProgress({
+          kind: payload.type,
+          ...(payload.data?.value !== undefined ? { value: payload.data.value } : {}),
+          ...(payload.data?.max !== undefined ? { max: payload.data.max } : {}),
+          ...(payload.data?.node !== undefined ? { node: payload.data.node } : {}),
+          promptId: payload.data?.prompt_id ?? promptId,
+        });
+      }
+    } catch {
+      // Non-JSON frames are ignored.
+    }
+  };
+
+  return {
+    close: () => {
+      clearTimeout(openTimeout);
+      close();
+    },
+  };
 }
 
 /** Poll history until the run finishes; resolves with every saved output image. */
@@ -136,25 +257,32 @@ export async function comfyWaitForImages(
   const pollIntervalMs = waitOptions.pollIntervalMs ?? 1000;
   const timeoutMs = waitOptions.timeoutMs ?? 600_000;
   const deadline = Date.now() + timeoutMs;
+  const progressStream = waitOptions.onProgress
+    ? attachProgressStream(options, promptId, waitOptions.onProgress)
+    : null;
 
-  while (true) {
-    if (waitOptions.signal?.aborted) {
-      throw new Error('Rendering was cancelled.');
-    }
-    const entry = await comfyGetHistory(options, promptId);
-    if (entry) {
-      if (entry.status?.status_str === 'error') {
-        throw new Error('ComfyUI reported an execution error while rendering. Check its console for the traceback.');
+  try {
+    while (true) {
+      if (waitOptions.signal?.aborted) {
+        throw new Error('Rendering was cancelled.');
       }
-      const images = Object.values(entry.outputs ?? {}).flatMap((output) => output.images ?? []);
-      if (entry.status?.completed || images.length > 0) {
-        return images;
+      const entry = await comfyGetHistory(options, promptId);
+      if (entry) {
+        if (entry.status?.status_str === 'error') {
+          throw new Error('ComfyUI reported an execution error while rendering. Check its console for the traceback.');
+        }
+        const images = Object.values(entry.outputs ?? {}).flatMap((output) => output.images ?? []);
+        if (entry.status?.completed || images.length > 0) {
+          return images;
+        }
       }
+      if (Date.now() > deadline) {
+        throw new Error(`Rendering did not finish within ${Math.round(timeoutMs / 1000)}s.`);
+      }
+      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
     }
-    if (Date.now() > deadline) {
-      throw new Error(`Rendering did not finish within ${Math.round(timeoutMs / 1000)}s.`);
-    }
-    await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+  } finally {
+    progressStream?.close();
   }
 }
 

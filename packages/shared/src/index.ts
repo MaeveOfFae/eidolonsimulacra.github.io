@@ -362,12 +362,17 @@ export {
   comfyUploadImage,
   comfyViewUrl,
   comfyWaitForImages,
+  comfyWebSocketUrl,
+  defaultComfyWebSocketFactory,
   describeComfyValidationError,
   normalizeComfyBaseUrl,
   type ComfyClientOptions,
   type ComfyFetch,
+  type ComfyProgressEvent,
   type ComfySystemStats,
   type ComfyWaitOptions,
+  type ComfyWebSocketFactory,
+  type ComfyWebSocketLike,
 } from './comfyui/client';
 
 export { parseComfyWorkflowJson } from './comfyui/workflow-json';

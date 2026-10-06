@@ -16,6 +16,7 @@ import {
   resolveComfyWorkflow,
   type ComfyFetch,
   type ComfyHistoryImage,
+  type ComfyProgressEvent,
   type ComfyUIConfig,
 } from '@char-gen/shared';
 import { describeComfyTransportError, getComfyFetch } from './transport';
@@ -37,6 +38,15 @@ export interface ComfyRunParams {
   seed?: number;
   signal?: AbortSignal;
   fetchFn?: ComfyFetch;
+  /** Live progress from the `/ws` stream, when the transport allows one. */
+  onProgress?: (event: ComfyProgressEvent) => void;
+}
+
+/** One client id per session so the `/ws` stream and `/prompt` submissions match. */
+let sessionClientId: string | null = null;
+function getSessionClientId(): string {
+  sessionClientId ??= `eidolon-${Math.random().toString(36).slice(2, 10)}`;
+  return sessionClientId;
 }
 
 function dataUrlToBlob(dataUrl: string): Blob {
@@ -113,10 +123,18 @@ export async function runComfyRender(params: ComfyRunParams): Promise<ComfyRende
     payload.graph[samplerIds[0]!]!.inputs.steps = config.steps;
   }
 
-  const queued = await comfyQueuePrompt({ baseUrl: config.base_url, fetchFn }, payload.graph);
-  const images = await comfyWaitForImages({ baseUrl: config.base_url, fetchFn }, queued.prompt_id, {
-    signal: params.signal,
-  });
+  const queued = await comfyQueuePrompt(
+    { baseUrl: config.base_url, fetchFn, clientId: getSessionClientId() },
+    payload.graph,
+  );
+  const images = await comfyWaitForImages(
+    { baseUrl: config.base_url, fetchFn, clientId: getSessionClientId() },
+    queued.prompt_id,
+    {
+      signal: params.signal,
+      ...(params.onProgress ? { onProgress: params.onProgress } : {}),
+    },
+  );
 
   const objectUrls: string[] = [];
   for (const image of images) {
@@ -130,6 +148,55 @@ export async function runComfyRender(params: ComfyRunParams): Promise<ComfyRende
 export interface ComfyConnectionTest {
   ok: boolean;
   message: string;
+}
+
+export interface ComfyVariationBatchResult {
+  /** Successful renders, in submission order. */
+  results: ComfyRenderResult[];
+  /** Failure messages for variations that errored; partial batches still succeed. */
+  errors: string[];
+}
+
+/**
+ * Render N variations of the same prompt. A pinned seed ladders deterministically
+ * (seed, seed+1, …) so a good seed can be explored; an empty seed gives each
+ * variation its own random seed. Runs concurrently — ComfyUI queues submissions
+ * server-side, so this fills the queue rather than racing it.
+ */
+export async function runComfyVariationBatch(
+  params: ComfyRunParams & { count: number },
+): Promise<ComfyVariationBatchResult> {
+  const count = Math.max(1, Math.min(4, Math.trunc(params.count)));
+  const submissions = Array.from({ length: count }, (unused, index) =>
+    runComfyRender({
+      ...params,
+      ...(params.seed !== undefined ? { seed: params.seed + index } : {}),
+    }),
+  );
+
+  const settled = await Promise.allSettled(submissions);
+  const results: ComfyRenderResult[] = [];
+  const errors: string[] = [];
+  for (const outcome of settled) {
+    if (outcome.status === 'fulfilled') {
+      results.push(outcome.value);
+    } else {
+      errors.push(describeComfyTransportError(outcome.reason));
+    }
+  }
+  return { results, errors };
+}
+
+/** The next free `render_<n>` asset name for the draft (saved renders live beside assets). */
+export function nextRenderAssetName(assets: Record<string, string>): string {
+  let maxIndex = 0;
+  for (const name of Object.keys(assets)) {
+    const match = name.match(/^render_(\d+)$/);
+    if (match) {
+      maxIndex = Math.max(maxIndex, Number.parseInt(match[1], 10) || 0);
+    }
+  }
+  return `render_${maxIndex + 1}`;
 }
 
 export async function testComfyConnection(config: Pick<ComfyUIConfig, 'base_url'>): Promise<ComfyConnectionTest> {

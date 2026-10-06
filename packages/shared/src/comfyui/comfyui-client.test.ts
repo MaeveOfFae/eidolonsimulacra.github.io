@@ -6,9 +6,12 @@ import {
   comfyUploadImage,
   comfyViewUrl,
   comfyWaitForImages,
+  comfyWebSocketUrl,
   describeComfyValidationError,
   normalizeComfyBaseUrl,
   type ComfyFetch,
+  type ComfyProgressEvent,
+  type ComfyWebSocketLike,
 } from './client';
 import { parseComfyWorkflowJson } from './workflow-json';
 import { createDefaultComfyUIConfig, resolveComfyWorkflow } from './defaults';
@@ -170,5 +173,97 @@ describe('comfy defaults', () => {
     const failed = resolveComfyWorkflow(custom);
     expect(failed.ok).toBe(false);
     expect(failed.ok === false && failed.error).toMatch(/not valid JSON/);
+  });
+});
+
+describe('comfyWebSocketUrl', () => {
+  it('maps http → ws and https → wss with the client id', () => {
+    expect(comfyWebSocketUrl('http://127.0.0.1:8188', 'abc')).toBe('ws://127.0.0.1:8188/ws?clientId=abc');
+    expect(comfyWebSocketUrl('https://gpu.lan:8288/', 'a b')).toBe('wss://gpu.lan:8288/ws?clientId=a%20b');
+  });
+});
+
+/** Minimal controllable stand-in for the DOM WebSocket. */
+class FakeWebSocket implements ComfyWebSocketLike {
+  onopen: ((event: unknown) => void) | null = null;
+  onclose: ((event: unknown) => void) | null = null;
+  onerror: ((event: unknown) => void) | null = null;
+  onmessage: ((event: { data: unknown }) => void) | null = null;
+  closed = false;
+  close(): void {
+    this.closed = true;
+    this.onclose?.({});
+  }
+  emit(message: unknown): void {
+    this.onmessage?.({ data: JSON.stringify(message) });
+  }
+}
+
+function completedAfterOnePendingFetch(promptId: string): ComfyFetch {
+  let calls = 0;
+  return (async () => {
+    calls += 1;
+    if (calls === 1) {
+      return jsonResponse({});
+    }
+    return jsonResponse({
+      [promptId]: {
+        prompt_id: promptId,
+        outputs: { '8': { images: [{ filename: 'out.png', subfolder: '', type: 'output' }] } },
+        status: { completed: true },
+      },
+    });
+  }) as ComfyFetch;
+}
+
+describe('comfyWaitForImages websocket progress', () => {
+  it('forwards progress events and still resolves from history polling', async () => {
+    const sockets: FakeWebSocket[] = [];
+    const factory = (url: string) => {
+      expect(url).toBe('ws://x:8188/ws?clientId=session-1');
+      const socket = new FakeWebSocket();
+      sockets.push(socket);
+      setTimeout(() => {
+        socket.onopen?.({});
+        socket.emit({ type: 'progress', data: { value: 7, max: 24, prompt_id: 'p-1' } });
+        socket.emit({ type: 'executing', data: { node: '6', prompt_id: 'p-1' } });
+      }, 1);
+      return socket;
+    };
+
+    const events: ComfyProgressEvent[] = [];
+    const images = await comfyWaitForImages(
+      {
+        baseUrl: 'http://x:8188',
+        fetchFn: completedAfterOnePendingFetch('p-1'),
+        clientId: 'session-1',
+        webSocketFactory: factory,
+      },
+      'p-1',
+      { pollIntervalMs: 5, timeoutMs: 1000, onProgress: (event) => events.push(event) },
+    );
+
+    expect(images).toHaveLength(1);
+    expect(events).toContainEqual({ kind: 'progress', value: 7, max: 24, promptId: 'p-1' });
+    expect(events).toContainEqual({ kind: 'executing', node: '6', promptId: 'p-1' });
+    expect(sockets[0]!.closed).toBe(true);
+  });
+
+  it('completes without progress when the websocket cannot be created', async () => {
+    const events: ComfyProgressEvent[] = [];
+    const images = await comfyWaitForImages(
+      {
+        baseUrl: 'http://x:8188',
+        fetchFn: completedAfterOnePendingFetch('p-2'),
+        webSocketFactory: () => {
+          throw new Error('blocked by mixed content');
+        },
+      },
+      'p-2',
+      { pollIntervalMs: 5, timeoutMs: 1000, onProgress: (event) => events.push(event) },
+    );
+
+    expect(images).toHaveLength(1);
+    expect(events).toEqual([]);
   });
 });
