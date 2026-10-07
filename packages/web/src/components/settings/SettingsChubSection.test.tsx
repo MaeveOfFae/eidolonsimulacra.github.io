@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { createDefaultChubConfig, type ChubConfig } from '@char-gen/shared';
 import SettingsChubSection from './SettingsChubSection';
+import { configManager } from '@/lib/config';
 import { testChubConnection } from '@/lib/chub/publish';
 
 vi.mock('@/lib/chub/publish', async (importOriginal) => ({
@@ -26,6 +27,7 @@ const connectedConfig = (): ChubConfig => ({
 
 beforeEach(() => {
   mockedTest.mockReset();
+  configManager.clearAll();
 });
 
 describe('SettingsChubSection', () => {
@@ -78,6 +80,13 @@ describe('SettingsChubSection', () => {
     expect(update.subscription).toBe('Full');
     expect(update.publish_token).toBe('proj_abc');
     expect(update.verified_at).toBeTruthy();
+    // Verification lands in the persisted config immediately — the publish
+    // panel reads configManager, not the unsaved Settings draft, so a
+    // successful Test must count even without Save All Settings.
+    const chub = configManager.getConfig().chub;
+    expect(chub?.username).toBe('maeve');
+    expect(chub?.publish_token).toBe('proj_abc');
+    expect(chub?.verified_at).toBeTruthy();
   });
 
   it('reports a failed test without storing anything', async () => {
@@ -91,6 +100,7 @@ describe('SettingsChubSection', () => {
   });
 
   it('shows the connected summary and disconnects on demand', () => {
+    configManager.updateChubConfig({ username: 'maeve', publish_token: 'proj_stored', api_token: 'sess-token' });
     const { onChange } = renderSection(connectedConfig());
     expect(screen.getByText(/Connected as/)).toBeInTheDocument();
 
@@ -102,5 +112,10 @@ describe('SettingsChubSection', () => {
       subscription: '',
       verified_at: '',
     });
+    // Disconnect persists too — otherwise the publish panel stays connected
+    // until Save All Settings.
+    expect(configManager.getConfig().chub?.username).toBe('');
+    expect(configManager.getConfig().chub?.publish_token).toBe('');
+    expect(configManager.getConfig().chub?.api_token).toBe('');
   });
 });

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { CheckCircle2, Loader2, PlugZap, XCircle } from 'lucide-react';
 import { createDefaultChubConfig, parseChubTokenExpiry, type ChubConfig } from '@char-gen/shared';
+import { configManager } from '@/lib/config';
 import { testChubConnection, type ChubConnectionTest } from '@/lib/chub/publish';
 
 /**
@@ -27,19 +28,27 @@ export default function SettingsChubSection({ chub, onChange }: SettingsChubSect
     const outcome = await testChubConnection(config);
     setResult(outcome);
     if (outcome.ok && outcome.identity) {
-      onChange({
+      const verification = {
         username: outcome.identity.username,
         subscription: outcome.identity.subscription ?? '',
         verified_at: new Date().toISOString(),
         ...(outcome.publishToken ? { publish_token: outcome.publishToken } : {}),
-      });
+      };
+      // Draft first (the card renders from it), then straight into the
+      // persisted config: the publish panel reads configManager, not this
+      // draft, and a successful Test must count as verified even when the
+      // user never presses Save All Settings.
+      onChange(verification);
+      configManager.updateChubConfig(verification);
     }
     setTesting(false);
   };
 
   const handleDisconnect = () => {
     setResult(null);
-    onChange({ api_token: '', publish_token: '', username: '', subscription: '', verified_at: '' });
+    const cleared = { api_token: '', publish_token: '', username: '', subscription: '', verified_at: '' };
+    onChange(cleared);
+    configManager.updateChubConfig(cleared);
   };
 
   const verifiedAt = config.verified_at ? config.verified_at.slice(0, 10) : '';
