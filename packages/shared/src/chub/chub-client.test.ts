@@ -48,14 +48,14 @@ describe('parseChubErrorDetail', () => {
 });
 
 describe('chubVerifyIdentity', () => {
-  it('reads userinfo and merges an authenticated /api/self profile', async () => {
+  it('verifies via /api/self first and enriches from userinfo', async () => {
     const fetchFn = vi
       .fn()
       .mockResolvedValueOnce(
-        jsonResponse({ identity: 'oid-1', username: 'maeve', scopes: ['openid'], credits: 42, subscription: 'Full' }),
+        jsonResponse({ id: 14398, name: 'Maeve', user_name: 'maeve', avatar_url: 'https://x/a.png' }),
       )
       .mockResolvedValueOnce(
-        jsonResponse({ id: 14398, name: 'Maeve', user_name: 'maeve', avatar_url: 'https://x/a.png' }),
+        jsonResponse({ identity: 'oid-1', username: 'maeve', scopes: ['openid'], credits: 42, subscription: 'Full' }),
       ) as unknown as ChubFetch;
     const identity = await chubVerifyIdentity({ token: 'tok', fetchFn });
     expect(identity.username).toBe('maeve');
@@ -70,11 +70,29 @@ describe('chubVerifyIdentity', () => {
     expect(headers['ch-api-key']).toBe('tok');
   });
 
-  it('skips the anonymous /api/self stub (negative id)', async () => {
+  it('verifies API-style tokens even when userinfo rejects them', async () => {
+    // The live gateway rejects samwise tokens on /oauth/userinfo with a
+    // misleading "This token is expired." — /api/self must remain the gate.
     const fetchFn = vi
       .fn()
-      .mockResolvedValueOnce(jsonResponse({ identity: 'oid-2', username: 'someone', scopes: [] }))
-      .mockResolvedValueOnce(jsonResponse({ id: -22358, name: '', user_name: 'You' })) as unknown as ChubFetch;
+      .mockResolvedValueOnce(jsonResponse({ id: 11555253, name: 'MaeveOfFae', user_name: 'MaeveOfFae' }))
+      .mockResolvedValueOnce(jsonResponse({ detail: 'This token is expired.' }, 401)) as unknown as ChubFetch;
+
+    const identity = await chubVerifyIdentity({ token: 'tok', fetchFn });
+
+    expect(identity.username).toBe('MaeveOfFae');
+    expect(identity.accountId).toBe(11555253);
+    expect(identity.subscription).toBeNull();
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+  });
+
+  it('falls back to userinfo when /api/self is the anonymous stub', async () => {
+    const fetchFn = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ id: -22358, name: '', user_name: 'You' }))
+      .mockResolvedValueOnce(
+        jsonResponse({ identity: 'oid-2', username: 'someone', scopes: [] }),
+      ) as unknown as ChubFetch;
     const identity = await chubVerifyIdentity({ token: 'tok', fetchFn });
     expect(identity.username).toBe('someone');
     expect(identity.accountId).toBeUndefined();

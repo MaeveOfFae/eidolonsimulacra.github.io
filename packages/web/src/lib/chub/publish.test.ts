@@ -62,10 +62,10 @@ describe('testChubConnection', () => {
   it('verifies identity, mints a scoped token once, and reports the account', async () => {
     const fetchFn = vi
       .fn()
+      .mockResolvedValueOnce(jsonResponse({ id: 14398, name: 'Maeve', user_name: 'maeve' }))
       .mockResolvedValueOnce(
         jsonResponse({ identity: 'oid-1', username: 'maeve', scopes: [], credits: 42, subscription: 'Full' }),
       )
-      .mockResolvedValueOnce(jsonResponse({ id: 14398, name: 'Maeve', user_name: 'maeve' }))
       .mockResolvedValueOnce(jsonResponse({ token: 'proj_abc' })) as unknown as ChubFetch;
     const result = await testChubConnection(connectedConfig(), fetchFn);
     expect(result.ok).toBe(true);
@@ -74,11 +74,28 @@ describe('testChubConnection', () => {
     expect(result.identity?.username).toBe('maeve');
   });
 
+  it('verifies and mints even when userinfo rejects the token', async () => {
+    // The live gateway 401s /oauth/userinfo for API-style tokens with
+    // "This token is expired." — Test must still pass off /api/self and the
+    // mint must still run (this is the flow that kept reporting expired).
+    const fetchFn = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ id: 11555253, name: 'MaeveOfFae', user_name: 'MaeveOfFae' }))
+      .mockResolvedValueOnce(jsonResponse({ detail: 'This token is expired.' }, 401))
+      .mockResolvedValueOnce(jsonResponse({ token: 'proj_fresh' })) as unknown as ChubFetch;
+    const result = await testChubConnection(connectedConfig(), fetchFn);
+    expect(result.ok).toBe(true);
+    expect(result.message).toBe('Connected as MaeveOfFae');
+    expect(result.publishToken).toBe('proj_fresh');
+  });
+
   it('does not mint again when a scoped token is already stored', async () => {
     const fetchFn = vi
       .fn()
-      .mockResolvedValueOnce(jsonResponse({ identity: 'oid-1', username: 'maeve', scopes: [] }))
-      .mockResolvedValueOnce(jsonResponse({ id: 5, name: 'Maeve', user_name: 'maeve' })) as unknown as ChubFetch;
+      .mockResolvedValueOnce(jsonResponse({ id: 5, name: 'Maeve', user_name: 'maeve' }))
+      .mockResolvedValueOnce(
+        jsonResponse({ identity: 'oid-1', username: 'maeve', scopes: [] }),
+      ) as unknown as ChubFetch;
     const result = await testChubConnection({ ...connectedConfig(), publish_token: 'proj_stored' }, fetchFn);
     expect(result.ok).toBe(true);
     expect(result.publishToken).toBeUndefined();

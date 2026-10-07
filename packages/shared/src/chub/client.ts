@@ -2,9 +2,13 @@
  * Transport-agnostic Chub.ai gateway client (mirrors `comfyui/client.ts`).
  *
  * Auth: protected calls send the token as **both** `Authorization: Bearer` and
- * `ch-api-key` — the gateway's security schemes accept either. `GET /oauth/userinfo`
- * is the authentication probe: `GET /api/self` cannot be, because it answers with an
- * anonymous stub (id `-22358`, name "You") when no valid token is presented.
+ * `ch-api-key` — the gateway's security schemes accept either. Verification
+ * probes `GET /api/self`: it accepts the API-style tokens chub.ai issues
+ * (samwise values — `/oauth/userinfo` rejects those with a misleading
+ * "This token is expired.") and answers an anonymous stub (id `-22358`, name
+ * "You") when no valid token is presented, so a positive id is the verdict.
+ * `/oauth/userinfo` remains best-effort enrichment (tier/credits) and the
+ * legacy fallback for older session tokens.
  *
  * The gateway answers `Access-Control-Allow-Origin: *` and allows both auth headers,
  * so plain browser `fetch` works directly. Non-browser callers (smoke scripts) must
@@ -123,25 +127,18 @@ async function chubRequest(
 }
 
 /**
- * Verify the token: `GET /oauth/userinfo` (401s without a valid token), then
- * `GET /api/self` for profile display. The `/api/self` read is best-effort — its
- * anonymous stub (negative id) is detected and skipped rather than trusted.
+ * Verify the token. `GET /api/self` is the primary probe: it accepts the
+ * API-style tokens chub.ai issues (samwise values; `/oauth/userinfo` rejects
+ * those with a misleading "This token is expired.") and answers an anonymous
+ * stub (negative id) when no valid token is presented — so a positive id is
+ * the verdict. `GET /oauth/userinfo` then runs as best-effort enrichment
+ * (tier/credits) and as the legacy fallback for older session tokens that
+ * only it accepts; its failure is normal, never the gate.
  */
 export async function chubVerifyIdentity(options: ChubClientOptions): Promise<ChubIdentity> {
-  const userinfo = (await chubRequest(options, '/oauth/userinfo')) as {
-    identity?: unknown;
-    username?: unknown;
-    scopes?: unknown;
-    credits?: unknown;
-    subscription?: unknown;
-  };
-  const identity: ChubIdentity = {
-    identity: typeof userinfo.identity === 'string' ? userinfo.identity : '',
-    username: typeof userinfo.username === 'string' ? userinfo.username : '',
-    scopes: Array.isArray(userinfo.scopes) ? userinfo.scopes.filter((s): s is string => typeof s === 'string') : [],
-    credits: typeof userinfo.credits === 'number' ? userinfo.credits : undefined,
-    subscription: typeof userinfo.subscription === 'string' ? userinfo.subscription : null,
-  };
+  const identity: ChubIdentity = { identity: '', username: '', scopes: [], subscription: null };
+  let verifiedBySelf = false;
+
   try {
     const self = (await chubRequest(options, '/api/self')) as {
       id?: number;
@@ -150,6 +147,7 @@ export async function chubVerifyIdentity(options: ChubClientOptions): Promise<Ch
       avatar_url?: string;
     };
     if (typeof self.id === 'number' && self.id > 0) {
+      verifiedBySelf = true;
       identity.accountId = self.id;
       if (typeof self.name === 'string' && self.name.trim().length > 0) {
         identity.displayName = self.name;
@@ -157,15 +155,55 @@ export async function chubVerifyIdentity(options: ChubClientOptions): Promise<Ch
       if (typeof self.avatar_url === 'string') {
         identity.avatarUrl = self.avatar_url;
       }
-      if (!identity.username && typeof self.user_name === 'string') {
-        identity.username = self.user_name;
+      const fromSelf = [self.user_name, self.name].find(
+        (candidate): candidate is string =>
+          typeof candidate === 'string' && candidate.trim().length > 0 && candidate.trim() !== 'You',
+      );
+      if (fromSelf) {
+        identity.username = fromSelf.trim();
       }
     }
   } catch {
-    // Profile enrichment is optional; identity from userinfo already verified.
+    // `/api/self` failing outright falls through to the userinfo probe.
   }
+
+  try {
+    const userinfo = (await chubRequest(options, '/oauth/userinfo')) as {
+      identity?: unknown;
+      username?: unknown;
+      scopes?: unknown;
+      credits?: unknown;
+      subscription?: unknown;
+    };
+    if (!identity.identity && typeof userinfo.identity === 'string') {
+      identity.identity = userinfo.identity;
+    }
+    if (Array.isArray(userinfo.scopes)) {
+      identity.scopes = userinfo.scopes.filter((s): s is string => typeof s === 'string');
+    }
+    if (typeof userinfo.credits === 'number') {
+      identity.credits = userinfo.credits;
+    }
+    if (typeof userinfo.subscription === 'string') {
+      identity.subscription = userinfo.subscription;
+    }
+    if (!identity.username && typeof userinfo.username === 'string' && userinfo.username.trim()) {
+      identity.username = userinfo.username.trim();
+    }
+  } catch (error) {
+    if (!verifiedBySelf) {
+      // Neither probe accepted the token — surface the gateway's own detail
+      // (it carries the actionable reason: missing key, expired, etc.).
+      throw error;
+    }
+    // Verified by /api/self: tier and credits are cosmetic enrichment.
+  }
+
   if (!identity.username) {
-    throw new ChubApiError(401, 'The token verified but returned no username.');
+    throw new ChubApiError(
+      401,
+      verifiedBySelf ? 'The token verified but returned no username.' : 'This token is expired or unrecognized.',
+    );
   }
   return identity;
 }

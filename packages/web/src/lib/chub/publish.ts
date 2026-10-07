@@ -175,16 +175,12 @@ export async function runChubPublish(options: ChubPublishOptions): Promise<ChubP
   const existing = normalizeChubPublishRecord(draft.metadata.chub_publish);
 
   if (existing && typeof existing.character_id === 'number') {
+    const characterId = existing.character_id;
     await withFreshToken((c) =>
-      chubUpdateCharacter(
-        c,
-        existing.username,
-        existing.pathname,
-        buildChubCharacterUpdate(source, form, existing.character_id),
-      ),
+      chubUpdateCharacter(c, existing.username, existing.pathname, buildChubCharacterUpdate(source, form, characterId)),
     );
     const record = recordChubPublish(existing, {
-      character_id: existing.character_id,
+      character_id: characterId,
       username: existing.username,
       pathname: existing.pathname,
       full_path: existing.full_path,
