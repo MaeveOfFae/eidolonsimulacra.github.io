@@ -72,7 +72,7 @@ export const downloadRepositoryUrl = PROJECT_REPOSITORY_URL;
  * 4.7.0. `pnpm downloads:check` fails when this is ahead of the app version and
  * warns while it is behind.
  */
-const RELEASE_VERSION = '5.1.0';
+const RELEASE_VERSION = '5.2.0';
 const RELEASE_TAG = `v${RELEASE_VERSION}`;
 
 /** The release whose assets are published, for callers that want to say so. */
