@@ -20,7 +20,7 @@ export function describeChubError(error: unknown): string {
     const status = (error as { status: number }).status;
     const detail = 'detail' in error ? (error as { detail: string | null }).detail : null;
     if (status === 401 || status === 403) {
-      return `Chub rejected the token (HTTP ${status})${detail ? `: ${detail}` : '.'} Re-copy it in Settings → Chub.`;
+      return `Chub rejected the token (HTTP ${status})${detail ? `: ${detail}` : '.'} Paste a fresh URQL_TOKEN from chub.ai in Settings → Chub, then press Test.`;
     }
     if (status === 429) {
       return 'Chub is rate-limiting requests — wait a moment and try again.';

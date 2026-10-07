@@ -87,7 +87,14 @@ export default function ChubPublishPanel({ approved }: ChubPublishPanelProps) {
     }
     setState({ phase: 'publishing' });
     try {
-      const outcome = await runChubPublish({ config, draft, form });
+      const outcome = await runChubPublish({
+        config,
+        draft,
+        form,
+        // A publish that found its scoped token expired re-mints one from the
+        // session token — persist it so the next publish uses the fresh value.
+        onPublishTokenRefreshed: (publishToken) => configManager.updateChubConfig({ publish_token: publishToken }),
+      });
       if (outcome.record) {
         await api.updateMetadata(reviewId, { chub_publish: outcome.record });
         await queryClient.invalidateQueries({ queryKey: ['draft', reviewId] });

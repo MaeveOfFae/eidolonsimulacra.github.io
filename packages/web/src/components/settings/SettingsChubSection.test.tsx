@@ -35,6 +35,25 @@ describe('SettingsChubSection', () => {
     expect(onChange).toHaveBeenCalledWith({ api_token: 'abc' });
   });
 
+  it('flags an expired session token right under the input', () => {
+    const encode = (value: unknown) => Buffer.from(JSON.stringify(value)).toString('base64url');
+    const expiredJwt = `${encode({ alg: 'none' })}.${encode({ exp: Math.floor(Date.now() / 1000) - 60 })}.sig`;
+
+    renderSection({ ...createDefaultChubConfig(), api_token: expiredJwt });
+
+    expect(screen.getByText(/Session token expired .*paste a fresh URQL_TOKEN/i)).toBeInTheDocument();
+  });
+
+  it('shows a calm expiry notice for a still-valid session token', () => {
+    const encode = (value: unknown) => Buffer.from(JSON.stringify(value)).toString('base64url');
+    const validJwt = `${encode({ alg: 'none' })}.${encode({ exp: Math.floor(Date.now() / 1000) + 3600 })}.sig`;
+
+    renderSection({ ...createDefaultChubConfig(), api_token: validJwt });
+
+    expect(screen.getByText(/Session token expires /)).toBeInTheDocument();
+    expect(screen.queryByText(/Session token expired /)).not.toBeInTheDocument();
+  });
+
   it('runs the connection test, reports the account, and stores the identity', async () => {
     mockedTest.mockResolvedValue({
       ok: true,

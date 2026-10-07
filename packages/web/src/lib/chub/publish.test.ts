@@ -40,6 +40,12 @@ const form = {
   version: '1.0',
 };
 
+/** JWT-shaped token with the given exp (seconds from epoch); signatures are never checked. */
+const sessionJwtWithExp = (expSeconds: number): string => {
+  const encode = (value: unknown) => Buffer.from(JSON.stringify(value)).toString('base64url');
+  return `${encode({ alg: 'none' })}.${encode({ exp: expSeconds })}.sig`;
+};
+
 beforeEach(() => {
   vi.restoreAllMocks();
 });
@@ -87,12 +93,24 @@ describe('testChubConnection', () => {
     expect(result.message).toContain('Settings → Chub');
     expect(result.message).toContain('Missing API Key');
   });
+
+  it('short-circuits an expired session token before any request', async () => {
+    const fetchFn = vi.fn() as unknown as ChubFetch;
+    const expired = sessionJwtWithExp(Math.floor(Date.now() / 1000) - 60);
+
+    const result = await testChubConnection({ ...connectedConfig(), api_token: expired }, fetchFn);
+
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain('expired');
+    expect(result.message).toContain('URQL_TOKEN');
+    expect(fetchFn).not.toHaveBeenCalled();
+  });
 });
 
 describe('describeChubError', () => {
   it('shapes auth, rate-limit, network, and generic failures differently', () => {
     const auth = Object.assign(new Error('Chub answered HTTP 401'), { status: 401, detail: 'bad token' });
-    expect(describeChubError(auth)).toContain('Re-copy it in Settings → Chub');
+    expect(describeChubError(auth)).toContain('Paste a fresh URQL_TOKEN from chub.ai');
     const rate = Object.assign(new Error('429'), { status: 429, detail: null });
     expect(describeChubError(rate)).toContain('rate-limiting');
     expect(describeChubError(new TypeError('Failed to fetch'))).toContain('gateway.chub.ai');
@@ -209,5 +227,54 @@ describe('runChubPublish', () => {
     expect(outcome.status).toBe('created');
     expect(outcome.record).toBeNull();
     expect(outcome.message).toContain('do not publish again');
+  });
+
+  it('re-mints the scoped token and retries once when publish gets a 401', async () => {
+    const calls: Array<[string, RequestInit]> = [];
+    let createAttempts = 0;
+    const fetchFn = vi.fn(async (url: string, init: RequestInit) => {
+      calls.push([String(url), init]);
+      if (String(url).includes('/account/tokens/projects')) {
+        return jsonResponse({ token: 'fresh_scoped' });
+      }
+      if (String(url).includes('/api/core/characters')) {
+        createAttempts += 1;
+        if (createAttempts === 1) {
+          return jsonResponse({ detail: 'token expired' }, 401);
+        }
+      }
+      if (String(url).includes('/search')) {
+        return jsonResponse({ data: { nodes: [] } });
+      }
+      return jsonResponse({ success: true });
+    }) as unknown as ChubFetch;
+    const refreshed: string[] = [];
+
+    const outcome = await runChubPublish({
+      config: { ...connectedConfig(), publish_token: 'proj_stored' },
+      draft,
+      form,
+      fetchFn,
+      onPublishTokenRefreshed: (publishToken) => refreshed.push(publishToken),
+    });
+
+    // The retry succeeded and the caller was handed the fresh scoped token.
+    expect(outcome.status).toBe('created');
+    expect(refreshed).toEqual(['fresh_scoped']);
+
+    const createCalls = calls.filter(([url]) => url.includes('/api/core/characters'));
+    expect(createCalls).toHaveLength(2);
+    expect((createCalls[0]![1].headers as Record<string, string>).Authorization).toBe('Bearer proj_stored');
+    expect((createCalls[1]![1].headers as Record<string, string>).Authorization).toBe('Bearer fresh_scoped');
+  });
+
+  it('does not re-mint when the session token itself is rejected', async () => {
+    const fetchFn = vi.fn(async () => jsonResponse({ detail: 'expired' }, 401)) as unknown as ChubFetch;
+
+    await expect(runChubPublish({ config: connectedConfig(), draft, form, fetchFn })).rejects.toThrow(/expired/);
+
+    // No mint attempt: the pasted token was the one in flight, so a fresh
+    // paste in Settings is the only real fix.
+    expect(fetchFn).toHaveBeenCalledTimes(1);
   });
 });

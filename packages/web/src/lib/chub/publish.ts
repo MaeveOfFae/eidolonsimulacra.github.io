@@ -18,6 +18,7 @@ import {
   chubVerifyIdentity,
   normalizeChubBaseUrl,
   normalizeChubPublishRecord,
+  parseChubTokenExpiry,
   recordChubPublish,
   runChubPreflight,
   type ChubConfig,
@@ -50,6 +51,16 @@ export async function testChubConnection(
   const token = (config.api_token ?? '').trim();
   if (token.length === 0) {
     return { ok: false, message: 'Paste a Chub token first — see the help text below the field.' };
+  }
+  // The pasted URQL_TOKEN is chub.ai's session JWT — once its exp has passed
+  // the gateway can only answer 401, so say exactly that (and how to fix it)
+  // before spending a request on it.
+  const expiry = parseChubTokenExpiry(token);
+  if (expiry?.expired) {
+    return {
+      ok: false,
+      message: `This session token expired ${expiry.expiresAt.toLocaleString()} — copy a fresh URQL_TOKEN from chub.ai (it refreshes while you're logged in there), paste it, and press Test again.`,
+    };
   }
   const options = { baseUrl: normalizeChubBaseUrl(config.base_url), token, fetchFn };
   let identity: ChubIdentity;
@@ -90,6 +101,8 @@ export interface ChubPublishOptions {
   fetchFn?: ChubFetch;
   /** Injectable for tests; defaults to now. */
   now?: string;
+  /** Called with a freshly minted scoped token so the caller can persist it. */
+  onPublishTokenRefreshed?: (publishToken: string) => void;
 }
 
 /**
@@ -125,14 +138,50 @@ export async function runChubPublish(options: ChubPublishOptions): Promise<ChubP
   }
 
   const client = { baseUrl: normalizeChubBaseUrl(config.base_url), token, fetchFn };
+  const sessionToken = (config.api_token ?? '').trim();
+
+  // The scoped projects token can outlive its usefulness: if it ever answers
+  // 401 while the pasted session token is still fresh, re-mint from the session
+  // once and retry — otherwise the user stays stuck on "expired" no matter how
+  // often they re-copy URQL_TOKEN in Settings (publish prefers the scoped token).
+  const withFreshToken = async <T>(op: (c: typeof client) => Promise<T>): Promise<T> => {
+    try {
+      return await op(client);
+    } catch (error) {
+      const staleScopedToken =
+        error instanceof ChubApiError &&
+        error.status === 401 &&
+        sessionToken.length > 0 &&
+        client.token !== sessionToken;
+      if (!staleScopedToken) {
+        throw error;
+      }
+      let fresh: string | null = null;
+      try {
+        fresh = await chubMintProjectsToken({ baseUrl: client.baseUrl, token: sessionToken, fetchFn });
+      } catch {
+        // Minting failed — the original 401 re-thrown below is the more
+        // actionable error for the caller.
+      }
+      if (!fresh) {
+        throw error;
+      }
+      client.token = fresh;
+      options.onPublishTokenRefreshed?.(fresh);
+      return op(client);
+    }
+  };
+
   const existing = normalizeChubPublishRecord(draft.metadata.chub_publish);
 
   if (existing && typeof existing.character_id === 'number') {
-    await chubUpdateCharacter(
-      client,
-      existing.username,
-      existing.pathname,
-      buildChubCharacterUpdate(source, form, existing.character_id),
+    await withFreshToken((c) =>
+      chubUpdateCharacter(
+        c,
+        existing.username,
+        existing.pathname,
+        buildChubCharacterUpdate(source, form, existing.character_id),
+      ),
     );
     const record = recordChubPublish(existing, {
       character_id: existing.character_id,
@@ -146,7 +195,7 @@ export async function runChubPublish(options: ChubPublishOptions): Promise<ChubP
     return { status: 'updated', record, message: `Updated ${record.full_path} on Chub.` };
   }
 
-  const result = await chubCreateCharacter(client, payload);
+  const result = await withFreshToken((c) => chubCreateCharacter(c, payload));
   let ref: ChubPublishedRef | null = null;
   try {
     ref = await chubResolvePublished(client, username, payload.name, result);

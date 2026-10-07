@@ -424,6 +424,8 @@ export {
 
 export { DEFAULT_CHUB_BASE_URL, chubActiveToken, createDefaultChubConfig } from './chub/defaults';
 
+export { parseChubTokenExpiry, type ChubTokenExpiry } from './chub/token';
+
 export type {
   ChubApiResult,
   ChubCharacterCreate,

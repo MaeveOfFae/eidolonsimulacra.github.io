@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { CheckCircle2, Loader2, PlugZap, XCircle } from 'lucide-react';
-import { createDefaultChubConfig, type ChubConfig } from '@char-gen/shared';
+import { createDefaultChubConfig, parseChubTokenExpiry, type ChubConfig } from '@char-gen/shared';
 import { testChubConnection, type ChubConnectionTest } from '@/lib/chub/publish';
 
 /**
@@ -43,6 +43,7 @@ export default function SettingsChubSection({ chub, onChange }: SettingsChubSect
   };
 
   const verifiedAt = config.verified_at ? config.verified_at.slice(0, 10) : '';
+  const tokenExpiry = parseChubTokenExpiry(config.api_token);
 
   return (
     <section className="app-panel p-6">
@@ -92,6 +93,13 @@ export default function SettingsChubSection({ chub, onChange }: SettingsChubSect
               </button>
             )}
           </div>
+          {tokenExpiry && (
+            <p className={`mt-1 text-xs ${tokenExpiry.expired ? 'text-destructive' : 'text-muted-foreground'}`}>
+              {tokenExpiry.expired
+                ? `Session token expired ${tokenExpiry.expiresAt.toLocaleString()} — paste a fresh URQL_TOKEN from chub.ai.`
+                : `Session token expires ${tokenExpiry.expiresAt.toLocaleString()}.`}
+            </p>
+          )}
           {result && (
             <p className={`mt-1 flex items-center gap-1 text-xs ${result.ok ? 'text-success' : 'text-destructive'}`}>
               {result.ok ? <CheckCircle2 className="h-3.5 w-3.5" /> : <XCircle className="h-3.5 w-3.5" />}
@@ -107,8 +115,11 @@ export default function SettingsChubSection({ chub, onChange }: SettingsChubSect
           )}
           <p className="mt-2 text-xs text-muted-foreground">
             While logged in at chub.ai, open DevTools (F12) → Application → Local Storage → <code>chub.ai</code> and
-            copy the <code>URQL_TOKEN</code> value. Publishing follows Chub&apos;s content rules (accurate SFW/NSFW
-            rating; at least 3 tags for listed characters) and Chub&apos;s terms of service.
+            copy the <code>URQL_TOKEN</code> value. That value is chub.ai&apos;s session token — it expires on its own
+            schedule (the card above says when), so copy a fresh one whenever it does and press Test. Publishing keeps
+            working in between: Test stores a scoped token the publish calls prefer, re-minted automatically if it ever
+            expires. Publishing follows Chub&apos;s content rules (accurate SFW/NSFW rating; at least 3 tags for listed
+            characters) and Chub&apos;s terms of service.
           </p>
         </div>
 
