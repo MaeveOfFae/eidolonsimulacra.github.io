@@ -75,8 +75,10 @@ export function createConfiguredEngine(override?: { model: string }) {
     apiKey: provider ? apiKeys[provider] : getFallbackApiKey(apiKeys),
     apiKeys,
     provider,
-    baseUrl: config.base_url,
-    proxyKey: config.api_proxy_key,
+    // Custom owns the base-URL override; named providers use their documented
+    // endpoint so a leftover config URL can never hijack them.
+    baseUrl: provider === 'custom' ? config.base_url : undefined,
+    proxyKey: provider === 'custom' ? config.api_proxy_key : undefined,
     temperature: config.temperature,
     maxTokens: resolveGenerationMaxTokens(config),
   });

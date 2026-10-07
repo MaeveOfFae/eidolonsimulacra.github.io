@@ -2,7 +2,16 @@
  * LLM engine types for the Eidolon Simulacra client.
  */
 
-export type LLMProvider = 'openai' | 'google' | 'openrouter' | 'anthropic' | 'deepseek' | 'zai' | 'moonshot' | 'ollama';
+export type LLMProvider =
+  | 'openai'
+  | 'google'
+  | 'openrouter'
+  | 'anthropic'
+  | 'deepseek'
+  | 'zai'
+  | 'moonshot'
+  | 'ollama'
+  | 'custom';
 
 export type LLMEngineMode = 'auto' | 'explicit';
 
@@ -106,21 +115,27 @@ export interface LLMEngineConstructor {
  * Provider-specific API endpoints. Kept in sync with `getDefaultBaseUrl` in
  * `factory.ts` (docs-verified hosts: api.z.ai per docs.z.ai, api.moonshot.ai
  * per platform.kimi.ai).
+ *
+ * `ollama` is Ollama Cloud's OpenAI-compatible surface; local Ollama servers
+ * are addressed through the `custom` provider (no default — it requires a
+ * base URL from config).
  */
 export const ProviderEndpoints: Record<LLMProvider, string> = {
   openai: 'https://api.openai.com/v1',
   google: 'https://generativelanguage.googleapis.com/v1beta',
   openrouter: 'https://openrouter.ai/api/v1',
   anthropic: 'https://api.anthropic.com',
-  deepseek: 'https://api.deepseek.com',
+  deepseek: 'https://api.deepseek.com/v1',
   zai: 'https://api.z.ai/api/paas/v4',
   moonshot: 'https://api.moonshot.ai/v1',
-  ollama: 'http://localhost:11434/v1',
+  ollama: 'https://ollama.com/v1',
+  custom: '',
 } as const;
 
 /**
- * Provider-specific header keys. Ollama's local server needs no auth; Ollama
- * Cloud (https://ollama.com/v1) accepts `Authorization: Bearer OLLAMA_API_KEY`.
+ * Provider-specific header keys. Ollama Cloud (https://ollama.com/v1) accepts
+ * `Authorization: Bearer OLLAMA_API_KEY`; `custom` endpoints take Bearer when
+ * a key is configured and no auth header at all keyless (local servers).
  */
 export const ProviderAuthHeaders: Record<LLMProvider, string> = {
   openai: 'Authorization',
@@ -131,6 +146,7 @@ export const ProviderAuthHeaders: Record<LLMProvider, string> = {
   zai: 'Authorization',
   moonshot: 'Authorization',
   ollama: 'Authorization',
+  custom: 'Authorization',
 } as const;
 
 /**

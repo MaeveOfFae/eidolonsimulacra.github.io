@@ -79,9 +79,9 @@ describe('Settings providers section', () => {
       expect(screen.getByRole('button', { name })).toBeInTheDocument();
     }
 
-    // OpenRouter holds a key, Ollama is local-only, and the rest are empty.
+    // OpenRouter holds a key, Custom's key is optional, and the rest are empty.
     expect(screen.getByText('Configured')).toBeInTheDocument();
-    expect(screen.getByText('Local')).toBeInTheDocument();
+    expect(screen.getByText('Key optional')).toBeInTheDocument();
     expect(screen.getAllByText('Empty')).toHaveLength(ALL_PROVIDERS.length - 2);
   });
 
@@ -99,11 +99,11 @@ describe('Settings providers section', () => {
 
     renderProviderSettings();
 
-    // The default model `gemma4` is an Ollama model, so the editor opens on the
-    // provider that model names — which needs no key and is testable as-is.
-    expect(await screen.findByRole('heading', { name: 'Ollama' })).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('Optional for local Ollama; required for Ollama Cloud')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Test connection' })).toBeEnabled();
+    // The default model `gemma4` names Ollama Cloud, whose key is required
+    // before the connection can be tested.
+    expect(await screen.findByRole('heading', { name: 'Ollama Cloud' })).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Your OLLAMA_API_KEY (required for Ollama Cloud)')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Test connection' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Clear key' })).toBeDisabled();
 
     // OpenRouter holds a key, so its editor is testable too.

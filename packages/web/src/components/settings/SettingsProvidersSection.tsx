@@ -98,7 +98,7 @@ export default function SettingsProvidersSection({
                 >
                   <span className="font-medium">{PROVIDER_LABELS[provider]}</span>
                   <span className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                    {isConfigured ? 'Configured' : provider === 'ollama' ? 'Local' : 'Empty'}
+                    {isConfigured ? 'Configured' : provider === 'custom' ? 'Key optional' : 'Empty'}
                   </span>
                 </button>
               );
@@ -115,15 +115,17 @@ export default function SettingsProvidersSection({
           <div>
             <h2 className="text-xl font-bold">{PROVIDER_LABELS[selectedProvider]}</h2>
             <p className="text-sm text-muted-foreground">Edit the selected provider without scanning the full list.</p>
-            <a
-              href={PROVIDER_DOCS[selectedProvider]}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-1 inline-flex items-center gap-1 text-xs text-info hover:underline"
-            >
-              {PROVIDER_LABELS[selectedProvider]} API docs
-              <ExternalLink className="h-3 w-3" />
-            </a>
+            {PROVIDER_DOCS[selectedProvider] && (
+              <a
+                href={PROVIDER_DOCS[selectedProvider]}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-1 inline-flex items-center gap-1 text-xs text-info hover:underline"
+              >
+                {PROVIDER_LABELS[selectedProvider]} API docs
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            )}
           </div>
         </div>
 
@@ -136,8 +138,10 @@ export default function SettingsProvidersSection({
               onChange={(e) => onApiKeyChange(selectedProvider, e.target.value)}
               placeholder={
                 selectedProvider === 'ollama'
-                  ? 'Optional for local Ollama; required for Ollama Cloud'
-                  : `Enter your ${selectedProvider} API key`
+                  ? 'Your OLLAMA_API_KEY (required for Ollama Cloud)'
+                  : selectedProvider === 'custom'
+                    ? 'Optional — only if your endpoint requires a key'
+                    : `Enter your ${selectedProvider} API key`
               }
               className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 pr-12 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
@@ -159,7 +163,7 @@ export default function SettingsProvidersSection({
             <button
               type="button"
               onClick={() => onTest(selectedProvider)}
-              disabled={selectedProvider !== 'ollama' && !activeProviderKey}
+              disabled={selectedProvider !== 'custom' && !activeProviderKey}
               className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Zap className="h-4 w-4" />
@@ -194,10 +198,13 @@ export default function SettingsProvidersSection({
             {selectedProvider === 'openai' &&
               'Use a proxy or switch to OpenRouter when you want browser-direct generation without CORS issues.'}
             {selectedProvider === 'ollama' &&
-              'Local server (http://localhost:11434/v1) needs no key. Desktop connects directly; if a browser is refused, start Ollama with OLLAMA_ORIGINS=*. For Ollama Cloud, set the API base URL in Runtime to https://ollama.com/v1 and add your OLLAMA_API_KEY.'}
+              'Ollama Cloud (https://ollama.com/v1) uses your OLLAMA_API_KEY here. Running a local server? Use the Custom provider with http://localhost:11434/v1 instead.'}
+            {selectedProvider === 'custom' &&
+              'Any OpenAI-compatible endpoint: local Ollama, LM Studio, vLLM, or a proxy. Set the API base URL in Runtime; a key is only needed if the endpoint requires one.'}
             {selectedProvider !== 'openrouter' &&
               selectedProvider !== 'openai' &&
               selectedProvider !== 'ollama' &&
+              selectedProvider !== 'custom' &&
               'Store only the providers you actually use so the browser profile does not collect stale keys.'}
           </div>
         </div>

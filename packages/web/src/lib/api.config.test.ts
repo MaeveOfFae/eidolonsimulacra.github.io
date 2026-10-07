@@ -42,15 +42,17 @@ describe('browser api: config', () => {
     expect(result.error).toContain('No API key configured');
   });
 
-  it('does not demand a key for Ollama', async () => {
-    // Local Ollama answers without auth; the request may fail (no server here)
-    // but it must never be rejected as "No API key configured".
-    const result = await api.testConnection({ provider: 'ollama' });
+  it('does not demand a key for Custom', async () => {
+    configManager.updateConfig({ base_url: 'http://localhost:11434/v1' });
+    // A local endpoint answers without auth; the request may fail (no server
+    // here) but it must never be rejected as "No API key configured".
+    const result = await api.testConnection({ provider: 'custom' });
 
     expect(result.error ?? '').not.toContain('No API key configured');
   });
 
-  it('lists Ollama models keylessly', async () => {
+  it('lists Custom models keylessly against the configured base URL', async () => {
+    configManager.updateConfig({ base_url: 'http://localhost:11434/v1' });
     const fetchMock = vi.fn(
       async () =>
         new Response(JSON.stringify({ data: [{ id: 'gemma4' }] }), {
@@ -60,9 +62,11 @@ describe('browser api: config', () => {
     );
     vi.stubGlobal('fetch', fetchMock);
     try {
-      const response = await api.getModels('ollama');
+      const response = await api.getModels('custom');
 
       expect(fetchMock).toHaveBeenCalled();
+      const [url] = fetchMock.mock.calls[0] as unknown as [string];
+      expect(String(url)).toBe('http://localhost:11434/v1/models');
       expect(response.error).toBeUndefined();
       expect(response.models.map((model) => model.id)).toContain('gemma4');
     } finally {
@@ -79,12 +83,13 @@ describe('browser api: config', () => {
       }),
     );
     try {
-      const response = await api.getModels('ollama');
+      const response = await api.getModels('custom');
 
       expect(response.error).toContain('Could not reach the local model server');
       expect(response.error).toContain('localhost:19999');
       expect(response.error).toContain('OLLAMA_ORIGINS');
-      expect(response.models.length).toBeGreaterThan(0);
+      // Custom has no static suggestion list — the error notice is the guidance.
+      expect(response.models).toEqual([]);
     } finally {
       vi.unstubAllGlobals();
     }

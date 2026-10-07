@@ -110,7 +110,7 @@ export default function SettingsAccessSection({
                 >
                   <div className="text-sm font-medium">{PROVIDER_LABELS[provider]}</div>
                   <div className="mt-1 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                    {isConfigured ? 'Configured' : provider === 'ollama' ? 'Local' : 'Empty'}
+                    {isConfigured ? 'Configured' : provider === 'custom' ? 'Key optional' : 'Empty'}
                   </div>
                 </button>
               );
@@ -124,23 +124,27 @@ export default function SettingsAccessSection({
               <h3 className="text-base font-semibold text-foreground">{PROVIDER_LABELS[selectedProvider]} access</h3>
               <p className="mt-1 text-sm text-muted-foreground">
                 {selectedProvider === 'ollama'
-                  ? 'Local Ollama needs no key; Ollama Cloud takes an OLLAMA_API_KEY.'
-                  : `Store or update the ${PROVIDER_LABELS[selectedProvider]} key used by the current runtime.`}
+                  ? 'Ollama Cloud takes an OLLAMA_API_KEY; local servers use the Custom provider.'
+                  : selectedProvider === 'custom'
+                    ? 'Custom endpoints only use their own key — and only if the endpoint requires one.'
+                    : `Store or update the ${PROVIDER_LABELS[selectedProvider]} key used by the current runtime.`}
               </p>
-              <a
-                href={PROVIDER_DOCS[selectedProvider]}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-1 inline-flex items-center gap-1 text-xs text-info hover:underline"
-              >
-                {PROVIDER_LABELS[selectedProvider]} API docs
-                <ExternalLink className="h-3 w-3" />
-              </a>
+              {PROVIDER_DOCS[selectedProvider] && (
+                <a
+                  href={PROVIDER_DOCS[selectedProvider]}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-1 inline-flex items-center gap-1 text-xs text-info hover:underline"
+                >
+                  {PROVIDER_LABELS[selectedProvider]} API docs
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              )}
             </div>
             <button
               type="button"
               onClick={() => onTest(selectedProvider)}
-              disabled={selectedProvider !== 'ollama' && !activeProviderKey}
+              disabled={selectedProvider !== 'custom' && !activeProviderKey}
               className="rounded-lg border border-border/60 bg-background/60 px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:border-primary/35 hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
             >
               {testResult?.provider === selectedProvider
@@ -159,8 +163,10 @@ export default function SettingsAccessSection({
               onChange={(e) => onApiKeyChange(selectedProvider, e.target.value)}
               placeholder={
                 selectedProvider === 'ollama'
-                  ? 'Optional for local Ollama; required for Ollama Cloud'
-                  : `Enter your ${selectedProvider} API key`
+                  ? 'Your OLLAMA_API_KEY (required for Ollama Cloud)'
+                  : selectedProvider === 'custom'
+                    ? 'Optional — only if your endpoint requires a key'
+                    : `Enter your ${selectedProvider} API key`
               }
               className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 pr-12 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />

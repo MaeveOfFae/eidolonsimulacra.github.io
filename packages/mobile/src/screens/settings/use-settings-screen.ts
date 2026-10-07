@@ -67,7 +67,7 @@ import { getErrorMessage } from '../../utils/errors';
 import { pickTextFile, saveTextFile } from '../../utils/file-transfer';
 import { buildStyles } from '../settings/styles';
 
-export type Provider = Exclude<Config['engine'], 'auto' | 'ollama' | 'openai_compatible'>;
+export type Provider = Exclude<Config['engine'], 'auto' | 'openai_compatible'>;
 
 export type EditorMode = 'api-key' | 'api-url' | 'model' | null;
 
@@ -83,7 +83,17 @@ export interface SettingsScreenProps {
 }
 
 export function useSettingsScreen({ navigation, route }: SettingsScreenProps) {
-  const providers: Provider[] = ['openai', 'google', 'openrouter', 'anthropic', 'deepseek', 'zai', 'moonshot'];
+  const providers: Provider[] = [
+    'openai',
+    'google',
+    'openrouter',
+    'anthropic',
+    'deepseek',
+    'zai',
+    'moonshot',
+    'ollama',
+    'custom',
+  ];
   const MOBILE_GETTING_STARTED_GUIDE_PREFIX = 'mobile-getting-started:';
   const syncDomainOptions: Array<{ key: keyof DesktopCompanionSyncSelection; label: string }> = [
     { key: 'drafts', label: 'Drafts' },
@@ -296,7 +306,9 @@ export function useSettingsScreen({ navigation, route }: SettingsScreenProps) {
   };
 
   const handleUseProvider = (provider: Provider) => {
-    saveConfigMutation.mutate({ engine: provider });
+    // Pin explicit mode so the chosen engine is the one that answers — Custom
+    // can never be reached by model detection, and auto mode would ignore it.
+    saveConfigMutation.mutate({ engine: provider, engine_mode: 'explicit' });
   };
 
   const openApiKeyEditor = (provider: Provider) => {

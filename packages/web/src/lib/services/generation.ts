@@ -765,7 +765,8 @@ export class GenerationService {
       apiKey: provider ? apiKeys[provider] : getFallbackApiKey(apiKeys),
       apiKeys,
       provider,
-      baseUrl: config.base_url,
+      // Custom owns the base-URL override.
+      baseUrl: provider === 'custom' ? config.base_url : undefined,
       temperature: config.temperature,
       maxTokens: resolveGenerationMaxTokens(config),
     });
@@ -819,7 +820,8 @@ export class GenerationService {
       apiKey: provider ? apiKeys[provider] : getFallbackApiKey(apiKeys),
       apiKeys,
       provider,
-      baseUrl: config.base_url,
+      // Custom owns the base-URL override.
+      baseUrl: provider === 'custom' ? config.base_url : undefined,
       temperature: config.temperature,
       maxTokens: resolveGenerationMaxTokens(config),
     });
@@ -906,7 +908,8 @@ export class GenerationService {
       apiKey: provider ? apiKeys[provider] : getFallbackApiKey(apiKeys),
       apiKeys,
       provider,
-      baseUrl: config.base_url,
+      // Custom owns the base-URL override.
+      baseUrl: provider === 'custom' ? config.base_url : undefined,
       temperature: config.temperature,
       maxTokens: resolveGenerationMaxTokens(config),
     });

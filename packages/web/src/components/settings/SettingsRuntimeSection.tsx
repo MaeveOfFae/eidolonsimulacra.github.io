@@ -125,15 +125,17 @@ export default function SettingsRuntimeSection({
                 </option>
               ))}
             </select>
-            <a
-              href={PROVIDER_DOCS[selectedProvider]}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 text-xs text-info hover:underline"
-            >
-              {PROVIDER_LABELS[selectedProvider]} API docs
-              <ExternalLink className="h-3 w-3" />
-            </a>
+            {PROVIDER_DOCS[selectedProvider] && (
+              <a
+                href={PROVIDER_DOCS[selectedProvider]}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-info hover:underline"
+              >
+                {PROVIDER_LABELS[selectedProvider]} API docs
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -226,68 +228,78 @@ export default function SettingsRuntimeSection({
           {selectedProvider === 'openai' && (
             <div className="rounded-lg border border-warning/20 bg-warning/10 p-3 text-sm text-warning">
               Direct OpenAI calls from this browser app are blocked by CORS on api.openai.com. Use OpenRouter for
-              browser-direct usage, or point the base URL at your own proxy or relay.
+              browser-direct usage, or switch to the Custom provider to point at your own proxy or relay.
             </div>
           )}
 
           {selectedProvider === 'ollama' && (
             <div className="rounded-lg border border-info/20 bg-info/10 p-3 text-sm text-info">
-              Local server defaults to <code className="rounded bg-info/20 px-1 py-0.5">http://localhost:11434/v1</code>
-              . The desktop app connects to it directly — no setup needed. A browser on an origin Ollama does not allow
-              needs Ollama started with <code className="rounded bg-info/20 px-1 py-0.5">OLLAMA_ORIGINS=*</code>. For
-              Ollama Cloud, set the base URL to{' '}
-              <code className="rounded bg-info/20 px-1 py-0.5">https://ollama.com/v1</code> and add your OLLAMA_API_KEY
-              in Providers.
+              Ollama Cloud defaults to <code className="rounded bg-info/20 px-1 py-0.5">https://ollama.com/v1</code> and
+              uses your OLLAMA_API_KEY from Providers. Running a local server instead? Choose the{' '}
+              <strong>Custom</strong> provider and set{' '}
+              <code className="rounded bg-info/20 px-1 py-0.5">http://localhost:11434/v1</code> below.
             </div>
           )}
 
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium">Custom API Base URL</label>
-              <button
-                type="button"
-                onClick={onTestApiConnection}
-                disabled={!baseUrl}
-                className="rounded-md border border-border px-2 py-1 text-xs transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Test Connection
-              </button>
+          {selectedProvider === 'custom' && (
+            <div className="rounded-lg border border-info/20 bg-info/10 p-3 text-sm text-info">
+              Any OpenAI-compatible endpoint: a local Ollama server (
+              <code className="rounded bg-info/20 px-1 py-0.5">http://localhost:11434/v1</code>), LM Studio, vLLM, or
+              your own proxy. The API base URL is required below; a key is optional.
             </div>
-            <input
-              type="text"
-              aria-label="Base URL"
-              value={baseUrl || ''}
-              onChange={(e) => onBaseUrlChange(e.target.value)}
-              placeholder="e.g., https://your-proxy.example.com/v1"
-              className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-          </div>
+          )}
 
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Proxy API Key (Optional)</label>
-            <div className="relative">
-              <input
-                type={showProxyKey ? 'text' : 'password'}
-                aria-label="Proxy API key"
-                value={apiProxyKey || ''}
-                onChange={(e) => onProxyKeyChange(e.target.value)}
-                placeholder="Enter proxy API key if required"
-                className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 pr-11 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              />
-              <button
-                type="button"
-                onClick={() => onToggleShowKey('proxy')}
-                aria-label={showProxyKey ? 'Hide proxy API key' : 'Show proxy API key'}
-                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 transition-colors hover:bg-accent"
-              >
-                {showProxyKey ? (
-                  <EyeOff className="h-4 w-4 text-muted-foreground" />
-                ) : (
-                  <Eye className="h-4 w-4 text-muted-foreground" />
-                )}
-              </button>
-            </div>
-          </div>
+          {selectedProvider === 'custom' && (
+            <>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium">API Base URL</label>
+                  <button
+                    type="button"
+                    onClick={onTestApiConnection}
+                    disabled={!baseUrl}
+                    className="rounded-md border border-border px-2 py-1 text-xs transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Test Connection
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  aria-label="Base URL"
+                  value={baseUrl || ''}
+                  onChange={(e) => onBaseUrlChange(e.target.value)}
+                  placeholder="e.g., http://localhost:11434/v1"
+                  className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Proxy API Key (Optional)</label>
+                <div className="relative">
+                  <input
+                    type={showProxyKey ? 'text' : 'password'}
+                    aria-label="Proxy API key"
+                    value={apiProxyKey || ''}
+                    onChange={(e) => onProxyKeyChange(e.target.value)}
+                    placeholder="Enter proxy API key if required"
+                    className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 pr-11 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => onToggleShowKey('proxy')}
+                    aria-label={showProxyKey ? 'Hide proxy API key' : 'Show proxy API key'}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 transition-colors hover:bg-accent"
+                  >
+                    {showProxyKey ? (
+                      <EyeOff className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
         </CollapsibleSection>
       </div>
     </section>

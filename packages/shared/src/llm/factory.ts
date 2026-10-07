@@ -35,17 +35,17 @@ function normalizeOpenAICompatModel(model: string, baseUrl: string): string {
  * Get API key for a provider from the keys object.
  * Falls back to defaultApiKey if no provider-specific key is found.
  *
- * Ollama is the exception: it only ever uses its own key (local servers need
- * none; Ollama Cloud at `https://ollama.com/v1` needs `OLLAMA_API_KEY`), and
- * must never inherit an unrelated provider's key — that would leak a foreign
- * credential to localhost.
+ * Ollama (Cloud) and Custom are the exceptions: they only ever use their own
+ * key (Ollama Cloud needs `OLLAMA_API_KEY`; custom endpoints are often keyless
+ * local servers), and must never inherit an unrelated provider's key — that
+ * would leak a foreign credential to localhost or an arbitrary endpoint.
  */
 function getApiKey(
   provider: LLMProvider,
   options: Omit<CreateEngineOptions, 'provider' | 'model'>,
 ): string | undefined {
-  if (provider === 'ollama') {
-    return options.apiKeys?.ollama || options.apiKey || undefined;
+  if (provider === 'ollama' || provider === 'custom') {
+    return options.apiKeys?.[provider] || options.apiKey || undefined;
   }
 
   if (options.apiKeys?.[provider]) {
@@ -66,7 +66,7 @@ export function getDefaultBaseUrl(provider: LLMProvider): string {
     case 'anthropic':
       return 'https://api.anthropic.com';
     case 'deepseek':
-      return 'https://api.deepseek.com';
+      return 'https://api.deepseek.com/v1';
     // docs.z.ai "API Endpoint": the international Z.AI gateway (the older
     // open.bigmodel.cn host is the China-specific deployment).
     case 'zai':
@@ -75,10 +75,14 @@ export function getDefaultBaseUrl(provider: LLMProvider): string {
     // (api.moonshot.cn is the China-specific deployment).
     case 'moonshot':
       return 'https://api.moonshot.ai/v1';
-    // Local server by default; Ollama Cloud is the same OpenAI-compatible surface
-    // at https://ollama.com/v1 with an OLLAMA_API_KEY (set as the API base URL).
+    // Ollama Cloud is the default Ollama surface (OpenAI-compatible, needs
+    // OLLAMA_API_KEY). Local servers are addressed through the `custom`
+    // provider with an explicit base URL (http://localhost:11434/v1).
     case 'ollama':
-      return 'http://localhost:11434/v1';
+      return 'https://ollama.com/v1';
+    // Custom endpoints have no default — the caller must supply a base URL.
+    case 'custom':
+      return '';
     default:
       return 'https://api.openai.com/v1';
   }
@@ -101,6 +105,15 @@ export function createEngine(options: CreateEngineOptions): LLMEngine {
 
   // Detect provider from model if not explicitly set
   const provider = explicitProvider || detectProviderFromModel(model);
+
+  // Custom owns the base-URL override: it is the only provider that accepts one
+  // from config (named providers always use their documented endpoint), and it
+  // cannot work without one — local Ollama lives here at localhost:11434/v1.
+  if (provider === 'custom' && !explicitBaseUrl?.trim()) {
+    throw new Error(
+      'The Custom provider needs an API base URL — set it in Settings → Runtime (for a local Ollama server: http://localhost:11434/v1).',
+    );
+  }
 
   // Determine base URL
   const baseUrl = explicitBaseUrl || getDefaultBaseUrl(provider);
@@ -161,6 +174,11 @@ export function getEngineType(model: string, provider?: LLMProvider): string {
  * List available models from a provider.
  */
 export async function listModels(provider: LLMProvider, apiKey?: string, baseUrl?: string): Promise<string[]> {
+  if (provider === 'custom' && !baseUrl?.trim()) {
+    throw new Error(
+      'The Custom provider needs an API base URL — set it in Settings → Runtime (for a local Ollama server: http://localhost:11434/v1).',
+    );
+  }
   const resolvedBaseUrl = baseUrl || getDefaultBaseUrl(provider);
   return listModelsFromProvider(resolvedBaseUrl, apiKey, provider);
 }
@@ -169,7 +187,8 @@ export async function listModels(provider: LLMProvider, apiKey?: string, baseUrl
  * Static fallback suggestions, verified against each provider's official docs
  * (developers.openai.com, ai.google.dev, openrouter.ai, platform.claude.com,
  * api-docs.deepseek.com, docs.z.ai, platform.kimi.ai, docs.ollama.com — 2026-10).
- * Remote listing supersedes these wherever the provider supports it.
+ * Remote listing supersedes these wherever the provider supports it; `custom`
+ * deliberately has none (its catalog comes from the configured endpoint).
  */
 export const MODEL_SUGGESTIONS: Record<LLMProvider, string[]> = {
   openai: ['gpt-6-astra', 'gpt-6.1-sol', 'gpt-6-luna', 'gpt-5.2'],
@@ -180,6 +199,7 @@ export const MODEL_SUGGESTIONS: Record<LLMProvider, string[]> = {
   zai: ['glm-5.3', 'glm-5.3-flash', 'glm-5.2', 'glm-4.7'],
   moonshot: ['kimi-k3', 'kimi-k2.7-code', 'kimi-k2.6'],
   ollama: ['gemma4', 'qwen3.5', 'llama3.1', 'qwen3', 'gpt-oss'],
+  custom: [],
 };
 
 /**

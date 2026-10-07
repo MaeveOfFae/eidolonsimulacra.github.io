@@ -108,9 +108,9 @@ describe('Settings setup access column', () => {
   it('edits the selected provider key and saves it through the parent draft', async () => {
     renderSetupSettings();
 
-    // The default model `gemma4` resolves to the Ollama provider, so the card
-    // opens there; OpenRouter holds a key and is one click away.
-    expect(await screen.findByRole('heading', { name: 'Ollama access' })).toBeInTheDocument();
+    // The default model `gemma4` resolves to the Ollama Cloud provider, so the
+    // card opens there; OpenRouter holds a key and is one click away.
+    expect(await screen.findByRole('heading', { name: 'Ollama Cloud access' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /^OpenRouter/ }));
     expect(screen.getByRole('heading', { name: 'OpenRouter access' })).toBeInTheDocument();
 
@@ -182,7 +182,7 @@ describe('Settings setup runtime column', () => {
     try {
       renderSetupSettings();
 
-      expect(await screen.findByText(/is not in the loaded Ollama list/)).toBeInTheDocument();
+      expect(await screen.findByText(/is not in the loaded Ollama Cloud list/)).toBeInTheDocument();
     } finally {
       vi.mocked(api.getModels).mockImplementation(async (provider) => ({ provider, models: [] }));
     }
@@ -209,14 +209,18 @@ describe('Settings setup runtime column', () => {
     fireEvent.change(await screen.findByLabelText('Provider'), { target: { value: 'openai' } });
     fireEvent.click(screen.getByRole('button', { name: /Advanced transport/ }));
 
-    // Choosing OpenAI surfaces its CORS warning inside the transport panel.
+    // Choosing OpenAI surfaces its CORS warning inside the transport panel, but
+    // the base-URL override belongs to the Custom provider only.
     expect(screen.getByText(/blocked by CORS on api\.openai\.com/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Test Connection' })).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Provider'), { target: { value: 'custom' } });
 
     const testConnection = screen.getByRole('button', { name: 'Test Connection' });
     expect(testConnection).toBeDisabled();
 
-    fireEvent.change(screen.getByPlaceholderText('e.g., https://your-proxy.example.com/v1'), {
-      target: { value: 'https://proxy.example.com/v1' },
+    fireEvent.change(screen.getByPlaceholderText('e.g., http://localhost:11434/v1'), {
+      target: { value: 'http://localhost:11434/v1' },
     });
 
     expect(screen.getByRole('button', { name: 'Test Connection' })).toBeEnabled();

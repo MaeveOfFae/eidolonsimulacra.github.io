@@ -471,12 +471,16 @@ export class OpenAICompatEngine implements LLMEngine {
       };
     } catch (e) {
       const raw = e instanceof Error ? e.message : 'Unknown error';
-      const unreachable = this.config.provider === 'ollama' && /fetch|network|econnrefused|failed/i.test(raw);
+      const networkish = /fetch|network|econnrefused|failed/i.test(raw);
+      let error = raw;
+      if (networkish) {
+        error = this.isLocalEndpoint()
+          ? `Could not reach the local model server at ${this.config.baseUrl}. Is it running (e.g. \`ollama serve\`), and does OLLAMA_ORIGINS=* allow this app's origin?`
+          : `Could not reach ${this.config.baseUrl}. Check your network — browser privacy shields commonly block provider requests.`;
+      }
       return {
         success: false,
-        error: unreachable
-          ? `Could not reach Ollama at ${this.config.baseUrl}. Is \`ollama serve\` running, and does OLLAMA_ORIGINS allow this app's origin (OLLAMA_ORIGINS=* allows every origin)?`
-          : raw,
+        error,
         modelInfo: {
           name: this.config.model,
         },
@@ -523,12 +527,17 @@ export class OpenAICompatEngine implements LLMEngine {
     return params;
   }
 
+  /** True when the configured base URL targets a loopback server (local Ollama etc.). */
+  private isLocalEndpoint(): boolean {
+    return /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(?::|\/|$)/i.test(this.config.baseUrl || '');
+  }
+
   private async parseErrorResponse(response: Response): Promise<string> {
-    // Ollama answers origin-refusals (desktop app / non-localhost origins, or a
-    // missing OLLAMA_ORIGINS entry) with a bare 403 — say how to fix it instead
-    // of echoing an unparseable body.
-    if (this.config.provider === 'ollama' && response.status === 403) {
-      return 'Ollama refused this app origin (HTTP 403). Restart it with OLLAMA_ORIGINS=* to allow this app and try again.';
+    // Local endpoints answer origin-refusals (non-localhost app origins without
+    // OLLAMA_ORIGINS) with a bare 403 — say how to fix it instead of echoing an
+    // unparseable body.
+    if (response.status === 403 && this.isLocalEndpoint()) {
+      return 'The local server refused this app origin (HTTP 403). Restart it with its origins allowed (for Ollama: OLLAMA_ORIGINS=*) and try again.';
     }
 
     try {

@@ -256,11 +256,17 @@ describe('openai-compatible engine streaming usage', () => {
     ]);
   });
 
-  describe('ollama failure hints', () => {
-    it('explains an origin refusal (HTTP 403) with the OLLAMA_ORIGINS fix', async () => {
+  describe('endpoint failure hints', () => {
+    const localEndpoint = {
+      provider: 'custom' as const,
+      model: 'local-model',
+      baseUrl: 'http://localhost:11434/v1',
+    };
+
+    it('explains a local origin refusal (HTTP 403) with the OLLAMA_ORIGINS fix', async () => {
       stubFetch(new Response('Forbidden', { status: 403 }));
 
-      const result = await createEngine({ provider: 'ollama', model: 'gemma4' }).testConnection();
+      const result = await createEngine(localEndpoint).testConnection();
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('OLLAMA_ORIGINS');
@@ -274,14 +280,28 @@ describe('openai-compatible engine streaming usage', () => {
         }),
       );
 
-      const result = await createEngine({ provider: 'ollama', model: 'gemma4' }).testConnection();
+      const result = await createEngine(localEndpoint).testConnection();
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain('Could not reach Ollama');
+      expect(result.error).toContain('Could not reach the local model server at http://localhost:11434/v1');
       expect(result.error).toContain('OLLAMA_ORIGINS');
     });
 
-    it('passes a missing local model through with the provider message', async () => {
+    it('points at the endpoint when Ollama Cloud is unreachable', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async () => {
+          throw new TypeError('Failed to fetch');
+        }),
+      );
+
+      const result = await createEngine({ provider: 'ollama', model: 'gemma4' }).testConnection();
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Could not reach https://ollama.com/v1');
+    });
+
+    it('passes a missing model through with the provider message', async () => {
       stubFetch(jsonResponse({ error: { message: "model 'gemma4' not found, try pulling it first" } }, 404));
 
       const result = await createEngine({ provider: 'ollama', model: 'gemma4' }).testConnection();

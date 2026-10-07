@@ -27,6 +27,13 @@ export async function fetchProviderModels(
   baseUrl: string,
   options: { includeContentTypeHeader?: boolean } = {},
 ): Promise<ModelsResponse> {
+  // Custom's catalog comes from its endpoint, so the endpoint must exist first.
+  if (provider === 'custom' && !baseUrl.trim()) {
+    throw new Error(
+      'Set an API base URL for the Custom provider in Settings → Runtime (for a local Ollama server: http://localhost:11434/v1).',
+    );
+  }
+
   const headers = buildProviderHeaders(
     provider,
     apiKey,

@@ -3,7 +3,9 @@ import { getRuntimeLLMFetch, setRuntimeLLMFetch } from '@char-gen/shared';
 import { installDesktopLLMFetch } from './transport';
 
 const { nativeFetch } = vi.hoisted(() => ({
-  nativeFetch: vi.fn(async () => Promise.resolve(new Response('{}', { status: 200 }))),
+  nativeFetch: vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
+    Promise.resolve(new Response('{}', { status: 200 })),
+  ),
 }));
 
 vi.mock('@tauri-apps/plugin-http', () => ({

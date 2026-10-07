@@ -12,7 +12,17 @@ import {
 import { GoogleEngine } from './google';
 import { OpenAICompatEngine } from './openai-compat';
 
-const ALL_PROVIDERS = ['openai', 'google', 'openrouter', 'anthropic', 'deepseek', 'zai', 'moonshot', 'ollama'] as const;
+const ALL_PROVIDERS = [
+  'openai',
+  'google',
+  'openrouter',
+  'anthropic',
+  'deepseek',
+  'zai',
+  'moonshot',
+  'ollama',
+  'custom',
+] as const;
 
 describe('llm engine factory', () => {
   it('selects the engine class from the provider', () => {
@@ -49,10 +59,49 @@ describe('llm engine factory', () => {
     expect(getDefaultBaseUrl('google')).toBe('https://generativelanguage.googleapis.com/v1beta');
     expect(getDefaultBaseUrl('openrouter')).toBe('https://openrouter.ai/api/v1');
     expect(getDefaultBaseUrl('anthropic')).toBe('https://api.anthropic.com');
-    expect(getDefaultBaseUrl('deepseek')).toBe('https://api.deepseek.com');
+    expect(getDefaultBaseUrl('deepseek')).toBe('https://api.deepseek.com/v1');
     expect(getDefaultBaseUrl('zai')).toBe('https://api.z.ai/api/paas/v4');
     expect(getDefaultBaseUrl('moonshot')).toBe('https://api.moonshot.ai/v1');
-    expect(getDefaultBaseUrl('ollama')).toBe('http://localhost:11434/v1');
+    // Ollama's provider is Ollama Cloud; local servers go through Custom.
+    expect(getDefaultBaseUrl('ollama')).toBe('https://ollama.com/v1');
+    expect(getDefaultBaseUrl('custom')).toBe('');
+  });
+
+  it('requires a base URL for the Custom provider', () => {
+    expect(() => createEngine({ provider: 'custom', model: 'my-model' })).toThrow(/API base URL/);
+    expect(
+      createEngine({ provider: 'custom', model: 'my-model', baseUrl: 'http://localhost:11434/v1' }).getProvider(),
+    ).toBe('custom');
+    // Custom is explicit-only: model detection never picks it.
+    expect(createEngine({ model: 'gemma4' }).getProvider()).toBe('ollama');
+  });
+
+  it('never falls back to a foreign key for Custom endpoints', async () => {
+    // A leaked foreign credential on an arbitrary endpoint would be a security
+    // bug: Custom (like Ollama) only ever uses its own key slot.
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ choices: [{ message: { content: 'hi' } }] }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    try {
+      const engine = createEngine({
+        provider: 'custom',
+        model: 'local-model',
+        baseUrl: 'http://localhost:11434/v1',
+        apiKeys: { openai: 'sk-foreign' },
+      });
+      await engine.generate([{ role: 'user', content: 'hi' }]);
+
+      const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+      expect(url).toBe('http://localhost:11434/v1/chat/completions');
+      expect((init.headers as Record<string, string>).Authorization).toBeUndefined();
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('reports the real engine class per provider', () => {
@@ -81,6 +130,11 @@ describe('llm engine factory', () => {
     expect(Object.keys(MODEL_SUGGESTIONS).sort()).toEqual([...ALL_PROVIDERS].sort());
 
     for (const provider of ALL_PROVIDERS) {
+      if (provider === 'custom') {
+        // Custom has no static list — its catalog comes from the endpoint.
+        expect(MODEL_SUGGESTIONS.custom).toEqual([]);
+        continue;
+      }
       expect(MODEL_SUGGESTIONS[provider].length).toBeGreaterThan(0);
     }
   });
@@ -121,9 +175,15 @@ describe('provider headers', () => {
   });
 
   it('sends Ollama Bearer auth only when a key is configured', () => {
-    // Local servers need no key; Ollama Cloud takes Authorization: Bearer.
+    // Ollama Cloud takes Authorization: Bearer; keyless sends nothing.
     expect(buildProviderHeaders('ollama')).toEqual({});
     expect(buildProviderHeaders('ollama', 'ollama_test')).toEqual({ Authorization: 'Bearer ollama_test' });
+  });
+
+  it('sends Custom Bearer auth only when a key is configured', () => {
+    // Local/gateway custom endpoints are often keyless.
+    expect(buildProviderHeaders('custom')).toEqual({});
+    expect(buildProviderHeaders('custom', 'proxy_key')).toEqual({ Authorization: 'Bearer proxy_key' });
   });
 
   it('throws instead of sending a corrupted key', () => {

@@ -19,6 +19,7 @@ export type EngineType =
   | 'zai'
   | 'moonshot'
   | 'ollama'
+  | 'custom'
   | 'openai_compatible'
   | 'auto';
 export type EngineMode = 'auto' | 'explicit';

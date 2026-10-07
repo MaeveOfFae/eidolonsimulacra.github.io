@@ -227,8 +227,8 @@ export default function Settings() {
     try {
       const apiKey = localConfig.api_keys?.[provider];
 
-      // Ollama doesn't require an API key
-      if (!apiKey && provider !== 'ollama') {
+      // Only Custom runs keyless (local servers); Ollama Cloud needs its key too.
+      if (!apiKey && provider !== 'custom') {
         setTestResult({
           provider,
           success: false,
@@ -245,8 +245,10 @@ export default function Settings() {
         model,
         apiKey,
         provider: provider as Provider,
-        baseUrl: localConfig.base_url || undefined,
-        proxyKey: localConfig.api_proxy_key || undefined,
+        // Custom owns the base-URL override; named providers always use their
+        // documented endpoint.
+        baseUrl: provider === 'custom' ? localConfig.base_url || undefined : undefined,
+        proxyKey: provider === 'custom' ? localConfig.api_proxy_key || undefined : undefined,
       });
 
       const startTime = performance.now();

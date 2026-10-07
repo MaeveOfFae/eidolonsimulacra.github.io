@@ -122,9 +122,14 @@ export class MobileLocalAPI {
   async testConnection(request: ConnectionTestRequest): Promise<ConnectionTestResult> {
     const config = getStoredDeviceConfig();
     const provider = request.provider as LLMProvider;
-    const apiKey = config.api_keys[provider] || getFallbackApiKey(config.api_keys);
+    // Ollama (Cloud) and Custom only ever use their own key slot.
+    const ownKeyOnly = provider === 'ollama' || provider === 'custom';
+    const apiKey = ownKeyOnly
+      ? config.api_keys[provider]
+      : config.api_keys[provider] || getFallbackApiKey(config.api_keys);
 
-    if (provider !== 'ollama' && !apiKey) {
+    // Only Custom runs keyless (local servers); Ollama Cloud needs its key too.
+    if (provider !== 'custom' && !apiKey) {
       return { success: false, error: `No API key configured for ${request.provider}` };
     }
 
@@ -153,16 +158,31 @@ export class MobileLocalAPI {
     const typedProvider = provider as LLMProvider;
     const config = getStoredDeviceConfig();
     const baseUrl = getConfiguredBaseUrl(config, typedProvider);
-    const apiKey = config.api_keys[typedProvider] || getFallbackApiKey(config.api_keys);
+    // Ollama (Cloud) and Custom only ever use their own key slot.
+    const ownKeyOnly = typedProvider === 'ollama' || typedProvider === 'custom';
+    const apiKey = ownKeyOnly
+      ? config.api_keys[typedProvider]
+      : config.api_keys[typedProvider] || getFallbackApiKey(config.api_keys);
     const cacheKey = `${provider}|${baseUrl}|${apiKey ? 'auth' : 'anon'}`;
     const cached = modelsCache.get(cacheKey);
     if (cached && Date.now() - cached.cachedAt < MODEL_CACHE_TTL_MS) {
       return { ...cached.response, cached: true };
     }
 
+    if (typedProvider === 'custom' && !baseUrl) {
+      return {
+        provider,
+        models: [],
+        cached: true,
+        error:
+          'Set an API base URL for the Custom provider in Settings (for a local Ollama server: http://localhost:11434/v1).',
+      };
+    }
+
     const fallbackModels = getFallbackModels(typedProvider);
-    // Local Ollama lists keyless; every other provider needs its key.
-    if (!apiKey && typedProvider !== 'ollama') {
+    // Custom (local servers, gateways) lists keyless; every other provider
+    // needs its key (Ollama Cloud included).
+    if (!apiKey && typedProvider !== 'custom') {
       return {
         provider,
         models: fallbackModels,

@@ -59,10 +59,10 @@ function resolveProviderApiKey(provider: string, apiKeys: ApiKeys): string | und
     return providerKey;
   }
 
-  // Local Ollama needs no key and must never inherit a foreign provider's key
-  // (it would be sent as a Bearer token to localhost). Ollama Cloud users store
-  // their key under `ollama` above.
-  if (provider === 'ollama') {
+  // Local/gateway Custom endpoints need no key and must never inherit a
+  // foreign provider's key (it would be sent as a Bearer token to an arbitrary
+  // URL). Ollama Cloud users store their key under `ollama` above.
+  if (provider === 'ollama' || provider === 'custom') {
     return undefined;
   }
 
@@ -93,8 +93,8 @@ export async function updateConfig(config: Partial<Config>): Promise<Config> {
 
 export async function testConnection(request: ConnectionTestRequest): Promise<ConnectionTestResult> {
   const apiKey = configManager.getApiKeys()[request.provider];
-  // Local Ollama answers without auth; every other provider needs its key.
-  if (!apiKey && request.provider !== 'ollama') {
+  // Only Custom runs keyless (local servers); Ollama Cloud needs its key too.
+  if (!apiKey && request.provider !== 'custom') {
     return { success: false, error: `No API key configured for ${request.provider}` };
   }
 
@@ -102,23 +102,30 @@ export async function testConnection(request: ConnectionTestRequest): Promise<Co
     request.model ||
     MODEL_SUGGESTIONS[request.provider as keyof typeof MODEL_SUGGESTIONS]?.[0] ||
     getBrowserConfig().model;
-  const engine = createEngine({
-    model,
-    apiKey,
-    provider: request.provider as never,
-    baseUrl: request.base_url,
-  });
-
-  const result = await engine.testConnection();
-
-  return toAppConnectionTestResult(result);
+  try {
+    const engine = createEngine({
+      model,
+      apiKey,
+      provider: request.provider as never,
+      // Custom falls back to the configured base URL (Settings → Runtime).
+      baseUrl: request.base_url ?? (request.provider === 'custom' ? configManager.getConfig().base_url : undefined),
+    });
+    const result = await engine.testConnection();
+    return toAppConnectionTestResult(result);
+  } catch (error) {
+    // createEngine refuses a Custom provider with no base URL — surface that
+    // as a normal connection failure instead of an unhandled rejection.
+    return { success: false, error: error instanceof Error ? error.message : 'Connection failed' };
+  }
 }
 
 export async function loadProviderModels(provider: string, refresh: boolean = false): Promise<ModelsResponse> {
   const apiKeys = configManager.getApiKeys();
   const config = configManager.getConfig();
   const typedProvider = provider as LLMProvider;
-  const baseUrl = config.base_url || getDefaultBaseUrl(typedProvider);
+  // Custom owns the base-URL override; every other provider lists from its
+  // documented endpoint.
+  const baseUrl = typedProvider === 'custom' ? config.base_url?.trim() || '' : getDefaultBaseUrl(typedProvider);
   const apiKey = resolveProviderApiKey(provider, apiKeys);
   const cacheKey = `${provider}|${baseUrl}|${apiKey ? 'auth' : 'anon'}`;
   const cachedEntry = modelsCache.get(cacheKey);
@@ -129,12 +136,22 @@ export async function loadProviderModels(provider: string, refresh: boolean = fa
     };
   }
 
+  if (typedProvider === 'custom' && !baseUrl) {
+    return {
+      provider,
+      models: [],
+      cached: true,
+      error:
+        'Set an API base URL for the Custom provider in Settings → Runtime (for a local Ollama server: http://localhost:11434/v1).',
+    };
+  }
+
   const fallbackModels = getFallbackModels(typedProvider);
   // Every provider supports remote listing (Anthropic via /v1/models, Google via
-  // its models[] payload, Ollama keyless against the local server or with a key
-  // against Ollama Cloud). Only a missing key skips the fetch — Ollama is the
-  // one provider that legitimately runs without one.
-  const needsKey = provider !== 'ollama';
+  // its models[] payload, Ollama Cloud with its key). Only a missing key skips
+  // the fetch — Custom (local servers, gateways) is the one provider that
+  // legitimately runs without one.
+  const needsKey = provider !== 'custom';
 
   if (needsKey && !apiKey) {
     const response = {

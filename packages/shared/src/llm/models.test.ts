@@ -17,7 +17,8 @@ describe('providerModelsUrl', () => {
     expect(providerModelsUrl('google', 'https://generativelanguage.googleapis.com/v1beta')).toBe(
       'https://generativelanguage.googleapis.com/v1beta/models',
     );
-    expect(providerModelsUrl('ollama', 'http://localhost:11434/v1')).toBe('http://localhost:11434/v1/models');
+    expect(providerModelsUrl('ollama', 'https://ollama.com/v1')).toBe('https://ollama.com/v1/models');
+    expect(providerModelsUrl('custom', 'http://localhost:11434/v1')).toBe('http://localhost:11434/v1/models');
   });
 });
 
@@ -111,6 +112,10 @@ describe('fetchProviderModels', () => {
       vi.fn(async () => jsonResponse({ error: { message: 'Invalid API key' } }, 401)),
     );
     await expect(fetchProviderModels('openai', 'bad', 'https://api.openai.com/v1')).rejects.toThrow('Invalid API key');
+  });
+
+  it('refuses to list Custom models without a base URL', async () => {
+    await expect(fetchProviderModels('custom', '', '')).rejects.toThrow(/API base URL/);
   });
 });
 
