@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { initializePersistentStorage } from './lib/persistence/storage.js';
 import { migrateLegacyStorageKeys } from './lib/persistence/migrate-legacy-keys.js';
 import { installDesktopLLMFetch } from './lib/llm/transport.js';
+import { installExternalLinkHandler } from './lib/external-links.js';
 import './index.css';
 
 const queryClient = new QueryClient({
@@ -21,6 +22,9 @@ async function bootstrap() {
   // native fetch so local endpoints like Ollama aren't CORS-blocked by the
   // webview. No-op in the browser.
   installDesktopLLMFetch();
+  // Desktop: external links (docs, chub.ai, …) open in the user's default
+  // browser instead of inside the webview. No-op in the browser.
+  installExternalLinkHandler();
 
   await initializePersistentStorage();
 
