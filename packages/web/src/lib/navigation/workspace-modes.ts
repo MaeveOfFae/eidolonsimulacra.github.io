@@ -5,8 +5,10 @@
  * A mode is a **lens over the same 36 routes, never a filter**. It does two
  * things and deliberately nothing else:
  *
- *   1. promotes its own screens to the top of the sidebar and to the top of the
- *      quick-actions palette's default list, and
+ *   1. promotes its own screens to the top of the quick-actions palette's
+ *      default list and — for an explicitly chosen mode — to the top of the
+ *      sidebar. A follow-screen (Auto) mode names things but never moves the
+ *      sidebar, so clicking around the nav can't reshuffle it, and
  *   2. gives the app frame a name for what you are doing.
  *
  * Nothing is ever hidden. The palette still reaches every route in every mode,

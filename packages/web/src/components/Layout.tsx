@@ -210,8 +210,12 @@ export default function Layout({ children }: LayoutProps) {
   const activeModeId = resolveActiveWorkspaceMode(explicitModeId, location.pathname);
   const activeMode = WORKSPACE_MODES.find((mode) => mode.id === activeModeId) ?? null;
   const ActiveModeIcon = activeMode?.icon ?? null;
-  // A mode reorders the sidebar; it never removes anything from it.
-  const navEntries = orderEntriesForMode(primaryNavEntries, activeModeId);
+  // A mode reorders the sidebar; it never removes anything from it — and only a
+  // mode you picked reorders it. Ordering by the screen-inferred mode (the
+  // default Auto) reshuffled the nav on every hop between modes' screens,
+  // moving items under the pointer as you clicked. The inferred mode still
+  // names the frame and orders the palette; it just leaves the list alone.
+  const navEntries = orderEntriesForMode(primaryNavEntries, explicitModeId);
   const selectWorkspaceMode = (modeId: WorkspaceModeId | null) => {
     setExplicitModeId(modeId);
     if (modeId) {

@@ -36,7 +36,7 @@ export default function WorkspaceModeSwitcher({ explicitModeId, activeModeId, on
           type="button"
           onClick={() => onSelect(null)}
           aria-pressed={explicitModeId === null}
-          title="Follow whichever screen you are on"
+          title="Follow whichever screen you are on; the sidebar keeps its order"
           className={buttonClass(explicitModeId === null)}
         >
           <Gauge className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
