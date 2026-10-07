@@ -667,3 +667,49 @@ describe('Review export modal behavior', () => {
     });
   });
 });
+
+describe('Review Chub publish entry', () => {
+  beforeEach(() => {
+    mockUseQuery.mockReset();
+    mockUseMutation.mockReset();
+    mockUseQueryClient.mockReset();
+    mockUseGuidedTour.mockReset();
+    mutationResults = [];
+    worldsResponse = { worlds: [] };
+    draftResponse = createDraftResponse();
+    mockIsSelfContainedDesktop.mockReturnValue(false);
+
+    mockUseQuery.mockImplementation((options?: { queryKey?: unknown[] }) => {
+      const key = Array.isArray(options?.queryKey) ? options.queryKey[0] : undefined;
+      if (key === 'templates') {
+        return { data: templatesResponse, isLoading: false, error: null };
+      }
+      return { data: draftResponse, isLoading: false, error: null };
+    });
+    mockUseMutation.mockReturnValue(createMutationResult());
+    mockUseQueryClient.mockReturnValue({ invalidateQueries: vi.fn() });
+    mockUseGuidedTour.mockReturnValue({
+      activeTourId: null,
+      activeStepIndex: 0,
+      closeTour: vi.fn(),
+      goToCurrentStep: vi.fn(),
+      isTourCompleted: () => true,
+      restartTour: vi.fn(),
+      startTour: vi.fn(),
+    });
+  });
+
+  it('opens the publish dialog from the header and closes it again', async () => {
+    renderReview();
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Publish to Chub' }));
+
+    const dialog = await screen.findByRole('dialog', { name: 'Publish to Chub' });
+    expect(dialog).toBeInTheDocument();
+    // Unconnected state points at Settings before anything else.
+    expect(await screen.findByText(/Connect your chub\.ai account first/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    expect(screen.queryByRole('dialog', { name: 'Publish to Chub' })).not.toBeInTheDocument();
+  });
+});

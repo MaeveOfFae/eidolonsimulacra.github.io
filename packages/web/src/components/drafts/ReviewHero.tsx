@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Archive, ArrowLeft, Check, Download, Edit3, RotateCcw, ShieldCheck, Star, X } from 'lucide-react';
+import { Archive, ArrowLeft, Check, Download, Edit3, RotateCcw, ShieldCheck, Star, UploadCloud, X } from 'lucide-react';
 import type { DraftMetadata } from '@char-gen/shared';
 
 /**
@@ -28,6 +28,7 @@ interface ReviewHeroProps {
   onToggleFavorite: () => void;
   onArchive: () => void;
   onExport: () => void;
+  onPublishChub: () => void;
 }
 
 export default function ReviewHero({
@@ -44,6 +45,7 @@ export default function ReviewHero({
   onToggleFavorite,
   onArchive,
   onExport,
+  onPublishChub,
 }: ReviewHeroProps) {
   return (
     <section className="app-page-hero">
@@ -147,6 +149,14 @@ export default function ReviewHero({
             >
               <Download className="h-4 w-4" />
               Export
+            </button>
+            <button
+              onClick={onPublishChub}
+              data-tour-anchor="review-publish"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-input bg-background px-3 py-2 text-sm hover:bg-accent sm:justify-start"
+            >
+              <UploadCloud className="h-4 w-4" />
+              Publish to Chub
             </button>
             <button
               onClick={onArchive}

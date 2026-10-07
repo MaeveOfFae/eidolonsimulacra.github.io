@@ -164,7 +164,8 @@ export const guidedTours: GuidedTour[] = [
       {
         id: 'review-actions',
         title: 'Start from the review action bar',
-        description: 'The review header is the control surface for validation, favoriting, export, and draft deletion.',
+        description:
+          'The review header is the control surface for validation, favoriting, export, publishing to Chub, and draft deletion.',
         to: '/drafts/',
         routeLabel: 'Draft Review',
         matchMode: 'prefix',

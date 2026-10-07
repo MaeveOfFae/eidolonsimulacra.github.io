@@ -17,6 +17,7 @@ import { isSelfContainedDesktopRuntime } from '@/lib/runtime';
 import { pickFile } from '@/utils/download';
 import CollapsibleSection from '../common/CollapsibleSection';
 import ExportModal from '../common/ExportModal';
+import ChubPublishDialog from './ChubPublishDialog';
 import ChatPanel from '../common/ChatPanel';
 import { useGuidedTour } from '../common/GuidedTourContext';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
@@ -48,6 +49,7 @@ export default function Review() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showChubPublish, setShowChubPublish] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [editName, setEditName] = useState('');
   const [editingAsset, setEditingAsset] = useState<string | null>(null);
@@ -189,6 +191,11 @@ export default function Review() {
     [draft, exportReadinessValidation],
   );
   const assetApprovals = useMemo(() => buildAssetApprovalSummary(draft), [draft]);
+  // The publish dialog mirrors the buried character-sheet card's gate: the
+  // panel's button stays disabled until the sheet carries an approved decision.
+  const characterSheetApproved = assetApprovals.entries.some(
+    (entry) => entry.assetName === 'character_sheet' && entry.status === 'approved',
+  );
   const linkedWorldAttachments = worldDraftLinksData?.links ?? [];
   const linkedWorldAttachment = linkedWorldAttachments[0] ?? null;
   const hasMultipleWorldAttachments = linkedWorldAttachments.length > 1;
@@ -855,6 +862,7 @@ export default function Review() {
           setTourManagedExportModal(false);
           setShowExportModal(true);
         }}
+        onPublishChub={() => setShowChubPublish(true)}
       />
 
       <ReviewOverviewSection
@@ -989,6 +997,10 @@ export default function Review() {
             setTourManagedExportModal(false);
           }}
         />
+      )}
+
+      {showChubPublish && (
+        <ChubPublishDialog approved={characterSheetApproved} onClose={() => setShowChubPublish(false)} />
       )}
 
       <ChatPanel draftId={reviewId} onAssetRefined={handleAssetRefined} />
