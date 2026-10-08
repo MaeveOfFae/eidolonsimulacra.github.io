@@ -659,7 +659,7 @@ export default function LorebookGeneratorPanel({
                 <div>
                   <h4 className="text-sm font-semibold text-foreground">Saved packets</h4>
                   <p className="text-xs text-muted-foreground">
-                    Stored locally in this browser until world persistence lands.
+                    Saved in this browser's local storage. Promote a packet into a persisted world to keep it as canon.
                   </p>
                 </div>
                 <span className="text-xs text-muted-foreground">{savedPackets.length} saved</span>

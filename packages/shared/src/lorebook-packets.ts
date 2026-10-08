@@ -7,7 +7,7 @@
  * and each surface only owns its own storage adapter.
  */
 
-import { MAX_CONNECTED_DRAFT_REFERENCES } from './types';
+import { normalizeDraftReferenceIds } from './draft-references';
 
 export const MAX_LOREBOOK_PACKETS = 24;
 
@@ -102,28 +102,7 @@ function toIsoString(value: unknown): string | undefined {
 }
 
 export function normalizeLorebookPacketDraftIds(draftIds: string[] | undefined): string[] {
-  const normalized: string[] = [];
-  const seen = new Set<string>();
-
-  for (const draftId of draftIds ?? []) {
-    if (typeof draftId !== 'string') {
-      continue;
-    }
-
-    const trimmed = draftId.trim();
-    if (!trimmed || seen.has(trimmed)) {
-      continue;
-    }
-
-    seen.add(trimmed);
-    normalized.push(trimmed);
-
-    if (normalized.length >= MAX_CONNECTED_DRAFT_REFERENCES) {
-      break;
-    }
-  }
-
-  return normalized;
+  return normalizeDraftReferenceIds(draftIds);
 }
 
 export function deriveLorebookPacketTitle(content: string): string {
@@ -321,3 +300,92 @@ export function parseLorebookPacket(content: string): ParsedLorebookPacket {
     entries,
   };
 }
+
+/**
+ * Storage-agnostic packet store.
+ *
+ * Web and mobile persist the same packet records to different `localStorage`
+ * keys; the read/write/save/delete/import logic is identical, so it lives here
+ * and each surface supplies only its storage accessor and key.
+ */
+export interface LorebookPacketStorageLike {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+}
+
+export interface LorebookPacketImportInput {
+  content: string;
+  blueprintPath?: string;
+  blueprintOverride?: string | null;
+}
+
+export interface LorebookPacketStore {
+  list(): SavedLorebookPacketRecord[];
+  save(input: LorebookPacketSaveInput): SavedLorebookPacketRecord[];
+  delete(id: string): SavedLorebookPacketRecord[];
+  importText(input: LorebookPacketImportInput): SavedLorebookPacketRecord[];
+}
+
+export function createLorebookPacketStore(options: {
+  storageKey: string;
+  getStorage: () => LorebookPacketStorageLike | null;
+}): LorebookPacketStore {
+  const read = (): SavedLorebookPacketRecord[] => {
+    const storage = options.getStorage();
+    if (!storage) {
+      return [];
+    }
+
+    try {
+      const raw = storage.getItem(options.storageKey);
+      if (!raw) {
+        return [];
+      }
+
+      return normalizeLorebookPackets(JSON.parse(raw) as unknown);
+    } catch {
+      return [];
+    }
+  };
+
+  const write = (records: SavedLorebookPacketRecord[]): void => {
+    const storage = options.getStorage();
+    if (!storage) {
+      return;
+    }
+
+    storage.setItem(options.storageKey, JSON.stringify(records));
+  };
+
+  const save = (input: LorebookPacketSaveInput): SavedLorebookPacketRecord[] => {
+    const content = input.content.trim();
+    if (!content) {
+      return read();
+    }
+
+    const existing = read();
+    const record = buildLorebookPacketRecord({ ...input, content }, existing);
+    const next = mergeLorebookPacket(record, existing);
+
+    write(next);
+    return next;
+  };
+
+  return {
+    list: read,
+    save,
+    delete: (id) => {
+      const next = removeLorebookPacket(id, read());
+      write(next);
+      return next;
+    },
+    importText: (input) =>
+      save({
+        content: input.content,
+        draftIds: extractLorebookPacketSourceDrafts(input.content),
+        blueprintPath: input.blueprintPath,
+        blueprintOverride: input.blueprintOverride,
+      }),
+  };
+}
+

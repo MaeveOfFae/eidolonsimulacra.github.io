@@ -4,6 +4,7 @@
 
 import { BaseLLMEngine } from './base';
 import { buildProviderHeaders } from './factory';
+import { isRuntimeLLMStreamingSupported } from './transport';
 import type {
   GenerateOptions,
   GenerateResult,
@@ -196,6 +197,11 @@ export class GoogleEngine extends BaseLLMEngine {
   }
 
   async *generateStream(messages: LLMChatMessage[], options?: StreamGenerateOptions): AsyncIterable<StreamChunk> {
+    if (!isRuntimeLLMStreamingSupported()) {
+      yield* this.streamAsSingleChunk(messages, options);
+      return;
+    }
+
     const opts = this.mergeOptions(options);
 
     const response = await this.callEndpoint(

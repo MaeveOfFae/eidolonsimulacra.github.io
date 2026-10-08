@@ -13,7 +13,11 @@ import type {
   ChatMessage,
   TokenUsage,
 } from '@char-gen/shared';
-import { parseBlueprintOutput as parseGeneratedBlueprintOutput } from '@char-gen/shared';
+import {
+  LOREBOOK_REFERENCE_ASSET_ORDER,
+  LOREBOOK_REFERENCE_ASSET_PREFIXES,
+  parseBlueprintOutput as parseGeneratedBlueprintOutput,
+} from '@char-gen/shared';
 import { createEngine } from '../llm/factory.js';
 import { unwrapSingleCodeFence } from '../content-format.js';
 import { configManager } from '../config/manager.js';
@@ -658,16 +662,8 @@ export class GenerationService {
     yield { type: 'status', stage: 'loading_references' };
 
     const referenceSuites = await loadReferenceSuites(draftIds, {
-      preferredAssetOrder: [
-        'lorebook',
-        'character_sheet',
-        'post_history',
-        'intro_scene',
-        'creator_notes',
-        'intro_page',
-        'system_prompt',
-      ],
-      includeAssetPrefixes: ['lorebook_'],
+      preferredAssetOrder: [...LOREBOOK_REFERENCE_ASSET_ORDER],
+      includeAssetPrefixes: LOREBOOK_REFERENCE_ASSET_PREFIXES,
       resolveTemplate: (templateName) => (templateName ? resolveTemplateDefinition(templateName) : undefined),
     });
 

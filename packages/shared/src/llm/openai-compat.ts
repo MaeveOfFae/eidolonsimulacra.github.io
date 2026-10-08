@@ -17,7 +17,7 @@ import type {
 import { ProviderEndpoints } from './types';
 import { isInvalidApiKeyValue, normalizeApiKeyValue } from './api-key';
 import { buildProviderHeaders } from './headers';
-import { getRuntimeLLMFetch } from './transport';
+import { getRuntimeLLMFetch, isRuntimeLLMStreamingSupported } from './transport';
 
 interface OpenAICompatErrorResponse {
   error?: { message?: string } | string;
@@ -46,6 +46,10 @@ interface OpenAICompatChoice {
     refusal?: unknown;
     parts?: unknown;
     tool_calls?: unknown[];
+    // Reasoning models (OpenRouter, DeepSeek-R, etc.) stream chain-of-thought in
+    // a field the display parser ignores; tracked only to explain a stall.
+    reasoning?: unknown;
+    reasoning_content?: unknown;
   };
 }
 
@@ -340,13 +344,23 @@ export class OpenAICompatEngine implements LLMEngine {
   }
 
   async *generateStream(messages: LLMChatMessage[], options?: StreamGenerateOptions): AsyncIterable<StreamChunk> {
+    if (!isRuntimeLLMStreamingSupported()) {
+      // The transport can't stream (e.g. a buffering native bridge): return the
+      // whole completion as one chunk instead of relying on SSE.
+      const result = await this.generate(messages, options);
+      yield { content: result.content, done: true, finishReason: result.finishReason, usage: result.usage };
+      return;
+    }
+
     const temperature = options?.temperature ?? this.config.temperature;
     const maxTokens = options?.maxTokens ?? this.config.maxTokens;
     const requestStreamUsage = STREAM_USAGE_PROVIDERS.has(this.config.provider);
+    const timeoutMs = typeof this.config.timeout === 'number' ? this.config.timeout : 120000;
+    const requestUrl = this.config.baseUrl + '/chat/completions';
 
     const sendRequest = (includeUsage: boolean) =>
       this.fetchWithTimeout(
-        this.config.baseUrl + '/chat/completions',
+        requestUrl,
         {
           method: 'POST',
           headers: this.buildHeaders(),
@@ -384,23 +398,60 @@ export class OpenAICompatEngine implements LLMEngine {
       throw new Error('No response body');
     }
 
+    const responseStatus = response.status;
+    const responseContentType = response.headers.get('content-type') ?? '(none)';
+
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
     let streamUsage: TokenUsage | undefined;
 
+    // `fetchWithTimeout` only guards the response *headers* — once they arrive its
+    // timer is cleared, so a provider that accepts the connection and then stalls
+    // (or buffers the whole answer) would leave the read below hanging forever.
+    // Guard the body read with an inactivity timer that cancels the reader when no
+    // real SSE `data:` event arrives for `timeoutMs` — provider keepalive comment
+    // lines (e.g. `: OPENROUTER PROCESSING`) deliberately do NOT count as progress,
+    // so a queued/stalled model still times out instead of spinning forever.
+    let inactivityId: ReturnType<typeof setTimeout> | null = null;
+    let stalled = false;
+    let sseEventCount = 0;
+    let bytesReceived = 0;
+    let sawReasoning = false;
+    let previewBytes = '';
+    const armInactivity = () => {
+      if (inactivityId !== null) {
+        clearTimeout(inactivityId);
+      }
+      if (timeoutMs > 0) {
+        inactivityId = setTimeout(() => {
+          stalled = true;
+          void reader.cancel().catch(() => {});
+        }, timeoutMs);
+      }
+    };
+
     try {
+      armInactivity();
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        buffer += decoder.decode(value, { stream: true });
+        bytesReceived += value.byteLength;
+        const decoded = decoder.decode(value, { stream: true });
+        buffer += decoded;
+        if (previewBytes.length < 200) {
+          previewBytes = (previewBytes + decoded).slice(0, 200);
+        }
         const lines = buffer.split('\n');
         buffer = lines.pop() ?? '';
 
         for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const dataStr = line.slice(6);
+          // SSE allows one optional space after `data:`; tolerate providers that
+          // omit it, since their events are otherwise silently dropped.
+          if (line.startsWith('data:')) {
+            sseEventCount += 1;
+            const dataStr = line.slice(5).trimStart();
             if (dataStr.trim() === '[DONE]') {
               yield { content: '', done: true, ...(streamUsage ? { usage: streamUsage } : {}) };
               return;
@@ -416,11 +467,20 @@ export class OpenAICompatEngine implements LLMEngine {
                 streamUsage = chunkUsage;
               }
               const choice = data.choices?.[0];
+              const delta = choice?.delta;
+              if (typeof delta?.reasoning === 'string' || typeof delta?.reasoning_content === 'string') {
+                sawReasoning = true;
+              }
               const content = extractChoiceDeltaContent(choice);
               if (content) {
+                // Only displayable output counts as progress. Keepalive comments,
+                // empty heartbeat deltas, and reasoning-only events (which this
+                // parser intentionally ignores) must NOT keep a stalled stream alive.
+                armInactivity();
                 yield { content, done: false };
               }
               if (choice?.delta?.tool_calls) {
+                armInactivity();
                 yield { content: JSON.stringify({ tool_calls: choice.delta.tool_calls }), done: false };
               }
             } catch {
@@ -429,7 +489,40 @@ export class OpenAICompatEngine implements LLMEngine {
           }
         }
       }
+
+      if (stalled) {
+        if (bytesReceived === 0) {
+          // The transport accepted the request but streamed literally nothing — that
+          // is a non-streaming bridge (e.g. a native HTTP plugin that buffers the
+          // whole body), not a slow model. Re-run it as a normal completion so the
+          // response still arrives instead of surfacing a timeout.
+          const fallback = await this.generate(messages, options);
+          yield {
+            content: fallback.content,
+            done: true,
+            finishReason: fallback.finishReason,
+            usage: fallback.usage,
+          };
+          return;
+        }
+
+        const kb = (bytesReceived / 1024).toFixed(1);
+        const preview = previewBytes
+          ? ` First bytes: ${JSON.stringify(previewBytes.replace(/\s+/g, ' ').trim().slice(0, 140))}`
+          : ' No bytes were received.';
+        const hint = sawReasoning
+          ? ' The model streamed reasoning tokens but no answer text — choose a non-reasoning model or another provider.'
+          : '';
+        throw new Error(
+          `Request timed out after ${Math.round(timeoutMs / 1000)}s with no displayable output ` +
+            `(${sseEventCount} SSE event${sseEventCount === 1 ? '' : 's'}, ${kb} KB, HTTP ${responseStatus}, ` +
+            `content-type "${responseContentType}").${preview} POST ${requestUrl}${hint}`,
+        );
+      }
     } finally {
+      if (inactivityId !== null) {
+        clearTimeout(inactivityId);
+      }
       reader.releaseLock();
     }
   }

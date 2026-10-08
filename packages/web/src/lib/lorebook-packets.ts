@@ -1,18 +1,17 @@
 /**
  * Browser storage adapter for lorebook packets.
  *
- * The packet format and every pure helper now live in `@char-gen/shared`
- * (`lorebook-packets`) so mobile persists the same records instead of growing a
- * third copy. This module only owns the `localStorage` read/write path.
+ * The packet format, every pure helper, and the read/write/save/delete/import
+ * logic live in `@char-gen/shared` (`lorebook-packets`), so web and mobile share
+ * one `createLorebookPacketStore` factory instead of two near-identical adapters.
+ * This module only supplies web's `localStorage` accessor and storage key.
  */
 
 import {
-  buildLorebookPacketRecord,
-  extractLorebookPacketSourceDrafts,
-  mergeLorebookPacket,
-  normalizeLorebookPackets,
-  removeLorebookPacket,
+  createLorebookPacketStore,
+  type LorebookPacketImportInput,
   type LorebookPacketSaveInput,
+  type LorebookPacketStorageLike,
   type SavedLorebookPacketRecord,
 } from '@char-gen/shared';
 
@@ -37,68 +36,24 @@ export type {
   SavedLorebookPacketRecord,
 } from '@char-gen/shared';
 
-function canUseStorage(): boolean {
-  return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
-}
-
-function readLorebookPackets(): SavedLorebookPacketRecord[] {
-  if (!canUseStorage()) {
-    return [];
-  }
-
-  try {
-    const raw = window.localStorage.getItem(LOREBOOK_PACKETS_STORAGE_KEY);
-    if (!raw) {
-      return [];
-    }
-
-    return normalizeLorebookPackets(JSON.parse(raw) as unknown);
-  } catch {
-    return [];
-  }
-}
-
-function writeLorebookPackets(records: SavedLorebookPacketRecord[]): void {
-  if (!canUseStorage()) {
-    return;
-  }
-
-  window.localStorage.setItem(LOREBOOK_PACKETS_STORAGE_KEY, JSON.stringify(records));
-}
+const store = createLorebookPacketStore({
+  storageKey: LOREBOOK_PACKETS_STORAGE_KEY,
+  getStorage: (): LorebookPacketStorageLike | null =>
+    typeof window !== 'undefined' && typeof window.localStorage !== 'undefined' ? window.localStorage : null,
+});
 
 export function listSavedLorebookPackets(): SavedLorebookPacketRecord[] {
-  return readLorebookPackets();
+  return store.list();
 }
 
 export function saveLorebookPacket(input: LorebookPacketSaveInput): SavedLorebookPacketRecord[] {
-  const content = input.content.trim();
-  if (!content) {
-    return readLorebookPackets();
-  }
-
-  const existing = readLorebookPackets();
-  const record = buildLorebookPacketRecord({ ...input, content }, existing);
-  const next = mergeLorebookPacket(record, existing);
-
-  writeLorebookPackets(next);
-  return next;
+  return store.save(input);
 }
 
 export function deleteLorebookPacket(id: string): SavedLorebookPacketRecord[] {
-  const next = removeLorebookPacket(id, readLorebookPackets());
-  writeLorebookPackets(next);
-  return next;
+  return store.delete(id);
 }
 
-export function importLorebookPacketText(input: {
-  content: string;
-  blueprintPath?: string;
-  blueprintOverride?: string | null;
-}): SavedLorebookPacketRecord[] {
-  return saveLorebookPacket({
-    content: input.content,
-    draftIds: extractLorebookPacketSourceDrafts(input.content),
-    blueprintPath: input.blueprintPath,
-    blueprintOverride: input.blueprintOverride,
-  });
+export function importLorebookPacketText(input: LorebookPacketImportInput): SavedLorebookPacketRecord[] {
+  return store.importText(input);
 }

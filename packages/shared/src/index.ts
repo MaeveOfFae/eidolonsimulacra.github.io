@@ -91,6 +91,7 @@ export {
   MAX_LOREBOOK_PACKETS,
   buildLorebookPacketRecord,
   createLorebookPacketId,
+  createLorebookPacketStore,
   deriveLorebookPacketTitle,
   extractLorebookPacketSourceDrafts,
   getLorebookPacketFilename,
@@ -102,16 +103,23 @@ export {
   removeLorebookPacket,
   sortLorebookPackets,
   type LorebookPacketEntryType,
+  type LorebookPacketImportInput,
   type LorebookPacketSaveInput,
+  type LorebookPacketStore,
+  type LorebookPacketStorageLike,
   type ParsedLorebookPacket,
   type ParsedLorebookPacketEntry,
   type SavedLorebookPacketRecord,
 } from './lorebook-packets';
 
+export { normalizeDraftReferenceIds, type NormalizeDraftReferenceIdsOptions } from './draft-references';
+
 export {
   DEFAULT_REFERENCE_ASSET_CHAR_LIMITS,
   DEFAULT_REFERENCE_ASSET_LINE_LIMITS,
   DEFAULT_REFERENCE_ASSET_ORDER,
+  LOREBOOK_REFERENCE_ASSET_ORDER,
+  LOREBOOK_REFERENCE_ASSET_PREFIXES,
   buildCompactReferenceAssets,
   buildLorebookUserPrompt,
   buildReferenceSummary,

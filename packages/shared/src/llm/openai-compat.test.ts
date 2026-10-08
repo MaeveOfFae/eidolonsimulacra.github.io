@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createEngine } from './factory';
+import { setRuntimeLLMStreamingSupported } from './transport';
 import type { LLMChatMessage, StreamChunk } from './types';
 
 const MESSAGES: LLMChatMessage[] = [{ role: 'user', content: 'hello' }];
@@ -370,4 +371,227 @@ describe('openai-compatible engine streaming usage', () => {
     expect(chunks).toEqual([]);
     expect(calls).toHaveLength(1);
   });
+});
+
+describe('openai-compatible streaming robustness', () => {
+  it('cancels a stalled stream and reports a timeout instead of hanging', async () => {
+    const encoder = new TextEncoder();
+    // The provider accepts the connection, sends one token, then goes silent and
+    // never closes the stream — the "infinite generating" stall.
+    const stalledStream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(encoder.encode('data: {"choices":[{"delta":{"content":"Hi"}}]}\n\n'));
+      },
+    });
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(stalledStream, { status: 200, headers: { 'Content-Type': 'text/event-stream' } }),
+      ),
+    );
+
+    const engine = createEngine({ provider: 'openai', model: 'gpt-4o', apiKey: 'sk-test', timeout: 20 });
+    const chunks: StreamChunk[] = [];
+
+    await expect(
+      (async () => {
+        for await (const chunk of engine.generateStream(MESSAGES)) {
+          chunks.push(chunk);
+        }
+      })(),
+    ).rejects.toThrow(/timed out/i);
+
+    expect(chunks).toEqual([{ content: 'Hi', done: false }]);
+  });
+
+  it('still times out when only provider keepalive comments arrive', async () => {
+    const encoder = new TextEncoder();
+    // A provider that keeps the socket warm (e.g. ": OPENROUTER PROCESSING")
+    // while the model is queued, without ever emitting a token.
+    let keepaliveTimer: ReturnType<typeof setInterval> | null = null;
+    const keepaliveStream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        keepaliveTimer = setInterval(() => controller.enqueue(encoder.encode(': OPENROUTER PROCESSING\n\n')), 5);
+      },
+      cancel() {
+        if (keepaliveTimer !== null) {
+          clearInterval(keepaliveTimer);
+          keepaliveTimer = null;
+        }
+      },
+    });
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(keepaliveStream, { status: 200, headers: { 'Content-Type': 'text/event-stream' } }),
+      ),
+    );
+
+    const engine = createEngine({ provider: 'openai', model: 'gpt-4o', apiKey: 'sk-test', timeout: 20 });
+    const chunks: StreamChunk[] = [];
+
+    await expect(
+      (async () => {
+        for await (const chunk of engine.generateStream(MESSAGES)) {
+          chunks.push(chunk);
+        }
+      })(),
+    ).rejects.toThrow(/timed out/i);
+
+    expect(chunks).toEqual([]);
+  });
+
+  it('still times out when data events carry no displayable content', async () => {
+    const encoder = new TextEncoder();
+    // Heartbeat data frames with empty deltas (some gateways) or reasoning-only
+    // events the parser ignores — the stream is alive but produces no output.
+    let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+    const heartbeatStream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        heartbeatTimer = setInterval(
+          () => controller.enqueue(encoder.encode('data: {"choices":[{"delta":{}}]}\n\n')),
+          5,
+        );
+      },
+      cancel() {
+        if (heartbeatTimer !== null) {
+          clearInterval(heartbeatTimer);
+          heartbeatTimer = null;
+        }
+      },
+    });
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(heartbeatStream, { status: 200, headers: { 'Content-Type': 'text/event-stream' } }),
+      ),
+    );
+
+    const engine = createEngine({ provider: 'openai', model: 'gpt-4o', apiKey: 'sk-test', timeout: 20 });
+    const chunks: StreamChunk[] = [];
+
+    await expect(
+      (async () => {
+        for await (const chunk of engine.generateStream(MESSAGES)) {
+          chunks.push(chunk);
+        }
+      })(),
+    ).rejects.toThrow(/timed out/i);
+
+    expect(chunks).toEqual([]);
+  });
+  it('reports a reasoning-only stall with an actionable hint', async () => {
+    const encoder = new TextEncoder();
+    let reasonTimer: ReturnType<typeof setInterval> | null = null;
+    const reasoningStream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        reasonTimer = setInterval(
+          () => controller.enqueue(encoder.encode('data: {"choices":[{"delta":{"reasoning":"thinking"}}]}\n\n')),
+          5,
+        );
+      },
+      cancel() {
+        if (reasonTimer !== null) {
+          clearInterval(reasonTimer);
+          reasonTimer = null;
+        }
+      },
+    });
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(reasoningStream, { status: 200, headers: { 'Content-Type': 'text/event-stream' } }),
+      ),
+    );
+
+    const engine = createEngine({ provider: 'openai', model: 'gpt-4o', apiKey: 'sk-test', timeout: 20 });
+    const chunks: StreamChunk[] = [];
+
+    await expect(
+      (async () => {
+        for await (const chunk of engine.generateStream(MESSAGES)) {
+          chunks.push(chunk);
+        }
+      })(),
+    ).rejects.toThrow(/reasoning tokens/);
+
+    expect(chunks).toEqual([]);
+  });
+
+  it('accepts SSE data events that omit the space after the colon', async () => {
+    stubFetch(sseResponse(['data:{"choices":[{"delta":{"content":"Hi"}}]}\n\n', 'data:[DONE]\n\n']));
+
+    const chunks: StreamChunk[] = [];
+    for await (const chunk of openAiEngine().generateStream(MESSAGES)) {
+      chunks.push(chunk);
+    }
+
+    expect(chunks).toEqual([
+      { content: 'Hi', done: false },
+      { content: '', done: true },
+    ]);
+  });
+
+  it('falls back to a non-streaming request when the transport streams nothing', async () => {
+    let call = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        call += 1;
+        if (call === 1) {
+          // Headers arrive, then the body stream never yields a byte (buffering bridge).
+          return new Response(new ReadableStream<Uint8Array>({}), {
+            status: 200,
+            headers: { 'Content-Type': 'text/event-stream' },
+          });
+        }
+        return new Response(JSON.stringify(COMPLETION), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }),
+    );
+
+    const engine = createEngine({ provider: 'openai', model: 'gpt-4o', apiKey: 'sk-test', timeout: 20 });
+    const chunks: StreamChunk[] = [];
+    for await (const chunk of engine.generateStream(MESSAGES)) {
+      chunks.push(chunk);
+    }
+
+    expect(chunks).toHaveLength(1);
+    expect(chunks[0]).toMatchObject({ content: 'hi there', done: true });
+  });
+  it('uses a single non-streaming completion when the transport cannot stream', async () => {
+    const calls = stubFetch(jsonResponse(COMPLETION));
+    setRuntimeLLMStreamingSupported(false);
+
+    try {
+      const chunks: StreamChunk[] = [];
+      for await (const chunk of openAiEngine().generateStream(MESSAGES)) {
+        chunks.push(chunk);
+      }
+
+      expect(chunks).toEqual([
+        {
+          content: 'hi there',
+          done: true,
+          finishReason: 'stop',
+          usage: { promptTokens: 1, completionTokens: 2, totalTokens: 3 },
+        },
+      ]);
+      expect(bodyOf(calls[0]!).stream).toBe(false);
+    } finally {
+      setRuntimeLLMStreamingSupported(true);
+    }
+  });
+
+
 });

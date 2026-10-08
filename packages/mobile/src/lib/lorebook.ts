@@ -6,9 +6,11 @@
  */
 
 import {
-  MAX_CONNECTED_DRAFT_REFERENCES,
+  LOREBOOK_REFERENCE_ASSET_ORDER,
+  LOREBOOK_REFERENCE_ASSET_PREFIXES,
   buildCompactReferenceAssets,
   buildLorebookUserPrompt,
+  normalizeDraftReferenceIds,
   resolveBlueprintForFeature,
   type BlueprintList,
   type ChatMessage,
@@ -16,21 +18,9 @@ import {
   type ReferenceSuiteContext,
 } from '@char-gen/shared';
 
-/**
- * Asset order that gives the model the strongest shared-canon signal first.
- * Mirrors web's `GenerationService.generateLorebook` ordering.
- */
-export const LOREBOOK_REFERENCE_ASSET_ORDER = [
-  'lorebook',
-  'character_sheet',
-  'post_history',
-  'intro_scene',
-  'creator_notes',
-  'intro_page',
-  'system_prompt',
-];
-
-export const LOREBOOK_REFERENCE_ASSET_PREFIXES = ['lorebook_'];
+// Re-exported so this module keeps exposing the same order/prefix constants it
+// used to define locally — both now come from `@char-gen/shared`.
+export { LOREBOOK_REFERENCE_ASSET_ORDER, LOREBOOK_REFERENCE_ASSET_PREFIXES };
 
 export const DEFAULT_LOREBOOK_BLUEPRINT_PATH = 'blueprints/system/lorebook_generator.md';
 
@@ -125,28 +115,7 @@ export function countLorebookPacketEntries(content: string): number {
  * list at the shared `MAX_CONNECTED_DRAFT_REFERENCES` ceiling.
  */
 export function normalizeLorebookReferenceIds(draftIds: string[] | undefined): string[] {
-  const normalized: string[] = [];
-  const seen = new Set<string>();
-
-  for (const draftId of draftIds ?? []) {
-    if (typeof draftId !== 'string') {
-      continue;
-    }
-
-    const trimmed = draftId.trim();
-    if (!trimmed || seen.has(trimmed)) {
-      continue;
-    }
-
-    seen.add(trimmed);
-    normalized.push(trimmed);
-
-    if (normalized.length >= MAX_CONNECTED_DRAFT_REFERENCES) {
-      break;
-    }
-  }
-
-  return normalized;
+  return normalizeDraftReferenceIds(draftIds);
 }
 
 /**

@@ -8,7 +8,9 @@
 
 import { buildAssetContextLines } from './prompt-utils';
 import { getOrderedAssets } from './templates';
-import { MAX_CONNECTED_DRAFT_REFERENCES, type Draft, type Template } from './types';
+import { type Draft, type Template } from './types';
+
+export { normalizeDraftReferenceIds as normalizeConnectedReferenceIds } from './draft-references';
 
 export interface ReferenceSuiteContext {
   label: string;
@@ -26,6 +28,24 @@ export interface ReferenceAssetLimits {
 }
 
 export const DEFAULT_REFERENCE_ASSET_ORDER = ['character_sheet', 'post_history', 'system_prompt'];
+
+/**
+ * Highest-signal-first asset order for a lorebook reference draft. Shared by the
+ * web generation service and the mobile lorebook generator so both surfaces feed
+ * the model the same canon signal in the same priority.
+ */
+export const LOREBOOK_REFERENCE_ASSET_ORDER = [
+  'lorebook',
+  'character_sheet',
+  'post_history',
+  'intro_scene',
+  'creator_notes',
+  'intro_page',
+  'system_prompt',
+];
+
+/** Asset namespaces that count as lorebook references beyond the ordered names. */
+export const LOREBOOK_REFERENCE_ASSET_PREFIXES = ['lorebook_'];
 
 export const DEFAULT_REFERENCE_ASSET_CHAR_LIMITS: Record<string, number> = {
   character_sheet: 1400,
@@ -151,41 +171,6 @@ export function buildCompactReferenceAssets(draft: Draft, options: ReferenceAsse
   }
 
   return assets;
-}
-
-export function normalizeConnectedReferenceIds(
-  draftIds: string[] | undefined,
-  options: { excludeIds?: string[] } = {},
-): string[] {
-  const excludedIds = new Set(
-    (options.excludeIds ?? [])
-      .filter((draftId): draftId is string => typeof draftId === 'string')
-      .map((draftId) => draftId.trim())
-      .filter(Boolean),
-  );
-
-  const normalized: string[] = [];
-  const seen = new Set<string>();
-
-  for (const draftId of draftIds ?? []) {
-    if (typeof draftId !== 'string') {
-      continue;
-    }
-
-    const normalizedId = draftId.trim();
-    if (!normalizedId || excludedIds.has(normalizedId) || seen.has(normalizedId)) {
-      continue;
-    }
-
-    seen.add(normalizedId);
-    normalized.push(normalizedId);
-
-    if (normalized.length >= MAX_CONNECTED_DRAFT_REFERENCES) {
-      break;
-    }
-  }
-
-  return normalized;
 }
 
 function getOrderedTemplateAssetNames(template?: Template): string[] {

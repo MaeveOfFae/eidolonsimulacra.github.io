@@ -4,6 +4,7 @@
 
 import { BaseLLMEngine } from './base';
 import { buildProviderHeaders } from './factory';
+import { isRuntimeLLMStreamingSupported } from './transport';
 import type {
   GenerateOptions,
   GenerateResult,
@@ -148,6 +149,11 @@ export class AnthropicEngine extends BaseLLMEngine {
   }
 
   async *generateStream(messages: LLMChatMessage[], options?: StreamGenerateOptions): AsyncIterable<StreamChunk> {
+    if (!isRuntimeLLMStreamingSupported()) {
+      yield* this.streamAsSingleChunk(messages, options);
+      return;
+    }
+
     const opts = this.mergeOptions(options);
     const system = this.getSystemPrompt(messages);
     const messagesFormatted = this.formatMessages(messages);

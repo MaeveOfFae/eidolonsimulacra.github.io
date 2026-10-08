@@ -37,6 +37,18 @@ export abstract class BaseLLMEngine {
   abstract generate(messages: LLMChatMessage[], options?: GenerateOptions): Promise<GenerateResult>;
 
   async *generateStream(messages: LLMChatMessage[], options?: StreamGenerateOptions): AsyncIterable<StreamChunk> {
+    yield* this.streamAsSingleChunk(messages, options);
+  }
+
+  /**
+   * Yield the whole completion as a single `done` chunk. Engines fall back to this
+   * when the host transport cannot stream (see `isRuntimeLLMStreamingSupported`),
+   * so a "streaming" call still completes instead of stalling.
+   */
+  protected async *streamAsSingleChunk(
+    messages: LLMChatMessage[],
+    options?: GenerateOptions,
+  ): AsyncIterable<StreamChunk> {
     const result = await this.generate(messages, options);
     yield {
       content: result.content,

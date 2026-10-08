@@ -1,10 +1,8 @@
 import {
-  buildLorebookPacketRecord,
-  extractLorebookPacketSourceDrafts,
-  mergeLorebookPacket,
-  normalizeLorebookPackets,
-  removeLorebookPacket,
+  createLorebookPacketStore,
+  type LorebookPacketImportInput,
   type LorebookPacketSaveInput,
+  type LorebookPacketStorageLike,
   type SavedLorebookPacketRecord,
 } from '@char-gen/shared';
 
@@ -28,77 +26,30 @@ export type {
   SavedLorebookPacketRecord,
 } from '@char-gen/shared';
 
-type StorageLike = Pick<Storage, 'getItem' | 'setItem'>;
-
-function getStorage(): StorageLike | null {
-  const maybeStorage = globalThis as { localStorage?: StorageLike };
-  return maybeStorage.localStorage ?? null;
-}
-
 /**
  * Mobile persists packets through the same `globalThis.localStorage` surface the
- * device config / content stores use (`expo-sqlite/localStorage/install`).
+ * device config / content stores use (`expo-sqlite/localStorage/install`), so it
+ * shares the `@char-gen/shared` packet store with the web adapter and supplies
+ * only its own storage accessor and key.
  */
-function readLorebookPackets(): SavedLorebookPacketRecord[] {
-  const storage = getStorage();
-  if (!storage) {
-    return [];
-  }
-
-  try {
-    const raw = storage.getItem(LOREBOOK_PACKETS_STORAGE_KEY);
-    if (!raw) {
-      return [];
-    }
-
-    return normalizeLorebookPackets(JSON.parse(raw) as unknown);
-  } catch {
-    return [];
-  }
-}
-
-function writeLorebookPackets(records: SavedLorebookPacketRecord[]): void {
-  const storage = getStorage();
-  if (!storage) {
-    return;
-  }
-
-  storage.setItem(LOREBOOK_PACKETS_STORAGE_KEY, JSON.stringify(records));
-}
+const store = createLorebookPacketStore({
+  storageKey: LOREBOOK_PACKETS_STORAGE_KEY,
+  getStorage: (): LorebookPacketStorageLike | null =>
+    (globalThis as { localStorage?: LorebookPacketStorageLike }).localStorage ?? null,
+});
 
 export function listSavedLorebookPackets(): SavedLorebookPacketRecord[] {
-  return readLorebookPackets();
+  return store.list();
 }
 
 export function saveLorebookPacket(input: LorebookPacketSaveInput): SavedLorebookPacketRecord[] {
-  const content = input.content.trim();
-  if (!content) {
-    return readLorebookPackets();
-  }
-
-  const existing = readLorebookPackets();
-  const record = buildLorebookPacketRecord({ ...input, content }, existing);
-  const next = mergeLorebookPacket(record, existing);
-
-  writeLorebookPackets(next);
-  return next;
+  return store.save(input);
 }
 
 export function deleteLorebookPacket(id: string): SavedLorebookPacketRecord[] {
-  const next = removeLorebookPacket(id, readLorebookPackets());
-  writeLorebookPackets(next);
-  return next;
+  return store.delete(id);
 }
 
-export function importLorebookPacketText(input: {
-  content: string;
-  blueprintPath?: string;
-  blueprintOverride?: string | null;
-}): SavedLorebookPacketRecord[] {
-  return saveLorebookPacket({
-    content: input.content,
-    draftIds: extractLorebookPacketSourceDrafts(input.content),
-    blueprintPath: input.blueprintPath,
-    blueprintOverride: input.blueprintOverride,
-  });
+export function importLorebookPacketText(input: LorebookPacketImportInput): SavedLorebookPacketRecord[] {
+  return store.importText(input);
 }
