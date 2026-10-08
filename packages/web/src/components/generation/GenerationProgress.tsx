@@ -479,11 +479,21 @@ export default function GenerationProgress({
       }
     }, 0);
 
+    // Only cancel the queued dispatch here — never abort in-flight work. Clearing
+    // the action above changes `resumeAction`, which re-runs this effect, so an
+    // abort in this cleanup fired *right after* `generateAsset` started and killed
+    // its own stream: the signal then stays aborted, every catch returns silently,
+    // and the screen sits on "Generating…" forever with no error. In-flight work is
+    // cancelled explicitly where it should be (cancel/restart/regenerate dispatch
+    // their own abort, `generateAsset` aborts the previous controller, and the
+    // unmount effect below stops it when the screen goes away).
     return () => {
       window.clearTimeout(timeoutId);
-      abortControllerRef.current?.abort();
     };
   }, [activeAssetOrder.length, generateAsset, resumeAction, saveApprovedDraft]);
+
+  // Abort any in-flight generation when the screen unmounts.
+  useEffect(() => () => abortControllerRef.current?.abort(), []);
 
   useEffect(() => {
     if (status === 'complete' || status === 'error') {

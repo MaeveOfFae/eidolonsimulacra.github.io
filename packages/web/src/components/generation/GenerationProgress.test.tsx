@@ -323,4 +323,46 @@ describe('GenerationProgress', () => {
     });
     expect(onError).not.toHaveBeenCalled();
   });
+  it('does not abort the stream it just started when the queued action clears', async () => {
+    let signal: AbortSignal | undefined;
+
+    vi.mocked(GenerationService.generateAsset).mockImplementation(
+      // The stream must stay open so the abort this test guards against (the
+      // effect clearing its own queued action) would be observable mid-flight.
+      // eslint-disable-next-line require-yield -- deliberately never yields: the stream is held open
+      async function* (_request, _stream, options) {
+        signal = options?.signal;
+        await new Promise<void>(() => {
+          /* never resolves */
+        });
+      },
+    );
+
+    render(
+      <GenerationProgress
+        seed="test seed"
+        mode="SFW"
+        template="Test Template"
+        templates={[
+          {
+            name: 'Test Template',
+            assets: [{ name: 'system_prompt', required: true, depends_on: [] }],
+          } as never,
+        ]}
+        onComplete={vi.fn()}
+        onError={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    // Generation is dispatched on a 0ms timer; the effect then clears its queued
+    // action, which re-runs the effect. That must not abort the stream that just
+    // began — otherwise the catch returns silently and the screen hangs forever.
+    await waitFor(() => {
+      expect(signal).toBeDefined();
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(signal?.aborted).toBe(false);
+  });
 });
