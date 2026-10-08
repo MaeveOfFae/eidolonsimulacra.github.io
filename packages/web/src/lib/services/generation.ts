@@ -18,18 +18,13 @@ import {
   LOREBOOK_REFERENCE_ASSET_PREFIXES,
   parseBlueprintOutput as parseGeneratedBlueprintOutput,
 } from '@char-gen/shared';
-import { createEngine } from '../llm/factory.js';
 import { unwrapSingleCodeFence } from '../content-format.js';
-import { configManager } from '../config/manager.js';
 import { DraftStorage } from '../storage/draft-db.js';
 import { beginUsageCapture, errorMessageOf } from './usage-capture.js';
 import {
   appendVisibleChunk,
   createConfiguredEngine,
   createStreamDisplayState,
-  getFallbackApiKey,
-  resolveConfiguredProvider,
-  resolveGenerationMaxTokens,
   sanitizeGeneratedSeed,
   sanitizeModelContent,
 } from './generation/engine.js';
@@ -750,22 +745,9 @@ export class GenerationService {
       typeof request === 'string' ? { genre_lines: request } : request;
     const { genreLines } = resolveSeedGenerationInput(resolvedRequest);
 
-    // Get API keys and config
-    const apiKeys = configManager.getApiKeys();
-    const config = configManager.getConfig();
-
-    // Create engine
-    const provider = resolveConfiguredProvider(config);
-    const engine = createEngine({
-      model: config.model,
-      apiKey: provider ? apiKeys[provider] : getFallbackApiKey(apiKeys),
-      apiKeys,
-      provider,
-      // Custom owns the base-URL override.
-      baseUrl: provider === 'custom' ? config.base_url : undefined,
-      temperature: config.temperature,
-      maxTokens: resolveGenerationMaxTokens(config),
-    });
+    // Build the engine through the shared resolver so the seed generator attaches
+    // the same credentials as every other path (notably the Custom proxy key).
+    const engine = createConfiguredEngine();
 
     yield { type: 'status', stage: 'building_prompt' };
 
@@ -805,22 +787,9 @@ export class GenerationService {
   ): AsyncIterable<GenerationProgress> {
     yield { type: 'status', stage: 'initializing' };
 
-    // Get API keys and config
-    const apiKeys = configManager.getApiKeys();
-    const config = configManager.getConfig();
-
-    // Create engine
-    const provider = resolveConfiguredProvider(config);
-    const engine = createEngine({
-      model: config.model,
-      apiKey: provider ? apiKeys[provider] : getFallbackApiKey(apiKeys),
-      apiKeys,
-      provider,
-      // Custom owns the base-URL override.
-      baseUrl: provider === 'custom' ? config.base_url : undefined,
-      temperature: config.temperature,
-      maxTokens: resolveGenerationMaxTokens(config),
-    });
+    // Build the engine through the shared resolver so chat attaches the same
+    // credentials as every other path (notably the Custom proxy key).
+    const engine = createConfiguredEngine();
 
     yield { type: 'status', stage: 'generating' };
 
@@ -893,22 +862,9 @@ export class GenerationService {
     const profile1 = parseCharacterProfile(draft1.assets.character_sheet || '');
     const profile2 = parseCharacterProfile(draft2.assets.character_sheet || '');
 
-    // Get API keys and config
-    const apiKeys = configManager.getApiKeys();
-    const config = configManager.getConfig();
-
-    // Create engine
-    const provider = resolveConfiguredProvider(config);
-    const engine = createEngine({
-      model: config.model,
-      apiKey: provider ? apiKeys[provider] : getFallbackApiKey(apiKeys),
-      apiKeys,
-      provider,
-      // Custom owns the base-URL override.
-      baseUrl: provider === 'custom' ? config.base_url : undefined,
-      temperature: config.temperature,
-      maxTokens: resolveGenerationMaxTokens(config),
-    });
+    // Build the engine through the shared resolver so similarity analysis
+    // attaches the same credentials as every other path (Custom proxy key).
+    const engine = createConfiguredEngine();
 
     // Build similarity prompt
     const [systemPrompt, userPrompt] = buildSimilarityPrompt(profile1, profile2);

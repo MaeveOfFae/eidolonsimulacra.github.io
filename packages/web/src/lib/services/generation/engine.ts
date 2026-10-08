@@ -11,8 +11,17 @@ import { detectProviderFromModel } from '@char-gen/shared';
 import { configManager } from '../../config/manager.js';
 import { stripReasoningArtifacts, unwrapSingleCodeFence } from '../../content-format.js';
 import { createEngine } from '../../llm/factory.js';
+import { isDesktopRuntime } from '../../runtime.js';
 
 export const DEFAULT_GENERATION_MAX_TOKENS = 4096;
+
+/**
+ * Tauri's native transport buffers the whole response body, so a completion
+ * request's timeout spans the entire generation rather than a gap between SSE
+ * events. Mirrors the mobile build's `MOBILE_PROVIDER_TIMEOUT_MS`, which exists
+ * for the same reason.
+ */
+export const DESKTOP_PROVIDER_TIMEOUT_MS = 300_000;
 
 export interface StreamDisplayState {
   rawContent: string;
@@ -81,6 +90,9 @@ export function createConfiguredEngine(override?: { model: string }) {
     proxyKey: provider === 'custom' ? config.api_proxy_key : undefined,
     temperature: config.temperature,
     maxTokens: resolveGenerationMaxTokens(config),
+    // Desktop runs one non-streaming completion through the buffering native
+    // transport, so the timeout spans the whole generation.
+    ...(isDesktopRuntime() ? { timeout: DESKTOP_PROVIDER_TIMEOUT_MS } : {}),
   });
 }
 

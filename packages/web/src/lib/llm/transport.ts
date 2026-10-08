@@ -5,13 +5,16 @@
  * while native HTTP has no origin at all. Browser keeps the environment
  * `fetch`. Installed once from `main.tsx`; mirrors `@/lib/comfyui/transport`.
  *
- * Streaming is attempted here (the pinned plugin carries the stream-support
- * fixes). If a bridge still buffers the body, `OpenAICompatEngine.generateStream`
- * detects that it received nothing and re-runs the request non-streamingly, so
- * long generations complete either way. A host that knows its transport can never
- * stream can opt out with `setRuntimeLLMStreamingSupported(false)`.
+ * The native plugin also **buffers** the whole response body: a "streaming"
+ * request emits nothing until the completion finishes, so the engine's
+ * inactivity guard trips and a long generation looks like a hang (re-verified
+ * against `plugin-http` 2.6.1). This install therefore marks the transport as
+ * non-streaming and every engine runs one non-streaming completion instead —
+ * exactly what the mobile build does (`PREFERS_NON_STREAMING_COMPLETIONS`).
+ * `setRuntimeLLMStreamingSupported(true)` re-enables SSE once a plugin streams
+ * incrementally, and the engine's zero-byte fallback stays as a safety net.
  */
-import { setRuntimeLLMFetch, type LLMFetch } from '@char-gen/shared';
+import { setRuntimeLLMFetch, setRuntimeLLMStreamingSupported, type LLMFetch } from '@char-gen/shared';
 import { isDesktopRuntime } from '@/lib/runtime';
 
 let installed = false;
@@ -27,4 +30,9 @@ export function installDesktopLLMFetch(): void {
     nativeFetch ??= (await import('@tauri-apps/plugin-http')).fetch as unknown as LLMFetch;
     return nativeFetch(input, init);
   });
+
+  // The native plugin answers a streaming request with a buffered body, so a
+  // "streaming" call here would stall until it completed. Run one non-streaming
+  // completion instead (the transport is installed before any provider call).
+  setRuntimeLLMStreamingSupported(false);
 }

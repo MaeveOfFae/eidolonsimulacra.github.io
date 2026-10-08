@@ -273,18 +273,30 @@ export class OpenAICompatEngine implements LLMEngine {
       signal.addEventListener('abort', handleAbort, { once: true });
     }
 
+    // A transport that ignores the abort signal (some native bridges do) would
+    // leave the request pending forever, so the timeout also rejects the race
+    // below instead of relying on `controller.abort()` alone.
+    let rejectTimeout: ((error: Error) => void) | null = null;
+    const timeoutRejection = new Promise<never>((_resolve, reject) => {
+      rejectTimeout = reject;
+    });
+
     if (timeoutMs > 0) {
       timeoutId = setTimeout(() => {
         didTimeout = true;
         controller.abort();
+        rejectTimeout?.(new Error(`Request timed out after ${Math.round(timeoutMs / 1000)}s`));
       }, timeoutMs);
     }
 
     try {
-      return await getRuntimeLLMFetch()(url, {
-        ...init,
-        signal: controller.signal,
-      });
+      return await Promise.race([
+        getRuntimeLLMFetch()(url, {
+          ...init,
+          signal: controller.signal,
+        }),
+        timeoutRejection,
+      ]);
     } catch (error) {
       if (didTimeout) {
         throw new Error(`Request timed out after ${Math.round(timeoutMs / 1000)}s`);
@@ -633,18 +645,46 @@ export class OpenAICompatEngine implements LLMEngine {
       return 'The local server refused this app origin (HTTP 403). Restart it with its origins allowed (for Ollama: OLLAMA_ORIGINS=*) and try again.';
     }
 
+    let message: string;
+
     try {
       const data = (await response.json()) as OpenAICompatErrorResponse;
       if (typeof data.error === 'object' && data.error?.message) {
-        return data.error.message;
+        message = data.error.message;
+      } else if (data.error) {
+        message = String(data.error);
+      } else {
+        message = 'HTTP ' + response.status;
       }
-      if (data.error) {
-        return String(data.error);
-      }
-      return 'HTTP ' + response.status;
     } catch {
-      return 'HTTP ' + response.status;
+      message = 'HTTP ' + response.status;
     }
+
+    return this.withAuthRemedy(message, response.status);
+  }
+
+  /**
+   * A missing or rejected key produces a terse, sometimes misleading body —
+   * OpenRouter answers every bad key with `User not found.`, which reads like an
+   * account/attachment problem instead of an auth failure. Naming the provider and
+   * the remedy keeps 401/403 answers actionable.
+   */
+  private withAuthRemedy(message: string, status: number): string {
+    if (status !== 401 && status !== 403) {
+      return message;
+    }
+
+    const label =
+      this.config.provider === 'custom'
+        ? `the custom endpoint${this.config.baseUrl ? ` at ${this.config.baseUrl}` : ''}`
+        : `provider "${this.config.provider}"`;
+    const hasKey = Boolean(this.config.apiKey || (this.config.baseUrl && this.config.proxyKey));
+    const remedy = hasKey
+      ? 'the configured API key was rejected (invalid, expired, or revoked) — re-enter it in Settings'
+      : 'no API key is configured for this provider — add one in Settings';
+    const detail = message === 'HTTP ' + status ? 'The provider rejected the request' : message;
+
+    return `${detail} (HTTP ${status}) — ${label}: ${remedy}.`;
   }
 }
 

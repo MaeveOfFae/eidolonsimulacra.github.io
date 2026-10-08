@@ -231,7 +231,31 @@ describe('openai-compatible engine testConnection', () => {
 
     const result = await openAiEngine().testConnection();
 
-    expect(result).toMatchObject({ success: false, error: 'nope' });
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('nope');
+  });
+
+  it('names the provider and remedy when a key is rejected', async () => {
+    stubFetch(jsonResponse({ error: { message: 'User not found.' } }, 401));
+
+    const result = await createEngine({
+      provider: 'openrouter',
+      model: 'openai/gpt-4o',
+      apiKey: 'sk-or-revoked',
+    }).testConnection();
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('User not found.');
+    expect(result.error).toContain('provider "openrouter"');
+    expect(result.error).toContain('was rejected');
+  });
+
+  it('leaves non-auth provider errors untouched', async () => {
+    stubFetch(jsonResponse({ error: { message: 'boom' } }, 500));
+
+    const result = await openAiEngine().testConnection();
+
+    expect(result.error).toBe('boom');
   });
 });
 
@@ -595,3 +619,19 @@ describe('openai-compatible streaming robustness', () => {
 
 
 });
+
+describe('openai-compatible request timeout', () => {
+  it('rejects when the transport never settles and ignores the abort signal', async () => {
+    // Some native bridges neither settle nor honour AbortSignal; the request must
+    // still reject on the deadline instead of hanging forever.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => new Promise<Response>(() => {})),
+    );
+
+    const engine = createEngine({ provider: 'openai', model: 'gpt-4o', apiKey: 'sk-test', timeout: 20 });
+
+    await expect(engine.generate(MESSAGES)).rejects.toThrow(/timed out/i);
+  });
+});
+
