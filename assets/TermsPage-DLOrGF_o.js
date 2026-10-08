@@ -1,0 +1,2 @@
+import{j as o}from"./react-vendor-C34M-SVW.js";import{A as r,Q as m,H as s}from"./index-7yR8nUVa.js";import{r as a}from"./info-BoX-6F2U.js";import{D as i}from"./DocumentPage-CRJONz2N.js";import"./vendor-Be_JtqXv.js";import"./query-vendor-c3w8RPj8.js";import"./router-vendor-8eoVtoOt.js";import"./markdownComponents-BpigeX7t.js";import"./markdown-vendor-BKcI0U-a.js";function y(){const t=a(),e=r("terms");return o.jsx(i,{eyebrow:e.eyebrow,title:e.title,summary:s("terms",t),markdown:m("terms",t)})}export{y as default};
+//# sourceMappingURL=TermsPage-DLOrGF_o.js.map
