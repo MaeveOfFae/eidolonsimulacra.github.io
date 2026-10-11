@@ -25,13 +25,52 @@ export function getComfyFetch(): ComfyFetch {
   };
 }
 
+/**
+ * The desktop HTTP plugin serializes its Rust errors as **strings** (`err.to_string()`),
+ * not `Error` instances, so `error instanceof Error` is false for the failures that
+ * matter most. Read a message out of any thrown value.
+ */
+function readErrorMessage(error: unknown): string {
+  if (typeof error === 'string') {
+    return error;
+  }
+  if (error instanceof Error) {
+    return error.message;
+  }
+  if (error && typeof error === 'object' && 'message' in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === 'string') {
+      return message;
+    }
+  }
+  return '';
+}
+
+/** Tauri's `Error::UrlNotAllowed` — the request never left the machine. */
+const SCOPE_DENIED_PATTERN = /url not allowed on the configured scope/i;
+
+/** "Cannot reach it" from either transport: browser `fetch` or the Rust plugin's reqwest. */
+const UNREACHABLE_PATTERN =
+  /failed to fetch|load failed|network ?error|error sending request|tcp connect|connection refused|connect error|dns error/i;
+
 /** Map a transport failure to the remedy that actually applies on this runtime. */
 export function describeComfyTransportError(error: unknown): string {
-  if (error instanceof TypeError && /failed to fetch/i.test(error.message)) {
+  const message = readErrorMessage(error);
+
+  // A scope denial is a *configuration* problem, not a dead server: the desktop app's
+  // capability allowlist rejected the URL before any connection was attempted. A
+  // scheme-wide pattern like `http://**` only matches the scheme's default port, so
+  // every `host:port` endpoint (ComfyUI, Ollama, LM Studio) needs a port-aware entry.
+  if (SCOPE_DENIED_PATTERN.test(message)) {
+    return `The desktop app blocked the request before it left the machine: its HTTP allowlist does not cover this URL (a scheme-wide pattern matches only the default port, so local servers need a port-aware entry, e.g. http://*:*). ${message}`;
+  }
+
+  if (UNREACHABLE_PATTERN.test(message)) {
     if (isDesktopRuntime()) {
       return 'Could not reach ComfyUI. Check that it is running and that the base URL in Settings → Image Pipeline is correct.';
     }
     return 'The browser blocked the request to ComfyUI (CORS or mixed content). Start ComfyUI with --enable-cors-header — or serve it over https — or use the desktop app, which talks to ComfyUI directly.';
   }
-  return error instanceof Error ? error.message : 'The request to ComfyUI failed.';
+
+  return message || 'The request to ComfyUI failed.';
 }

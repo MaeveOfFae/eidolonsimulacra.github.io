@@ -477,6 +477,13 @@ You can also press **Validate** directly in the review header.
 
 - The browser needs ComfyUI started with `--enable-cors-header`. The desktop app
   talks to ComfyUI natively through `tauri-plugin-http`.
+- On the desktop app, requests leave through the native HTTP plugin, which is
+  restricted by an allowlist in
+  `packages/web/src-tauri/capabilities/default.json`. A scheme-wide pattern such
+  as `http://**` matches **only the scheme's default port**, so a local server at
+  `http://127.0.0.1:8188` is rejected before any connection is attempted — the
+  entry must be port-aware (`http://*:*`). The same applies to any other
+  `host:port` endpoint (Ollama, LM Studio).
 - A built-in dual-encoder + CLIP skip 2 + IPAdapter workflow ships alongside;
   you can also import any "Save (API Format)" graph.
 
