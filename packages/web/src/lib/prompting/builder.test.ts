@@ -199,6 +199,26 @@ describe('buildOffspringPrompt', () => {
     expect(userPrompt).toContain('- World: magic always costs blood');
     expect(userPrompt).toContain('- Vesna (character): surname is Vale');
   });
+
+  it('renders a canon context section for library entries', async () => {
+    const [, userPrompt] = await buildOffspringPrompt(
+      { character_sheet: 'Parent 1 sheet' },
+      { character_sheet: 'Parent 2 sheet' },
+      'Maeve',
+      'Riven',
+      'SFW',
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      ['World: magic always costs blood'],
+      ['Blood Price (lore): magic always costs blood', 'Vale (trait)'],
+    );
+
+    expect(userPrompt).toContain('CANON CONTEXT:');
+    expect(userPrompt).toContain('- Blood Price (lore): magic always costs blood');
+    expect(userPrompt).toContain('- Vale (trait)');
+  });
 });
 
 describe('buildRefinementSystemPrompt', () => {

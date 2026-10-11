@@ -17,10 +17,7 @@ import LorebookGeneratorPanel from './LorebookGeneratorPanel';
  * below it. A stale "planned" list is worse than no list, because it tells users
  * that a feature they can already use does not exist.
  */
-const PLANNED_WORLD_MODULES = [
-  { label: 'Canon library', icon: BookOpen },
-  { label: 'Universe notes', icon: BookOpen },
-] as const;
+const PLANNED_WORLD_MODULES = [{ label: 'Universe notes', icon: BookOpen }] as const;
 
 export default function Worlds() {
   const selfContainedDesktop = isSelfContainedDesktopRuntime();

@@ -347,7 +347,7 @@ export default function AssetRegenerator({
         asset_name: selectedAssetName,
         prior_assets: buildPriorAssets(),
         additional_instructions: additionalInstructions,
-        canon_lock_draft_ids: [draft.metadata.review_id],
+        canon_draft_ids: [draft.metadata.review_id],
       };
 
       const stream = hasBlueprintOverride

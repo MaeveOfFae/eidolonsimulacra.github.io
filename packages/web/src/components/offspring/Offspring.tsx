@@ -93,10 +93,7 @@ export default function Offspring() {
   const [parent2, setParent2] = useState<string>('');
   // The parents are not reference suites for the character run, but their worlds
   // still own the canon locks the offspring character must not break.
-  const canonLockDraftIds = useMemo(
-    () => [parent1, parent2].filter((draftId) => draftId.length > 0),
-    [parent1, parent2],
-  );
+  const canonDraftIds = useMemo(() => [parent1, parent2].filter((draftId) => draftId.length > 0), [parent1, parent2]);
   const [mode, setMode] = useState<ContentMode>('SFW');
   const [template, setTemplate] = useState('');
   const [templateManuallySelected, setTemplateManuallySelected] = useState(false);
@@ -876,7 +873,7 @@ export default function Offspring() {
           mode={mode}
           template={template}
           templates={templates}
-          canonLockDraftIds={canonLockDraftIds}
+          canonDraftIds={canonDraftIds}
           onComplete={handleWorkflowComplete}
           onError={handleWorkflowError}
           onCancel={handleWorkflowCancel}

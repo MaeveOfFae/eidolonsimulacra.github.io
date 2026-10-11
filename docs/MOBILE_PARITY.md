@@ -30,7 +30,7 @@ That is the majority of the day-to-day loop. The gaps below are the remainder.
 
 ## Finding that changes the scope: worlds and timelines are desktop-only
 
-`packages/web/src/lib/worlds/lore-api.ts` contains **30 `isSelfContainedDesktopRuntime()` guards**. In the browser:
+`packages/web/src/lib/worlds/lore-api.ts` contains **34 `isSelfContainedDesktopRuntime()` guards**. In the browser:
 
 - `getWorlds()` returns `{ worlds: [] }`
 - every world/timeline write throws `new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE)`

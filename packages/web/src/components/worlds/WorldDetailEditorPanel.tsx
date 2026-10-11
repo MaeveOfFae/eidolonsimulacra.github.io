@@ -4,6 +4,7 @@ import { Trash2 } from 'lucide-react';
 import type { WorldRecord } from '@char-gen/shared';
 import { api } from '@/lib/api';
 import WorldCharactersSection from './WorldCharactersSection';
+import WorldCanonLibrarySection from './WorldCanonLibrarySection';
 import WorldCanonLocksSection from './WorldCanonLocksSection';
 import WorldDetailsSection from './WorldDetailsSection';
 import WorldFactionsSection from './WorldFactionsSection';
@@ -25,7 +26,8 @@ type WorldDetailTab =
   | 'timelines'
   | 'factions'
   | 'locations'
-  | 'canon-locks';
+  | 'canon-locks'
+  | 'canon-library';
 
 export default function WorldDetailEditorPanel({ world, canEdit, onRefresh, onDeleted }: WorldDetailEditorPanelProps) {
   const [activeTab, setActiveTab] = useState<WorldDetailTab>('details');
@@ -81,6 +83,7 @@ export default function WorldDetailEditorPanel({ world, canEdit, onRefresh, onDe
   const relationships = world.relationships ?? [];
   const timelines = world.timelines ?? [];
   const canonLocks = world.canonLocks ?? [];
+  const canonEntries = world.canonEntries ?? [];
   const tabs: Array<{ id: WorldDetailTab; label: string; count: number | null }> = [
     { id: 'details', label: 'World', count: null },
     { id: 'characters', label: 'Characters', count: characters.length },
@@ -89,6 +92,7 @@ export default function WorldDetailEditorPanel({ world, canEdit, onRefresh, onDe
     { id: 'factions', label: 'Factions', count: factions.length },
     { id: 'locations', label: 'Locations', count: locations.length },
     { id: 'canon-locks', label: 'Canon locks', count: canonLocks.length },
+    { id: 'canon-library', label: 'Canon library', count: canonEntries.length },
   ];
 
   return (
@@ -236,6 +240,22 @@ export default function WorldDetailEditorPanel({ world, canEdit, onRefresh, onDe
 
       {activeTab === 'canon-locks' && (
         <WorldCanonLocksSection
+          world={world}
+          canEdit={canEdit}
+          onNotice={(message) => {
+            setNotice(message);
+            setError(null);
+          }}
+          onError={(message) => {
+            setError(message);
+            setNotice(null);
+          }}
+          onRefresh={onRefresh}
+        />
+      )}
+
+      {activeTab === 'canon-library' && (
+        <WorldCanonLibrarySection
           world={world}
           canEdit={canEdit}
           onNotice={(message) => {

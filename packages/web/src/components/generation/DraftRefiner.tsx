@@ -353,7 +353,7 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
           asset_name: assetName,
           prior_assets: priorAssets,
           additional_instructions: additionalInstructions,
-          canon_lock_draft_ids: [draft.metadata.review_id],
+          canon_draft_ids: [draft.metadata.review_id],
         })) {
           if (progress.type === 'chunk' && progress.content) {
             newContent += progress.content;

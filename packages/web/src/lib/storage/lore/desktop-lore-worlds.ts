@@ -4,6 +4,7 @@
  */
 
 import type {
+  WorldCanonEntryRecord,
   WorldCanonLockRecord,
   WorldCharacterDraftLinkRecord,
   WorldCharacterRecord,
@@ -12,7 +13,12 @@ import type {
   WorldRecord,
   WorldRelationshipRecord,
 } from '@char-gen/shared';
-import { normalizeCanonLockStatement, normalizeCanonLockTargetKind } from '@char-gen/shared';
+import {
+  normalizeCanonEntryCategory,
+  normalizeCanonEntryText,
+  normalizeCanonLockStatement,
+  normalizeCanonLockTargetKind,
+} from '@char-gen/shared';
 import {
   SqlWorldRow,
   SqlCharacterRow,
@@ -21,6 +27,7 @@ import {
   SqlLocationRow,
   SqlRelationshipRow,
   SqlCanonLockRow,
+  SqlCanonEntryRow,
   SqlTimelineRow,
   SqlWorldRelationshipAuditIssueRow,
   createId,
@@ -40,6 +47,7 @@ import {
   locationFromRow,
   relationshipFromRow,
   canonLockFromRow,
+  canonEntryFromRow,
   timelineFromRow,
 } from './desktop-lore-sql.js';
 
@@ -126,7 +134,7 @@ export async function getLocalWorld(id: string): Promise<{ world: WorldRecord }>
     throw new Error('World not found');
   }
 
-  const [characters, factions, locations, relationships, timelines, canonLocks] = await Promise.all([
+  const [characters, factions, locations, relationships, timelines, canonLocks, canonEntries] = await Promise.all([
     database.select<SqlCharacterRow>(
       'SELECT id, world_id AS worldId, draft_id AS draftId, character_name AS characterName, role, notes, created_at AS createdAt, updated_at AS updatedAt FROM world_characters WHERE world_id = $1 ORDER BY updated_at DESC',
       [id],
@@ -151,42 +159,59 @@ export async function getLocalWorld(id: string): Promise<{ world: WorldRecord }>
       'SELECT id, world_id AS worldId, target_kind AS targetKind, target_id AS targetId, target_label AS targetLabel, statement, notes, created_at AS createdAt, updated_at AS updatedAt FROM world_canon_locks WHERE world_id = $1 ORDER BY created_at ASC',
       [id],
     ),
+    database.select<SqlCanonEntryRow>(
+      'SELECT id, world_id AS worldId, title, category, summary, body, created_at AS createdAt, updated_at AS updatedAt FROM world_canon_entries WHERE world_id = $1 ORDER BY updated_at DESC',
+      [id],
+    ),
   ]);
 
-  const [worldTagMap, factionTagMap, locationTagMap, timelineTagMap, factionDraftLinkMap, locationDraftLinkMap] =
-    await Promise.all([
-      loadLoreTagMap(database, 'world_tags', 'world_id', [id]),
-      loadLoreTagMap(
-        database,
-        'world_faction_tags',
-        'faction_id',
-        factions.map((entry) => entry.id),
-      ),
-      loadLoreTagMap(
-        database,
-        'world_location_tags',
-        'location_id',
-        locations.map((entry) => entry.id),
-      ),
-      loadLoreTagMap(
-        database,
-        'timeline_tags',
-        'timeline_id',
-        timelines.map((entry) => entry.id),
-      ),
-      loadLoreDraftLinkMap(
-        database,
-        'world_faction_draft_links',
-        'faction_id',
-        factions.map((entry) => entry.id),
-      ),
-      loadLoreDraftLinkMap(
-        database,
-        'world_location_draft_links',
-        'location_id',
-        locations.map((entry) => entry.id),
-      ),
-    ]);
+  const [
+    worldTagMap,
+    factionTagMap,
+    locationTagMap,
+    timelineTagMap,
+    factionDraftLinkMap,
+    locationDraftLinkMap,
+    canonEntryTagMap,
+  ] = await Promise.all([
+    loadLoreTagMap(database, 'world_tags', 'world_id', [id]),
+    loadLoreTagMap(
+      database,
+      'world_faction_tags',
+      'faction_id',
+      factions.map((entry) => entry.id),
+    ),
+    loadLoreTagMap(
+      database,
+      'world_location_tags',
+      'location_id',
+      locations.map((entry) => entry.id),
+    ),
+    loadLoreTagMap(
+      database,
+      'timeline_tags',
+      'timeline_id',
+      timelines.map((entry) => entry.id),
+    ),
+    loadLoreDraftLinkMap(
+      database,
+      'world_faction_draft_links',
+      'faction_id',
+      factions.map((entry) => entry.id),
+    ),
+    loadLoreDraftLinkMap(
+      database,
+      'world_location_draft_links',
+      'location_id',
+      locations.map((entry) => entry.id),
+    ),
+    loadLoreTagMap(
+      database,
+      'world_canon_entry_tags',
+      'entry_id',
+      canonEntries.map((entry) => entry.id),
+    ),
+  ]);
 
   const timelineCounts = new Map<string, number>();
   if (timelines.length > 0) {
@@ -222,6 +247,7 @@ export async function getLocalWorld(id: string): Promise<{ world: WorldRecord }>
         timelineFromRow(timeline, timelineCounts.get(timeline.id) ?? 0, timelineTagMap.get(timeline.id)),
       ),
       canonLocks: canonLocks.map(canonLockFromRow),
+      canonEntries: canonEntries.map((entry) => canonEntryFromRow(entry, canonEntryTagMap.get(entry.id))),
     },
   };
 }
@@ -794,4 +820,110 @@ export async function deleteLocalCanonLock(worldId: string, lockId: string): Pro
   const database = await getDatabase();
   await database.execute('DELETE FROM world_canon_locks WHERE id = $1 AND world_id = $2', [lockId, worldId]);
   return { message: 'Canon lock removed' };
+}
+
+const CANON_ENTRY_COLUMNS =
+  'id, world_id AS worldId, title, category, summary, body, created_at AS createdAt, updated_at AS updatedAt';
+
+export async function getLocalCanonEntries(worldId: string): Promise<{ entries: WorldCanonEntryRecord[] }> {
+  const database = await getDatabase();
+  const rows = await database.select<SqlCanonEntryRow>(
+    `SELECT ${CANON_ENTRY_COLUMNS} FROM world_canon_entries WHERE world_id = $1 ORDER BY updated_at DESC`,
+    [worldId],
+  );
+  const tagMap = await loadLoreTagMap(
+    database,
+    'world_canon_entry_tags',
+    'entry_id',
+    rows.map((row) => row.id),
+  );
+  return { entries: rows.map((row) => canonEntryFromRow(row, tagMap.get(row.id))) };
+}
+
+export async function createLocalCanonEntry(
+  worldId: string,
+  data: { title: string; category?: string; summary?: string; body?: string; tags?: string[] },
+): Promise<{ entry: WorldCanonEntryRecord }> {
+  const title = normalizeCanonEntryText(data.title);
+  if (!title) {
+    throw new Error('A canon library entry needs a title.');
+  }
+
+  const database = await getDatabase();
+  const id = createId('canon');
+  const timestamp = nowIso();
+  const tags = normalizeStringList(data.tags ?? []);
+  const row: SqlCanonEntryRow = {
+    id,
+    worldId,
+    title,
+    category: normalizeCanonEntryCategory(data.category),
+    summary: normalizeCanonEntryText(data.summary),
+    body: typeof data.body === 'string' && data.body.trim() ? data.body.trim() : null,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+
+  await database.execute(
+    'INSERT INTO world_canon_entries (id, world_id, title, category, summary, body, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+    [row.id, row.worldId, row.title, row.category, row.summary, row.body, row.createdAt, row.updatedAt],
+  );
+  await replaceLoreTags(database, 'world_canon_entry_tags', 'entry_id', id, tags);
+
+  return { entry: canonEntryFromRow(row, tags) };
+}
+
+export async function updateLocalCanonEntry(
+  worldId: string,
+  entryId: string,
+  data: Record<string, unknown>,
+): Promise<{ entry: WorldCanonEntryRecord }> {
+  const database = await getDatabase();
+  const rows = await database.select<SqlCanonEntryRow>(
+    `SELECT ${CANON_ENTRY_COLUMNS} FROM world_canon_entries WHERE id = $1 AND world_id = $2 LIMIT 1`,
+    [entryId, worldId],
+  );
+  const existing = rows[0];
+  if (!existing) {
+    throw new Error('Canon library entry not found');
+  }
+
+  const title = 'title' in data ? normalizeCanonEntryText(data.title) : existing.title;
+  if (!title) {
+    throw new Error('A canon library entry needs a title.');
+  }
+  const category =
+    'category' in data ? normalizeCanonEntryCategory(data.category) : normalizeCanonEntryCategory(existing.category);
+  const summary = 'summary' in data ? normalizeCanonEntryText(data.summary) : existing.summary;
+  const body =
+    'body' in data
+      ? typeof data.body === 'string' && data.body.trim()
+        ? data.body.trim()
+        : null
+      : (existing.body ?? null);
+  const updatedAt = nowIso();
+
+  await database.execute(
+    'UPDATE world_canon_entries SET title = $1, category = $2, summary = $3, body = $4, updated_at = $5 WHERE id = $6 AND world_id = $7',
+    [title, category, summary, body, updatedAt, entryId, worldId],
+  );
+
+  const providedTags = coerceStringList(data.tags);
+  let tags: string[];
+  if (providedTags) {
+    await replaceLoreTags(database, 'world_canon_entry_tags', 'entry_id', entryId, providedTags);
+    tags = providedTags;
+  } else {
+    const tagMap = await loadLoreTagMap(database, 'world_canon_entry_tags', 'entry_id', [entryId]);
+    tags = tagMap.get(entryId) ?? [];
+  }
+
+  return { entry: canonEntryFromRow({ ...existing, title, category, summary, body, updatedAt }, tags) };
+}
+
+export async function deleteLocalCanonEntry(worldId: string, entryId: string): Promise<{ message: string }> {
+  const database = await getDatabase();
+  await database.execute('DELETE FROM world_canon_entry_tags WHERE entry_id = $1', [entryId]);
+  await database.execute('DELETE FROM world_canon_entries WHERE id = $1 AND world_id = $2', [entryId, worldId]);
+  return { message: 'Canon library entry removed' };
 }

@@ -11,6 +11,7 @@
 import type {
   TimelineEventRecord,
   TimelineRecord,
+  WorldCanonEntryRecord,
   WorldCanonLockRecord,
   WorldCharacterDraftLinkRecord,
   WorldCharacterRecord,
@@ -27,9 +28,11 @@ import {
   addLocalWorldFaction,
   addLocalWorldLocation,
   addLocalWorldRelationship,
+  createLocalCanonEntry,
   createLocalCanonLock,
   createLocalTimeline,
   createLocalWorld,
+  deleteLocalCanonEntry,
   deleteLocalCanonLock,
   deleteLocalTimeline,
   deleteLocalTimelineEvent,
@@ -38,12 +41,14 @@ import {
   deleteLocalWorldFaction,
   deleteLocalWorldLocation,
   deleteLocalWorldRelationship,
+  getLocalCanonEntries,
   getLocalCanonLocks,
   getLocalTimeline,
   getLocalWorld,
   getLocalWorldCharacterDraftLinks,
   getLocalWorldRelationshipAuditIssues,
   getLocalWorlds,
+  updateLocalCanonEntry,
   updateLocalCanonLock,
   updateLocalTimeline,
   updateLocalTimelineEvent,
@@ -375,6 +380,45 @@ export async function updateCanonLock(
 export async function deleteCanonLock(worldId: string, lockId: string): Promise<{ message: string }> {
   if (isSelfContainedDesktopRuntime()) {
     return deleteLocalCanonLock(worldId, lockId);
+  }
+
+  desktopOnly();
+}
+
+export async function getCanonEntries(worldId: string): Promise<{ entries: WorldCanonEntryRecord[] }> {
+  if (isSelfContainedDesktopRuntime()) {
+    return getLocalCanonEntries(worldId);
+  }
+
+  return { entries: [] };
+}
+
+export async function createCanonEntry(
+  worldId: string,
+  data: { title: string; category?: string; summary?: string; body?: string; tags?: string[] },
+): Promise<{ entry: WorldCanonEntryRecord }> {
+  if (isSelfContainedDesktopRuntime()) {
+    return createLocalCanonEntry(worldId, data);
+  }
+
+  desktopOnly();
+}
+
+export async function updateCanonEntry(
+  worldId: string,
+  entryId: string,
+  data: Record<string, unknown>,
+): Promise<{ entry: WorldCanonEntryRecord }> {
+  if (isSelfContainedDesktopRuntime()) {
+    return updateLocalCanonEntry(worldId, entryId, data);
+  }
+
+  desktopOnly();
+}
+
+export async function deleteCanonEntry(worldId: string, entryId: string): Promise<{ message: string }> {
+  if (isSelfContainedDesktopRuntime()) {
+    return deleteLocalCanonEntry(worldId, entryId);
   }
 
   desktopOnly();

@@ -5,23 +5,27 @@ import { db } from '../storage/draft-db.js';
 import { UsageStorage } from '../storage/usage-db.js';
 
 /**
- * Canon-lock injection on the two paths the service owns the draft ids for:
- * reference-based generation (`connected_draft_ids`) and offspring seeds
- * (`parent1_id` / `parent2_id`). Per-asset regeneration resolves its locks in
- * the components, so it is pinned separately.
+ * Canon injection on the paths the service owns the draft ids for:
+ * reference-based generation (`connected_draft_ids`), per-asset regeneration
+ * and refinement (`canon_draft_ids`), and offspring seeds
+ * (`parent1_id` / `parent2_id`).
+ *
+ * Locks ride the existing instruction channel (they are rules); canon-library
+ * entries get their own `CANON CONTEXT:` section.
  */
 const fake = vi.hoisted(() => ({
   messages: [] as Array<Array<{ role: string; content: string }>>,
   usage: { promptTokens: 10, completionTokens: 20, totalTokens: 30 },
   content: '```character_sheet\nA lone wanderer of the ash roads\n```',
-  lockLines: ['World: magic always costs blood'] as string[],
+  constraints: ['World: magic always costs blood'] as string[],
+  context: ['Blood Price (lore): magic always costs blood'] as string[],
   resolverCalls: [] as string[][],
 }));
 
-vi.mock('../worlds/canon-lock-context.js', () => ({
-  resolveCanonLockConstraintLines: vi.fn(async (draftIds: readonly string[]) => {
+vi.mock('../worlds/canon-context.js', () => ({
+  resolveCanonContext: vi.fn(async (draftIds: readonly string[]) => {
     fake.resolverCalls.push([...draftIds]);
-    return fake.lockLines;
+    return { constraints: fake.constraints, context: fake.context };
   }),
 }));
 
@@ -76,11 +80,12 @@ function parentDraft(reviewId: string, characterName: string): Draft {
   };
 }
 
-describe('GenerationService canon-lock injection', () => {
+describe('GenerationService canon injection', () => {
   beforeEach(async () => {
     fake.messages.length = 0;
     fake.resolverCalls.length = 0;
-    fake.lockLines = ['World: magic always costs blood'];
+    fake.constraints = ['World: magic always costs blood'];
+    fake.context = ['Blood Price (lore): magic always costs blood'];
     await UsageStorage.clear();
     await db.drafts.clear();
   });
@@ -91,7 +96,7 @@ describe('GenerationService canon-lock injection', () => {
     vi.clearAllMocks();
   });
 
-  it('injects the locks of the connected reference drafts into the orchestrator prompt', async () => {
+  it('injects the canon of the connected reference drafts into the orchestrator prompt', async () => {
     await drain(
       GenerationService.generate({ seed: 'a seed', mode: 'Auto', stream: false, connected_draft_ids: ['d1', 'd2'] }),
     );
@@ -100,9 +105,39 @@ describe('GenerationService canon-lock injection', () => {
     expect(fake.resolverCalls).toEqual([['d1', 'd2']]);
     expect(lastPromptContent()).toContain('ADDITIONAL RULES:');
     expect(lastPromptContent()).toContain('- World: magic always costs blood');
+    expect(lastPromptContent()).toContain('CANON CONTEXT:');
+    expect(lastPromptContent()).toContain('- Blood Price (lore): magic always costs blood');
   });
 
-  it('injects both parents locks into the offspring seed prompt', async () => {
+  it('injects canon named by canon_draft_ids when there are no connected references', async () => {
+    await drain(GenerationService.generate({ seed: 'a seed', mode: 'Auto', stream: false, canon_draft_ids: ['d1'] }));
+    await flushAsync();
+
+    expect(fake.resolverCalls).toEqual([['d1']]);
+    expect(lastPromptContent()).toContain('- World: magic always costs blood');
+    expect(lastPromptContent()).toContain('- Blood Price (lore): magic always costs blood');
+  });
+
+  it('injects both constraints and context into per-asset generation', async () => {
+    await drain(
+      GenerationService.generateAsset({
+        seed: 'a seed',
+        mode: 'Auto',
+        asset_name: 'character_sheet',
+        prior_assets: {},
+        canon_draft_ids: ['d1'],
+      }),
+    );
+    await flushAsync();
+
+    expect(fake.resolverCalls).toEqual([['d1']]);
+    expect(lastPromptContent()).toContain('ADDITIONAL INSTRUCTIONS:');
+    expect(lastPromptContent()).toContain('World: magic always costs blood');
+    expect(lastPromptContent()).toContain('CANON CONTEXT:');
+    expect(lastPromptContent()).toContain('- Blood Price (lore): magic always costs blood');
+  });
+
+  it('injects both parents canon into the offspring seed prompt', async () => {
     await DraftStorage.saveDraft(parentDraft('p1', 'Parent One'));
     await DraftStorage.saveDraft(parentDraft('p2', 'Parent Two'));
 
@@ -111,43 +146,18 @@ describe('GenerationService canon-lock injection', () => {
 
     expect(fake.resolverCalls).toEqual([['p1', 'p2']]);
     expect(lastPromptContent()).toContain('ADDITIONAL RULES:');
-    expect(lastPromptContent()).toContain('- World: magic always costs blood');
+    expect(lastPromptContent()).toContain('CANON CONTEXT:');
+    expect(lastPromptContent()).toContain('- Blood Price (lore): magic always costs blood');
   });
 
-  it('injects locks named by canon_lock_draft_ids when there are no connected references', async () => {
-    await drain(
-      GenerationService.generate({ seed: 'a seed', mode: 'Auto', stream: false, canon_lock_draft_ids: ['d1'] }),
-    );
-    await flushAsync();
-
-    expect(fake.resolverCalls).toEqual([['d1']]);
-    expect(lastPromptContent()).toContain('ADDITIONAL RULES:');
-    expect(lastPromptContent()).toContain('- World: magic always costs blood');
-  });
-
-  it('injects locks into per-asset generation from canon_lock_draft_ids', async () => {
-    await drain(
-      GenerationService.generateAsset({
-        seed: 'a seed',
-        mode: 'Auto',
-        asset_name: 'character_sheet',
-        prior_assets: {},
-        canon_lock_draft_ids: ['d1'],
-      }),
-    );
-    await flushAsync();
-
-    expect(fake.resolverCalls).toEqual([['d1']]);
-    expect(lastPromptContent()).toContain('ADDITIONAL INSTRUCTIONS:');
-    expect(lastPromptContent()).toContain('World: magic always costs blood');
-  });
-
-  it('leaves the prompt untouched when there are no locks', async () => {
-    fake.lockLines = [];
+  it('leaves the prompt untouched when there is no canon', async () => {
+    fake.constraints = [];
+    fake.context = [];
 
     await drain(GenerationService.generate({ seed: 'a seed', mode: 'Auto', stream: false }));
     await flushAsync();
 
     expect(lastPromptContent()).not.toContain('ADDITIONAL RULES:');
+    expect(lastPromptContent()).not.toContain('CANON CONTEXT:');
   });
 });

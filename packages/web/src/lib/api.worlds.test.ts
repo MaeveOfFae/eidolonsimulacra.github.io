@@ -21,6 +21,10 @@ const OVERRIDES = vi.hoisted(() => {
     'createLocalCanonLock',
     'updateLocalCanonLock',
     'deleteLocalCanonLock',
+    'getLocalCanonEntries',
+    'createLocalCanonEntry',
+    'updateLocalCanonEntry',
+    'deleteLocalCanonEntry',
     'createLocalWorld',
     'updateLocalWorld',
     'deleteLocalWorld',
@@ -70,6 +74,7 @@ describe('browser api: world and timeline domain (browser guards)', () => {
     await expect(api.getWorldCharacterDraftLinks()).resolves.toEqual({ links: [] });
     await expect(api.getWorldRelationshipAuditIssues()).resolves.toEqual({ issues: [] });
     await expect(api.getCanonLocks('w1')).resolves.toEqual({ locks: [] });
+    await expect(api.getCanonEntries('w1')).resolves.toEqual({ entries: [] });
   });
 
   it('rejects every world and timeline mutation with a 501 desktop-only error', async () => {
@@ -81,6 +86,9 @@ describe('browser api: world and timeline domain (browser guards)', () => {
       () => api.createCanonLock('w1', { statement: 'locked fact' }),
       () => api.updateCanonLock('w1', 'l1', {}),
       () => api.deleteCanonLock('w1', 'l1'),
+      () => api.createCanonEntry('w1', { title: 'Blood Price' }),
+      () => api.updateCanonEntry('w1', 'e1', {}),
+      () => api.deleteCanonEntry('w1', 'e1'),
       () => api.addWorldCharacter('w1', { characterName: 'C' }),
       () => api.updateWorldCharacter('w1', 'c1', {}),
       () => api.deleteWorldCharacter('w1', 'c1'),
@@ -163,6 +171,30 @@ describe('browser api: world and timeline domain (desktop delegation)', () => {
       invoke: () => api.deleteCanonLock('w1', 'l1'),
       local: 'deleteLocalCanonLock',
       args: ['w1', 'l1'],
+    },
+    {
+      label: 'getCanonEntries',
+      invoke: () => api.getCanonEntries('w1'),
+      local: 'getLocalCanonEntries',
+      args: ['w1'],
+    },
+    {
+      label: 'createCanonEntry',
+      invoke: () => api.createCanonEntry('w1', { title: 'Blood Price' }),
+      local: 'createLocalCanonEntry',
+      args: ['w1', { title: 'Blood Price' }],
+    },
+    {
+      label: 'updateCanonEntry',
+      invoke: () => api.updateCanonEntry('w1', 'e1', data),
+      local: 'updateLocalCanonEntry',
+      args: ['w1', 'e1', data],
+    },
+    {
+      label: 'deleteCanonEntry',
+      invoke: () => api.deleteCanonEntry('w1', 'e1'),
+      local: 'deleteLocalCanonEntry',
+      args: ['w1', 'e1'],
     },
     {
       label: 'addWorldCharacter',

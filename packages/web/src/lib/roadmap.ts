@@ -127,10 +127,8 @@ export const roadmapGroups: RoadmapGroup[] = [
       'packages/web/src/components/timelines/Timelines.tsx',
     ],
     items: [
-      'Canon library module for curated, reusable setting material',
       'Worldbook module for exportable setting entries',
       'Universe notes module for free-form canon context',
-      'Relationship map visualization inside the world detail editor',
       'Family tree and affiliation visualizations for related characters',
       'Cross-draft continuity assistant for keeping related characters aligned',
       'Event calendar with in-world and real-world date tracking',

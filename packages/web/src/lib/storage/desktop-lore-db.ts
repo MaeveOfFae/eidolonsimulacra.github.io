@@ -34,6 +34,10 @@ export {
   createLocalCanonLock,
   updateLocalCanonLock,
   deleteLocalCanonLock,
+  getLocalCanonEntries,
+  createLocalCanonEntry,
+  updateLocalCanonEntry,
+  deleteLocalCanonEntry,
 } from './lore/desktop-lore-worlds.js';
 
 export {

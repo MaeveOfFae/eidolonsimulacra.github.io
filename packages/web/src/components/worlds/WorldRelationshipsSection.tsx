@@ -3,7 +3,7 @@ import { useMutation } from '@tanstack/react-query';
 import { Check, Loader2, Plus, Users, X } from 'lucide-react';
 import type { WorldRecord } from '@char-gen/shared';
 import { api } from '@/lib/api';
-import RelationshipMapPlaceholder from './RelationshipMapPlaceholder';
+import RelationshipMap from './RelationshipMap';
 
 /**
  * Relationships tab of the world detail editor.
@@ -134,7 +134,7 @@ export default function WorldRelationshipsSection({
         <h4 className="text-sm font-semibold text-foreground">Relationships</h4>
       </div>
       <div className="space-y-3">
-        <RelationshipMapPlaceholder characterCount={characters.length} relationshipCount={relationships.length} />
+        <RelationshipMap characters={characters} relationships={relationships} />
 
         {characters.length < 2 ? (
           <div className="app-note p-4 text-sm text-muted-foreground">

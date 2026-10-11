@@ -63,6 +63,7 @@ import {
   type UsageSummary,
   type ValidatePathRequest,
   type ValidationResponse,
+  type WorldCanonEntryRecord,
   type WorldCanonLockRecord,
   type WorldCharacterDraftLinkRecord,
   type WorldCharacterRecord,
@@ -408,6 +409,29 @@ export class EidolonBrowserAPI {
 
   async deleteCanonLock(worldId: string, lockId: string): Promise<{ message: string }> {
     return worldApi.deleteCanonLock(worldId, lockId);
+  }
+
+  async getCanonEntries(worldId: string): Promise<{ entries: WorldCanonEntryRecord[] }> {
+    return worldApi.getCanonEntries(worldId);
+  }
+
+  async createCanonEntry(
+    worldId: string,
+    data: { title: string; category?: string; summary?: string; body?: string; tags?: string[] },
+  ): Promise<{ entry: WorldCanonEntryRecord }> {
+    return worldApi.createCanonEntry(worldId, data);
+  }
+
+  async updateCanonEntry(
+    worldId: string,
+    entryId: string,
+    data: Record<string, unknown>,
+  ): Promise<{ entry: WorldCanonEntryRecord }> {
+    return worldApi.updateCanonEntry(worldId, entryId, data);
+  }
+
+  async deleteCanonEntry(worldId: string, entryId: string): Promise<{ message: string }> {
+    return worldApi.deleteCanonEntry(worldId, entryId);
   }
 
   async addWorldCharacter(

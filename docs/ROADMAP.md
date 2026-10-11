@@ -25,7 +25,7 @@ These areas currently have visible UI that is explicitly labelled as staged rath
 | Surface                                                | Location                               | Note                                           |
 | ------------------------------------------------------ | -------------------------------------- | ---------------------------------------------- |
 | Events                                                 | `/events`                              | Page states event tracking is staged, not live |
-| Canon library / universe notes                         | `/worlds` "Planned modules"            | Listed as planned, not implemented             |
+| Universe notes                                         | `/worlds` "Planned modules"            | Listed as planned, not implemented             |
 | Timeline event editing, continuity assistant/checker   | `/timelines` "Staged timeline modules" | Live chronology view stops at draft history    |
 | Batch scheduling, reusable batch presets               | `/batch` "Staged modules"              | Marked "Not live"                              |
 | Export preview, publishing                             | Export modal → "Planned Export Extras" | Marked "Planned"                               |
@@ -72,9 +72,9 @@ Outstanding: semantic search; auto-tagging; custom foldering beyond saved search
 
 ### Canon, Worldbuilding, and Relationships — `partial`
 
-Shipped (desktop-persisted): worlds CRUD, world detail editor (characters, relationships, timelines, factions, locations), canon link audit, lorebook generation, canon locks (a world-scoped registry of facts that must stay stable, with the resulting constraint block injected as additional rules into per-asset regeneration, refinement, offspring seed and character generation, and reference-based generation for drafts linked to that world), lineage, similarity, offspring.
+Shipped (desktop-persisted): worlds CRUD, world detail editor (characters, relationships, timelines, factions, locations), canon link audit, lorebook generation, canon locks (a world-scoped registry of facts that must stay stable, with the resulting constraint block injected as additional rules into per-asset regeneration, refinement, offspring seed and character generation, and reference-based generation for drafts linked to that world), a relationship map (deterministic character/relationship graph in the Relationships tab), a canon library (categorised, tagged setting entries, injected into generation as a `CANON CONTEXT` section for drafts linked to the world), lineage, similarity, offspring.
 
-Outstanding: canon library; worldbook; universe notes; relationship map visualization; family tree/affiliation visualizations; cross-draft continuity assistant; event calendar; world event storage; canon conflict checking.
+Outstanding: worldbook; universe notes; family tree/affiliation visualizations; cross-draft continuity assistant; event calendar; world event storage; canon conflict checking.
 
 Ownership note: this area is **desktop-only** and mobile parity is closed against it. See [`WORLDBUILDING_DECISION.md`](WORLDBUILDING_DECISION.md) for the decision record and its revisit triggers.
 

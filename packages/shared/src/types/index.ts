@@ -539,6 +539,22 @@ export interface TimelineRecord {
 /** What a canon lock is attached to; `world` scopes the fact to the whole setting. */
 export type CanonLockTargetKind = 'world' | 'character' | 'faction' | 'location' | 'timeline';
 
+/** The kind of setting material a canon-library entry carries. */
+export type CanonEntryCategory = 'trait' | 'lore' | 'relationship' | 'setting';
+
+export interface WorldCanonEntryRecord {
+  id: string;
+  worldId: string;
+  title: string;
+  category: CanonEntryCategory;
+  summary: string;
+  /** Optional long-form text; the summary is the citable one-liner. */
+  body?: string;
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface WorldCanonLockRecord {
   id: string;
   worldId: string;
@@ -575,6 +591,8 @@ export interface WorldRecord {
   timelines?: TimelineRecord[];
   /** Facts locked against change in derivative drafts (see `canon-locks.ts`). */
   canonLocks?: WorldCanonLockRecord[];
+  /** Curated, reusable setting material (see `canon-library.ts`). */
+  canonEntries?: WorldCanonEntryRecord[];
 }
 
 // ============================================================================

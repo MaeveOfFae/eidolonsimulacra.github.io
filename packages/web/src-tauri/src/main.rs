@@ -733,6 +733,32 @@ fn main() {
       ",
       kind: MigrationKind::Up,
     },
+    Migration {
+      version: 7,
+      description: "add_world_canon_entries",
+      sql: "
+        CREATE TABLE IF NOT EXISTS world_canon_entries (
+          id TEXT PRIMARY KEY NOT NULL,
+          world_id TEXT NOT NULL,
+          title TEXT NOT NULL,
+          category TEXT NOT NULL,
+          summary TEXT NOT NULL,
+          body TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_world_canon_entries_world_id ON world_canon_entries(world_id);
+
+        CREATE TABLE IF NOT EXISTS world_canon_entry_tags (
+          entry_id TEXT NOT NULL,
+          tag TEXT NOT NULL,
+          sort_order INTEGER NOT NULL DEFAULT 0,
+          PRIMARY KEY (entry_id, tag)
+        );
+      ",
+      kind: MigrationKind::Up,
+    },
   ];
 
   tauri::Builder::default()

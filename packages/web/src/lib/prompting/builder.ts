@@ -199,6 +199,7 @@ export async function buildOrchestratorPrompt(
   additionalInstructions: string[] = [],
   referenceSuites: ReferenceSuiteContext[] = [],
   importedSource?: ImportedSourceContext,
+  canonContext: string[] = [],
 ): Promise<[system: string, user: string]> {
   // Load orchestrator blueprint - respects settings and override
   let orchestrator = await resolveFeatureBlueprint('orchestration', blueprintOverride, baseUrl);
@@ -240,6 +241,14 @@ export async function buildOrchestratorPrompt(
     });
   }
 
+  if (canonContext.length > 0) {
+    userLines.push('');
+    userLines.push('CANON CONTEXT:');
+    canonContext.forEach((line) => {
+      userLines.push(`- ${line}`);
+    });
+  }
+
   return [systemPrompt, userLines.join('\n')];
 }
 
@@ -257,6 +266,7 @@ export async function buildAssetPrompt(
   referenceSuites: ReferenceSuiteContext[] = [],
   templateName?: string,
   importedSource?: ImportedSourceContext,
+  canonContext: string[] = [],
 ): Promise<[system: string, user: string]> {
   // Load blueprint content
   const blueprint = blueprintContent || (await loadBlueprint(assetName, baseUrl));
@@ -295,6 +305,14 @@ export async function buildAssetPrompt(
         userLines.push('');
       }
       userLines.push(instruction);
+    });
+  }
+
+  if (canonContext.length > 0) {
+    userLines.push('');
+    userLines.push('CANON CONTEXT:');
+    canonContext.forEach((line) => {
+      userLines.push(`- ${line}`);
     });
   }
 
@@ -516,6 +534,7 @@ export async function buildOffspringPrompt(
   baseUrl?: string,
   blueprintOverride?: string,
   additionalInstructions: string[] = [],
+  canonContext: string[] = [],
 ): Promise<[system: string, user: string]> {
   // Load offspring generator blueprint - respects settings and override
   const systemPrompt = await resolveFeatureBlueprint('offspring_generation', blueprintOverride, baseUrl);
@@ -541,6 +560,14 @@ export async function buildOffspringPrompt(
     userLines.push('ADDITIONAL RULES:');
     additionalInstructions.forEach((instruction) => {
       userLines.push(`- ${instruction}`);
+    });
+  }
+
+  if (canonContext.length > 0) {
+    userLines.push('');
+    userLines.push('CANON CONTEXT:');
+    canonContext.forEach((line) => {
+      userLines.push(`- ${line}`);
     });
   }
 
