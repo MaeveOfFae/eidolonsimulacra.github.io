@@ -515,11 +515,11 @@ export const pageHelpEntries: PageHelpEntry[] = [
     matchMode: 'exact',
     title: 'Compare models help',
     summary:
-      'Compare runs one seed and template through up to four candidate models and lines the resulting drafts up with their token and time cost.',
+      'Compare runs one or more seeds and a template through up to four candidate models and lines every resulting draft up in one matrix with its token and time cost.',
     keyActions: [
       'Configure an API key for every candidate model provider in Settings before starting a run.',
-      'Pick between two and four candidate models; each becomes a normal draft linked to the comparison group.',
-      'Use the results table and the side-by-side diff to choose which candidate to keep refining.',
+      'Enter one seed per line — each seed runs through every candidate — and pick between two and four candidate models.',
+      'Use the results matrix and the side-by-side diff to choose which candidate to keep refining.',
     ],
     pitfalls: [
       'Candidates without a configured provider key fail individually; the rest of the run continues.',

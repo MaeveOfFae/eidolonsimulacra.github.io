@@ -4,9 +4,13 @@ import { Link } from 'react-router-dom';
 import { GitCompare, Loader2, Play, Plus, X } from 'lucide-react';
 import {
   MAX_COMPARISON_CANDIDATES,
+  MAX_COMPARISON_SEEDS,
   MIN_COMPARISON_CANDIDATES,
+  MIN_COMPARISON_SEEDS,
+  buildComparisonCandidateKeys,
   buildComparisonCandidateSummaries,
   createComparisonGroupId,
+  normalizeComparisonSeeds,
   type ComparisonCandidateStatus,
   type ContentMode,
   type DraftMetadata,
@@ -44,17 +48,23 @@ function StatusPill({ status }: { status: ComparisonCandidateStatus | 'running' 
   return <span className={`text-xs font-medium ${className}`}>{status}</span>;
 }
 
+/** Identifies one cell of the seed × model matrix for the running indicator. */
+function candidateKey(seed: string, model: string): string {
+  return `${seed}\u0000${model}`;
+}
+
 export default function Compare() {
   const queryClient = useQueryClient();
-  const [seed, setSeed] = useState('');
+  const [seedText, setSeedText] = useState('');
   const [templateName, setTemplateName] = useState<string>('');
   const [mode, setMode] = useState<ContentMode>('Auto');
   const [candidates, setCandidates] = useState<string[]>([]);
   const [candidateInput, setCandidateInput] = useState('');
   const [provider, setProvider] = useState<string>(COMPARISON_PROVIDERS[0]!);
   const [running, setRunning] = useState(false);
-  const [runningModel, setRunningModel] = useState<string | null>(null);
+  const [runningKey, setRunningKey] = useState<string | null>(null);
   const [groupId, setGroupId] = useState<string | null>(null);
+  const [runSeeds, setRunSeeds] = useState<string[]>([]);
   const [runModels, setRunModels] = useState<string[]>([]);
   const [runError, setRunError] = useState<string | null>(null);
   const [leftId, setLeftId] = useState<string>('');
@@ -77,9 +87,22 @@ export default function Compare() {
 
   const groupDrafts: DraftMetadata[] = groupQuery.data ?? [];
   const groupUsage: UsageRecord[] = usageQuery.data ?? [];
-  const summaries = buildComparisonCandidateSummaries(runModels, groupDrafts, groupUsage);
+  // Results reflect the run that was launched, not the live form — so the
+  // matrix is keyed on the seed/model lists captured when the run started.
+  const summaries = buildComparisonCandidateSummaries(
+    buildComparisonCandidateKeys(runSeeds, runModels),
+    groupDrafts,
+    groupUsage,
+  );
+  const seeds = normalizeComparisonSeeds(seedText);
   const modelSuggestions = (modelsQuery.data?.models ?? []).map((model) => model.name).slice(0, 100);
-  const canRun = !running && seed.trim().length > 0 && candidates.length >= MIN_COMPARISON_CANDIDATES;
+  const runCount = seeds.length * candidates.length;
+  const seedsOverLimit = seeds.length > MAX_COMPARISON_SEEDS;
+  const canRun =
+    !running &&
+    seeds.length >= MIN_COMPARISON_SEEDS &&
+    !seedsOverLimit &&
+    candidates.length >= MIN_COMPARISON_CANDIDATES;
 
   function addCandidate(value: string) {
     const model = value.trim();
@@ -101,38 +124,44 @@ export default function Compare() {
 
     const nextGroupId = createComparisonGroupId();
     const models = [...candidates];
+    const runSeedList = [...seeds];
 
     setRunning(true);
     setRunError(null);
     setGroupId(nextGroupId);
+    setRunSeeds(runSeedList);
     setRunModels(models);
     setLeftId('');
     setRightId('');
 
-    for (const model of models) {
-      setRunningModel(model);
+    // One pass over the seed × model matrix, seed-major so the results table
+    // fills in top to bottom as the run proceeds.
+    for (const currentSeed of runSeedList) {
+      for (const model of models) {
+        setRunningKey(candidateKey(currentSeed, model));
 
-      try {
-        for await (const _progress of GenerationService.generate({
-          seed: seed.trim(),
-          template: templateName || undefined,
-          mode,
-          stream: true,
-          model_override: model,
-          comparison_group: nextGroupId,
-        })) {
-          void _progress;
+        try {
+          for await (const _progress of GenerationService.generate({
+            seed: currentSeed,
+            template: templateName || undefined,
+            mode,
+            stream: true,
+            model_override: model,
+            comparison_group: nextGroupId,
+          })) {
+            void _progress;
+          }
+        } catch {
+          // The candidate's usage record already carries the error outcome;
+          // a failed candidate must not stop the rest of the run.
         }
-      } catch {
-        // The candidate's usage record already carries the error outcome;
-        // a failed candidate must not stop the rest of the run.
-      }
 
-      await queryClient.invalidateQueries({ queryKey: ['comparison-group', nextGroupId] });
-      await queryClient.invalidateQueries({ queryKey: ['comparison-usage', nextGroupId] });
+        await queryClient.invalidateQueries({ queryKey: ['comparison-group', nextGroupId] });
+        await queryClient.invalidateQueries({ queryKey: ['comparison-usage', nextGroupId] });
+      }
     }
 
-    setRunningModel(null);
+    setRunningKey(null);
     setRunning(false);
   }
 
@@ -144,24 +173,37 @@ export default function Compare() {
       <header>
         <h1 className="text-2xl font-semibold text-foreground">Compare models</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Run one seed and template through {MIN_COMPARISON_CANDIDATES}–{MAX_COMPARISON_CANDIDATES} candidate models,
-          then judge the drafts side by side with their token and time cost. Every candidate needs its provider key
-          configured in Settings.
+          Run {MIN_COMPARISON_SEEDS}–{MAX_COMPARISON_SEEDS} seeds and one template through {MIN_COMPARISON_CANDIDATES}–
+          {MAX_COMPARISON_CANDIDATES} candidate models, then judge the drafts side by side with their token and time
+          cost. Every candidate needs its provider key configured in Settings.
         </p>
       </header>
 
       <section className="space-y-4 rounded-lg border p-4" aria-label="Comparison launcher">
         <div className="space-y-2">
           <label className="text-sm font-medium text-foreground" htmlFor="compare-seed">
-            Seed
+            Seeds (one per line)
           </label>
           <textarea
             id="compare-seed"
             className="min-h-20 w-full rounded-lg border bg-transparent p-2 text-sm text-foreground"
-            value={seed}
-            onChange={(event) => setSeed(event.target.value)}
-            placeholder="The seed every candidate model will generate from"
+            value={seedText}
+            onChange={(event) => setSeedText(event.target.value)}
+            placeholder="One seed per line — every seed runs through every candidate model"
           />
+          {seedsOverLimit ? (
+            <p className="text-xs text-destructive">
+              Use at most {MAX_COMPARISON_SEEDS} seeds per run; you have {seeds.length}.
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              {seeds.length === 0
+                ? 'Add at least one seed to enable a run.'
+                : `${seeds.length} seed${seeds.length === 1 ? '' : 's'} × ${candidates.length} model${
+                    candidates.length === 1 ? '' : 's'
+                  } = ${runCount} run${runCount === 1 ? '' : 's'}.`}
+            </p>
+          )}
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -284,7 +326,7 @@ export default function Compare() {
           disabled={!canRun}
         >
           {running ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
-          {running ? 'Running…' : `Run comparison (${candidates.length})`}
+          {running ? 'Running…' : `Run comparison (${runCount})`}
         </button>
       </section>
 
@@ -295,6 +337,7 @@ export default function Compare() {
             <table className="w-full text-sm">
               <thead className="border-b bg-accent text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
+                  <th className="px-3 py-2">Seed</th>
                   <th className="px-3 py-2">Model</th>
                   <th className="px-3 py-2">Status</th>
                   <th className="px-3 py-2">Tokens</th>
@@ -304,36 +347,40 @@ export default function Compare() {
                 </tr>
               </thead>
               <tbody>
-                {summaries.map((summary) => (
-                  <tr key={summary.model} className="border-b last:border-b-0">
-                    <td className="px-3 py-2 font-medium text-foreground">
-                      {summary.model}
-                      {runningModel === summary.model ? (
-                        <Loader2 className="ml-2 inline h-3 w-3 animate-spin text-primary" />
-                      ) : null}
-                    </td>
-                    <td className="px-3 py-2">
-                      <StatusPill status={runningModel === summary.model ? 'running' : summary.status} />
-                      {summary.errorMessage ? (
-                        <span className="ml-2 text-xs text-destructive">{summary.errorMessage}</span>
-                      ) : null}
-                    </td>
-                    <td className="px-3 py-2">
-                      {summary.totalTokens !== undefined ? formatCount(summary.totalTokens) : '—'}
-                    </td>
-                    <td className="px-3 py-2">{formatDuration(summary.durationMs ?? 0)}</td>
-                    <td className="px-3 py-2">{summary.characterName ?? '—'}</td>
-                    <td className="px-3 py-2">
-                      {summary.draftId ? (
-                        <Link className="text-primary hover:underline" to={`/drafts/${summary.draftId}`}>
-                          Review
-                        </Link>
-                      ) : (
-                        '—'
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                {summaries.map((summary) => {
+                  const key = candidateKey(summary.seed, summary.model);
+                  const isRunning = runningKey === key;
+
+                  return (
+                    <tr key={key} className="border-b last:border-b-0">
+                      <td className="px-3 py-2 text-muted-foreground">{summary.seed}</td>
+                      <td className="px-3 py-2 font-medium text-foreground">
+                        {summary.model}
+                        {isRunning ? <Loader2 className="ml-2 inline h-3 w-3 animate-spin text-primary" /> : null}
+                      </td>
+                      <td className="px-3 py-2">
+                        <StatusPill status={isRunning ? 'running' : summary.status} />
+                        {summary.errorMessage ? (
+                          <span className="ml-2 text-xs text-destructive">{summary.errorMessage}</span>
+                        ) : null}
+                      </td>
+                      <td className="px-3 py-2">
+                        {summary.totalTokens !== undefined ? formatCount(summary.totalTokens) : '—'}
+                      </td>
+                      <td className="px-3 py-2">{formatDuration(summary.durationMs ?? 0)}</td>
+                      <td className="px-3 py-2">{summary.characterName ?? '—'}</td>
+                      <td className="px-3 py-2">
+                        {summary.draftId ? (
+                          <Link className="text-primary hover:underline" to={`/drafts/${summary.draftId}`}>
+                            Review
+                          </Link>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -353,7 +400,7 @@ export default function Compare() {
                 >
                   {groupDrafts.map((draft) => (
                     <option key={draft.review_id} value={draft.review_id}>
-                      {draft.model} · {draft.character_name || draft.review_id}
+                      {draft.seed} · {draft.model} · {draft.character_name || draft.review_id}
                     </option>
                   ))}
                 </select>
@@ -365,7 +412,7 @@ export default function Compare() {
                 >
                   {groupDrafts.map((draft) => (
                     <option key={draft.review_id} value={draft.review_id}>
-                      {draft.model} · {draft.character_name || draft.review_id}
+                      {draft.seed} · {draft.model} · {draft.character_name || draft.review_id}
                     </option>
                   ))}
                 </select>

@@ -18,10 +18,13 @@ vi.mock('@/lib/services/generation', () => ({
     generate: (request: Record<string, unknown>) => {
       state.generateCalls.push(request);
       const model = String(request.model_override ?? 'unknown');
-      const draftId = `draft-${model}`;
+      const seed = String(request.seed ?? '');
+      // One draft per (seed, model), so a multi-seed run gets distinct ids the
+      // way the real service does.
+      const draftId = `draft-${seed}-${model}`.replace(/\s+/g, '-');
       state.groupDrafts.push({
         review_id: draftId,
-        seed: String(request.seed ?? ''),
+        seed,
         favorite: false,
         model,
         comparison_group: String(request.comparison_group ?? ''),
@@ -85,7 +88,7 @@ describe('Compare page', () => {
       expect(screen.getByRole('button', { name: /Add/ })).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByLabelText('Seed'), { target: { value: 'a seed for compare' } });
+    fireEvent.change(screen.getByLabelText('Seeds (one per line)'), { target: { value: 'a seed for compare' } });
     const candidates = screen.getByLabelText(/Candidate models/);
     fireEvent.change(candidates, { target: { value: 'gpt-4o' } });
     fireEvent.click(screen.getByRole('button', { name: /Add/ }));
@@ -98,7 +101,7 @@ describe('Compare page', () => {
     const sequence = formatTabStops();
 
     expect(sequence).toEqual([
-      'textarea: Seed',
+      'textarea: Seeds (one per line)',
       'select: Template',
       'select: Content mode',
       'select: Candidate provider',
@@ -130,7 +133,7 @@ describe('Compare page', () => {
       expect(screen.getByRole('button', { name: /Add/ })).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByLabelText('Seed'), { target: { value: 'a seed for compare' } });
+    fireEvent.change(screen.getByLabelText('Seeds (one per line)'), { target: { value: 'a seed for compare' } });
     const input = screen.getByLabelText(/Candidate models/);
     fireEvent.change(input, { target: { value: 'gpt-4o' } });
     fireEvent.click(screen.getByRole('button', { name: /Add/ }));
@@ -149,5 +152,47 @@ describe('Compare page', () => {
     expect(screen.getByRole('cell', { name: 'gpt-4o' })).toBeInTheDocument();
     expect(screen.getByRole('cell', { name: 'gpt-4o-mini' })).toBeInTheDocument();
     expect(screen.getAllByText('42')).toHaveLength(2);
+  });
+
+  it('runs every seed through every model and shows one row per matrix cell', async () => {
+    renderCompare();
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Add/ })).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText('Seeds (one per line)'), {
+      target: { value: 'first seed\nsecond seed' },
+    });
+    const input = screen.getByLabelText(/Candidate models/);
+    fireEvent.change(input, { target: { value: 'gpt-4o' } });
+    fireEvent.click(screen.getByRole('button', { name: /Add/ }));
+    fireEvent.change(input, { target: { value: 'gpt-4o-mini' } });
+    fireEvent.click(screen.getByRole('button', { name: /Add/ }));
+
+    // The run button now names the size of the whole matrix.
+    const runButton = screen.getByRole('button', { name: 'Run comparison (4)' });
+    expect(runButton).toBeEnabled();
+    fireEvent.click(runButton);
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Results' })).toBeInTheDocument();
+    });
+
+    expect(state.generateCalls).toHaveLength(4);
+    // Seed-major: both models for the first seed, then both for the second.
+    expect(state.generateCalls.map((call) => [call.seed, call.model_override])).toEqual([
+      ['first seed', 'gpt-4o'],
+      ['first seed', 'gpt-4o-mini'],
+      ['second seed', 'gpt-4o'],
+      ['second seed', 'gpt-4o-mini'],
+    ]);
+    expect(
+      state.generateCalls.every((call) => call.comparison_group === state.generateCalls[0]?.comparison_group),
+    ).toBe(true);
+
+    expect(screen.getAllByRole('cell', { name: 'first seed' })).toHaveLength(2);
+    expect(screen.getAllByRole('cell', { name: 'second seed' })).toHaveLength(2);
+    expect(screen.getAllByText('42')).toHaveLength(4);
   });
 });

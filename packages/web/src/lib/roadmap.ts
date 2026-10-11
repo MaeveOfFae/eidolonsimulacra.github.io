@@ -33,7 +33,6 @@ export const roadmapGroups: RoadmapGroup[] = [
       'packages/web/src/lib/services/generation.ts',
     ],
     items: [
-      'Comparison runs across multiple seeds at once rather than one seed per run',
       'Batch run history with priorities and retry policies',
       'Assistant suggestions for strengthening weak or underspecified seeds',
       'Offline/local-model optimized workflow presets',
