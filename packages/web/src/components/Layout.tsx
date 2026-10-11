@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { CircleHelp, ChevronDown, ChevronRight, Heart, Menu, Search, Sparkles, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, Heart, Menu, Search, Sparkles, X } from 'lucide-react';
 import { PROJECT_SUPPORT_URL } from '@char-gen/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { helpTopics, resolvePageHelp } from '../lib/help';
@@ -19,7 +19,7 @@ import {
   resolveRouteTitle,
 } from '../lib/navigation/route-catalog';
 import { quickActionsShortcutLabel } from '../lib/navigation/quick-actions';
-import { HELP_SHORTCUT_ARIA, isHelpShortcut, isPaletteShortcut, PALETTE_SHORTCUT_ARIA } from '../lib/shortcuts';
+import { isHelpShortcut, isPaletteShortcut, PALETTE_SHORTCUT_ARIA } from '../lib/shortcuts';
 import {
   clearStoredWorkspaceMode,
   orderEntriesForMode,
@@ -29,7 +29,7 @@ import {
   writeStoredWorkspaceMode,
   type WorkspaceModeId,
 } from '../lib/navigation/workspace-modes';
-import HoverHelpPopover from './common/HoverHelpPopover';
+import HelpMenu from './common/HelpMenu';
 import QuickActionsPalette from './common/QuickActionsPalette';
 import Tooltip from './common/Tooltip';
 import WorkspaceModeSwitcher from './common/WorkspaceModeSwitcher';
@@ -178,6 +178,7 @@ export default function Layout({ children }: LayoutProps) {
   const desktopRuntime = isDesktopRuntime();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [helpMenuOpen, setHelpMenuOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const sidebarCloseButtonRef = useRef<HTMLButtonElement>(null);
   // The explicit choice is null until the user picks a mode, in which case the
@@ -275,9 +276,11 @@ export default function Layout({ children }: LayoutProps) {
     setPaletteOpen(false);
   }, [location.pathname]);
 
-  // ⌘K / Ctrl-K toggles the quick-actions palette; `?` opens help for this page.
-  // Both decisions live in `@/lib/shortcuts` so they are testable without the
-  // app shell — in particular the rule that `?` is ignored while typing.
+  // ⌘K / Ctrl-K toggles the quick-actions palette; `?` opens the help menu, which is
+  // where page help lives. Both decisions live in `@/lib/shortcuts` so they are
+  // testable without the app shell — in particular the rule that `?` is ignored while
+  // typing. The menu is no longer gated on the route having page help: the tours, the
+  // Help Center and the release notes are useful on every screen.
   useEffect(() => {
     const handleShortcuts = (event: KeyboardEvent) => {
       if (isPaletteShortcut(event)) {
@@ -286,9 +289,9 @@ export default function Layout({ children }: LayoutProps) {
         return;
       }
 
-      if (isHelpShortcut(event) && pageHelp) {
+      if (isHelpShortcut(event)) {
         event.preventDefault();
-        setHelpOpen(true);
+        setHelpMenuOpen(true);
       }
     };
 
@@ -296,7 +299,7 @@ export default function Layout({ children }: LayoutProps) {
     return () => {
       window.removeEventListener('keydown', handleShortcuts);
     };
-  }, [pageHelp]);
+  }, []);
 
   return (
     <AssistantContextProvider>
@@ -484,19 +487,13 @@ export default function Layout({ children }: LayoutProps) {
                 >
                   Eidolon Simulacra
                 </span>
-                {pageHelp && (
-                  <Tooltip label="Help for this page (?)" wrapperClassName="ml-auto">
-                    <button
-                      type="button"
-                      onClick={() => setHelpOpen(true)}
-                      aria-keyshortcuts={HELP_SHORTCUT_ARIA}
-                      className="inline-flex items-center gap-2 rounded-lg border border-border/60 bg-background/50 px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:border-primary/40 hover:text-primary"
-                    >
-                      <CircleHelp className="h-3.5 w-3.5" aria-hidden="true" />
-                      Help
-                    </button>
-                  </Tooltip>
-                )}
+                <HelpMenu
+                  entry={pageHelp}
+                  onOpenPageHelp={() => setHelpOpen(true)}
+                  isOpen={helpMenuOpen}
+                  onOpenChange={setHelpMenuOpen}
+                  className="ml-auto"
+                />
               </header>
 
               <header className="app-frame-panel hidden border-b border-border/50 px-5 py-4 lg:block">
@@ -535,21 +532,14 @@ export default function Layout({ children }: LayoutProps) {
                       {draftsCount} drafts · {seedsCount} favorite seeds · {workspaceStateLabel}
                     </p>
                   </div>
-                  {pageHelp && (
-                    <div className="flex shrink-0 items-center gap-2 pt-1">
-                      <HoverHelpPopover
-                        title={pageHelp.title}
-                        summary={pageHelp.summary}
-                        keyActions={pageHelp.keyActions}
-                        pitfalls={pageHelp.pitfalls}
-                        actions={pageHelp.actions}
-                        label="Help"
-                        align="end"
-                        onTriggerClick={() => setHelpOpen(true)}
-                        triggerClassName="rounded-lg px-3.5 py-2 text-xs font-semibold"
-                      />
-                    </div>
-                  )}
+                  <div className="flex shrink-0 items-center gap-2 pt-1">
+                    <HelpMenu
+                      entry={pageHelp}
+                      onOpenPageHelp={() => setHelpOpen(true)}
+                      isOpen={helpMenuOpen}
+                      onOpenChange={setHelpMenuOpen}
+                    />
+                  </div>
                 </div>
               </header>
 
