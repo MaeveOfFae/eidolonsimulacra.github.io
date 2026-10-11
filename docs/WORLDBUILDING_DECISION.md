@@ -15,16 +15,16 @@ The parity doc's Tier 3 gate — *"not started until a written decision records 
 
 | Fact | Value | Where |
 | --- | --- | --- |
-| Public API methods for worldbuilding | 34 | `packages/web/src/lib/api.surface.ts` |
+| Public API methods for worldbuilding | 39 | `packages/web/src/lib/api.surface.ts` |
 | Desktop-guard message uses | 29 (`APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE)` — every write and single-record read; the list/audit/lock/library reads return empty instead) | `packages/web/src/lib/worlds/lore-api.ts` |
 | Guarded message | *"Persisted worlds, factions, locations, and timelines are currently only available in the desktop app."* | `lore-api.ts`, surfaced as `APIError(501, …)` |
 | Non-desktop behaviour (writes and single-record reads) | throw `APIError(501, …)` — verified in `getWorld`, `getTimeline`, `createWorld`, `createTimeline`, `createCanonLock`, `createCanonEntry` | `lore-api.ts` |
-| Non-desktop behaviour (list/audit/lock/library reads) | degrade to empty collections instead of erroring — verified: `{ worlds: [] }`, `{ links: [] }`, `{ issues: [] }`, `{ locks: [] }`, `{ entries: [] }` | `getWorlds`, `getWorldCharacterDraftLinks`, `getWorldRelationshipAuditIssues`, `getCanonLocks`, `getCanonEntries` |
-| Persistence | SQLite in the Rust/Tauri shell, with indexes and **v7 schema migrations** (`worlds_v2`, `world_factions_v2`, `world_locations_v2`, `timelines_v2`, `timeline_events_v2`, … `world_canon_locks`, `world_canon_entries`) | `packages/web/src-tauri/src/main.rs` (26.4 KB) |
-| Tables | `worlds`, `world_characters`, `world_factions`, `world_locations`, `world_relationships`, `world_canon_locks`, `world_canon_entries`, `timelines`, `timeline_events`, plus tag tables and `world_faction_draft_links` / `world_location_draft_links` | same |
+| Non-desktop behaviour (list/audit/lock/library/event/note reads) | degrade to empty collections instead of erroring — verified: `{ worlds: [] }`, `{ links: [] }`, `{ issues: [] }`, `{ locks: [] }`, `{ entries: [] }`, `{ events: [] }`, `{ notes: [] }` | `getWorlds`, `getWorldCharacterDraftLinks`, `getWorldRelationshipAuditIssues`, `getCanonLocks`, `getCanonEntries`, `getWorldTimelineEvents`, `getUniverseNotes` |
+| Persistence | SQLite in the Rust/Tauri shell, with indexes and **v8 schema migrations** (`worlds_v2`, `world_factions_v2`, `world_locations_v2`, `timelines_v2`, `timeline_events_v2`, … `world_canon_locks`, `world_canon_entries`, `world_universe_notes`) | `packages/web/src-tauri/src/main.rs` (26.4 KB) |
+| Tables | `worlds`, `world_characters`, `world_factions`, `world_locations`, `world_relationships`, `world_canon_locks`, `world_canon_entries`, `world_universe_notes`, `timelines`, `timeline_events`, plus tag tables and `world_faction_draft_links` / `world_location_draft_links` | same |
 | Web UI | `Worlds.tsx` 23.7 KB, `WorldDetailEditorPanel.tsx` **99.4 KB**, `Timelines.tsx` 4.8 KB, `Events.tsx` 3.4 KB (~131 KB TSX) | `packages/web/src/components/worlds/`, `.../timelines/` |
-| Shared type layer | **Already shared**: `WorldRecord`, `WorldFactionRecord`, `WorldLocationRecord`, `WorldRelationshipRecord`, `WorldCharacterRecord`, `WorldCharacterDraftLinkRecord`, `TimelineRecord`, `TimelineEventRecord`, `WorldCounts`, `WorldCanonLockRecord`, `CanonLockTargetKind`, `WorldCanonEntryRecord`, `CanonEntryCategory` | `packages/shared/src/types/index.ts` |
-| Product status | `partial` — "Shipped (desktop-persisted): worlds CRUD, world detail editor … canon locks (world-scoped registry + constraint injection into regeneration, refinement, offspring, and reference-based generation), a relationship map (deterministic character/relationship graph), a canon library (categorised, tagged setting entries injected into generation as a `CANON CONTEXT` section), a worldbook (the world's canon as packet plaintext and SillyTavern-style world-info JSON) … **Outstanding**: universe notes; family tree/affiliation visualizations; cross-draft continuity assistant; event calendar; world event storage; canon conflict checking" | `docs/ROADMAP.md` |
+| Shared type layer | **Already shared**: `WorldRecord`, `WorldFactionRecord`, `WorldLocationRecord`, `WorldRelationshipRecord`, `WorldCharacterRecord`, `WorldCharacterDraftLinkRecord`, `TimelineRecord`, `TimelineEventRecord`, `WorldCounts`, `WorldCanonLockRecord`, `CanonLockTargetKind`, `WorldCanonEntryRecord`, `CanonEntryCategory`, `WorldTimelineEventRecord`, `WorldUniverseNoteRecord` | `packages/shared/src/types/index.ts` |
+| Product status | `partial` — "Shipped (desktop-persisted): worlds CRUD, world detail editor … canon locks (world-scoped registry + constraint injection into regeneration, refinement, offspring, and reference-based generation), a relationship map (deterministic character/relationship graph), a canon library (categorised, tagged setting entries injected into generation as a `CANON CONTEXT` section), a worldbook (the world's canon as packet plaintext and SillyTavern-style world-info JSON), an event calendar (`/events`, a date-aware cross-world view over timeline events), universe notes (free-form, pinnable canon context that leads the `CANON CONTEXT` block) … **Outstanding**: family tree/affiliation visualizations; cross-draft continuity assistant; world event storage; canon conflict checking" | `docs/ROADMAP.md` |
 
 ### Mobile (the candidate)
 
@@ -95,9 +95,9 @@ Take **option 2 (read-only mirror)** only, and keep it explicitly one-way:
 
 ```powershell
 # API surface and guard behaviour
-(Select-String -Path packages/web/src/lib/api.surface.ts -Pattern "\| '\w*(World|Timeline|Canon)\w*'").Count       # 34
-(Select-String -Path packages/web/src/lib/worlds/lore-api.ts -Pattern '^\s+desktopOnly\(\);').Count                # 29
-(Select-String -Path packages/web/src/lib/worlds/lore-api.ts -Pattern 'isSelfContainedDesktopRuntime\(\)').Count   # 34
+(Select-String -Path packages/web/src/lib/api.surface.ts -Pattern "\| '\w*(World|Timeline|Canon|Universe)\w*'").Count  # 39
+(Select-String -Path packages/web/src/lib/worlds/lore-api.ts -Pattern '^\s+desktopOnly\(\);').Count                # 32
+(Select-String -Path packages/web/src/lib/worlds/lore-api.ts -Pattern 'isSelfContainedDesktopRuntime\(\)').Count   # 39
 
 # Desktop persistence and its schema versions
 Select-String -Path packages/web/src-tauri/src/main.rs -Pattern 'CREATE TABLE IF NOT EXISTS'

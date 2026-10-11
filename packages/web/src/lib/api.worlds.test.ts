@@ -16,6 +16,7 @@ const OVERRIDES = vi.hoisted(() => {
     'getLocalWorlds',
     'getLocalWorldCharacterDraftLinks',
     'getLocalWorldRelationshipAuditIssues',
+    'getLocalWorldTimelineEvents',
     'getLocalWorld',
     'getLocalCanonLocks',
     'createLocalCanonLock',
@@ -25,6 +26,10 @@ const OVERRIDES = vi.hoisted(() => {
     'createLocalCanonEntry',
     'updateLocalCanonEntry',
     'deleteLocalCanonEntry',
+    'getLocalUniverseNotes',
+    'createLocalUniverseNote',
+    'updateLocalUniverseNote',
+    'deleteLocalUniverseNote',
     'createLocalWorld',
     'updateLocalWorld',
     'deleteLocalWorld',
@@ -75,6 +80,8 @@ describe('browser api: world and timeline domain (browser guards)', () => {
     await expect(api.getWorldRelationshipAuditIssues()).resolves.toEqual({ issues: [] });
     await expect(api.getCanonLocks('w1')).resolves.toEqual({ locks: [] });
     await expect(api.getCanonEntries('w1')).resolves.toEqual({ entries: [] });
+    await expect(api.getWorldTimelineEvents()).resolves.toEqual({ events: [] });
+    await expect(api.getUniverseNotes('w1')).resolves.toEqual({ notes: [] });
   });
 
   it('rejects every world and timeline mutation with a 501 desktop-only error', async () => {
@@ -89,6 +96,9 @@ describe('browser api: world and timeline domain (browser guards)', () => {
       () => api.createCanonEntry('w1', { title: 'Blood Price' }),
       () => api.updateCanonEntry('w1', 'e1', {}),
       () => api.deleteCanonEntry('w1', 'e1'),
+      () => api.createUniverseNote('w1', { title: 'Tone' }),
+      () => api.updateUniverseNote('w1', 'n1', {}),
+      () => api.deleteUniverseNote('w1', 'n1'),
       () => api.addWorldCharacter('w1', { characterName: 'C' }),
       () => api.updateWorldCharacter('w1', 'c1', {}),
       () => api.deleteWorldCharacter('w1', 'c1'),
@@ -144,6 +154,12 @@ describe('browser api: world and timeline domain (desktop delegation)', () => {
       local: 'getLocalWorldRelationshipAuditIssues',
       args: [],
     },
+    {
+      label: 'getWorldTimelineEvents',
+      invoke: () => api.getWorldTimelineEvents(),
+      local: 'getLocalWorldTimelineEvents',
+      args: [],
+    },
     { label: 'getWorld', invoke: () => api.getWorld('w1'), local: 'getLocalWorld', args: ['w1'] },
     {
       label: 'createWorld',
@@ -195,6 +211,30 @@ describe('browser api: world and timeline domain (desktop delegation)', () => {
       invoke: () => api.deleteCanonEntry('w1', 'e1'),
       local: 'deleteLocalCanonEntry',
       args: ['w1', 'e1'],
+    },
+    {
+      label: 'getUniverseNotes',
+      invoke: () => api.getUniverseNotes('w1'),
+      local: 'getLocalUniverseNotes',
+      args: ['w1'],
+    },
+    {
+      label: 'createUniverseNote',
+      invoke: () => api.createUniverseNote('w1', { title: 'Tone' }),
+      local: 'createLocalUniverseNote',
+      args: ['w1', { title: 'Tone' }],
+    },
+    {
+      label: 'updateUniverseNote',
+      invoke: () => api.updateUniverseNote('w1', 'n1', data),
+      local: 'updateLocalUniverseNote',
+      args: ['w1', 'n1', data],
+    },
+    {
+      label: 'deleteUniverseNote',
+      invoke: () => api.deleteUniverseNote('w1', 'n1'),
+      local: 'deleteLocalUniverseNote',
+      args: ['w1', 'n1'],
     },
     {
       label: 'addWorldCharacter',

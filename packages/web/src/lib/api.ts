@@ -71,6 +71,8 @@ import {
   type WorldLocationRecord,
   type WorldRelationshipRecord,
   type WorldRecord,
+  type WorldTimelineEventRecord,
+  type WorldUniverseNoteRecord,
 } from '@char-gen/shared';
 import * as worldApi from './worlds/lore-api.js';
 import * as blueprintApi from './blueprints/blueprint-api.js';
@@ -347,6 +349,10 @@ export class EidolonBrowserAPI {
     return worldApi.getWorldCharacterDraftLinks(params);
   }
 
+  async getWorldTimelineEvents(): Promise<{ events: WorldTimelineEventRecord[] }> {
+    return worldApi.getWorldTimelineEvents();
+  }
+
   async getWorldRelationshipAuditIssues(): Promise<{
     issues: Array<{
       worldId: string;
@@ -432,6 +438,29 @@ export class EidolonBrowserAPI {
 
   async deleteCanonEntry(worldId: string, entryId: string): Promise<{ message: string }> {
     return worldApi.deleteCanonEntry(worldId, entryId);
+  }
+
+  async getUniverseNotes(worldId: string): Promise<{ notes: WorldUniverseNoteRecord[] }> {
+    return worldApi.getUniverseNotes(worldId);
+  }
+
+  async createUniverseNote(
+    worldId: string,
+    data: { title: string; body?: string; pinned?: boolean },
+  ): Promise<{ note: WorldUniverseNoteRecord }> {
+    return worldApi.createUniverseNote(worldId, data);
+  }
+
+  async updateUniverseNote(
+    worldId: string,
+    noteId: string,
+    data: Record<string, unknown>,
+  ): Promise<{ note: WorldUniverseNoteRecord }> {
+    return worldApi.updateUniverseNote(worldId, noteId, data);
+  }
+
+  async deleteUniverseNote(worldId: string, noteId: string): Promise<{ message: string }> {
+    return worldApi.deleteUniverseNote(worldId, noteId);
   }
 
   async addWorldCharacter(

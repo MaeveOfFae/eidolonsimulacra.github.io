@@ -13,6 +13,7 @@ import type {
   WorldLocationRecord,
   WorldRecord,
   WorldRelationshipRecord,
+  WorldUniverseNoteRecord,
 } from '@char-gen/shared';
 import {
   DESKTOP_LORE_DB_FILE,
@@ -27,6 +28,7 @@ import {
   SqlRelationshipRow,
   SqlCanonLockRow,
   SqlCanonEntryRow,
+  SqlUniverseNoteRow,
   SqlTimelineRow,
   SqlTimelineEventRow,
   getDatabase,
@@ -41,6 +43,7 @@ import {
   relationshipFromRow,
   canonLockFromRow,
   canonEntryFromRow,
+  universeNoteFromRow,
   timelineFromRow,
   timelineEventFromRow,
 } from './desktop-lore-sql.js';
@@ -78,36 +81,49 @@ export async function getLocalLoreStorageDiagnostics(): Promise<DesktopLoreStora
 
 export async function exportLocalLoreStorageSnapshot(): Promise<{ fileName: string; contents: string }> {
   const database = await getDatabase();
-  const [worlds, characters, factions, locations, relationships, timelines, events, locks, canonEntries] =
-    await Promise.all([
-      database.select<SqlWorldRow>(
-        'SELECT id, name, description, genre, setting, notes, created_at AS createdAt, updated_at AS updatedAt FROM worlds ORDER BY updated_at DESC',
-      ),
-      database.select<SqlCharacterRow>(
-        'SELECT id, world_id AS worldId, draft_id AS draftId, character_name AS characterName, role, notes, created_at AS createdAt, updated_at AS updatedAt FROM world_characters ORDER BY updated_at DESC',
-      ),
-      database.select<SqlFactionRow>(
-        'SELECT id, world_id AS worldId, name, description, role, notes, created_at AS createdAt, updated_at AS updatedAt FROM world_factions ORDER BY updated_at DESC',
-      ),
-      database.select<SqlLocationRow>(
-        'SELECT id, world_id AS worldId, name, description, category, notes, created_at AS createdAt, updated_at AS updatedAt FROM world_locations ORDER BY updated_at DESC',
-      ),
-      database.select<SqlRelationshipRow>(
-        'SELECT id, world_id AS worldId, source_character_id AS sourceCharacterId, target_character_id AS targetCharacterId, label, notes, created_at AS createdAt, updated_at AS updatedAt FROM world_relationships ORDER BY updated_at DESC',
-      ),
-      database.select<SqlTimelineRow>(
-        'SELECT id, world_id AS worldId, name, description, start_date AS startDate, end_date AS endDate, created_at AS createdAt, updated_at AS updatedAt FROM timelines ORDER BY updated_at DESC',
-      ),
-      database.select<SqlTimelineEventRow>(
-        'SELECT id, timeline_id AS timelineId, title, description, event_date AS eventDate, sort_order AS sortOrder, metadata_json AS metadataJson, created_at AS createdAt, updated_at AS updatedAt FROM timeline_events ORDER BY updated_at DESC',
-      ),
-      database.select<SqlCanonLockRow>(
-        'SELECT id, world_id AS worldId, target_kind AS targetKind, target_id AS targetId, target_label AS targetLabel, statement, notes, created_at AS createdAt, updated_at AS updatedAt FROM world_canon_locks ORDER BY updated_at DESC',
-      ),
-      database.select<SqlCanonEntryRow>(
-        'SELECT id, world_id AS worldId, title, category, summary, body, created_at AS createdAt, updated_at AS updatedAt FROM world_canon_entries ORDER BY updated_at DESC',
-      ),
-    ]);
+  const [
+    worlds,
+    characters,
+    factions,
+    locations,
+    relationships,
+    timelines,
+    events,
+    locks,
+    canonEntries,
+    universeNotes,
+  ] = await Promise.all([
+    database.select<SqlWorldRow>(
+      'SELECT id, name, description, genre, setting, notes, created_at AS createdAt, updated_at AS updatedAt FROM worlds ORDER BY updated_at DESC',
+    ),
+    database.select<SqlCharacterRow>(
+      'SELECT id, world_id AS worldId, draft_id AS draftId, character_name AS characterName, role, notes, created_at AS createdAt, updated_at AS updatedAt FROM world_characters ORDER BY updated_at DESC',
+    ),
+    database.select<SqlFactionRow>(
+      'SELECT id, world_id AS worldId, name, description, role, notes, created_at AS createdAt, updated_at AS updatedAt FROM world_factions ORDER BY updated_at DESC',
+    ),
+    database.select<SqlLocationRow>(
+      'SELECT id, world_id AS worldId, name, description, category, notes, created_at AS createdAt, updated_at AS updatedAt FROM world_locations ORDER BY updated_at DESC',
+    ),
+    database.select<SqlRelationshipRow>(
+      'SELECT id, world_id AS worldId, source_character_id AS sourceCharacterId, target_character_id AS targetCharacterId, label, notes, created_at AS createdAt, updated_at AS updatedAt FROM world_relationships ORDER BY updated_at DESC',
+    ),
+    database.select<SqlTimelineRow>(
+      'SELECT id, world_id AS worldId, name, description, start_date AS startDate, end_date AS endDate, created_at AS createdAt, updated_at AS updatedAt FROM timelines ORDER BY updated_at DESC',
+    ),
+    database.select<SqlTimelineEventRow>(
+      'SELECT id, timeline_id AS timelineId, title, description, event_date AS eventDate, sort_order AS sortOrder, metadata_json AS metadataJson, created_at AS createdAt, updated_at AS updatedAt FROM timeline_events ORDER BY updated_at DESC',
+    ),
+    database.select<SqlCanonLockRow>(
+      'SELECT id, world_id AS worldId, target_kind AS targetKind, target_id AS targetId, target_label AS targetLabel, statement, notes, created_at AS createdAt, updated_at AS updatedAt FROM world_canon_locks ORDER BY updated_at DESC',
+    ),
+    database.select<SqlCanonEntryRow>(
+      'SELECT id, world_id AS worldId, title, category, summary, body, created_at AS createdAt, updated_at AS updatedAt FROM world_canon_entries ORDER BY updated_at DESC',
+    ),
+    database.select<SqlUniverseNoteRow>(
+      'SELECT id, world_id AS worldId, title, body, pinned, created_at AS createdAt, updated_at AS updatedAt FROM world_universe_notes ORDER BY pinned DESC, updated_at DESC',
+    ),
+  ]);
 
   const [
     worldTagMap,
@@ -187,6 +203,7 @@ export async function exportLocalLoreStorageSnapshot(): Promise<{ fileName: stri
         events: events.map((row) => timelineEventFromRow(row, eventTagMap.get(row.id))),
         canonLocks: locks.map(canonLockFromRow),
         canonEntries: canonEntries.map((row) => canonEntryFromRow(row, canonEntryTagMap.get(row.id))),
+        universeNotes: universeNotes.map(universeNoteFromRow),
       },
       null,
       2,
@@ -216,6 +233,7 @@ export async function clearLocalLoreData(): Promise<void> {
   await database.execute('DELETE FROM timelines');
   await database.execute('DELETE FROM world_canon_entry_tags');
   await database.execute('DELETE FROM world_canon_entries');
+  await database.execute('DELETE FROM world_universe_notes');
   await database.execute('DELETE FROM world_canon_locks');
   await database.execute('DELETE FROM world_relationships');
   await database.execute('DELETE FROM world_location_draft_links');
@@ -243,6 +261,7 @@ export async function importLocalLoreData(
     events?: TimelineEventRecord[];
     canonLocks?: WorldCanonLockRecord[];
     canonEntries?: WorldCanonEntryRecord[];
+    universeNotes?: WorldUniverseNoteRecord[];
   };
 
   const worlds = Array.isArray(payload.worlds) ? payload.worlds : [];
@@ -254,6 +273,7 @@ export async function importLocalLoreData(
   const events = Array.isArray(payload.events) ? payload.events : [];
   const canonLocks = Array.isArray(payload.canonLocks) ? payload.canonLocks : [];
   const canonEntries = Array.isArray(payload.canonEntries) ? payload.canonEntries : [];
+  const universeNotes = Array.isArray(payload.universeNotes) ? payload.universeNotes : [];
 
   const database = await getDatabase();
   await database.execute('BEGIN');
@@ -391,6 +411,13 @@ export async function importLocalLoreData(
         ],
       );
       await replaceLoreTags(database, 'world_canon_entry_tags', 'entry_id', entry.id, entry.tags ?? []);
+    }
+
+    for (const note of universeNotes) {
+      await database.execute(
+        'INSERT INTO world_universe_notes (id, world_id, title, body, pinned, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT(id) DO UPDATE SET world_id = excluded.world_id, title = excluded.title, body = excluded.body, pinned = excluded.pinned, updated_at = excluded.updated_at',
+        [note.id, note.worldId, note.title, note.body, note.pinned ? 1 : 0, note.createdAt, note.updatedAt],
+      );
     }
 
     for (const timeline of timelines) {

@@ -17,6 +17,7 @@ import type {
   WorldLocationRecord,
   WorldRelationshipRecord,
   WorldRecord,
+  WorldUniverseNoteRecord,
 } from '@char-gen/shared';
 import { normalizeCanonEntryCategory, normalizeCanonLockTargetKind } from '@char-gen/shared';
 import { isSelfContainedDesktopRuntime } from '../../runtime.js';
@@ -153,13 +154,27 @@ export interface SqlTimelineEventRow {
   createdAt: string;
   updatedAt: string;
 }
+export interface SqlUniverseNoteRow {
+  id: string;
+  worldId: string;
+  title: string;
+  body: string;
+  pinned: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SqlWorldTimelineEventRow extends SqlTimelineEventRow {
+  worldId: string;
+  worldName: string;
+  timelineName: string;
+}
 
 export interface SqlLoreTagRow {
   ownerId: string;
   tag: string;
   sortOrder: number;
 }
-
 export interface SqlLoreDraftLinkRow {
   ownerId: string;
   draftId: string;
@@ -483,6 +498,18 @@ export function canonEntryFromRow(row: SqlCanonEntryRow, tags?: string[]): World
     summary: row.summary,
     body: row.body || undefined,
     tags: tags ?? [],
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+export function universeNoteFromRow(row: SqlUniverseNoteRow): WorldUniverseNoteRecord {
+  return {
+    id: row.id,
+    worldId: row.worldId,
+    title: row.title,
+    body: row.body,
+    pinned: Number(row.pinned) === 1,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };

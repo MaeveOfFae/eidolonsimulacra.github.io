@@ -12,12 +12,15 @@ import type {
   WorldLocationRecord,
   WorldRecord,
   WorldRelationshipRecord,
+  WorldUniverseNoteRecord,
 } from '@char-gen/shared';
 import {
   normalizeCanonEntryCategory,
   normalizeCanonEntryText,
   normalizeCanonLockStatement,
   normalizeCanonLockTargetKind,
+  normalizeUniverseNoteBody,
+  normalizeUniverseNoteTitle,
 } from '@char-gen/shared';
 import {
   SqlWorldRow,
@@ -28,6 +31,7 @@ import {
   SqlRelationshipRow,
   SqlCanonLockRow,
   SqlCanonEntryRow,
+  SqlUniverseNoteRow,
   SqlTimelineRow,
   SqlWorldRelationshipAuditIssueRow,
   createId,
@@ -48,6 +52,7 @@ import {
   relationshipFromRow,
   canonLockFromRow,
   canonEntryFromRow,
+  universeNoteFromRow,
   timelineFromRow,
 } from './desktop-lore-sql.js';
 
@@ -134,36 +139,41 @@ export async function getLocalWorld(id: string): Promise<{ world: WorldRecord }>
     throw new Error('World not found');
   }
 
-  const [characters, factions, locations, relationships, timelines, canonLocks, canonEntries] = await Promise.all([
-    database.select<SqlCharacterRow>(
-      'SELECT id, world_id AS worldId, draft_id AS draftId, character_name AS characterName, role, notes, created_at AS createdAt, updated_at AS updatedAt FROM world_characters WHERE world_id = $1 ORDER BY updated_at DESC',
-      [id],
-    ),
-    database.select<SqlFactionRow>(
-      'SELECT id, world_id AS worldId, name, description, role, notes, created_at AS createdAt, updated_at AS updatedAt FROM world_factions WHERE world_id = $1 ORDER BY updated_at DESC',
-      [id],
-    ),
-    database.select<SqlLocationRow>(
-      'SELECT id, world_id AS worldId, name, description, category, notes, created_at AS createdAt, updated_at AS updatedAt FROM world_locations WHERE world_id = $1 ORDER BY updated_at DESC',
-      [id],
-    ),
-    database.select<SqlRelationshipRow>(
-      'SELECT id, world_id AS worldId, source_character_id AS sourceCharacterId, target_character_id AS targetCharacterId, label, notes, created_at AS createdAt, updated_at AS updatedAt FROM world_relationships WHERE world_id = $1 ORDER BY updated_at DESC, created_at DESC',
-      [id],
-    ),
-    database.select<SqlTimelineRow>(
-      'SELECT id, world_id AS worldId, name, description, start_date AS startDate, end_date AS endDate, created_at AS createdAt, updated_at AS updatedAt FROM timelines WHERE world_id = $1 ORDER BY updated_at DESC',
-      [id],
-    ),
-    database.select<SqlCanonLockRow>(
-      'SELECT id, world_id AS worldId, target_kind AS targetKind, target_id AS targetId, target_label AS targetLabel, statement, notes, created_at AS createdAt, updated_at AS updatedAt FROM world_canon_locks WHERE world_id = $1 ORDER BY created_at ASC',
-      [id],
-    ),
-    database.select<SqlCanonEntryRow>(
-      'SELECT id, world_id AS worldId, title, category, summary, body, created_at AS createdAt, updated_at AS updatedAt FROM world_canon_entries WHERE world_id = $1 ORDER BY updated_at DESC',
-      [id],
-    ),
-  ]);
+  const [characters, factions, locations, relationships, timelines, canonLocks, canonEntries, universeNotes] =
+    await Promise.all([
+      database.select<SqlCharacterRow>(
+        'SELECT id, world_id AS worldId, draft_id AS draftId, character_name AS characterName, role, notes, created_at AS createdAt, updated_at AS updatedAt FROM world_characters WHERE world_id = $1 ORDER BY updated_at DESC',
+        [id],
+      ),
+      database.select<SqlFactionRow>(
+        'SELECT id, world_id AS worldId, name, description, role, notes, created_at AS createdAt, updated_at AS updatedAt FROM world_factions WHERE world_id = $1 ORDER BY updated_at DESC',
+        [id],
+      ),
+      database.select<SqlLocationRow>(
+        'SELECT id, world_id AS worldId, name, description, category, notes, created_at AS createdAt, updated_at AS updatedAt FROM world_locations WHERE world_id = $1 ORDER BY updated_at DESC',
+        [id],
+      ),
+      database.select<SqlRelationshipRow>(
+        'SELECT id, world_id AS worldId, source_character_id AS sourceCharacterId, target_character_id AS targetCharacterId, label, notes, created_at AS createdAt, updated_at AS updatedAt FROM world_relationships WHERE world_id = $1 ORDER BY updated_at DESC, created_at DESC',
+        [id],
+      ),
+      database.select<SqlTimelineRow>(
+        'SELECT id, world_id AS worldId, name, description, start_date AS startDate, end_date AS endDate, created_at AS createdAt, updated_at AS updatedAt FROM timelines WHERE world_id = $1 ORDER BY updated_at DESC',
+        [id],
+      ),
+      database.select<SqlCanonLockRow>(
+        'SELECT id, world_id AS worldId, target_kind AS targetKind, target_id AS targetId, target_label AS targetLabel, statement, notes, created_at AS createdAt, updated_at AS updatedAt FROM world_canon_locks WHERE world_id = $1 ORDER BY created_at ASC',
+        [id],
+      ),
+      database.select<SqlCanonEntryRow>(
+        'SELECT id, world_id AS worldId, title, category, summary, body, created_at AS createdAt, updated_at AS updatedAt FROM world_canon_entries WHERE world_id = $1 ORDER BY updated_at DESC',
+        [id],
+      ),
+      database.select<SqlUniverseNoteRow>(
+        'SELECT id, world_id AS worldId, title, body, pinned, created_at AS createdAt, updated_at AS updatedAt FROM world_universe_notes WHERE world_id = $1 ORDER BY pinned DESC, updated_at DESC',
+        [id],
+      ),
+    ]);
 
   const [
     worldTagMap,
@@ -248,6 +258,7 @@ export async function getLocalWorld(id: string): Promise<{ world: WorldRecord }>
       ),
       canonLocks: canonLocks.map(canonLockFromRow),
       canonEntries: canonEntries.map((entry) => canonEntryFromRow(entry, canonEntryTagMap.get(entry.id))),
+      universeNotes: universeNotes.map(universeNoteFromRow),
     },
   };
 }
@@ -926,4 +937,82 @@ export async function deleteLocalCanonEntry(worldId: string, entryId: string): P
   await database.execute('DELETE FROM world_canon_entry_tags WHERE entry_id = $1', [entryId]);
   await database.execute('DELETE FROM world_canon_entries WHERE id = $1 AND world_id = $2', [entryId, worldId]);
   return { message: 'Canon library entry removed' };
+}
+
+const UNIVERSE_NOTE_COLUMNS =
+  'id, world_id AS worldId, title, body, pinned, created_at AS createdAt, updated_at AS updatedAt';
+
+export async function getLocalUniverseNotes(worldId: string): Promise<{ notes: WorldUniverseNoteRecord[] }> {
+  const database = await getDatabase();
+  const rows = await database.select<SqlUniverseNoteRow>(
+    `SELECT ${UNIVERSE_NOTE_COLUMNS} FROM world_universe_notes WHERE world_id = $1 ORDER BY pinned DESC, updated_at DESC`,
+    [worldId],
+  );
+  return { notes: rows.map(universeNoteFromRow) };
+}
+
+export async function createLocalUniverseNote(
+  worldId: string,
+  data: { title: string; body?: string; pinned?: boolean },
+): Promise<{ note: WorldUniverseNoteRecord }> {
+  const title = normalizeUniverseNoteTitle(data.title);
+  if (!title) {
+    throw new Error('A universe note needs a title.');
+  }
+
+  const database = await getDatabase();
+  const timestamp = nowIso();
+  const row: SqlUniverseNoteRow = {
+    id: createId('note'),
+    worldId,
+    title,
+    body: normalizeUniverseNoteBody(data.body),
+    pinned: data.pinned ? 1 : 0,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+
+  await database.execute(
+    'INSERT INTO world_universe_notes (id, world_id, title, body, pinned, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+    [row.id, row.worldId, row.title, row.body, row.pinned, row.createdAt, row.updatedAt],
+  );
+
+  return { note: universeNoteFromRow(row) };
+}
+
+export async function updateLocalUniverseNote(
+  worldId: string,
+  noteId: string,
+  data: Record<string, unknown>,
+): Promise<{ note: WorldUniverseNoteRecord }> {
+  const database = await getDatabase();
+  const rows = await database.select<SqlUniverseNoteRow>(
+    `SELECT ${UNIVERSE_NOTE_COLUMNS} FROM world_universe_notes WHERE id = $1 AND world_id = $2 LIMIT 1`,
+    [noteId, worldId],
+  );
+  const existing = rows[0];
+  if (!existing) {
+    throw new Error('Universe note not found');
+  }
+
+  const title = 'title' in data ? normalizeUniverseNoteTitle(data.title) : existing.title;
+  if (!title) {
+    throw new Error('A universe note needs a title.');
+  }
+  const body = 'body' in data ? normalizeUniverseNoteBody(data.body) : existing.body;
+  const pinned = 'pinned' in data ? (data.pinned ? 1 : 0) : existing.pinned;
+  const updatedAt = nowIso();
+
+  await database.execute(
+    'UPDATE world_universe_notes SET title = $1, body = $2, pinned = $3, updated_at = $4 WHERE id = $5 AND world_id = $6',
+    [title, body, pinned, updatedAt, noteId, worldId],
+  );
+
+  return { note: universeNoteFromRow({ ...existing, title, body, pinned, updatedAt }) };
+}
+
+export async function deleteLocalUniverseNote(worldId: string, noteId: string): Promise<{ message: string }> {
+  const database = await getDatabase();
+  await database.execute('DELETE FROM world_universe_notes WHERE id = $1 AND world_id = $2', [noteId, worldId]);
+  return { message: 'Universe note removed' };
 }

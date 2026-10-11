@@ -127,10 +127,8 @@ export const roadmapGroups: RoadmapGroup[] = [
       'packages/web/src/components/timelines/Timelines.tsx',
     ],
     items: [
-      'Universe notes module for free-form canon context',
       'Family tree and affiliation visualizations for related characters',
       'Cross-draft continuity assistant for keeping related characters aligned',
-      'Event calendar with in-world and real-world date tracking',
       'World event storage, ordering, and editing',
       'Continuity checking for canon conflicts across drafts',
     ],

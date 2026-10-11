@@ -24,8 +24,6 @@ These areas currently have visible UI that is explicitly labelled as staged rath
 
 | Surface                                                | Location                               | Note                                           |
 | ------------------------------------------------------ | -------------------------------------- | ---------------------------------------------- |
-| Events                                                 | `/events`                              | Page states event tracking is staged, not live |
-| Universe notes                                         | `/worlds` "Planned modules"            | Listed as planned, not implemented             |
 | Timeline event editing, continuity assistant/checker   | `/timelines` "Staged timeline modules" | Live chronology view stops at draft history    |
 | Batch scheduling, reusable batch presets               | `/batch` "Staged modules"              | Marked "Not live"                              |
 | Export preview, publishing                             | Export modal → "Planned Export Extras" | Marked "Planned"                               |
@@ -72,9 +70,9 @@ Outstanding: semantic search; auto-tagging; custom foldering beyond saved search
 
 ### Canon, Worldbuilding, and Relationships — `partial`
 
-Shipped (desktop-persisted): worlds CRUD, world detail editor (characters, relationships, timelines, factions, locations), canon link audit, lorebook generation, canon locks (a world-scoped registry of facts that must stay stable, with the resulting constraint block injected as additional rules into per-asset regeneration, refinement, offspring seed and character generation, and reference-based generation for drafts linked to that world), a relationship map (deterministic character/relationship graph in the Relationships tab), a canon library (categorised, tagged setting entries, injected into generation as a `CANON CONTEXT` section for drafts linked to the world), a worldbook (a world's canon projected into the packet plaintext the lorebook importer reads and a SillyTavern-style world-info JSON), lineage, similarity, offspring.
+Shipped (desktop-persisted): worlds CRUD, world detail editor (characters, relationships, timelines, factions, locations), canon link audit, lorebook generation, canon locks (a world-scoped registry of facts that must stay stable, with the resulting constraint block injected as additional rules into per-asset regeneration, refinement, offspring seed and character generation, and reference-based generation for drafts linked to that world), a relationship map (deterministic character/relationship graph in the Relationships tab), a canon library (categorised, tagged setting entries, injected into generation as a `CANON CONTEXT` section for drafts linked to the world), a worldbook (a world's canon projected into the packet plaintext the lorebook importer reads and a SillyTavern-style world-info JSON), an event calendar (`/events` groups every world's timeline events by date, treating `YYYY`/`YYYY-MM`/`YYYY-MM-DD` as real-world dates, anything else as an in-world label in its recorded order, and undated events last), universe notes (free-form, pinnable canon context that leads the `CANON CONTEXT` block for drafts linked to the world), lineage, similarity, offspring.
 
-Outstanding: universe notes; family tree/affiliation visualizations; cross-draft continuity assistant; event calendar; world event storage; canon conflict checking.
+Outstanding: family tree/affiliation visualizations; cross-draft continuity assistant; world event storage; canon conflict checking.
 
 Ownership note: this area is **desktop-only** and mobile parity is closed against it. See [`WORLDBUILDING_DECISION.md`](WORLDBUILDING_DECISION.md) for the decision record and its revisit triggers.
 

@@ -571,6 +571,23 @@ export interface WorldCanonLockRecord {
   updatedAt: string;
 }
 
+/** Free-form, long-form canon context; `pinned` notes lead the list. */
+export interface WorldUniverseNoteRecord {
+  id: string;
+  worldId: string;
+  title: string;
+  body: string;
+  pinned: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WorldTimelineEventRecord extends TimelineEventRecord {
+  worldId: string;
+  worldName: string;
+  timelineName: string;
+}
+
 export interface WorldRecord {
   id: string;
   userId: string;
@@ -593,6 +610,8 @@ export interface WorldRecord {
   canonLocks?: WorldCanonLockRecord[];
   /** Curated, reusable setting material (see `canon-library.ts`). */
   canonEntries?: WorldCanonEntryRecord[];
+  /** Free-form canon context (see `universe-notes.ts`). */
+  universeNotes?: WorldUniverseNoteRecord[];
 }
 
 // ============================================================================

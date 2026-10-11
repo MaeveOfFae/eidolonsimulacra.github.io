@@ -1,23 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, CheckCircle2, BookOpen } from 'lucide-react';
+import { AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { isSelfContainedDesktopRuntime } from '@/lib/runtime';
 import HoverHelpPopover from '../common/HoverHelpPopover';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
 import WorldDetailEditorPanel from './WorldDetailEditorPanel';
 import LorebookGeneratorPanel from './LorebookGeneratorPanel';
-
-/**
- * Only what is genuinely still missing.
- *
- * This list used to advertise relationships, factions, locations, worldbook
- * generation and universe notes as "planned" — but all of them are live: the
- * editors are in the world editor on this page and the lorebook generator is
- * below it. A stale "planned" list is worse than no list, because it tells users
- * that a feature they can already use does not exist.
- */
-const PLANNED_WORLD_MODULES = [{ label: 'Universe notes', icon: BookOpen }] as const;
 
 export default function Worlds() {
   const selfContainedDesktop = isSelfContainedDesktopRuntime();
@@ -165,10 +154,6 @@ export default function Worlds() {
               <div className="app-page-metric">
                 <p className="app-page-metric-label">Worlds</p>
                 <div className="app-page-metric-value text-2xl">{worldCount}</div>
-              </div>
-              <div className="app-page-metric">
-                <p className="app-page-metric-label">Modules</p>
-                <div className="app-page-metric-value text-2xl">{PLANNED_WORLD_MODULES.length}</div>
               </div>
               <div className="app-page-metric">
                 <p className="app-page-metric-label">Canon Nodes</p>
@@ -464,30 +449,6 @@ export default function Worlds() {
             </div>
           </div>
         )}
-      </section>
-
-      <section className="app-panel p-4 sm:p-5">
-        <div className="mb-4 flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-semibold">Planned modules</h2>
-            <p className="text-sm text-muted-foreground">
-              What is still missing here, now that the world editor above covers details, characters, factions,
-              locations, relationships, timelines, and events.
-            </p>
-          </div>
-          <span className="app-pill app-pill-muted">Not live</span>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {PLANNED_WORLD_MODULES.map(({ label, icon: Icon }) => (
-            <div key={label} className="app-panel-muted flex items-center gap-3 p-3">
-              <div className="rounded-lg border border-border/60 bg-background/60 p-2 text-primary">
-                <Icon className="h-4 w-4" />
-              </div>
-              <div className="text-sm font-medium text-foreground">{label}</div>
-            </div>
-          ))}
-        </div>
       </section>
     </div>
   );

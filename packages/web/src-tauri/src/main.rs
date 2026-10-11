@@ -759,6 +759,24 @@ fn main() {
       ",
       kind: MigrationKind::Up,
     },
+    Migration {
+      version: 8,
+      description: "add_world_universe_notes",
+      sql: "
+        CREATE TABLE IF NOT EXISTS world_universe_notes (
+          id TEXT PRIMARY KEY NOT NULL,
+          world_id TEXT NOT NULL,
+          title TEXT NOT NULL,
+          body TEXT NOT NULL,
+          pinned INTEGER NOT NULL DEFAULT 0,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_world_universe_notes_world_id ON world_universe_notes(world_id);
+      ",
+      kind: MigrationKind::Up,
+    },
   ];
 
   tauri::Builder::default()

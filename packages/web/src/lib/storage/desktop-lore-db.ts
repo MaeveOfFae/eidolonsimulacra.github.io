@@ -38,11 +38,16 @@ export {
   createLocalCanonEntry,
   updateLocalCanonEntry,
   deleteLocalCanonEntry,
+  getLocalUniverseNotes,
+  createLocalUniverseNote,
+  updateLocalUniverseNote,
+  deleteLocalUniverseNote,
 } from './lore/desktop-lore-worlds.js';
 
 export {
   createLocalTimeline,
   getLocalTimeline,
+  getLocalWorldTimelineEvents,
   updateLocalTimeline,
   deleteLocalTimeline,
   addLocalTimelineEvent,

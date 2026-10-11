@@ -12,6 +12,7 @@ import WorldFactionsSection from './WorldFactionsSection';
 import WorldLocationsSection from './WorldLocationsSection';
 import WorldRelationshipsSection from './WorldRelationshipsSection';
 import WorldTimelinesSection from './WorldTimelinesSection';
+import WorldUniverseNotesSection from './WorldUniverseNotesSection';
 
 interface WorldDetailEditorPanelProps {
   world: WorldRecord | null;
@@ -29,7 +30,8 @@ type WorldDetailTab =
   | 'locations'
   | 'canon-locks'
   | 'canon-library'
-  | 'worldbook';
+  | 'worldbook'
+  | 'universe-notes';
 
 export default function WorldDetailEditorPanel({ world, canEdit, onRefresh, onDeleted }: WorldDetailEditorPanelProps) {
   const [activeTab, setActiveTab] = useState<WorldDetailTab>('details');
@@ -96,6 +98,7 @@ export default function WorldDetailEditorPanel({ world, canEdit, onRefresh, onDe
     { id: 'canon-locks', label: 'Canon locks', count: canonLocks.length },
     { id: 'canon-library', label: 'Canon library', count: canonEntries.length },
     { id: 'worldbook', label: 'Worldbook', count: null },
+    { id: 'universe-notes', label: 'Universe notes', count: (world.universeNotes ?? []).length },
   ];
 
   return (
@@ -274,6 +277,22 @@ export default function WorldDetailEditorPanel({ world, canEdit, onRefresh, onDe
       )}
 
       {activeTab === 'worldbook' && <WorldbookSection world={world} />}
+
+      {activeTab === 'universe-notes' && (
+        <WorldUniverseNotesSection
+          world={world}
+          canEdit={canEdit}
+          onNotice={(message) => {
+            setNotice(message);
+            setError(null);
+          }}
+          onError={(message) => {
+            setError(message);
+            setNotice(null);
+          }}
+          onRefresh={onRefresh}
+        />
+      )}
     </div>
   );
 }

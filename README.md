@@ -22,6 +22,8 @@ The repo is centered on a strict blueprint contract: start from one seed, genera
 - World relationship map: the world editor's **Relationships** tab draws every character as a node on a deterministic ring and every relationship as a labelled edge, computed by a pure layout module so a given world always renders the same. Records whose characters are missing are counted rather than drawn, and self-referential records are reported — neither becomes a stray line.
 - Canon library: the world editor's **Canon library** tab holds curated setting material — titled entries in one of four categories (`trait`, `lore`, `relationship`, `setting`) with a one-line summary, an optional long-form body, and tags. Entries filter by category, and the tab renders the **canon context block** that generation receives. A draft linked to a world — directly, as a connected reference, or as an offspring parent — carries that world's entries into generation as a dedicated `CANON CONTEXT` section (alongside the canon-lock rules), so the setting material travels with the drafts that belong to it.
 - Worldbook: the world editor's **Worldbook** tab projects the world's canon — its own details, characters, factions, locations, timelines, canon locks, and canon-library entries — into portable setting entries. Two exports: the `[[LOREBOOK_PACKET]]` plaintext the app's own lorebook importer reads back, and a SillyTavern-style world-info JSON. The projection is a pure function (`buildWorldbook`), so the preview and the exported files cannot drift.
+- Event calendar: `/events` is a date-aware view across every world's timeline events. `buildEventCalendar` treats `YYYY` / `YYYY-MM` / `YYYY-MM-DD` as real-world dates and sorts them numerically, keeps anything else ("1204 AF") as an in-world label in its recorded order, and lists undated events last rather than dropping them. Events are still authored inside a world's timeline; this screen only reads them, filtering by world.
+- Universe notes: the world editor's **Universe notes** tab holds free-form canon context — whatever framing the author keeps re-explaining (tone, continuity reminders, how magic feels). Notes are pinned or not; pinned notes lead the list and the context block. They ride the same `CANON CONTEXT` section as the canon library for drafts linked to the world, and the tab shows the exact block generation receives.
 - One built-in runtime template is currently loaded from `blueprints/templates/`:
   - `V2/V3 Card` with `system_prompt`, `post_history`, `character_sheet`, `intro_scene`, `creator_notes`, and `a1111`
 - Aksho reference material is checked in under `dev/official_aksho/`, but it is not currently loaded as a built-in browser template manifest. (`dev/` is git-ignored, so it only exists in checkouts that have it locally.)
@@ -33,8 +35,6 @@ The repo is centered on a strict blueprint contract: start from one seed, genera
 
 Roadmap areas are tracked in [`docs/ROADMAP.md`](docs/ROADMAP.md) and surfaced in-app on the What's New page. Nothing there is presented as shipped. The following areas are explicitly staged in the product UI today rather than live:
 
-- The Events screen (event tracking is staged, not live)
-- Universe notes module
 - Timeline event editing and the continuity assistant/checker
 - Batch scheduling and reusable batch presets
 - Export preview and publishing flows (shown as "Planned Export Extras")

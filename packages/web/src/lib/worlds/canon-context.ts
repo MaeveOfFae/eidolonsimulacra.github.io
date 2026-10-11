@@ -1,21 +1,21 @@
 /**
  * Resolves the canon context for a set of drafts.
  *
- * A world owns two bodies of canon: locks (facts that must not change) and
- * library entries (setting material to honour). A draft is tied to a world
- * through its `world_characters` link, so a run over a linked draft inherits
- * both. Outside the desktop runtime there are no persisted worlds, and this
- * resolves to nothing.
+ * A world owns three bodies of canon: locks (facts that must not change),
+ * universe notes (free-form framing), and library entries (curated setting
+ * material). A draft is tied to a world through its `world_characters` link, so
+ * a run over a linked draft inherits all three. Outside the desktop runtime
+ * there are no persisted worlds, and this resolves to nothing.
  */
 
-import { buildCanonContextLines, buildCanonLockConstraintLines } from '@char-gen/shared';
+import { buildCanonContextLines, buildCanonLockConstraintLines, buildUniverseNoteContextLines } from '@char-gen/shared';
 import { isSelfContainedDesktopRuntime } from '../runtime.js';
-import { getCanonEntries, getCanonLocks, getWorldCharacterDraftLinks } from './lore-api.js';
+import { getCanonEntries, getCanonLocks, getUniverseNotes, getWorldCharacterDraftLinks } from './lore-api.js';
 
 export interface CanonContext {
   /** Canon-lock lines: facts the draft must not change. */
   constraints: string[];
-  /** Canon-library lines: setting material the draft should honour as context. */
+  /** Universe notes and canon-library lines: context the draft should honour. */
   context: string[];
 }
 
@@ -55,13 +55,21 @@ export async function resolveCanonContext(draftIds: readonly string[]): Promise<
 
   const perWorld = await Promise.all(
     worldIds.map(async (worldId) => {
-      const [locks, entries] = await Promise.all([getCanonLocks(worldId), getCanonEntries(worldId)]);
-      return { locks: locks.locks, entries: entries.entries };
+      const [locks, entries, notes] = await Promise.all([
+        getCanonLocks(worldId),
+        getCanonEntries(worldId),
+        getUniverseNotes(worldId),
+      ]);
+      return { locks: locks.locks, entries: entries.entries, notes: notes.notes };
     }),
   );
 
   return {
     constraints: buildCanonLockConstraintLines(perWorld.flatMap((result) => result.locks)),
-    context: buildCanonContextLines(perWorld.flatMap((result) => result.entries)),
+    // Notes are the broadest framing, so they lead the context block.
+    context: [
+      ...buildUniverseNoteContextLines(perWorld.flatMap((result) => result.notes)),
+      ...buildCanonContextLines(perWorld.flatMap((result) => result.entries)),
+    ],
   };
 }

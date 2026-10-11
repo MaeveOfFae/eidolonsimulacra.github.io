@@ -19,6 +19,8 @@ import type {
   WorldLocationRecord,
   WorldRelationshipRecord,
   WorldRecord,
+  WorldTimelineEventRecord,
+  WorldUniverseNoteRecord,
 } from '@char-gen/shared';
 import { isSelfContainedDesktopRuntime } from '../runtime.js';
 import { APIError } from '../api-error.js';
@@ -31,11 +33,13 @@ import {
   createLocalCanonEntry,
   createLocalCanonLock,
   createLocalTimeline,
+  createLocalUniverseNote,
   createLocalWorld,
   deleteLocalCanonEntry,
   deleteLocalCanonLock,
   deleteLocalTimeline,
   deleteLocalTimelineEvent,
+  deleteLocalUniverseNote,
   deleteLocalWorld,
   deleteLocalWorldCharacter,
   deleteLocalWorldFaction,
@@ -44,14 +48,17 @@ import {
   getLocalCanonEntries,
   getLocalCanonLocks,
   getLocalTimeline,
+  getLocalUniverseNotes,
   getLocalWorld,
   getLocalWorldCharacterDraftLinks,
   getLocalWorldRelationshipAuditIssues,
   getLocalWorlds,
+  getLocalWorldTimelineEvents,
   updateLocalCanonEntry,
   updateLocalCanonLock,
   updateLocalTimeline,
   updateLocalTimelineEvent,
+  updateLocalUniverseNote,
   updateLocalWorld,
   updateLocalWorldCharacter,
   updateLocalWorldFaction,
@@ -346,6 +353,14 @@ export async function deleteTimelineEvent(timelineId: string, eventId: string): 
   desktopOnly();
 }
 
+export async function getWorldTimelineEvents(): Promise<{ events: WorldTimelineEventRecord[] }> {
+  if (isSelfContainedDesktopRuntime()) {
+    return getLocalWorldTimelineEvents();
+  }
+
+  return { events: [] };
+}
+
 export async function getCanonLocks(worldId: string): Promise<{ locks: WorldCanonLockRecord[] }> {
   if (isSelfContainedDesktopRuntime()) {
     return getLocalCanonLocks(worldId);
@@ -419,6 +434,45 @@ export async function updateCanonEntry(
 export async function deleteCanonEntry(worldId: string, entryId: string): Promise<{ message: string }> {
   if (isSelfContainedDesktopRuntime()) {
     return deleteLocalCanonEntry(worldId, entryId);
+  }
+
+  desktopOnly();
+}
+
+export async function getUniverseNotes(worldId: string): Promise<{ notes: WorldUniverseNoteRecord[] }> {
+  if (isSelfContainedDesktopRuntime()) {
+    return getLocalUniverseNotes(worldId);
+  }
+
+  return { notes: [] };
+}
+
+export async function createUniverseNote(
+  worldId: string,
+  data: { title: string; body?: string; pinned?: boolean },
+): Promise<{ note: WorldUniverseNoteRecord }> {
+  if (isSelfContainedDesktopRuntime()) {
+    return createLocalUniverseNote(worldId, data);
+  }
+
+  desktopOnly();
+}
+
+export async function updateUniverseNote(
+  worldId: string,
+  noteId: string,
+  data: Record<string, unknown>,
+): Promise<{ note: WorldUniverseNoteRecord }> {
+  if (isSelfContainedDesktopRuntime()) {
+    return updateLocalUniverseNote(worldId, noteId, data);
+  }
+
+  desktopOnly();
+}
+
+export async function deleteUniverseNote(worldId: string, noteId: string): Promise<{ message: string }> {
+  if (isSelfContainedDesktopRuntime()) {
+    return deleteLocalUniverseNote(worldId, noteId);
   }
 
   desktopOnly();

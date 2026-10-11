@@ -2,10 +2,11 @@
  * Timeline and timeline-event CRUD for the desktop lore store.
  */
 
-import type { TimelineEventRecord, TimelineRecord } from '@char-gen/shared';
+import type { TimelineEventRecord, TimelineRecord, WorldTimelineEventRecord } from '@char-gen/shared';
 import {
   SqlTimelineRow,
   SqlTimelineEventRow,
+  SqlWorldTimelineEventRow,
   createId,
   nowIso,
   parseMetadata,
@@ -192,4 +193,48 @@ export async function deleteLocalTimelineEvent(timelineId: string, eventId: stri
   await database.execute('DELETE FROM timeline_event_tags WHERE event_id = $1', [eventId]);
   await database.execute('DELETE FROM timeline_events WHERE id = $1 AND timeline_id = $2', [eventId, timelineId]);
   return { message: 'Timeline event deleted' };
+}
+
+/**
+ * Every timeline event across every world, with its timeline and world attached.
+ * This is what the `/events` calendar reads: one query instead of a fan-out over
+ * worlds and timelines.
+ */
+export async function getLocalWorldTimelineEvents(): Promise<{ events: WorldTimelineEventRecord[] }> {
+  const database = await getDatabase();
+  const rows = await database.select<SqlWorldTimelineEventRow>(
+    `SELECT
+      timeline_events.id,
+      timeline_events.timeline_id AS timelineId,
+      timeline_events.title,
+      timeline_events.description,
+      timeline_events.event_date AS eventDate,
+      timeline_events.sort_order AS sortOrder,
+      timeline_events.metadata_json AS metadataJson,
+      timeline_events.created_at AS createdAt,
+      timeline_events.updated_at AS updatedAt,
+      timelines.name AS timelineName,
+      timelines.world_id AS worldId,
+      worlds.name AS worldName
+    FROM timeline_events
+    INNER JOIN timelines ON timelines.id = timeline_events.timeline_id
+    INNER JOIN worlds ON worlds.id = timelines.world_id
+    ORDER BY timeline_events.event_date ASC, timeline_events.sort_order ASC`,
+  );
+
+  const tagMap = await loadLoreTagMap(
+    database,
+    'timeline_event_tags',
+    'event_id',
+    rows.map((row) => row.id),
+  );
+
+  return {
+    events: rows.map((row) => ({
+      ...timelineEventFromRow(row, tagMap.get(row.id)),
+      worldId: row.worldId,
+      worldName: row.worldName,
+      timelineName: row.timelineName,
+    })),
+  };
 }
