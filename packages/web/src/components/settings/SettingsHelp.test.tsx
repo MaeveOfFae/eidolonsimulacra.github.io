@@ -86,10 +86,6 @@ vi.mock('../common/GuidedTourContext', () => ({
   }),
 }));
 
-vi.mock('../common/InlineHelpTip', () => ({
-  default: () => null,
-}));
-
 function renderSettings() {
   const queryClient = new QueryClient();
 

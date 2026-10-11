@@ -46,10 +46,6 @@ vi.mock('./VersionHistoryPanel', () => ({
   default: () => null,
 }));
 
-vi.mock('../common/InlineHelpTip', () => ({
-  default: () => null,
-}));
-
 vi.mock('../common/useAssistantContext', () => ({
   useAssistantScreenContext: () => undefined,
 }));

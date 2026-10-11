@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   GETTING_STARTED_GUIDE_ID,
   GETTING_STARTED_TOUR_ID,
+  HELP_ENTRY_LABELS,
+  HELP_SECTION_LIMITS,
   appRouteHelpCoverage,
+  buildHelpEntrySections,
   getGuidedTour,
   gettingStartedSteps,
   guidedTourTargetCatalog,
@@ -10,6 +13,7 @@ import {
   helpCategories,
   helpTopics,
   isGuidedTourStepActive,
+  pageHelpEntries,
   resolvePageHelp,
   validateGuidedTourConfiguration,
   validateHelpRouteCoverage,
@@ -138,25 +142,99 @@ describe('guided tours', () => {
   });
 });
 
+describe('help entry presentation', () => {
+  /** Longer than any variant shows, so a limit that stops applying is visible. */
+  const entry = {
+    keyActions: ['First', 'Second', 'Third', 'Fourth'],
+    pitfalls: ['Pitfall one', 'Pitfall two', 'Pitfall three'],
+    actions: [
+      { label: 'One', to: '/one' },
+      { label: 'Two', to: '/two' },
+      { label: 'Three', to: '/three' },
+    ],
+  };
+
+  it('renders every section in full on the drawer surface', () => {
+    const sections = buildHelpEntrySections(entry, 'full');
+
+    expect(sections.keyActions).toEqual(entry.keyActions);
+    expect(sections.pitfalls).toEqual(entry.pitfalls);
+    expect(sections.actions).toEqual(entry.actions);
+  });
+
+  it('caps the compact surface at its declared limits', () => {
+    const sections = buildHelpEntrySections(entry, 'compact');
+
+    expect(sections.keyActions).toHaveLength(HELP_SECTION_LIMITS.compact.keyActions as number);
+    expect(sections.pitfalls).toHaveLength(HELP_SECTION_LIMITS.compact.pitfalls as number);
+    expect(sections.actions).toHaveLength(HELP_SECTION_LIMITS.compact.actions as number);
+
+    // The cap drops the tail; it does not rewrite or summarise it.
+    expect(sections.keyActions.length).toBeLessThan(entry.keyActions.length);
+    expect(sections.pitfalls).not.toContain('Pitfall three');
+  });
+
+  it('defaults to the full variant', () => {
+    expect(buildHelpEntrySections(entry)).toEqual(buildHelpEntrySections(entry, 'full'));
+  });
+
+  it('copies the arrays instead of handing out the authored ones', () => {
+    const sections = buildHelpEntrySections(entry, 'full');
+    sections.keyActions.push('Injected by a caller');
+    sections.actions.pop();
+
+    expect(entry.keyActions).toEqual(['First', 'Second', 'Third', 'Fourth']);
+    expect(entry.actions).toHaveLength(3);
+  });
+
+  it('names the same section differently per surface, and says so once', () => {
+    expect(HELP_ENTRY_LABELS.compact.keyActions).toBe('What to do');
+    expect(HELP_ENTRY_LABELS.full.keyActions).toBe('What to do on this page');
+    expect(HELP_ENTRY_LABELS.compact.pitfalls).toBe('Avoid');
+    expect(HELP_ENTRY_LABELS.full.pitfalls).toBe('Common mistakes to avoid');
+
+    // Only the drawer labels its action links; the compact card has no room for one.
+    expect(HELP_ENTRY_LABELS.full.actions).toBeTruthy();
+    expect(HELP_ENTRY_LABELS.compact.actions).toBeUndefined();
+  });
+
+  it('leaves every authored page-help entry something to show in the compact card', () => {
+    pageHelpEntries.forEach((pageHelp) => {
+      const sections = buildHelpEntrySections(pageHelp, 'compact');
+
+      // A card that renders a heading with nothing under it is worse than no card:
+      // it announces that help exists here and then says nothing.
+      expect(sections.keyActions.length).toBeGreaterThan(0);
+      expect(sections.actions.length).toBeGreaterThan(0);
+    });
+  });
+});
+
 /**
  * `help.ts` is now a barrel over `./help/*` — the types and ids, the guide and topic
- * content, the tours, the per-page entries, and the lookups over them.
+ * content, the tours, the per-page entries, the presentation rules, and the lookups
+ * over them.
  *
  * The content moved verbatim: verified line-by-line against the pre-split file, 1,259
  * code lines in and 1,259 out with zero differences. The surface is what a barrel can
- * silently drop, and twenty-one modules import this path, so it is pinned here. The
- * nine interfaces have no runtime presence and are checked by the shared build's
- * declaration step at each use.
+ * silently drop, and twenty-one modules import this path, so it is pinned here — which
+ * is also why the presentation additions below are listed deliberately rather than
+ * arriving unannounced. The interfaces have no runtime presence and are checked by the
+ * shared build's declaration step at each use.
  */
 const HELP_SURFACE = [
   'BLUEPRINTS_SAFETY_TOUR_ID',
   'DRAFT_LIBRARY_TOUR_ID',
   'GETTING_STARTED_GUIDE_ID',
   'GETTING_STARTED_TOUR_ID',
+  'HELP_ENTRY_EYEBROWS',
+  'HELP_ENTRY_LABELS',
+  'HELP_SECTION_LIMITS',
   'REVIEW_EXPORT_TOUR_ID',
   'SAFE_STORAGE_TOUR_ID',
   'VALIDATION_TOUR_ID',
   'appRouteHelpCoverage',
+  'buildHelpEntrySections',
   'getGuidedTour',
   'gettingStartedSteps',
   'guidedTourTargetCatalog',

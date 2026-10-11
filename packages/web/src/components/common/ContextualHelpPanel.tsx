@@ -1,6 +1,6 @@
-import { Link } from 'react-router-dom';
-import { ArrowRight, BookOpen, TriangleAlert, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import type { HelpTopic, PageHelpEntry } from '../../lib/help';
+import HelpEntryBody from './HelpEntryBody';
 import ModalOverlay from './ModalOverlay';
 
 interface ContextualHelpPanelProps {
@@ -35,60 +35,12 @@ export default function ContextualHelpPanel({ entry, topics, isOpen, onClose }: 
         </div>
 
         <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4">
-          <section className="rounded-lg border border-border/60 bg-background/40 p-3.5">
-            <div className="flex items-center gap-2 text-foreground">
-              <BookOpen className="h-4 w-4 text-primary" />
-              <h3 className="font-semibold">What to do on this page</h3>
-            </div>
-            <div className="mt-3 space-y-3">
-              {entry.keyActions.map((action) => (
-                <div key={action} className="flex items-start gap-3 text-sm text-muted-foreground">
-                  <div className="mt-2 h-1.5 w-1.5 rounded-full bg-primary" />
-                  <p className="leading-6">{action}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="rounded-lg border border-warning/30 bg-warning/10 p-3.5">
-            <div className="flex items-center gap-2 text-foreground">
-              <TriangleAlert className="h-4 w-4 text-warning" />
-              <h3 className="font-semibold">Common mistakes to avoid</h3>
-            </div>
-            <div className="mt-3 space-y-3">
-              {entry.pitfalls.map((pitfall) => (
-                <div key={pitfall} className="flex items-start gap-3 text-sm text-muted-foreground">
-                  <div className="mt-2 h-1.5 w-1.5 rounded-full bg-warning" />
-                  <p className="leading-6">{pitfall}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="rounded-lg border border-border/60 bg-background/40 p-3.5">
-            <h3 className="font-semibold text-foreground">Useful next steps</h3>
-            <div className="mt-3 flex flex-wrap gap-2.5">
-              <Link
-                to="/help"
-                onClick={onClose}
-                className="inline-flex items-center gap-2 rounded-md border border-border/60 bg-card/70 px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:text-primary"
-              >
-                Open Help Center
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-              {entry.actions.map((action) => (
-                <Link
-                  key={`${entry.id}-${action.to}`}
-                  to={action.to}
-                  onClick={onClose}
-                  className="inline-flex items-center gap-2 rounded-md border border-border/60 bg-card/70 px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/40 hover:text-primary"
-                >
-                  {action.label}
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              ))}
-            </div>
-          </section>
+          <HelpEntryBody
+            sections={entry}
+            variant="full"
+            leadingLinks={[{ label: 'Open Help Center', to: '/help' }]}
+            onNavigate={onClose}
+          />
 
           {topics.length > 0 && (
             <section className="space-y-3">

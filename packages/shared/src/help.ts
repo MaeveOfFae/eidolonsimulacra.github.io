@@ -30,6 +30,20 @@ export type {
 
 export { gettingStartedSteps, helpTopics, helpCategories } from './help/guides.js';
 
+export {
+  HELP_ENTRY_EYEBROWS,
+  HELP_ENTRY_LABELS,
+  HELP_SECTION_LIMITS,
+  buildHelpEntrySections,
+} from './help/presentation.js';
+export type {
+  HelpEntryLabels,
+  HelpEntrySections,
+  HelpEntryVariant,
+  HelpSectionLimit,
+  HelpSectionLimits,
+} from './help/presentation.js';
+
 export { guidedTours } from './help/tours.js';
 
 export { pageHelpEntries, routeCoverageManifest, appRouteHelpCoverage, guidedTourTargetCatalog } from './help/pages.js';
