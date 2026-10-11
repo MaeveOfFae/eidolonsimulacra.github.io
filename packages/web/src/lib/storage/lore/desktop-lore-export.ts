@@ -6,6 +6,7 @@
 import type {
   TimelineEventRecord,
   TimelineRecord,
+  WorldCanonLockRecord,
   WorldCharacterRecord,
   WorldFactionRecord,
   WorldLocationRecord,
@@ -23,6 +24,7 @@ import {
   SqlFactionRow,
   SqlLocationRow,
   SqlRelationshipRow,
+  SqlCanonLockRow,
   SqlTimelineRow,
   SqlTimelineEventRow,
   getDatabase,
@@ -35,6 +37,7 @@ import {
   factionFromRow,
   locationFromRow,
   relationshipFromRow,
+  canonLockFromRow,
   timelineFromRow,
   timelineEventFromRow,
 } from './desktop-lore-sql.js';
@@ -72,7 +75,7 @@ export async function getLocalLoreStorageDiagnostics(): Promise<DesktopLoreStora
 
 export async function exportLocalLoreStorageSnapshot(): Promise<{ fileName: string; contents: string }> {
   const database = await getDatabase();
-  const [worlds, characters, factions, locations, relationships, timelines, events] = await Promise.all([
+  const [worlds, characters, factions, locations, relationships, timelines, events, locks] = await Promise.all([
     database.select<SqlWorldRow>(
       'SELECT id, name, description, genre, setting, notes, created_at AS createdAt, updated_at AS updatedAt FROM worlds ORDER BY updated_at DESC',
     ),
@@ -93,6 +96,9 @@ export async function exportLocalLoreStorageSnapshot(): Promise<{ fileName: stri
     ),
     database.select<SqlTimelineEventRow>(
       'SELECT id, timeline_id AS timelineId, title, description, event_date AS eventDate, sort_order AS sortOrder, metadata_json AS metadataJson, created_at AS createdAt, updated_at AS updatedAt FROM timeline_events ORDER BY updated_at DESC',
+    ),
+    database.select<SqlCanonLockRow>(
+      'SELECT id, world_id AS worldId, target_kind AS targetKind, target_id AS targetId, target_label AS targetLabel, statement, notes, created_at AS createdAt, updated_at AS updatedAt FROM world_canon_locks ORDER BY updated_at DESC',
     ),
   ]);
 
@@ -165,6 +171,7 @@ export async function exportLocalLoreStorageSnapshot(): Promise<{ fileName: stri
         relationships: relationships.map(relationshipFromRow),
         timelines: timelines.map((row) => timelineFromRow(row, 0, timelineTagMap.get(row.id))),
         events: events.map((row) => timelineEventFromRow(row, eventTagMap.get(row.id))),
+        canonLocks: locks.map(canonLockFromRow),
       },
       null,
       2,
@@ -192,6 +199,7 @@ export async function clearLocalLoreData(): Promise<void> {
   await database.execute('DELETE FROM timeline_events');
   await database.execute('DELETE FROM timeline_tags');
   await database.execute('DELETE FROM timelines');
+  await database.execute('DELETE FROM world_canon_locks');
   await database.execute('DELETE FROM world_relationships');
   await database.execute('DELETE FROM world_location_draft_links');
   await database.execute('DELETE FROM world_location_tags');
@@ -216,6 +224,7 @@ export async function importLocalLoreData(
     relationships?: WorldRelationshipRecord[];
     timelines?: TimelineRecord[];
     events?: TimelineEventRecord[];
+    canonLocks?: WorldCanonLockRecord[];
   };
 
   const worlds = Array.isArray(payload.worlds) ? payload.worlds : [];
@@ -225,6 +234,7 @@ export async function importLocalLoreData(
   const relationships = Array.isArray(payload.relationships) ? payload.relationships : [];
   const timelines = Array.isArray(payload.timelines) ? payload.timelines : [];
   const events = Array.isArray(payload.events) ? payload.events : [];
+  const canonLocks = Array.isArray(payload.canonLocks) ? payload.canonLocks : [];
 
   const database = await getDatabase();
   await database.execute('BEGIN');
@@ -326,6 +336,23 @@ export async function importLocalLoreData(
           relationship.notes ?? null,
           relationship.createdAt,
           relationship.updatedAt,
+        ],
+      );
+    }
+
+    for (const lock of canonLocks) {
+      await database.execute(
+        'INSERT INTO world_canon_locks (id, world_id, target_kind, target_id, target_label, statement, notes, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT(id) DO UPDATE SET world_id = excluded.world_id, target_kind = excluded.target_kind, target_id = excluded.target_id, target_label = excluded.target_label, statement = excluded.statement, notes = excluded.notes, updated_at = excluded.updated_at',
+        [
+          lock.id,
+          lock.worldId,
+          lock.targetKind,
+          lock.targetId ?? null,
+          lock.targetLabel ?? null,
+          lock.statement,
+          lock.notes ?? null,
+          lock.createdAt,
+          lock.updatedAt,
         ],
       );
     }

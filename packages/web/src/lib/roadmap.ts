@@ -130,7 +130,7 @@ export const roadmapGroups: RoadmapGroup[] = [
       'Canon library module for curated, reusable setting material',
       'Worldbook module for exportable setting entries',
       'Universe notes module for free-form canon context',
-      'Canon lock system for facts that should remain stable across derivative drafts',
+      'Extending canon-lock injection to offspring seeds and reference-based generation runs',
       'Relationship map visualization inside the world detail editor',
       'Family tree and affiliation visualizations for related characters',
       'Cross-draft continuity assistant for keeping related characters aligned',

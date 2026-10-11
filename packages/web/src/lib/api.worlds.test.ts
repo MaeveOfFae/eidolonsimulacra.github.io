@@ -17,6 +17,10 @@ const OVERRIDES = vi.hoisted(() => {
     'getLocalWorldCharacterDraftLinks',
     'getLocalWorldRelationshipAuditIssues',
     'getLocalWorld',
+    'getLocalCanonLocks',
+    'createLocalCanonLock',
+    'updateLocalCanonLock',
+    'deleteLocalCanonLock',
     'createLocalWorld',
     'updateLocalWorld',
     'deleteLocalWorld',
@@ -65,6 +69,7 @@ describe('browser api: world and timeline domain (browser guards)', () => {
     await expect(api.getWorlds()).resolves.toEqual({ worlds: [] });
     await expect(api.getWorldCharacterDraftLinks()).resolves.toEqual({ links: [] });
     await expect(api.getWorldRelationshipAuditIssues()).resolves.toEqual({ issues: [] });
+    await expect(api.getCanonLocks('w1')).resolves.toEqual({ locks: [] });
   });
 
   it('rejects every world and timeline mutation with a 501 desktop-only error', async () => {
@@ -73,6 +78,9 @@ describe('browser api: world and timeline domain (browser guards)', () => {
       () => api.createWorld({ name: 'N' }),
       () => api.updateWorld('w1', {}),
       () => api.deleteWorld('w1'),
+      () => api.createCanonLock('w1', { statement: 'locked fact' }),
+      () => api.updateCanonLock('w1', 'l1', {}),
+      () => api.deleteCanonLock('w1', 'l1'),
       () => api.addWorldCharacter('w1', { characterName: 'C' }),
       () => api.updateWorldCharacter('w1', 'c1', {}),
       () => api.deleteWorldCharacter('w1', 'c1'),
@@ -137,6 +145,25 @@ describe('browser api: world and timeline domain (desktop delegation)', () => {
     },
     { label: 'updateWorld', invoke: () => api.updateWorld('w1', data), local: 'updateLocalWorld', args: ['w1', data] },
     { label: 'deleteWorld', invoke: () => api.deleteWorld('w1'), local: 'deleteLocalWorld', args: ['w1'] },
+    { label: 'getCanonLocks', invoke: () => api.getCanonLocks('w1'), local: 'getLocalCanonLocks', args: ['w1'] },
+    {
+      label: 'createCanonLock',
+      invoke: () => api.createCanonLock('w1', { statement: 'locked fact' }),
+      local: 'createLocalCanonLock',
+      args: ['w1', { statement: 'locked fact' }],
+    },
+    {
+      label: 'updateCanonLock',
+      invoke: () => api.updateCanonLock('w1', 'l1', data),
+      local: 'updateLocalCanonLock',
+      args: ['w1', 'l1', data],
+    },
+    {
+      label: 'deleteCanonLock',
+      invoke: () => api.deleteCanonLock('w1', 'l1'),
+      local: 'deleteLocalCanonLock',
+      args: ['w1', 'l1'],
+    },
     {
       label: 'addWorldCharacter',
       invoke: () => api.addWorldCharacter('w1', { characterName: 'C' }),

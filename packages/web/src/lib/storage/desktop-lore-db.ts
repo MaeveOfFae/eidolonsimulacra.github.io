@@ -30,6 +30,10 @@ export {
   addLocalWorldRelationship,
   updateLocalWorldRelationship,
   deleteLocalWorldRelationship,
+  getLocalCanonLocks,
+  createLocalCanonLock,
+  updateLocalCanonLock,
+  deleteLocalCanonLock,
 } from './lore/desktop-lore-worlds.js';
 
 export {

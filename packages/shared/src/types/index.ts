@@ -536,6 +536,25 @@ export interface TimelineRecord {
   events?: TimelineEventRecord[];
 }
 
+/** What a canon lock is attached to; `world` scopes the fact to the whole setting. */
+export type CanonLockTargetKind = 'world' | 'character' | 'faction' | 'location' | 'timeline';
+
+export interface WorldCanonLockRecord {
+  id: string;
+  worldId: string;
+  /** Which world entity the locked fact belongs to; `world` covers the setting itself. */
+  targetKind: CanonLockTargetKind;
+  /** Character/faction/location/timeline id for a scoped lock; omitted for a world lock. */
+  targetId?: string;
+  /** Display name captured when the lock was written, so constraint lines read clearly. */
+  targetLabel?: string;
+  /** The fact that must stay stable, written as an instruction for generation. */
+  statement: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface WorldRecord {
   id: string;
   userId: string;
@@ -554,6 +573,8 @@ export interface WorldRecord {
   locations?: WorldLocationRecord[];
   relationships?: WorldRelationshipRecord[];
   timelines?: TimelineRecord[];
+  /** Facts locked against change in derivative drafts (see `canon-locks.ts`). */
+  canonLocks?: WorldCanonLockRecord[];
 }
 
 // ============================================================================

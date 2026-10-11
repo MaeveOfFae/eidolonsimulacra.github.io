@@ -713,6 +713,26 @@ fn main() {
       ",
       kind: MigrationKind::Up,
     },
+    Migration {
+      version: 6,
+      description: "add_world_canon_locks",
+      sql: "
+        CREATE TABLE IF NOT EXISTS world_canon_locks (
+          id TEXT PRIMARY KEY NOT NULL,
+          world_id TEXT NOT NULL,
+          target_kind TEXT NOT NULL,
+          target_id TEXT,
+          target_label TEXT,
+          statement TEXT NOT NULL,
+          notes TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_world_canon_locks_world_id ON world_canon_locks(world_id);
+      ",
+      kind: MigrationKind::Up,
+    },
   ];
 
   tauri::Builder::default()

@@ -11,6 +11,7 @@
 import type {
   TimelineEventRecord,
   TimelineRecord,
+  WorldCanonLockRecord,
   WorldCharacterDraftLinkRecord,
   WorldCharacterRecord,
   WorldFactionRecord,
@@ -26,8 +27,10 @@ import {
   addLocalWorldFaction,
   addLocalWorldLocation,
   addLocalWorldRelationship,
+  createLocalCanonLock,
   createLocalTimeline,
   createLocalWorld,
+  deleteLocalCanonLock,
   deleteLocalTimeline,
   deleteLocalTimelineEvent,
   deleteLocalWorld,
@@ -35,11 +38,13 @@ import {
   deleteLocalWorldFaction,
   deleteLocalWorldLocation,
   deleteLocalWorldRelationship,
+  getLocalCanonLocks,
   getLocalTimeline,
   getLocalWorld,
   getLocalWorldCharacterDraftLinks,
   getLocalWorldRelationshipAuditIssues,
   getLocalWorlds,
+  updateLocalCanonLock,
   updateLocalTimeline,
   updateLocalTimelineEvent,
   updateLocalWorld,
@@ -331,6 +336,45 @@ export async function updateTimelineEvent(
 export async function deleteTimelineEvent(timelineId: string, eventId: string): Promise<{ message: string }> {
   if (isSelfContainedDesktopRuntime()) {
     return deleteLocalTimelineEvent(timelineId, eventId);
+  }
+
+  desktopOnly();
+}
+
+export async function getCanonLocks(worldId: string): Promise<{ locks: WorldCanonLockRecord[] }> {
+  if (isSelfContainedDesktopRuntime()) {
+    return getLocalCanonLocks(worldId);
+  }
+
+  return { locks: [] };
+}
+
+export async function createCanonLock(
+  worldId: string,
+  data: { targetKind?: string; targetId?: string; targetLabel?: string; statement: string; notes?: string },
+): Promise<{ lock: WorldCanonLockRecord }> {
+  if (isSelfContainedDesktopRuntime()) {
+    return createLocalCanonLock(worldId, data);
+  }
+
+  desktopOnly();
+}
+
+export async function updateCanonLock(
+  worldId: string,
+  lockId: string,
+  data: Record<string, unknown>,
+): Promise<{ lock: WorldCanonLockRecord }> {
+  if (isSelfContainedDesktopRuntime()) {
+    return updateLocalCanonLock(worldId, lockId, data);
+  }
+
+  desktopOnly();
+}
+
+export async function deleteCanonLock(worldId: string, lockId: string): Promise<{ message: string }> {
+  if (isSelfContainedDesktopRuntime()) {
+    return deleteLocalCanonLock(worldId, lockId);
   }
 
   desktopOnly();

@@ -4,6 +4,7 @@
  */
 
 import type {
+  WorldCanonLockRecord,
   WorldCharacterDraftLinkRecord,
   WorldCharacterRecord,
   WorldFactionRecord,
@@ -11,6 +12,7 @@ import type {
   WorldRecord,
   WorldRelationshipRecord,
 } from '@char-gen/shared';
+import { normalizeCanonLockStatement, normalizeCanonLockTargetKind } from '@char-gen/shared';
 import {
   SqlWorldRow,
   SqlCharacterRow,
@@ -18,6 +20,7 @@ import {
   SqlFactionRow,
   SqlLocationRow,
   SqlRelationshipRow,
+  SqlCanonLockRow,
   SqlTimelineRow,
   SqlWorldRelationshipAuditIssueRow,
   createId,
@@ -36,6 +39,7 @@ import {
   factionFromRow,
   locationFromRow,
   relationshipFromRow,
+  canonLockFromRow,
   timelineFromRow,
 } from './desktop-lore-sql.js';
 
@@ -122,7 +126,7 @@ export async function getLocalWorld(id: string): Promise<{ world: WorldRecord }>
     throw new Error('World not found');
   }
 
-  const [characters, factions, locations, relationships, timelines] = await Promise.all([
+  const [characters, factions, locations, relationships, timelines, canonLocks] = await Promise.all([
     database.select<SqlCharacterRow>(
       'SELECT id, world_id AS worldId, draft_id AS draftId, character_name AS characterName, role, notes, created_at AS createdAt, updated_at AS updatedAt FROM world_characters WHERE world_id = $1 ORDER BY updated_at DESC',
       [id],
@@ -141,6 +145,10 @@ export async function getLocalWorld(id: string): Promise<{ world: WorldRecord }>
     ),
     database.select<SqlTimelineRow>(
       'SELECT id, world_id AS worldId, name, description, start_date AS startDate, end_date AS endDate, created_at AS createdAt, updated_at AS updatedAt FROM timelines WHERE world_id = $1 ORDER BY updated_at DESC',
+      [id],
+    ),
+    database.select<SqlCanonLockRow>(
+      'SELECT id, world_id AS worldId, target_kind AS targetKind, target_id AS targetId, target_label AS targetLabel, statement, notes, created_at AS createdAt, updated_at AS updatedAt FROM world_canon_locks WHERE world_id = $1 ORDER BY created_at ASC',
       [id],
     ),
   ]);
@@ -213,6 +221,7 @@ export async function getLocalWorld(id: string): Promise<{ world: WorldRecord }>
       timelines: timelines.map((timeline) =>
         timelineFromRow(timeline, timelineCounts.get(timeline.id) ?? 0, timelineTagMap.get(timeline.id)),
       ),
+      canonLocks: canonLocks.map(canonLockFromRow),
     },
   };
 }
@@ -663,4 +672,126 @@ export async function deleteLocalWorldRelationship(
   const database = await getDatabase();
   await database.execute('DELETE FROM world_relationships WHERE id = $1 AND world_id = $2', [relationshipId, worldId]);
   return { message: 'Relationship removed' };
+}
+
+const CANON_LOCK_COLUMNS =
+  'id, world_id AS worldId, target_kind AS targetKind, target_id AS targetId, target_label AS targetLabel, statement, notes, created_at AS createdAt, updated_at AS updatedAt';
+
+export async function getLocalCanonLocks(worldId: string): Promise<{ locks: WorldCanonLockRecord[] }> {
+  const database = await getDatabase();
+  const rows = await database.select<SqlCanonLockRow>(
+    `SELECT ${CANON_LOCK_COLUMNS} FROM world_canon_locks WHERE world_id = $1 ORDER BY created_at ASC`,
+    [worldId],
+  );
+  return { locks: rows.map(canonLockFromRow) };
+}
+
+export async function createLocalCanonLock(
+  worldId: string,
+  data: { targetKind?: string; targetId?: string; targetLabel?: string; statement: string; notes?: string },
+): Promise<{ lock: WorldCanonLockRecord }> {
+  const statement = normalizeCanonLockStatement(data.statement);
+  if (!statement) {
+    throw new Error('A canon lock needs a statement.');
+  }
+
+  const database = await getDatabase();
+  const id = createId('lock');
+  const timestamp = nowIso();
+  const row: SqlCanonLockRow = {
+    id,
+    worldId,
+    targetKind: normalizeCanonLockTargetKind(data.targetKind),
+    targetId: data.targetId?.trim() || null,
+    targetLabel: data.targetLabel?.trim() || null,
+    statement,
+    notes: data.notes?.trim() || null,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+
+  await database.execute(
+    'INSERT INTO world_canon_locks (id, world_id, target_kind, target_id, target_label, statement, notes, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
+    [
+      row.id,
+      row.worldId,
+      row.targetKind,
+      row.targetId,
+      row.targetLabel,
+      row.statement,
+      row.notes,
+      row.createdAt,
+      row.updatedAt,
+    ],
+  );
+
+  return { lock: canonLockFromRow(row) };
+}
+
+export async function updateLocalCanonLock(
+  worldId: string,
+  lockId: string,
+  data: Record<string, unknown>,
+): Promise<{ lock: WorldCanonLockRecord }> {
+  const database = await getDatabase();
+  const rows = await database.select<SqlCanonLockRow>(
+    `SELECT ${CANON_LOCK_COLUMNS} FROM world_canon_locks WHERE id = $1 AND world_id = $2 LIMIT 1`,
+    [lockId, worldId],
+  );
+  const existing = rows[0];
+  if (!existing) {
+    throw new Error('Canon lock not found');
+  }
+
+  const statement = 'statement' in data ? normalizeCanonLockStatement(data.statement) : existing.statement;
+  if (!statement) {
+    throw new Error('A canon lock needs a statement.');
+  }
+
+  const targetKind =
+    'targetKind' in data
+      ? normalizeCanonLockTargetKind(data.targetKind)
+      : normalizeCanonLockTargetKind(existing.targetKind);
+  const targetId =
+    'targetId' in data
+      ? typeof data.targetId === 'string' && data.targetId.trim()
+        ? data.targetId.trim()
+        : null
+      : (existing.targetId ?? null);
+  const targetLabel =
+    'targetLabel' in data
+      ? typeof data.targetLabel === 'string' && data.targetLabel.trim()
+        ? data.targetLabel.trim()
+        : null
+      : (existing.targetLabel ?? null);
+  const notes =
+    'notes' in data
+      ? typeof data.notes === 'string' && data.notes.trim()
+        ? data.notes.trim()
+        : null
+      : (existing.notes ?? null);
+  const updatedAt = nowIso();
+
+  await database.execute(
+    'UPDATE world_canon_locks SET target_kind = $1, target_id = $2, target_label = $3, statement = $4, notes = $5, updated_at = $6 WHERE id = $7 AND world_id = $8',
+    [targetKind, targetId, targetLabel, statement, notes, updatedAt, lockId, worldId],
+  );
+
+  return {
+    lock: canonLockFromRow({
+      ...existing,
+      targetKind,
+      targetId,
+      targetLabel,
+      statement,
+      notes,
+      updatedAt,
+    }),
+  };
+}
+
+export async function deleteLocalCanonLock(worldId: string, lockId: string): Promise<{ message: string }> {
+  const database = await getDatabase();
+  await database.execute('DELETE FROM world_canon_locks WHERE id = $1 AND world_id = $2', [lockId, worldId]);
+  return { message: 'Canon lock removed' };
 }

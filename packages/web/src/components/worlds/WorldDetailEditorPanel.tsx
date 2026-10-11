@@ -4,6 +4,7 @@ import { Trash2 } from 'lucide-react';
 import type { WorldRecord } from '@char-gen/shared';
 import { api } from '@/lib/api';
 import WorldCharactersSection from './WorldCharactersSection';
+import WorldCanonLocksSection from './WorldCanonLocksSection';
 import WorldDetailsSection from './WorldDetailsSection';
 import WorldFactionsSection from './WorldFactionsSection';
 import WorldLocationsSection from './WorldLocationsSection';
@@ -17,7 +18,14 @@ interface WorldDetailEditorPanelProps {
   onDeleted?: () => void;
 }
 
-type WorldDetailTab = 'details' | 'characters' | 'relationships' | 'timelines' | 'factions' | 'locations';
+type WorldDetailTab =
+  | 'details'
+  | 'characters'
+  | 'relationships'
+  | 'timelines'
+  | 'factions'
+  | 'locations'
+  | 'canon-locks';
 
 export default function WorldDetailEditorPanel({ world, canEdit, onRefresh, onDeleted }: WorldDetailEditorPanelProps) {
   const [activeTab, setActiveTab] = useState<WorldDetailTab>('details');
@@ -72,6 +80,7 @@ export default function WorldDetailEditorPanel({ world, canEdit, onRefresh, onDe
   const locations = world.locations ?? [];
   const relationships = world.relationships ?? [];
   const timelines = world.timelines ?? [];
+  const canonLocks = world.canonLocks ?? [];
   const tabs: Array<{ id: WorldDetailTab; label: string; count: number | null }> = [
     { id: 'details', label: 'World', count: null },
     { id: 'characters', label: 'Characters', count: characters.length },
@@ -79,6 +88,7 @@ export default function WorldDetailEditorPanel({ world, canEdit, onRefresh, onDe
     { id: 'timelines', label: 'Timelines', count: timelines.length },
     { id: 'factions', label: 'Factions', count: factions.length },
     { id: 'locations', label: 'Locations', count: locations.length },
+    { id: 'canon-locks', label: 'Canon locks', count: canonLocks.length },
   ];
 
   return (
@@ -212,6 +222,22 @@ export default function WorldDetailEditorPanel({ world, canEdit, onRefresh, onDe
           canEdit={canEdit}
           draftOptions={draftOptions}
           draftNameById={draftNameById}
+          onNotice={(message) => {
+            setNotice(message);
+            setError(null);
+          }}
+          onError={(message) => {
+            setError(message);
+            setNotice(null);
+          }}
+          onRefresh={onRefresh}
+        />
+      )}
+
+      {activeTab === 'canon-locks' && (
+        <WorldCanonLocksSection
+          world={world}
+          canEdit={canEdit}
           onNotice={(message) => {
             setNotice(message);
             setError(null);

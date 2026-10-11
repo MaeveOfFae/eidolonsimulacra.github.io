@@ -9,6 +9,7 @@
 import type {
   TimelineEventRecord,
   TimelineRecord,
+  WorldCanonLockRecord,
   WorldCharacterDraftLinkRecord,
   WorldCharacterRecord,
   WorldFactionRecord,
@@ -16,6 +17,7 @@ import type {
   WorldRelationshipRecord,
   WorldRecord,
 } from '@char-gen/shared';
+import { normalizeCanonLockTargetKind } from '@char-gen/shared';
 import { isSelfContainedDesktopRuntime } from '../../runtime.js';
 
 export const DESKTOP_LORE_DB_FILE = 'eidolon-lore.db';
@@ -100,6 +102,18 @@ export interface SqlRelationshipRow {
   sourceCharacterId: string;
   targetCharacterId: string;
   label: string;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SqlCanonLockRow {
+  id: string;
+  worldId: string;
+  targetKind: string;
+  targetId?: string | null;
+  targetLabel?: string | null;
+  statement: string;
   notes?: string | null;
   createdAt: string;
   updatedAt: string;
@@ -428,6 +442,20 @@ export function relationshipFromRow(row: SqlRelationshipRow): WorldRelationshipR
     sourceCharacterId: row.sourceCharacterId,
     targetCharacterId: row.targetCharacterId,
     label: row.label,
+    notes: row.notes || undefined,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+export function canonLockFromRow(row: SqlCanonLockRow): WorldCanonLockRecord {
+  return {
+    id: row.id,
+    worldId: row.worldId,
+    targetKind: normalizeCanonLockTargetKind(row.targetKind),
+    targetId: row.targetId || undefined,
+    targetLabel: row.targetLabel || undefined,
+    statement: row.statement,
     notes: row.notes || undefined,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,

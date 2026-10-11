@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, CheckCircle2, BookOpen, Lock } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, BookOpen } from 'lucide-react';
 import { api } from '@/lib/api';
 import { isSelfContainedDesktopRuntime } from '@/lib/runtime';
 import HoverHelpPopover from '../common/HoverHelpPopover';
@@ -20,7 +20,6 @@ import LorebookGeneratorPanel from './LorebookGeneratorPanel';
 const PLANNED_WORLD_MODULES = [
   { label: 'Canon library', icon: BookOpen },
   { label: 'Universe notes', icon: BookOpen },
-  { label: 'Canon locks', icon: Lock },
 ] as const;
 
 export default function Worlds() {
