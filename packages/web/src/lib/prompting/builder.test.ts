@@ -180,6 +180,25 @@ describe('buildOffspringPrompt', () => {
     expect(userPrompt).toContain('- tags: court, intrigue');
     expect(userPrompt).not.toContain('"description": "Character sheet content"');
   });
+
+  it('appends additional rules when given constraints such as canon locks', async () => {
+    const [, userPrompt] = await buildOffspringPrompt(
+      { character_sheet: 'Parent 1 sheet' },
+      { character_sheet: 'Parent 2 sheet' },
+      'Maeve',
+      'Riven',
+      'SFW',
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      ['World: magic always costs blood', 'Vesna (character): surname is Vale'],
+    );
+
+    expect(userPrompt).toContain('ADDITIONAL RULES:');
+    expect(userPrompt).toContain('- World: magic always costs blood');
+    expect(userPrompt).toContain('- Vesna (character): surname is Vale');
+  });
 });
 
 describe('buildRefinementSystemPrompt', () => {

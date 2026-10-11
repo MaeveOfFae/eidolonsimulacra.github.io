@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { Baby, Loader2, Users, CheckCircle, Square } from 'lucide-react';
@@ -91,6 +91,12 @@ export default function Offspring() {
   const queryClient = useQueryClient();
   const [parent1, setParent1] = useState<string>('');
   const [parent2, setParent2] = useState<string>('');
+  // The parents are not reference suites for the character run, but their worlds
+  // still own the canon locks the offspring character must not break.
+  const canonLockDraftIds = useMemo(
+    () => [parent1, parent2].filter((draftId) => draftId.length > 0),
+    [parent1, parent2],
+  );
   const [mode, setMode] = useState<ContentMode>('SFW');
   const [template, setTemplate] = useState('');
   const [templateManuallySelected, setTemplateManuallySelected] = useState(false);
@@ -870,6 +876,7 @@ export default function Offspring() {
           mode={mode}
           template={template}
           templates={templates}
+          canonLockDraftIds={canonLockDraftIds}
           onComplete={handleWorkflowComplete}
           onError={handleWorkflowError}
           onCancel={handleWorkflowCancel}

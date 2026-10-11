@@ -515,6 +515,7 @@ export async function buildOffspringPrompt(
   parent2Template?: Template,
   baseUrl?: string,
   blueprintOverride?: string,
+  additionalInstructions: string[] = [],
 ): Promise<[system: string, user: string]> {
   // Load offspring generator blueprint - respects settings and override
   const systemPrompt = await resolveFeatureBlueprint('offspring_generation', blueprintOverride, baseUrl);
@@ -534,6 +535,14 @@ export async function buildOffspringPrompt(
     "Analyze how these two parents would shape a new character's upbringing and generate the offspring's SEED.",
   );
   userLines.push('Treat each parent suite according to the template contract shown in the provided assets.');
+
+  if (additionalInstructions.length > 0) {
+    userLines.push('');
+    userLines.push('ADDITIONAL RULES:');
+    additionalInstructions.forEach((instruction) => {
+      userLines.push(`- ${instruction}`);
+    });
+  }
 
   return [systemPrompt, userLines.join('\n')];
 }

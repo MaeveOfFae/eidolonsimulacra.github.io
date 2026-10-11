@@ -72,9 +72,9 @@ Outstanding: semantic search; auto-tagging; custom foldering beyond saved search
 
 ### Canon, Worldbuilding, and Relationships — `partial`
 
-Shipped (desktop-persisted): worlds CRUD, world detail editor (characters, relationships, timelines, factions, locations), canon link audit, lorebook generation, canon locks (a world-scoped registry of facts that must stay stable, with the resulting constraint block injected as additional rules into per-asset regeneration and refinement for drafts linked to that world), lineage, similarity, offspring.
+Shipped (desktop-persisted): worlds CRUD, world detail editor (characters, relationships, timelines, factions, locations), canon link audit, lorebook generation, canon locks (a world-scoped registry of facts that must stay stable, with the resulting constraint block injected as additional rules into per-asset regeneration, refinement, offspring seed and character generation, and reference-based generation for drafts linked to that world), lineage, similarity, offspring.
 
-Outstanding: canon library; worldbook; universe notes; canon-lock injection into offspring seeds and reference-based generation; relationship map visualization; family tree/affiliation visualizations; cross-draft continuity assistant; event calendar; world event storage; canon conflict checking.
+Outstanding: canon library; worldbook; universe notes; relationship map visualization; family tree/affiliation visualizations; cross-draft continuity assistant; event calendar; world event storage; canon conflict checking.
 
 Ownership note: this area is **desktop-only** and mobile parity is closed against it. See [`WORLDBUILDING_DECISION.md`](WORLDBUILDING_DECISION.md) for the decision record and its revisit triggers.
 

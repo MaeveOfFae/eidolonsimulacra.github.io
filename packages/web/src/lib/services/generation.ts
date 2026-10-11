@@ -46,6 +46,7 @@ import {
 } from '../templates/browser.js';
 import { parseSeedGenerationResponse, resolveSeedGenerationInput } from '../seed-generator.js';
 import { loadReferenceSuites, normalizeConnectedReferenceIds } from '../prompting/reference-context.js';
+import { resolveCanonLockConstraintLines } from '../worlds/canon-lock-context.js';
 
 /**
  * Progress callback for generation
@@ -72,6 +73,8 @@ export interface ExtendedGenerateRequest extends GenerateRequest {
   model_override?: string;
   /** Links candidate drafts from one comparison run. */
   comparison_group?: string;
+  /** Drafts whose worlds supply canon-lock constraints (in addition to the connected references). */
+  canon_lock_draft_ids?: string[];
 }
 
 /**
@@ -84,6 +87,8 @@ export interface ExtendedOffspringRequest extends OffspringRequest {
 type AssetGenerationRequest = GenerateAssetRequest & {
   reference_suites?: ReferenceSuiteContext[];
   imported_source?: ImportedSourceContext;
+  /** Drafts whose worlds supply canon-lock constraints for this asset. */
+  canon_lock_draft_ids?: string[];
 };
 
 interface GenerationRunOptions {
@@ -120,6 +125,7 @@ export class GenerationService {
       imported_source,
       model_override,
       comparison_group,
+      canon_lock_draft_ids = [],
     } = request;
 
     yield { type: 'status', stage: 'initializing' };
@@ -132,6 +138,12 @@ export class GenerationService {
     const referenceSuites = await loadReferenceSuites(connectedDraftIds, {
       resolveTemplate: (templateName) => (templateName ? resolveTemplateDefinition(templateName) : undefined),
     });
+    // Canon locks from every world the connected references or the explicit
+    // canon-lock drafts belong to ride the same instruction channel as the
+    // launcher's own additional instructions.
+    const canonLockLines = await resolveCanonLockConstraintLines(
+      normalizeConnectedReferenceIds([...connectedDraftIds, ...canon_lock_draft_ids]),
+    );
 
     yield { type: 'status', stage: 'building_prompt' };
 
@@ -142,7 +154,7 @@ export class GenerationService {
       templateDefinition,
       undefined,
       blueprint_override,
-      additional_instructions,
+      [...additional_instructions, ...canonLockLines],
       referenceSuites,
       imported_source,
     );
@@ -363,11 +375,15 @@ export class GenerationService {
       additional_instructions = [],
       reference_suites = [],
       imported_source,
+      canon_lock_draft_ids = [],
     } = request;
 
     yield { type: 'status', stage: 'initializing' };
 
     const engine = createConfiguredEngine();
+
+    // Worlds of the named drafts constrain this asset.
+    const canonLockLines = await resolveCanonLockConstraintLines(normalizeConnectedReferenceIds(canon_lock_draft_ids));
 
     yield { type: 'status', stage: 'building_prompt' };
 
@@ -379,7 +395,7 @@ export class GenerationService {
       prior_assets,
       blueprintContent,
       undefined,
-      additional_instructions,
+      [...additional_instructions, ...canonLockLines],
       reference_suites,
       request.template,
       imported_source,
@@ -486,6 +502,9 @@ export class GenerationService {
 
     const engine = createConfiguredEngine();
 
+    // Both parents' canon locks constrain the offspring seed.
+    const canonLockLines = await resolveCanonLockConstraintLines([parent1_id, parent2_id]);
+
     // Build offspring prompt - respects settings and override
     const [systemPrompt, userPrompt] = await buildOffspringPrompt(
       parent1.assets,
@@ -497,6 +516,7 @@ export class GenerationService {
       parent2.metadata.template_name ? resolveTemplateDefinition(parent2.metadata.template_name) : undefined,
       undefined,
       blueprint_override,
+      canonLockLines,
     );
 
     yield { type: 'status', stage: 'generating' };
@@ -568,6 +588,9 @@ export class GenerationService {
   ): AsyncIterable<GenerationProgress> {
     const { parent1_id, parent2_id, mode = 'Auto', template, blueprint_override } = request;
 
+    // Both parents' canon locks constrain the offspring character as well as its seed.
+    const canonLockLines = await resolveCanonLockConstraintLines([parent1_id, parent2_id]);
+
     let offspringSeed = '';
     for await (const progress of this.generateOffspringSeed(request, options)) {
       if (progress.type === 'error') {
@@ -603,7 +626,7 @@ export class GenerationService {
         template,
         stream: false,
         blueprint_override,
-        additional_instructions: this.getOffspringCarryRules(),
+        additional_instructions: [...this.getOffspringCarryRules(), ...canonLockLines],
       },
       options,
     )) {

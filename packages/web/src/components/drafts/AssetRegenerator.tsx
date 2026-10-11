@@ -7,7 +7,6 @@ import { api } from '@/lib/api';
 import { unwrapSingleCodeFence } from '@/lib/content-format';
 import DraftSendConfigPanel from '@/components/drafts/DraftSendConfigPanel';
 import { buildDraftPriorAssets, mergeDraftAdditionalInstructions } from '@/lib/drafts/send-config';
-import { resolveCanonLockConstraintLines } from '@/lib/worlds/canon-lock-context';
 import { GenerationService } from '@/lib/services/generation';
 import { resolveTemplateBlueprintContent } from '@/lib/templates/browser';
 import {
@@ -341,14 +340,14 @@ export default function AssetRegenerator({
 
     try {
       let fullContent = '';
-      const canonLockLines = await resolveCanonLockConstraintLines([draft.metadata.review_id]);
       const baseRequest = {
         seed: draft.metadata.seed,
         mode: draft.metadata.mode ?? 'Auto',
         template: draft.metadata.template_name,
         asset_name: selectedAssetName,
         prior_assets: buildPriorAssets(),
-        additional_instructions: [...additionalInstructions, ...canonLockLines],
+        additional_instructions: additionalInstructions,
+        canon_lock_draft_ids: [draft.metadata.review_id],
       };
 
       const stream = hasBlueprintOverride

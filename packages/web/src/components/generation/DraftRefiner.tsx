@@ -4,7 +4,6 @@ import { RotateCcw, Save, Loader2, FileText, CheckCircle2, Sparkles, ChevronDown
 import { api } from '@/lib/api';
 import DraftSendConfigPanel from '@/components/drafts/DraftSendConfigPanel';
 import { buildDraftPriorAssets, mergeDraftAdditionalInstructions } from '@/lib/drafts/send-config';
-import { resolveCanonLockConstraintLines } from '@/lib/worlds/canon-lock-context';
 import { GenerationService } from '@/lib/services/generation';
 import {
   clearActiveDraftRefinerSession,
@@ -346,7 +345,6 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
 
       try {
         let newContent = '';
-        const canonLockLines = await resolveCanonLockConstraintLines([draft.metadata.review_id]);
 
         for await (const progress of GenerationService.generateAsset({
           seed: draft.metadata.seed,
@@ -354,7 +352,8 @@ export default function DraftRefiner({ templates }: DraftRefinerProps) {
           template: draft.metadata.template_name,
           asset_name: assetName,
           prior_assets: priorAssets,
-          additional_instructions: [...additionalInstructions, ...canonLockLines],
+          additional_instructions: additionalInstructions,
+          canon_lock_draft_ids: [draft.metadata.review_id],
         })) {
           if (progress.type === 'chunk' && progress.content) {
             newContent += progress.content;

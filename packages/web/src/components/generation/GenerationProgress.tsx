@@ -20,6 +20,8 @@ interface GenerationProgressProps {
   template?: string;
   selectedAssets?: string[];
   connectedDraftIds?: string[];
+  /** Drafts whose worlds supply canon-lock constraints (e.g. an offspring's parents). */
+  canonLockDraftIds?: string[];
   additionalInstructions?: string[];
   importedCharacter?: Pick<ImportedCharacter, 'name' | 'sourceFormat' | 'sourcePreset' | 'assets'> | null;
   importedCharacterTemplateName?: string | null;
@@ -89,6 +91,7 @@ export default function GenerationProgress({
   template,
   selectedAssets = [],
   connectedDraftIds = [],
+  canonLockDraftIds = [],
   additionalInstructions = [],
   importedCharacter = null,
   importedCharacterTemplateName = null,
@@ -116,6 +119,12 @@ export default function GenerationProgress({
     [template, templates],
   );
   const referenceDraftIds = useMemo(() => normalizeConnectedReferenceIds(connectedDraftIds), [connectedDraftIds]);
+  // Canon locks come from the reference drafts' worlds and any explicitly named
+  // drafts (an offspring run names its parents, which are not reference suites).
+  const canonLockSourceDraftIds = useMemo(
+    () => [...new Set([...referenceDraftIds, ...canonLockDraftIds])],
+    [referenceDraftIds, canonLockDraftIds],
+  );
   const importedCharacterSnapshot = useMemo<ImportedCharacterSnapshot | undefined>(() => {
     if (!importedCharacter) {
       return undefined;
@@ -245,6 +254,7 @@ export default function GenerationProgress({
             asset_name: assetName,
             prior_assets: approvedAssets,
             additional_instructions: additionalInstructions,
+            canon_lock_draft_ids: canonLockSourceDraftIds,
             reference_suites: referenceSuites,
             imported_source: importedSourceContext,
           },
@@ -287,7 +297,16 @@ export default function GenerationProgress({
         setStatus('reviewing');
       }
     },
-    [activeAssetOrder, importedSourceContext, loadConnectedReferenceSuites, mode, seed, template, updateAssetStatus],
+    [
+      activeAssetOrder,
+      canonLockSourceDraftIds,
+      importedSourceContext,
+      loadConnectedReferenceSuites,
+      mode,
+      seed,
+      template,
+      updateAssetStatus,
+    ],
   );
 
   const saveApprovedDraft = useCallback(
