@@ -3,6 +3,24 @@
 Generated release history for the browser app.
 
 
+## v5.3.0 - 2026-10-11
+
+### The canon release: canon locks, a canon library, universe notes, worldbook export, and an event calendar
+
+5.3 makes canon something generation obeys instead of something you retype. A world now holds canon locks - facts a derivative draft must not change, scoped to the world or to one of its characters, factions, locations, or timelines - and they ride generation as additional rules for every draft linked to that world, whether directly, as a connected reference, or as an offspring parent. The same link carries a canon library of categorised, tagged setting entries plus free-form universe notes, injected into generation as a dedicated CANON CONTEXT section, and a world exports as a worldbook: the [[LOREBOOK_PACKET]] plaintext the app importer reads back, and a SillyTavern-style world-info JSON, both from one pure projection so the preview and the files cannot drift. Two views round it out - a deterministic relationship map in the world editor, and /events, a date-aware calendar across every world timeline. Comparison runs grew up as well: /compare now runs 1-4 seeds through a 2-4 model matrix in a single pass, saving an ordinary draft per cell.
+
+### Highlights
+- Canon locks: record the facts a draft must not change and they ride generation as additional rules for linked drafts
+- A canon library and universe notes feed a dedicated CANON CONTEXT section into linked generation - regeneration, refinement, offspring seeds, and reference-based runs
+- Export a world as a worldbook: the [[LOREBOOK_PACKET]] plaintext the importer reads back, plus SillyTavern-style world-info JSON
+- A deterministic relationship map draws every character and relationship in a world, counting the records it cannot draw instead of guessing
+- /compare runs 1-4 seeds through a 2-4 model matrix in one pass, with a results matrix lined up against token, duration, and outcome
+- A date-aware event calendar at /events sorts real dates numerically, keeps in-world labels in order, and lists undated events last
+
+### Links
+- [Open the draft library](/drafts)
+- [Open the lineage inspector](/lineage)
+- [Open the release notes](/whats-new)
 ## v5.2.0 - 2026-10-06
 
 ### The publishing release: connect Chub and ship approved drafts as characters
@@ -289,6 +307,7 @@ This release packages recent commits focused on platform, templates, and themes.
 ### Links
 - [Open generation](/generate)
 - [Review templates](/templates)
+
 
 
 
