@@ -22,11 +22,14 @@ The same data drives the in-app **What's New → Upcoming Updates** panel (`pack
 
 These areas currently have visible UI that is explicitly labelled as staged rather than live:
 
-| Surface                                                | Location                               | Note                                           |
-| ------------------------------------------------------ | -------------------------------------- | ---------------------------------------------- |
-| Timeline event editing, continuity assistant/checker   | `/timelines` "Staged timeline modules" | Live chronology view stops at draft history    |
-| Batch scheduling, reusable batch presets               | `/batch` "Staged modules"              | Marked "Not live"                              |
-| Export preview, publishing                             | Export modal → "Planned Export Extras" | Marked "Planned"                               |
+| Surface                                               | Location                               | Note                                        |
+| ----------------------------------------------------- | -------------------------------------- | ------------------------------------------- |
+| Timeline event editing, continuity assistant/checker  | `/timelines` "Staged timeline modules" | Live chronology view stops at draft history |
+| Lineage projection, ancestry graph, lineage export    | `/lineage` "Staged modules"            | Marked "Not live"                           |
+| Similarity clustering, cross-draft relationship graph | `/similarity` "Staged modules"         | Marked "Not live"                           |
+| Trait inheritance, breeding history                   | `/offspring` "Staged modules"          | Marked "Not live"                           |
+| Batch scheduling, reusable batch presets              | `/batch` "Staged modules"              | Marked "Not live"                           |
+| Export preview, publishing                            | Export modal → "Planned Export Extras" | Marked "Planned"                            |
 
 ## Release policy
 
@@ -72,7 +75,7 @@ Outstanding: semantic search; auto-tagging; custom foldering beyond saved search
 
 Shipped (desktop-persisted): worlds CRUD, world detail editor (characters, relationships, timelines, factions, locations), canon link audit, lorebook generation, canon locks (a world-scoped registry of facts that must stay stable, with the resulting constraint block injected as additional rules into per-asset regeneration, refinement, offspring seed and character generation, and reference-based generation for drafts linked to that world), a relationship map (deterministic character/relationship graph in the Relationships tab), a canon library (categorised, tagged setting entries, injected into generation as a `CANON CONTEXT` section for drafts linked to the world), a worldbook (a world's canon projected into the packet plaintext the lorebook importer reads and a SillyTavern-style world-info JSON), an event calendar (`/events` groups every world's timeline events by date, treating `YYYY`/`YYYY-MM`/`YYYY-MM-DD` as real-world dates, anything else as an in-world label in its recorded order, and undated events last), universe notes (free-form, pinnable canon context that leads the `CANON CONTEXT` block for drafts linked to the world), lineage, similarity, offspring.
 
-Outstanding: family tree/affiliation visualizations; cross-draft continuity assistant; world event storage; canon conflict checking.
+Outstanding: family tree/affiliation visualizations; cross-draft continuity assistant; canon conflict checking.
 
 Ownership note: this area is **desktop-only** and mobile parity is closed against it. See [`WORLDBUILDING_DECISION.md`](WORLDBUILDING_DECISION.md) for the decision record and its revisit triggers.
 
@@ -106,7 +109,7 @@ Outstanding: tone/style alternates; metadata suggestions; auto summaries; conver
 
 ## Known engineering gaps
 
-Tracked in [`TODO.md`](../TODO.md). None open: the browser API facade split completed in 4.7.0 — every domain (config/models, themes, templates, drafts, export, generation/usage, blueprints, worlds/timelines) lives in its own `lib/` module behind one-line delegations, `packages/web/src/lib/api.ts` dropped from 2,727 to 589 lines, and `src/lib/api.surface.ts` still locks the 100 public methods.
+Tracked in [`TODO.md`](../TODO.md). None open: the browser API facade split completed in 4.7.0 — every domain (config/models, themes, templates, drafts, export, generation/usage, blueprints, worlds/timelines) lives in its own `lib/` module behind one-line delegations, `packages/web/src/lib/api.ts` dropped from 2,727 to 675 lines, and `src/lib/api.surface.ts` locks all 113 public methods.
 
 Mobile parity against the web app is scoped separately in [`MOBILE_PARITY.md`](MOBILE_PARITY.md).
 

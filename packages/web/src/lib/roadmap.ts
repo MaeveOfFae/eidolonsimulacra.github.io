@@ -129,7 +129,6 @@ export const roadmapGroups: RoadmapGroup[] = [
     items: [
       'Family tree and affiliation visualizations for related characters',
       'Cross-draft continuity assistant for keeping related characters aligned',
-      'World event storage, ordering, and editing',
       'Continuity checking for canon conflicts across drafts',
     ],
   },

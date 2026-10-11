@@ -16,15 +16,15 @@ The parity doc's Tier 3 gate — *"not started until a written decision records 
 | Fact | Value | Where |
 | --- | --- | --- |
 | Public API methods for worldbuilding | 39 | `packages/web/src/lib/api.surface.ts` |
-| Desktop-guard message uses | 29 (`APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE)` — every write and single-record read; the list/audit/lock/library reads return empty instead) | `packages/web/src/lib/worlds/lore-api.ts` |
+| Desktop-guard message uses | 32 (`APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE)` — every write and single-record read; the list/audit/lock/library/event/note reads return empty instead) | `packages/web/src/lib/worlds/lore-api.ts` |
 | Guarded message | *"Persisted worlds, factions, locations, and timelines are currently only available in the desktop app."* | `lore-api.ts`, surfaced as `APIError(501, …)` |
-| Non-desktop behaviour (writes and single-record reads) | throw `APIError(501, …)` — verified in `getWorld`, `getTimeline`, `createWorld`, `createTimeline`, `createCanonLock`, `createCanonEntry` | `lore-api.ts` |
+| Non-desktop behaviour (writes and single-record reads) | throw `APIError(501, …)` — verified in `getWorld`, `getTimeline`, `createWorld`, `createTimeline`, `createCanonLock`, `createCanonEntry`, `createUniverseNote` | `lore-api.ts` |
 | Non-desktop behaviour (list/audit/lock/library/event/note reads) | degrade to empty collections instead of erroring — verified: `{ worlds: [] }`, `{ links: [] }`, `{ issues: [] }`, `{ locks: [] }`, `{ entries: [] }`, `{ events: [] }`, `{ notes: [] }` | `getWorlds`, `getWorldCharacterDraftLinks`, `getWorldRelationshipAuditIssues`, `getCanonLocks`, `getCanonEntries`, `getWorldTimelineEvents`, `getUniverseNotes` |
-| Persistence | SQLite in the Rust/Tauri shell, with indexes and **v8 schema migrations** (`worlds_v2`, `world_factions_v2`, `world_locations_v2`, `timelines_v2`, `timeline_events_v2`, … `world_canon_locks`, `world_canon_entries`, `world_universe_notes`) | `packages/web/src-tauri/src/main.rs` (26.4 KB) |
+| Persistence | SQLite in the Rust/Tauri shell, with indexes and **v8 schema migrations** (`worlds_v2`, `world_factions_v2`, `world_locations_v2`, `timelines_v2`, `timeline_events_v2`, … `world_canon_locks`, `world_canon_entries`, `world_universe_notes`) | `packages/web/src-tauri/src/main.rs` (28.4 KB) |
 | Tables | `worlds`, `world_characters`, `world_factions`, `world_locations`, `world_relationships`, `world_canon_locks`, `world_canon_entries`, `world_universe_notes`, `timelines`, `timeline_events`, plus tag tables and `world_faction_draft_links` / `world_location_draft_links` | same |
-| Web UI | `Worlds.tsx` 23.7 KB, `WorldDetailEditorPanel.tsx` **99.4 KB**, `Timelines.tsx` 4.8 KB, `Events.tsx` 3.4 KB (~131 KB TSX) | `packages/web/src/components/worlds/`, `.../timelines/` |
+| Web UI | ~262 KB of TSX under `packages/web/src/components/worlds/` + `.../timelines/`: `Worlds.tsx` 22 KB, `WorldDetailEditorPanel.tsx` 9 KB delegating to `WorldDetailsSection`, `WorldCharactersSection`, `WorldRelationshipsSection`, `WorldTimelinesSection`, `WorldFactionsSection`, `WorldLocationsSection`, `WorldCanonLocksSection`, `WorldCanonLibrarySection`, `WorldbookSection`, `WorldUniverseNotesSection` and `RelationshipMap.tsx`, plus `Events.tsx` 8.8 KB and `Timelines.tsx` 4.8 KB | `packages/web/src/components/worlds/`, `.../timelines/` |
 | Shared type layer | **Already shared**: `WorldRecord`, `WorldFactionRecord`, `WorldLocationRecord`, `WorldRelationshipRecord`, `WorldCharacterRecord`, `WorldCharacterDraftLinkRecord`, `TimelineRecord`, `TimelineEventRecord`, `WorldCounts`, `WorldCanonLockRecord`, `CanonLockTargetKind`, `WorldCanonEntryRecord`, `CanonEntryCategory`, `WorldTimelineEventRecord`, `WorldUniverseNoteRecord` | `packages/shared/src/types/index.ts` |
-| Product status | `partial` — "Shipped (desktop-persisted): worlds CRUD, world detail editor … canon locks (world-scoped registry + constraint injection into regeneration, refinement, offspring, and reference-based generation), a relationship map (deterministic character/relationship graph), a canon library (categorised, tagged setting entries injected into generation as a `CANON CONTEXT` section), a worldbook (the world's canon as packet plaintext and SillyTavern-style world-info JSON), an event calendar (`/events`, a date-aware cross-world view over timeline events), universe notes (free-form, pinnable canon context that leads the `CANON CONTEXT` block) … **Outstanding**: family tree/affiliation visualizations; cross-draft continuity assistant; world event storage; canon conflict checking" | `docs/ROADMAP.md` |
+| Product status | `partial` — "Shipped (desktop-persisted): worlds CRUD, world detail editor … canon locks (world-scoped registry + constraint injection into regeneration, refinement, offspring, and reference-based generation), a relationship map (deterministic character/relationship graph), a canon library (categorised, tagged setting entries injected into generation as a `CANON CONTEXT` section), a worldbook (the world's canon as packet plaintext and SillyTavern-style world-info JSON), an event calendar (`/events`, a date-aware cross-world view over timeline events), universe notes (free-form, pinnable canon context that leads the `CANON CONTEXT` block) … **Outstanding**: family tree/affiliation visualizations; cross-draft continuity assistant; canon conflict checking" | `docs/ROADMAP.md` |
 
 ### Mobile (the candidate)
 
@@ -54,8 +54,8 @@ Rejected because the cost is not the UI, it is the second canonical store:
 
 - Mobile would have to mirror the desktop schema **and its migration history** (`*_v2` tables already exist), then keep both in step forever. Every future desktop schema change becomes a two-surface migration project.
 - Canon data with two writers has two truths. For a feature whose entire purpose is consistency, that is the worst available outcome — and `getWorldRelationshipAuditIssues` exists precisely to catch consistency problems.
-- The desktop surface is still `partial`: the relationship map, family tree, event calendar, canon library, worldbook, canon locks, and conflict checking are all outstanding. Porting now would freeze an **unfinished design** into a second codebase, so every later desktop design change would need a matching mobile change.
-- Cost asymmetry is large: ~131 KB of TSX (one panel alone is 99.4 KB), 26 API methods, and a Rust SQLite layer to reimplement, versus no user-visible benefit on the mobile loop that the parity work was built to serve.
+- The desktop surface is still `partial`: family tree/affiliation visualizations, the cross-draft continuity assistant, and canon conflict checking are outstanding. Porting now would freeze an **unfinished design** into a second codebase, so every later desktop design change would need a matching mobile change.
+- Cost asymmetry is large: ~262 KB of TSX across the world and timeline screens and their sections, 39 API methods, and a Rust SQLite layer to reimplement, versus no user-visible benefit on the mobile loop that the parity work was built to serve.
 
 ### 4. Mobile-native worldbuilding (a mobile-shaped feature, not a port) — **rejected for now**
 
@@ -79,7 +79,7 @@ A simplified "capture lore notes against a draft" flow could be genuinely useful
 Reopen this decision if **any** of the following becomes true:
 
 1. **Users ask for worldbuilding on mobile with a concrete workflow** (not "feature parity" as an abstraction) — bring evidence, not a wish.
-2. **Desktop worldbuilding reaches `complete` in `docs/ROADMAP.md`** — canon library, worldbook, universe notes, canon locks, event calendar, and conflict checking shipped — so there is a stable design worth mirroring instead of a moving one.
+2. **Desktop worldbuilding reaches `complete` in `docs/ROADMAP.md`** — the canon library, worldbook, universe notes, canon locks, and cross-world event calendar have shipped; family tree/affiliation visualizations, the continuity assistant, and conflict checking still have to land — so there is a stable design worth mirroring instead of a moving one.
 3. **A shared storage layer lands** (for example a schema owned by `packages/shared` plus device-link sync), which would turn option 2 from "write a store" into "render what arrived".
 
 ## If we revisit: the first increment, defined
@@ -89,7 +89,7 @@ Take **option 2 (read-only mirror)** only, and keep it explicitly one-way:
 - Reuse the existing workspace-bundle / device-link transfer path rather than inventing a new sync mechanism.
 - Add read-only list and detail screens for worlds and timelines; **no editing UI at all**.
 - Keep desktop as the only writer, and have the mobile screens say that editing happens on desktop.
-- Do not mirror `WorldDetailEditorPanel` — that 99.4 KB editor is the part that must not be forked.
+- Do not mirror `WorldDetailEditorPanel` or its section components — that editor and its ten world sections are the part that must not be forked.
 
 ## How to re-verify the facts in this record
 

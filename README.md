@@ -36,6 +36,9 @@ The repo is centered on a strict blueprint contract: start from one seed, genera
 Roadmap areas are tracked in [`docs/ROADMAP.md`](docs/ROADMAP.md) and surfaced in-app on the What's New page. Nothing there is presented as shipped. The following areas are explicitly staged in the product UI today rather than live:
 
 - Timeline event editing and the continuity assistant/checker
+- Lineage projection, ancestry graph, and lineage export
+- Similarity clustering and the cross-draft relationship graph
+- Trait inheritance and breeding history
 - Batch scheduling and reusable batch presets
 - Export preview and publishing flows (shown as "Planned Export Extras")
 

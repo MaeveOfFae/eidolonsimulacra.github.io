@@ -30,7 +30,7 @@ That is the majority of the day-to-day loop. The gaps below are the remainder.
 
 ## Finding that changes the scope: worlds and timelines are desktop-only
 
-`packages/web/src/lib/worlds/lore-api.ts` contains **34 `isSelfContainedDesktopRuntime()` guards**. In the browser:
+`packages/web/src/lib/worlds/lore-api.ts` contains **39 `isSelfContainedDesktopRuntime()` guards**. In the browser:
 
 - `getWorlds()` returns `{ worlds: [] }`
 - every world/timeline write throws `new APIError(501, DESKTOP_WORLDS_ONLY_MESSAGE)`
@@ -137,7 +137,7 @@ These are staged or explicitly "planned" on web, so they must not be built for p
 - `packages/mobile/App.tsx` — the full navigator (5 tabs plus the Home and Drafts stacks)
 - `packages/mobile/src/local/api.ts` — the mobile API surface
 - `packages/web/src/App.tsx` — the 30 web routes
-- `packages/web/src/lib/api.ts` — `DESKTOP_WORLDS_ONLY_MESSAGE` and the 26 desktop guards
+- `packages/web/src/lib/worlds/lore-api.ts` — `DESKTOP_WORLDS_ONLY_MESSAGE` and the 39 desktop guards
 - `packages/shared/src/lorebook-packets.ts`, `lorebook-prompt.ts`, `blueprint-features.ts` — the shared domain extracted by Tier 1 item 2
 - `packages/shared/src/whats-new.ts` — the shared release-note data written by `tools/generation/generate-release-notes.mjs` (Tier 1 item 4)
 - `packages/shared/src/themes/builtin-themes.ts` and `packages/mobile/src/theme/` — the shared builtin catalogue and the mobile theme layer (Tier 2 item 5)
