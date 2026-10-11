@@ -7,6 +7,7 @@
  * typing.
  */
 import { isTypingTarget } from './focus';
+import { quickActionsShortcutLabel } from './navigation/quick-actions';
 
 export interface ShortcutEvent {
   key: string;
@@ -46,4 +47,41 @@ export function isHelpShortcut(event: ShortcutEvent): boolean {
   }
 
   return event.key === '?';
+}
+
+/** How the UI prints the help key, beside the ARIA spec above so the two cannot drift. */
+export const HELP_SHORTCUT_LABEL = '?';
+
+/** How the UI prints the dismiss key. The handler matches `DISMISS_KEY` ('Escape'). */
+export const DISMISS_SHORTCUT_LABEL = 'Esc';
+
+export interface KeyboardShortcut {
+  id: string;
+  /** What the keys do, phrased as the instruction, not as the key name. */
+  action: string;
+  /** How the keys are printed. */
+  keys: string;
+}
+
+/**
+ * The shortcuts the app advertises, built from the constants the handlers read.
+ *
+ * Derived rather than declared, because that is the only thing that keeps a help sheet
+ * honest: an advertised key and a handled key written as two independent strings are
+ * one edit away from a sheet that names a shortcut doing nothing, and nothing fails.
+ * Here the help row prints `HELP_SHORTCUT_LABEL`, which `isHelpShortcut` accepts, and
+ * the palette row is the same platform-aware label the sidebar and the palette already
+ * print.
+ *
+ * A function rather than a constant so the platform can be supplied — the default reads
+ * `navigator`, and a test can pass 'MacIntel' or '' instead of faking a global.
+ */
+export function listKeyboardShortcuts(
+  platform: string = typeof navigator === 'undefined' ? '' : navigator.platform,
+): KeyboardShortcut[] {
+  return [
+    { id: 'palette', action: 'Open the quick-actions palette', keys: quickActionsShortcutLabel(platform) },
+    { id: 'help', action: 'Open the Help menu', keys: HELP_SHORTCUT_LABEL },
+    { id: 'dismiss', action: 'Close what is open — a menu, a dialog, a guided tour', keys: DISMISS_SHORTCUT_LABEL },
+  ];
 }

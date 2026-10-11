@@ -1,8 +1,11 @@
 import { isTypingTarget } from './focus';
+import { quickActionsShortcutLabel } from './navigation/quick-actions';
 import {
   HELP_SHORTCUT_ARIA,
+  HELP_SHORTCUT_LABEL,
   isHelpShortcut,
   isPaletteShortcut,
+  listKeyboardShortcuts,
   PALETTE_SHORTCUT_ARIA,
   type ShortcutEvent,
 } from './shortcuts';
@@ -83,5 +86,42 @@ describe('advertised shortcut names', () => {
   it('exposes the aria-keyshortcuts strings the buttons carry', () => {
     expect(PALETTE_SHORTCUT_ARIA).toBe('Control+K Meta+K');
     expect(HELP_SHORTCUT_ARIA).toBe('Shift+/');
+  });
+});
+
+describe('listKeyboardShortcuts', () => {
+  it('names every shortcut once, each with an instruction and printed keys', () => {
+    const shortcuts = listKeyboardShortcuts('');
+
+    expect(shortcuts.map((shortcut) => shortcut.id)).toEqual(['palette', 'help', 'dismiss']);
+    expect(new Set(shortcuts.map((shortcut) => shortcut.id)).size).toBe(shortcuts.length);
+
+    shortcuts.forEach((shortcut) => {
+      expect(shortcut.action.trim().length).toBeGreaterThan(0);
+      expect(shortcut.keys.trim().length).toBeGreaterThan(0);
+    });
+  });
+
+  it('prints the palette shortcut for the platform the reader is on', () => {
+    expect(listKeyboardShortcuts('MacIntel').find((shortcut) => shortcut.id === 'palette')?.keys).toBe('⌘K');
+    expect(listKeyboardShortcuts('Win32').find((shortcut) => shortcut.id === 'palette')?.keys).toBe('Ctrl K');
+  });
+
+  it('advertises exactly the keys that fire the handlers', () => {
+    const shortcuts = listKeyboardShortcuts('MacIntel');
+    const palette = shortcuts.find((shortcut) => shortcut.id === 'palette');
+    const help = shortcuts.find((shortcut) => shortcut.id === 'help');
+
+    // The help row is the one the list exists for: its printed key is the key
+    // `isHelpShortcut` accepts, and `aria-keyshortcuts` names the same combination.
+    expect(help?.keys).toBe(HELP_SHORTCUT_LABEL);
+    expect(isHelpShortcut(event({ key: help?.keys ?? '', target: buttonTarget }))).toBe(true);
+    expect(HELP_SHORTCUT_ARIA).toBe('Shift+/');
+
+    // The palette row is the label the sidebar and the palette already print, and the
+    // spec it sits beside carries both platforms' modifiers.
+    expect(palette?.keys).toBe(quickActionsShortcutLabel('MacIntel'));
+    expect(PALETTE_SHORTCUT_ARIA).toContain('Meta+K');
+    expect(PALETTE_SHORTCUT_ARIA).toContain('Control+K');
   });
 });

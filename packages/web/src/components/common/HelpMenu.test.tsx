@@ -147,6 +147,18 @@ describe('HelpMenu', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
+  it('lists the shortcuts the handlers actually accept', () => {
+    renderMenu();
+    openMenu();
+
+    expect(screen.getByText('Keyboard shortcuts')).toBeInTheDocument();
+    expect(screen.getByText('Open the quick-actions palette')).toBeInTheDocument();
+    expect(screen.getByText('Open the Help menu')).toBeInTheDocument();
+    expect(screen.getByText('Esc')).toBeInTheDocument();
+    // `?` appears twice on purpose: once as the page-help hint, once as the help row.
+    expect(screen.getAllByText('?').length).toBeGreaterThanOrEqual(2);
+  });
+
   it('links to the Help Center, the release notes and About', () => {
     renderMenu();
     openMenu();

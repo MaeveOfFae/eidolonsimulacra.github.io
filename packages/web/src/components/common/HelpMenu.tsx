@@ -2,7 +2,7 @@ import { useCallback, useEffect, useId, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ArrowRight, BookOpen, CircleHelp, PlayCircle, RotateCcw } from 'lucide-react';
 import type { PageHelpEntry } from '@/lib/help';
-import { HELP_SHORTCUT_ARIA } from '@/lib/shortcuts';
+import { HELP_SHORTCUT_ARIA, HELP_SHORTCUT_LABEL, listKeyboardShortcuts } from '@/lib/shortcuts';
 import { cn } from '@/utils/cn';
 import { useGuidedTour } from './GuidedTourContext';
 import { useDismissableLayer } from './useDismissableLayer';
@@ -109,7 +109,7 @@ export default function HelpMenu({
                 <span className="flex items-center gap-2">
                   <span className="text-sm font-semibold text-foreground">Help for this page</span>
                   <kbd className="rounded border border-border/70 bg-background/60 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
-                    ?
+                    {HELP_SHORTCUT_LABEL}
                   </kbd>
                 </span>
                 <span className="mt-1 line-clamp-2 block text-xs leading-5 text-muted-foreground">{entry.summary}</span>
@@ -122,6 +122,7 @@ export default function HelpMenu({
           )}
 
           <HelpMenuTours onClose={close} />
+          <HelpMenuShortcuts />
           <HelpMenuLinks onClose={close} />
         </div>
       ) : null}
@@ -184,6 +185,25 @@ function HelpMenuTours({ onClose }: HelpMenuSectionProps) {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+/** The advertised shortcuts, read from the same constants the handlers use. */
+function HelpMenuShortcuts() {
+  return (
+    <div className="mt-4 border-t border-border/50 pt-3">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Keyboard shortcuts</p>
+      <dl className="mt-2 space-y-1.5">
+        {listKeyboardShortcuts().map((shortcut) => (
+          <div key={shortcut.id} className="flex items-center justify-between gap-3 text-xs">
+            <dt className="min-w-0 flex-1 truncate text-muted-foreground">{shortcut.action}</dt>
+            <dd className="shrink-0 rounded border border-border/70 bg-background/60 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+              {shortcut.keys}
+            </dd>
+          </div>
+        ))}
+      </dl>
     </div>
   );
 }
