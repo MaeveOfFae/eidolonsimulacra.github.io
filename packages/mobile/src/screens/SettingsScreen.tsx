@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { CameraView } from 'expo-camera';
 import CollapsibleTray from '../components/CollapsibleTray';
+import HelpTooltip from '../components/HelpTooltip';
 import { Cog6ToothIcon } from '../components/Icons';
 import { getSelectedDesktopCompanionSyncDomains } from '@char-gen/shared';
 import { useSettingsScreen } from './settings/use-settings-screen';
@@ -89,6 +90,7 @@ export default function SettingsScreen({ navigation, route }: SettingsScreenProp
     <ScrollView ref={scrollViewRef} style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Settings</Text>
       <Text style={styles.subtitle}>Provider, model, and device storage.</Text>
+      <HelpTooltip screen="Settings" label="Help" />
 
       <View style={[styles.statusCard, styles.statusCardReady]}>
         <View style={styles.statusHeader}>

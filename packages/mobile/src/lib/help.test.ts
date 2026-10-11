@@ -5,12 +5,15 @@ import {
   guidedTours,
   helpCategories,
   helpTopics,
+  pageHelpEntries,
   type GuidedTour,
 } from '@char-gen/shared';
 import {
   addCompletedTour,
   buildHelpCenterSummary,
+  buildHelpEntryLabel,
   buildMobileGettingStartedSteps,
+  buildMobileHelpIndex,
   buildTourMetaLabel,
   buildTourStepLabel,
   buildTourStepPreview,
@@ -20,7 +23,11 @@ import {
   getPreviousTourStepIndex,
   groupHelpTopicsByCategory,
   isTourCompleted,
+  listScreensWithHelp,
+  listScreensWithoutHelp,
   mapHelpTarget,
+  mobileScreenHelpIds,
+  resolveMobileScreenHelp,
 } from './help';
 
 function buildTour(overrides: Partial<GuidedTour> = {}): GuidedTour {
@@ -37,6 +44,104 @@ function buildTour(overrides: Partial<GuidedTour> = {}): GuidedTour {
     ...overrides,
   };
 }
+
+describe('mobile screen help', () => {
+  it('points every mapped screen at an entry the shared data actually has', () => {
+    const entryIds = new Set(pageHelpEntries.map((entry) => entry.id));
+
+    Object.entries(mobileScreenHelpIds).forEach(([screen, id]) => {
+      if (id !== null) {
+        // Reported per screen rather than as one boolean, so a failure names the map key.
+        expect({ screen, id, known: entryIds.has(id) }).toEqual({ screen, id, known: true });
+      }
+    });
+  });
+
+  it('resolves an entry for every screen it claims to cover', () => {
+    const covered = listScreensWithHelp();
+
+    expect(covered.length).toBeGreaterThan(0);
+    covered.forEach((screen) => {
+      expect(resolveMobileScreenHelp(screen)).not.toBeNull();
+    });
+  });
+
+  it('names exactly the screens that deliberately have no help', () => {
+    // A screen joining this list is a decision, not a mapping someone forgot.
+    expect(listScreensWithoutHelp().sort()).toEqual(['Chat', 'Download', 'LorebookGenerator']);
+  });
+
+  it('answers null for those screens rather than borrowing a neighbour', () => {
+    listScreensWithoutHelp().forEach((screen) => {
+      expect(resolveMobileScreenHelp(screen)).toBeNull();
+    });
+  });
+
+  it('covers the screens a user actually lands on', () => {
+    expect(resolveMobileScreenHelp('HomeRoot')?.id).toBe('home');
+    expect(resolveMobileScreenHelp('Generate')?.id).toBe('generate');
+    expect(resolveMobileScreenHelp('DraftsList')?.id).toBe('drafts');
+    expect(resolveMobileScreenHelp('DraftDetail')?.id).toBe('draft-review');
+    expect(resolveMobileScreenHelp('Templates')?.id).toBe('templates');
+    expect(resolveMobileScreenHelp('Settings')?.id).toBe('settings');
+  });
+
+  it('gives a tab and its stack root the same answer, since they are one surface', () => {
+    expect(mobileScreenHelpIds.Home).toBe(mobileScreenHelpIds.HomeRoot);
+    expect(mobileScreenHelpIds.Drafts).toBe(mobileScreenHelpIds.DraftsList);
+  });
+
+  it('returns null instead of throwing when the shared entry has gone', () => {
+    // `pageHelpEntries` is shared data that another package authors; a screen must not
+    // crash because help moved. Real entries still resolve when they are there.
+    expect(resolveMobileScreenHelp('Generate', [])).toBeNull();
+    expect(resolveMobileScreenHelp('Generate', pageHelpEntries)?.id).toBe('generate');
+  });
+});
+
+describe('help entry labels and the Help Center index', () => {
+  it('prints the screen name from the authored title', () => {
+    expect(buildHelpEntryLabel({ title: 'Generate help' })).toBe('Generate');
+    expect(buildHelpEntryLabel({ title: 'Draft review help' })).toBe('Draft review');
+    // A title that does not carry the suffix is left alone.
+    expect(buildHelpEntryLabel({ title: 'Templates' })).toBe('Templates');
+  });
+
+  it('leaves no authored entry with an empty or still-suffixed label', () => {
+    pageHelpEntries.forEach((entry) => {
+      const label = buildHelpEntryLabel(entry);
+
+      // Reported per entry, so a failure names the one that broke the rule.
+      expect({ id: entry.id, empty: label.length === 0 }).toEqual({ id: entry.id, empty: false });
+      expect(label.toLowerCase().endsWith('help')).toBe(false);
+    });
+  });
+
+  it('indexes one row per screen with help, and no duplicates', () => {
+    const rows = buildMobileHelpIndex();
+
+    expect(rows.length).toBeGreaterThan(0);
+    expect(new Set(rows.map((row) => row.entry.id)).size).toBe(rows.length);
+
+    rows.forEach((row) => {
+      expect(resolveMobileScreenHelp(row.screen)?.id).toBe(row.entry.id);
+      expect(row.label.length).toBeGreaterThan(0);
+      expect(row.summary.length).toBeGreaterThan(0);
+    });
+  });
+
+  it('lists a screen once even when its tab and stack root share an entry', () => {
+    const labels = buildMobileHelpIndex().map((row) => row.label);
+
+    expect(labels.filter((label) => label === 'Home')).toHaveLength(1);
+    expect(labels).toContain('Generate');
+    expect(labels).toContain('Draft review');
+  });
+
+  it('drops rows whose entry is missing rather than rendering a blank one', () => {
+    expect(buildMobileHelpIndex([])).toEqual([]);
+  });
+});
 
 describe('groupHelpTopicsByCategory', () => {
   it('groups the shared topics in the authored category order', () => {

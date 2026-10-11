@@ -6,6 +6,7 @@ import { releaseNotes, PROJECT_SUPPORT_URL, supportGuidance } from '@char-gen/sh
 import type { ThemeColors } from '@char-gen/shared';
 import { api } from '../config/api';
 import CollapsibleTray from '../components/CollapsibleTray';
+import HelpTooltip from '../components/HelpTooltip';
 import { useTheme } from '../theme/ThemeProvider';
 import {
   SparklesIcon,
@@ -180,6 +181,7 @@ export default function HomeScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>Eidolon Simulacra</Text>
         <Text style={styles.subtitle}>Generate, refine, and manage drafts.</Text>
+        <HelpTooltip screen="HomeRoot" label="Help" />
       </View>
 
       <CollapsibleTray

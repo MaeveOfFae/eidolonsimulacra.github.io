@@ -9,14 +9,17 @@ import {
   type HelpActionLink,
   type HelpGuideStep,
   type HelpTopic,
+  type PageHelpEntry,
   type ThemeColors,
 } from '@char-gen/shared';
 import CollapsibleTray from '../components/CollapsibleTray';
+import HelpSheet from '../components/HelpSheet';
 import { BookOpenIcon, ClockIcon, QuestionMarkCircleIcon } from '../components/Icons';
 import {
   addCompletedTour,
   buildHelpCenterSummary,
   buildMobileGettingStartedSteps,
+  buildMobileHelpIndex,
   buildTourMetaLabel,
   buildTourStepLabel,
   buildTourStepPreview,
@@ -43,6 +46,7 @@ export default function HelpCenterScreen() {
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('All');
   const [activeTour, setActiveTour] = useState<GuidedTour | null>(null);
   const [activeTourStepIndex, setActiveTourStepIndex] = useState(0);
+  const [screenHelpEntry, setScreenHelpEntry] = useState<PageHelpEntry | null>(null);
 
   const { data: config = getStoredDeviceConfig() } = useQuery({
     queryKey: ['device-config'],
@@ -59,6 +63,7 @@ export default function HelpCenterScreen() {
     [categoryFilter, topicGroups],
   );
   const guideSteps = useMemo(() => buildMobileGettingStartedSteps(), []);
+  const screenHelpIndex = useMemo(() => buildMobileHelpIndex(), []);
 
   const handleOpenTarget = (to: string) => {
     const destination = mapHelpTarget(to);
@@ -121,6 +126,38 @@ export default function HelpCenterScreen() {
             onOpenTarget={handleOpenTarget}
             styles={styles}
           />
+        ))}
+      </CollapsibleTray>
+
+      {/* The web app puts page help behind a header menu keyed to the current route;
+          mobile has no such chrome, so the same content is an index of screens. */}
+      <CollapsibleTray
+        title="Screen help"
+        subtitle={`${screenHelpIndex.length} screens have page help`}
+        preview={
+          <Text style={styles.trayPreviewText}>
+            {screenHelpIndex
+              .slice(0, 3)
+              .map((row) => row.label)
+              .join(' • ')}
+          </Text>
+        }
+      >
+        {screenHelpIndex.map((row) => (
+          <TouchableOpacity
+            key={row.screen}
+            style={styles.helpIndexRow}
+            onPress={() => setScreenHelpEntry(row.entry)}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={`${row.label} help`}
+            accessibilityHint={row.summary}
+          >
+            <Text style={styles.helpIndexLabel}>{row.label}</Text>
+            <Text style={styles.helpIndexSummary} numberOfLines={2}>
+              {row.summary}
+            </Text>
+          </TouchableOpacity>
         ))}
       </CollapsibleTray>
 
@@ -220,6 +257,13 @@ export default function HelpCenterScreen() {
         Link targets that only exist in the browser app are shown as plain text here, because mobile does not ship those
         pages yet.
       </Text>
+
+      <HelpSheet
+        entry={screenHelpEntry}
+        visible={screenHelpEntry !== null}
+        onClose={() => setScreenHelpEntry(null)}
+        onOpenTarget={handleOpenTarget}
+      />
 
       {activeTour ? (
         <TourRunnerModal
@@ -493,6 +537,24 @@ function buildStyles(colors: ThemeColors) {
     trayPreviewText: {
       color: colors.muted_text,
       fontSize: 12,
+    },
+    helpIndexRow: {
+      backgroundColor: colors.window,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 12,
+      padding: 12,
+      gap: 4,
+    },
+    helpIndexLabel: {
+      color: colors.text,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    helpIndexSummary: {
+      color: colors.muted_text,
+      fontSize: 12,
+      lineHeight: 18,
     },
     guideStepCard: {
       backgroundColor: colors.window,

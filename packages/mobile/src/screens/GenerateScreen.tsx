@@ -20,6 +20,7 @@ import {
 } from '@char-gen/shared';
 import { api } from '../config/api';
 import CollapsibleTray from '../components/CollapsibleTray';
+import HelpTooltip from '../components/HelpTooltip';
 import { SparklesIcon, DocumentTextIcon, TrashIcon } from '../components/Icons';
 import { useTheme } from '../theme/ThemeProvider';
 import type { GenerateRouteProp, RootTabNavigationProp } from '../types/navigation';
@@ -345,6 +346,7 @@ export default function GenerateScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Generate</Text>
       <Text style={styles.subtitle}>Start from a seed or imported source.</Text>
+      <HelpTooltip screen="Generate" label="Help" />
 
       {resumableSession && !isGenerating && (
         <View style={styles.resumeCard}>

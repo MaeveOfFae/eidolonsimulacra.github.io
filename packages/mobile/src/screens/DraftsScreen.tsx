@@ -25,6 +25,7 @@ import {
 } from '@char-gen/shared';
 import { api } from '../config/api';
 import CollapsibleTray from '../components/CollapsibleTray';
+import HelpTooltip from '../components/HelpTooltip';
 import { useTheme } from '../theme/ThemeProvider';
 import { exportAllDrafts, importDrafts } from '../local/draft-store';
 import {
@@ -504,6 +505,7 @@ export default function DraftsScreen() {
         <TouchableOpacity style={styles.toolbarButton} onPress={() => void handleExportAll()}>
           <Text style={styles.toolbarButtonText}>Export all</Text>
         </TouchableOpacity>
+        <HelpTooltip screen="DraftsList" label="Help" />
       </ScrollView>
 
       {/* Search Bar */}

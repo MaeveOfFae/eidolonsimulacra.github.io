@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ThemeColors } from '@char-gen/shared';
 import { api } from '../config/api';
 import CollapsibleTray from '../components/CollapsibleTray';
+import HelpTooltip from '../components/HelpTooltip';
 import { StarIcon, DocumentTextIcon } from '../components/Icons';
 import { useTheme } from '../theme/ThemeProvider';
 import { getErrorMessage } from '../utils/errors';
@@ -151,6 +152,7 @@ export default function TemplatesScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>Templates</Text>
         <Text style={styles.subtitle}>Asset sets and generation structure.</Text>
+        <HelpTooltip screen="Templates" label="Help" />
         <View style={styles.headerActions}>
           <TouchableOpacity style={styles.headerActionSecondary} onPress={() => void handleImport()}>
             <Text style={styles.headerActionSecondaryText}>Import template</Text>
