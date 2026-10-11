@@ -3,6 +3,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { Trash2 } from 'lucide-react';
 import type { WorldRecord } from '@char-gen/shared';
 import { api } from '@/lib/api';
+import WorldbookSection from './WorldbookSection';
 import WorldCharactersSection from './WorldCharactersSection';
 import WorldCanonLibrarySection from './WorldCanonLibrarySection';
 import WorldCanonLocksSection from './WorldCanonLocksSection';
@@ -27,7 +28,8 @@ type WorldDetailTab =
   | 'factions'
   | 'locations'
   | 'canon-locks'
-  | 'canon-library';
+  | 'canon-library'
+  | 'worldbook';
 
 export default function WorldDetailEditorPanel({ world, canEdit, onRefresh, onDeleted }: WorldDetailEditorPanelProps) {
   const [activeTab, setActiveTab] = useState<WorldDetailTab>('details');
@@ -93,6 +95,7 @@ export default function WorldDetailEditorPanel({ world, canEdit, onRefresh, onDe
     { id: 'locations', label: 'Locations', count: locations.length },
     { id: 'canon-locks', label: 'Canon locks', count: canonLocks.length },
     { id: 'canon-library', label: 'Canon library', count: canonEntries.length },
+    { id: 'worldbook', label: 'Worldbook', count: null },
   ];
 
   return (
@@ -269,6 +272,8 @@ export default function WorldDetailEditorPanel({ world, canEdit, onRefresh, onDe
           onRefresh={onRefresh}
         />
       )}
+
+      {activeTab === 'worldbook' && <WorldbookSection world={world} />}
     </div>
   );
 }

@@ -102,7 +102,7 @@ These are staged or explicitly "planned" on web, so they must not be built for p
 - Event tracking (web `/events`: *"Event tracking is staged, not live."*)
 - Batch scheduling and reusable batch presets (web `/batch`: *"Not live"*)
 - Export preview and publishing flows (web: *"Planned Export Extras"*)
-- World canon / worldbook / universe-notes / canon-lock modules
+- World canon, worldbook, universe notes, canon locks, and the canon library — **desktop-only by decision**, not staged (see [`WORLDBUILDING_DECISION.md`](WORLDBUILDING_DECISION.md)): they ship on web/desktop and are deliberately out of scope for mobile
 - Timeline event editing and the continuity assistant/checker
 - Theme Studio and Tokenizer authoring surfaces (web-only by design)
 - Usage Insights (`/insights`, shipped in the 4.1 web/desktop line, extended with scorecards, per-model pricing, and CSV/JSON export in 4.5): mobile records no usage and ships no Insights screen. The shared record and pricing contracts in `packages/shared/src/usage/records.ts` and `usage/pricing.ts` are runtime-free, so a mobile store could adopt the same formats later without forking them
