@@ -808,12 +808,26 @@ The same packet format is shared across surfaces.
 
 **Help:**
 
-1. Press **?** to open help for the current page (ignored while typing in a
-   field).
-2. Or open **Help Center** (`/help`) for the starter guide, topic library, and
-   walkable guided tours.
-3. Tours spotlight the relevant control; `?` also advertises its shortcut via
+1. Press **?** to open the **Help menu**, or use the **Help** button in the app
+   frame — one menu at every width, rather than a hover card on desktop and a bare
+   button on mobile.
+2. The menu holds this page's help (the drawer opens from there), every guided
+   tour, the keyboard-shortcut list, and links to the Help Center, What's new and
+   About.
+3. `?` opens the menu even on the screens with no page-level help: the tours and
+   the Help Center apply everywhere.
+4. Tours spotlight the relevant control, and **Help** advertises that shortcut via
    `aria-keyshortcuts`.
+5. **Tooltips:** hover an icon-only control — or focus it with Tab — to see a
+   one-line description. The tooltip is the control's *description*; its name is
+   the control's own label, so a screen reader announces both.
+
+**Gotchas**
+
+- `?` is ignored while you are typing, so a question mark in a seed or a chat
+  message stays a question mark.
+- The menu closes on **Escape**, on a press anywhere outside it, and when you
+  navigate — so it can never cover the screen you just asked for.
 
 **Workspace modes:**
 
@@ -853,7 +867,7 @@ plus the Home and Drafts stacks.
 | Provider, model, keys, connection test, model refresh                     | **Settings**                                                                           |
 | Workspace bundle import/export, desktop companion pairing                 | **Settings → Device Link**                                                             |
 | What's New / release notes                                                | **Home → What's New**                                                                  |
-| Help Center, tours, info/legal                                            | **Home** cards                                                                         |
+| Help Center, screen help, tours, info/legal                              | **Home** cards; **Help** on each tab screen                                             |
 | Download page, Community                                                  | **Home → About** hub cards                                                             |
 | Theme picker (live retint)                                                | **Home → Theme Picker**                                                                |
 

@@ -23,6 +23,7 @@ Status legend: **parity** (already works on mobile), **gap** (missing, portable)
 | Cross-device transfer: workspace bundles + desktop companion pairing | `src/local/device-link.ts`, `src/local/desktop-companion.ts`, `SettingsScreen` |
 | Basic first-run guide + help state | `HomeScreen`, `HelpState` in `src/storage/device-config.ts` |
 | Help Center: starter guide, topic library, walkable guided tours | `HelpCenterScreen`, shared `helpTopics` / `gettingStartedSteps` / `guidedTours` in `packages/shared/src/help.ts` |
+| Page help per screen: a **Help** trigger on the five tab screens opening a themed sheet, plus a screen index in the Help Center | `HelpTooltip`, `HelpSheet`, `mobileScreenHelpIds` + `buildMobileHelpIndex` in `src/lib/help.ts`. Same shared entries and the same `buildHelpEntrySections` output as web; touch gets a sheet rather than a hover tooltip, and the one-line summary rides along as `accessibilityHint`. Draft detail is reached through the index rather than a trigger of its own — its header is assembled from four sub-components, so a trigger there is a layout decision rather than a copy of the tab screens' one-liner |
 | Info / legal: About hub, Community, License, Terms, Privacy, Security, Code of Conduct | `AboutScreen`, `CommunityScreen`, `InfoDocumentScreen`, shared content in `packages/shared/src/info/` |
 | Download page: desktop installers and the Android APK (iOS pending), with sizes and caveats | `DownloadScreen`, shared `downloadChannels` in `packages/shared/src/info/download.ts` |
 
