@@ -44,9 +44,7 @@ async function drain<T>(iterable: AsyncIterable<T>): Promise<T[]> {
 
 describe('GenerationService.generateLorebook', () => {
   it('streams status → chunks → complete for a reference packet', async () => {
-    const events = await drain(
-      GenerationService.generateLorebook({ draft_ids: ['draft-1'], blueprint_content: 'bp' }),
-    );
+    const events = await drain(GenerationService.generateLorebook({ draft_ids: ['draft-1'], blueprint_content: 'bp' }));
 
     const types = events.map((event) => event.type);
     expect(types).toContain('status');

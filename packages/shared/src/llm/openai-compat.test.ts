@@ -410,10 +410,7 @@ describe('openai-compatible streaming robustness', () => {
 
     vi.stubGlobal(
       'fetch',
-      vi.fn(
-        async () =>
-          new Response(stalledStream, { status: 200, headers: { 'Content-Type': 'text/event-stream' } }),
-      ),
+      vi.fn(async () => new Response(stalledStream, { status: 200, headers: { 'Content-Type': 'text/event-stream' } })),
     );
 
     const engine = createEngine({ provider: 'openai', model: 'gpt-4o', apiKey: 'sk-test', timeout: 20 });
@@ -450,8 +447,7 @@ describe('openai-compatible streaming robustness', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(
-        async () =>
-          new Response(keepaliveStream, { status: 200, headers: { 'Content-Type': 'text/event-stream' } }),
+        async () => new Response(keepaliveStream, { status: 200, headers: { 'Content-Type': 'text/event-stream' } }),
       ),
     );
 
@@ -492,8 +488,7 @@ describe('openai-compatible streaming robustness', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(
-        async () =>
-          new Response(heartbeatStream, { status: 200, headers: { 'Content-Type': 'text/event-stream' } }),
+        async () => new Response(heartbeatStream, { status: 200, headers: { 'Content-Type': 'text/event-stream' } }),
       ),
     );
 
@@ -531,8 +526,7 @@ describe('openai-compatible streaming robustness', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(
-        async () =>
-          new Response(reasoningStream, { status: 200, headers: { 'Content-Type': 'text/event-stream' } }),
+        async () => new Response(reasoningStream, { status: 200, headers: { 'Content-Type': 'text/event-stream' } }),
       ),
     );
 
@@ -616,8 +610,6 @@ describe('openai-compatible streaming robustness', () => {
       setRuntimeLLMStreamingSupported(true);
     }
   });
-
-
 });
 
 describe('openai-compatible request timeout', () => {
@@ -634,4 +626,3 @@ describe('openai-compatible request timeout', () => {
     await expect(engine.generate(MESSAGES)).rejects.toThrow(/timed out/i);
   });
 });
-
