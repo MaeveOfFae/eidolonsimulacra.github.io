@@ -1,201 +1,138 @@
-# 5.2.0 — the publishing release
+# 5.3.0 — the canon release
 
-**Released 2026-10-06** · In the app: [`/whats-new`](/whats-new) · History: [`CHANGELOG.md`](../CHANGELOG.md)
+**Released 2026-10-11** · In the app: [`/whats-new`](/whats-new) · History: [`CHANGELOG.md`](../CHANGELOG.md)
 
-5.2 is the release where a draft leaves the app. Paste a chub.ai token in Settings, press **Test**,
-and the app verifies it against the live gateway, tells you who you are signed in as, and mints the
-scoped token publishing needs. Then take any draft, approve the character sheet, and publish it as a
-Chub character — mapped into the exact fields the gateway's V2 spec expects, gated by a preflight
-list that blocks a bad listing before a single request is made, and recorded on the draft so
-publishing again updates that character instead of creating a second one.
+5.3 is the release where a world stops being a folder of notes and becomes a constraint. A world now
+holds **canon locks** — the facts a derivative draft must not change — and they ride generation as
+additional rules for every draft linked to that world. It holds a **canon library** and **universe
+notes**, injected into that same generation as a dedicated `CANON CONTEXT` section. And the whole body
+of canon **exports as a worldbook**: the plaintext the app's own lorebook importer reads back, and
+SillyTavern's world-info shape.
 
-The rest of the release is the other half of the same promise. The provider layer was re-verified
-against all eight vendors' own documentation, Ollama became the out-of-the-box default and finally
-reachable from the desktop build, a scoped token that expires can heal itself instead of looping,
-`target="_blank"` links open in a real browser, and the sidebar stopped moving under the pointer.
+Two views make that material legible — a **relationship map** that draws a world's characters and
+relationships deterministically, and **`/events`**, a date-aware calendar over every world's timeline —
+and comparison runs grew up: `/compare` now runs one to four seeds through a two-to-four model matrix in
+a single pass.
 
-Draft for the `v5.2.0` release body: everything from "Publish a draft to chub.ai" down to
-"Where to look".
+All of it is desktop-persisted worldbuilding, which remains desktop-only by decision
+([`docs/WORLDBUILDING_DECISION.md`](WORLDBUILDING_DECISION.md)). The canon channel is not: the
+`CANON CONTEXT` section, the relationship map and `/events` are ordinary screens over data the desktop
+store already holds.
 
-Suggested tag: `v5.2.0`, titled "the publishing release" — earlier releases are tagged as
-lightweight tags (`v5.1.0` points straight at its release commit).
+Draft for the `v5.3.0` release body: everything from "Canon locks" down to "Where to look".
 
-## Publish a draft to chub.ai
+Suggested tag: `v5.3.0`, titled "the canon release" — earlier releases are tagged as lightweight tags
+(`v5.2.0` points straight at its release commit).
 
-**Settings → Chub is the whole connection.** Paste a token, press **Test**, and the gateway verifies
-you: the app shows the signed-in account and mints a scoped projects-CRUD token for publishing.
-Disconnect clears the connection. The verification has to be real, so it gates on `GET /api/self`
-answering with a positive account id *and* a non-stub username — an unauthenticated call to that same
-endpoint answers `200` with an anonymous stub (`id: -22358`, `name: "You"`) rather than a 401.
+## Canon locks
 
-**A draft becomes a character in the shape the spec asks for.** The mapper is V2-aware, including the
-gateway's naming quirk (`description` carries creator notes, `personality` carries the V2
-`description`): character sheet → persona, creator notes → notes, intro scene → first message, post
-history → `<START>`-wrapped example dialogs, system prompt and card image → their fields. Name,
-tagline, tags, rating and visibility are editable in the panel before anything is sent.
+**A lock is a fact a derivative draft must not change.** The world editor's **Canon locks** tab records
+them, scoped either to the world or to one of its characters, factions, locations, or timelines, so
+"the city burned in 1204" binds every draft that belongs to the world while a character-scoped lock
+binds only the drafts that carry that character.
 
-**Preflight runs before the request, not after the rejection.** A listed character needs its three
-tags, a greeting is required, macros are checked for hygiene, and alternate greetings must be wrapped
-in `<START>`. Each unmet rule is named in the panel and blocks the publish.
+**Linking is what makes it bind.** A draft linked to a world — directly, as a connected reference, or as
+an offspring parent — inherits that world's locks during per-asset regeneration, refinement, offspring
+seed and character generation, and reference-based generation. They arrive as additional rules
+(`ADDITIONAL RULES:` / `ADDITIONAL INSTRUCTIONS:`), the same path a constraint set already used, and the
+tab renders the exact constraint block generation receives, so what you see is what is sent.
 
-**Republishing updates; it does not duplicate.** The Chub record — username, pathname, character id —
-is stored on the draft as `metadata.chub_publish`, so the next publish issues `PUT` against the same
-character.
+**It persists and travels.** Locks live in their own `world_canon_locks` table and travel with the
+workspace lore export/import.
 
-**It lives where you are working.** The panel sits under the character sheet for in-context
-publishing, and the review header now carries a **Publish to Chub** button next to Export that opens
-the same panel in the standard dialog shell (Escape, backdrop, focus trap, scroll lock — the same
-contract as every other overlay). Both surfaces keep the same approval gate: the character sheet is
-approved first, or there is nothing to publish. The guided tour's description of the review header
-mentions it now too.
+## A canon library and universe notes
 
-Mobile does not ship the Chub connection. The shared client is runtime-free and transport-agnostic
-precisely so a mobile surface can adopt it without forking, and
-[`docs/MOBILE_PARITY.md`](MOBILE_PARITY.md) records that as a decision rather than an omission.
+**Setting material, categorised.** The **Canon library** tab holds titled entries in one of four
+categories (`trait`, `lore`, `relationship`, `setting`), each with a one-line summary, an optional
+long-form body, and tags. Entries filter by category, and the tab renders the canon context block that
+generation receives.
 
-## Tokens that tell you the truth
+**The framing you keep re-explaining.** The **Universe notes** tab holds free-form text — tone,
+continuity reminders, how magic feels — pinned or unpinned, with pinned notes leading both the list and
+the context block.
 
-The help told people to paste `URQL_TOKEN`, which is chub.ai's *session* JWT — it expires on Chub's
-schedule no matter how often it is re-copied, and two flows handled that badly.
+**Both ride one channel.** For a draft linked to the world, the library entries and the notes are merged
+into a single `CANON CONTEXT` section on the prompt (`resolveCanonContext`), kept separate from the
+canon-lock rules so constraints and context stay distinguishable in the prompt and in the UI. Universe
+notes are prepended, because they are the framing the rest of the material is read in.
 
-**Expiry is visible now.** The token field decodes the JWT's `exp` claim (opaque keys show nothing)
-and says either "Session token expired … — paste a fresh URQL_TOKEN" in red, or a calm notice while
-the token is still valid. **Test** short-circuits an expired token with that remedy instead of
-spending a request on a guaranteed 401.
+## Export the world: the worldbook
 
-**A stale scoped token heals itself.** Publishing prefers the minted `publish_token`, but the mint
-only ran while that field was empty — so once the scoped token went stale, pasting a fresh session
-token and pressing Test could never replace it, and publishing stayed on "expired" indefinitely
-(Disconnect was the only escape). A 401 on the scoped token now re-mints from the session token,
-retries once, and hands the new token back so the panel persists it. A 401 on the session token
-itself still stops and asks for a fresh paste, because that is the only real fix: the gateway's spec
-defines no refresh endpoint, and issuance lives on chub.ai.
+**One projection, two formats.** The world editor's **Worldbook** tab projects the world's canon — its
+details, characters, factions, locations, timelines, canon locks, and canon-library entries — into
+portable setting entries, and exports them as the `[[LOREBOOK_PACKET]]` plaintext the app's own
+lorebook importer reads back, or as a SillyTavern-style world-info JSON.
 
-**The diagnosis was the fix.** Live-probing the gateway with a real token showed the split that caused
-all of it — `/api/self` → `200` with the actual account, `/oauth/userinfo` → `401 {"detail":"This
-token is expired."}`, and the scoped-token mint → `200`, all with the same token. Chub's misleading
-catch-all is now only a best-effort enrichment of the profile, never the gate.
+**The preview cannot drift from the file.** The projection is a pure function (`buildWorldbook`), so the
+preview in the tab and the file you download are built from the same values instead of being rendered
+twice.
 
-## Every provider, checked against its own docs
+## The relationship map
 
-Eight providers, eight documentation sites, and the base URLs did not all match: Z.AI moved to
-`https://api.z.ai/api/paas/v4`, Kimi/Moonshot to `https://api.moonshot.ai/v1`, Anthropic's endpoint
-was carrying a stray `/v1`, and DeepSeek was synced to `/v1`. OpenAI, OpenRouter, Google and the
-local Ollama host were re-confirmed against the same docs.
+**Deterministic by construction.** The **Relationships** tab draws every character as a node on a ring
+and every relationship as a labelled edge, computed by a pure layout module — so a given world always
+renders the same picture, and a review of "what changed" is a real diff rather than a redraw.
 
-**Model listing works for all eight.** Anthropic's Models API is `/v1/models` on a base URL that has
-no `/v1`; Google answers `models[]` rather than `data[]`, so the `models/` prefix is stripped and
-`inputTokenLimit` becomes `context_length`. Google used to parse to an empty list and Anthropic
-404'd; both list remotely now, alongside the rest.
+**Unrenderable records are reported, not dropped.** Relationships whose characters are missing are
+counted, and self-referential records are called out; neither becomes a stray line or a silent gap. This
+replaces the staged **Relationship** placeholder that used to sit in that tab.
 
-**Bare model ids route correctly.** `deepseek-*`, `glm-*`, `kimi-*`, `o3`/`o4` (regex) and `gpt-oss`
-(matched before `gpt-`, so it goes to Ollama) each detect to the right provider, and unknown ids
-still fall to OpenRouter. The model suggestions were refreshed from the current catalogs, and every
-provider now links to its own documentation from the Runtime picker, the API-key editor and the Setup
-access card. "Moonshot" is labelled "Kimi (Moonshot)".
+## `/events`: one calendar across every world
 
-## Ollama: local out of the box, cloud when you want it
+**Dates are sorted as dates.** `/events` collects the timeline events from every world and treats `YYYY`,
+`YYYY-MM` and `YYYY-MM-DD` as real-world dates, sorting them numerically. Anything else — `1204 AF`, an
+age name, a season — is kept as an in-world label in its recorded order, and undated events are listed
+last rather than dropped. The screen filters by world.
 
-**Fresh installs start local.** The default engine is Ollama at `http://localhost:11434/v1` with
-model `gemma4` and no API key, so a machine already running Ollama works immediately — everyone else
-picks a provider as before. Web's config manager, mobile's default device config and the device-link
-sync baseline ship those same three values in lockstep, and Settings infers the provider with the
-engine's own detection rules, so bare ids like `gemma4` resolve and the panel always names the
-provider that will actually answer.
+**Events are still authored where they belong.** Creating and editing an event happens inside a world's
+timeline, in the world editor; `/events` reads that data. Event storage, ordering and editing is
+therefore no longer a roadmap item — it is the timeline editor you already had, plus a view over it.
 
-**Cloud is its own provider.** `ollama` now means **Ollama Cloud** (`https://ollama.com/v1`, the
-OpenAI-compatible surface — `/api` is the native protocol) and requires `OLLAMA_API_KEY`. The
-free-form base-URL override stopped being a per-provider field: it belongs to the ninth provider,
-**Custom**, which is also where local Ollama and any other OpenAI-compatible endpoint live. Custom
-refuses to run without a base URL and says where to set it; the transport fields (base URL, proxy
-key, Test) render only for Custom. Key hygiene is enforced with it: Ollama and Custom are
-own-key-only and never inherit another provider's key, and keyless Custom sends no auth header at
-all — which is exactly what a local server wants. Mobile gains the Ollama and Custom options with
-the same key rules, and "Use" pins `engine_mode: 'explicit'` so choosing Custom actually takes effect
-under auto-detection.
+## `/compare`: seeds and models in one pass
 
-**Local failures are diagnosed, not guessed.** A bare 403 from Ollama means the origin was refused —
-localhost origins are allowed, `http://tauri.localhost` and LAN origins are not — and the message now
-gives the fix (`OLLAMA_ORIGINS=*` on a restart) instead of a bare fetch error. Test Connection tests
-the model you will actually generate with, so Ollama's own "model not found, try pulling it first"
-reaches you rather than a generic failure, and a Runtime notice appears when the loaded model list
-does not contain the current model (prefix-normalised, so `openrouter/x` and `x` agree).
-
-## Desktop: direct connections, real links
-
-**Provider traffic no longer goes through the webview.** Every provider request — completions,
-streaming, model listing, Test Connection, and Settings' own custom-base ping — resolves its `fetch`
-through a runtime transport hook. On desktop that hook is Tauri's native HTTP plugin: there is no
-origin at all, so Ollama's origin refusal disappears and localhost listing, tests and streaming
-generation simply work (the plugin feeds a real `ReadableStream` and honours `AbortSignal`, so SSE
-and timeouts are intact). In the browser nothing changes — localhost origins are allowed, and other
-origins follow the `OLLAMA_ORIGINS` note in Settings.
-
-**`target="_blank"` finally leaves the app.** The desktop shell had no link handling at all, so
-provider docs, chub.ai character pages and the gateway all failed to open. One delegated click
-handler, installed once at startup and only on desktop runtimes, sends any `http(s)`/`mailto` anchor
-— nested elements included — to the OS default browser, while `#…` hash routes and ordinary clicks
-pass through untouched, so routing is unaffected.
-
-**The desktop build works end to end again.** `tauri build` refused to compile because the npm opener
-plugin had run ahead of crates.io (npm 2.7.0 has no matching crate); the npm side is pinned to
-`^2.5.5` to pair with the locked crate, and `pnpm desktop:build` now produces both 5.2.0 bundles —
-`Eidolon Simulacra_5.2.0_x64-setup.exe` and the x64 MSI.
-
-## Smaller fixes with long tails
-
-- **Publishing is one click from the review header.** The panel existed only in a collapsed card at
-  the bottom of the character sheet, which read as "no UI for publishing" once an account was
-  actually connected. The in-card panel remains, for publishing in context after review.
-- **A successful Test sticks.** Settings wrote the verification only into the unsaved draft, so
-  publishing right after still said "The token is stored but not verified yet — run Test …". The
-  outcome (`username`, `subscription`, `verified_at`, minted `publish_token`) is now written straight
-  to the persisted config, Disconnect clears the same fields there, and the config-change event it
-  fires stays signature-guarded on model/engine so the Settings panel cannot bounce mid-edit.
-- **The sidebar holds still.** With workspace modes left on Auto (the default), navigating promoted
-  whichever mode's screens you landed on to the top of the sidebar, so items moved under the pointer
-  as you clicked — Home un-promoted everything, Library re-promoted Review's screens, and back. Order
-  now follows only an explicitly chosen mode; Auto still names the frame and shows the "Following
-  this screen" hint, and the ⌘K palette still orders by the active mode. A new `Layout.test.tsx` pins
-  both halves — and fails against the old line.
-- **The Android package reports its real version.** The checked-in gradle project still carried the
-  React Native template defaults (`versionCode 1`, `versionName "0.1.0"`) and the APK build runs a raw
-  `assembleRelease` with no prebuild to overwrite them, so the installed app identified as 0.1.0 while
-  its own About screen said 5.2.0. Both it and `app.json` now carry `versionCode 12` and `5.2.0`,
-  restoring the bump-per-release convention.
+**One run, the whole matrix.** `/compare` takes one to four seeds and two to four models and runs every
+seed through every candidate, with per-candidate provider detection. Each `(seed, model)` cell saves an
+ordinary draft, linked by a comparison group, and the results matrix lines the cells up with the token,
+duration and outcome recorded in the usage log — so choosing a model is a reading of results rather than
+a memory of impressions.
 
 ## Under the hood
 
-- **The Chub client is runtime-free and transport-agnostic** (`shared/src/chub/`), and web drives it
-  with plain `fetch`: the gateway answers `Access-Control-Allow-Origin: *` with both auth headers
-  allowed, so unlike ComfyUI there is no native-plugin or CORS story to tell. It does 403 default
-  script user agents, so non-browser smoke scripts need a browser UA — browsers and webviews already
-  send one.
-- **The gateway's error bodies are handled as they arrive** — `{"detail": …}` for 401/403, FastAPI's
-  `detail[]` for 422 — and the create response's `id`/`fullPath` are treated as undocumented extras
-  with search and detail-endpoint fallbacks, so a schema change there degrades instead of breaking.
-- **Tests at the end of the release: 385 shared, 571 web, 155 mobile**, with `tsc` clean on web and
-  mobile, lint at zero errors, prettier clean, `build:web`, `cargo check`, and a full
-  `pnpm desktop:build`.
+- **The canon channel has one entry point.** `resolveCanonContext` merges canon locks (→ `constraints`)
+  and universe notes plus library entries (→ `context`), so every generation path that injects canon
+  inherits both halves instead of re-implementing the merge.
+- **Release-note links have to be reachable on mobile.** The first draft of this note linked `/worlds`
+  and `/events`; mobile's `whats-new.test.ts` fails when a shared note links anywhere mobile cannot
+  deep-link, and worldbuilding is desktop-only, so the note points at `/drafts`, `/lineage` and
+  `/whats-new` instead.
+- **Tests at the end of the release: 433 shared, 631 web, 155 mobile**, with `tsc` clean on web and
+  mobile, lint at zero errors, prettier clean, and the repository document checks (`check:roadmap`,
+  `check:placeholders`, `info:docs:check`, `release:notes:check`, `content:check`, `downloads:check`)
+  green. Three files that had drifted out of prettier's style — `lorebook-packets.ts`,
+  `llm/openai-compat.test.ts` and `services/generation.lorebook.test.ts` — were formatted, so
+  `format:check` passes again.
+- **The installers are not rebuilt yet.** The desktop bundles and the Android APK are still the 5.2.0
+  builds, and `download.ts` still names `v5.2.0`, exactly as `docs/DOWNLOADS.md` requires: create the
+  release and upload the assets first, then bump `RELEASE_VERSION`. `downloads:check` reports that
+  deliberately as a note rather than a failure.
 
 ## Upgrading
 
-Nothing to do, and nothing is deleted — no storage keys moved in this release, and existing drafts,
-settings and keys are read as they are. The version is 5.2.0 across the web app, the desktop build
-and the mobile app, and the desktop installers, the Android APK and the in-app About and Download
-surfaces all report it.
-
-Two defaults changed, and both are worth knowing about rather than undoing blindly. The engine now
-starts on local Ollama (`gemma4` on `http://localhost:11434/v1`) instead of OpenRouter, because the
-first run should not require a key. And a base-URL override is only read for the new **Custom**
-provider — so if you were pointing a provider at your own endpoint, pick Custom in Settings → Runtime
-and put the URL there to keep doing it. Every other provider now uses its documented endpoint.
+Nothing to do, and nothing is deleted — no storage keys moved in this release, and existing worlds,
+drafts, settings and keys are read as they are. The version is 5.3.0 across the web app, the desktop
+build and the mobile app. The desktop tables behind the new tabs (`world_canon_locks`,
+`world_canon_entries`, `world_universe_notes`) are created by the existing migration chain, so opening
+the app is the only step.
 
 ## Where to look
 
-- Connecting Chub, token expiry, what publishing sends, and the provider diagnostics: `?` on the page
-  you are on, or the [Help Center](/help).
-- Roadmap and what is *not* shipped: [`docs/ROADMAP.md`](ROADMAP.md) — the same claims the app's
-  **What's New → Upcoming Updates** panel shows.
-- Mobile parity against the web app: [`docs/MOBILE_PARITY.md`](MOBILE_PARITY.md).
+- Canon locks, the canon library, universe notes, the worldbook and the relationship map: `?` on the
+  world editor, or the [Help Center](/help).
+- Roadmap and what is *not* shipped — including the canon work still outstanding (family tree and
+  affiliation visualizations, the continuity assistant, conflict checking):
+  [`docs/ROADMAP.md`](ROADMAP.md), the same claims the app's **What's New → Upcoming Updates** panel
+  shows.
+- Mobile parity against the web app, and why worldbuilding is out of scope for it:
+  [`docs/MOBILE_PARITY.md`](MOBILE_PARITY.md) and
+  [`docs/WORLDBUILDING_DECISION.md`](WORLDBUILDING_DECISION.md).
 - Download and install: [`/download`](/download) and [`docs/DOWNLOADS.md`](DOWNLOADS.md).
