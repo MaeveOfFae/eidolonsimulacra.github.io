@@ -1,0 +1,2 @@
+import{j as t}from"./react-vendor-C34M-SVW.js";import{G as e,W as m,O as a}from"./index-D0ipvTSQ.js";import{r as i}from"./info-CmUanrs5.js";import{D as p}from"./DocumentPage-BWN0UyYj.js";import"./vendor-CKcOaSjX.js";import"./query-vendor-ok6D8ZWm.js";import"./router-vendor-8eoVtoOt.js";import"./markdownComponents-BHUtE3_3.js";import"./markdown-vendor-CoHPNM1b.js";function l(){const o=i(),r=e("privacy");return t.jsx(p,{eyebrow:r.eyebrow,title:r.title,summary:a("privacy",o),markdown:m("privacy",o)})}export{l as default};
+//# sourceMappingURL=PrivacyPage-C4tvGC4k.js.map
