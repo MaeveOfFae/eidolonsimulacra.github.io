@@ -263,6 +263,15 @@ If you are editing blueprints, start with `rules/60_blueprint_hard_rules.md` and
 - The `presets/` directory stores TOML preset definitions for raw packs and platform-oriented exports (`raw.toml`, `chubai.toml`, `risuai.toml`, `tavernai.toml`, `openrouter.toml`).
 - Theme and resource files tracked in `resources/` are repository assets; the current browser runtime uses built-in theme presets defined in code plus browser-stored customizations.
 
+## Documentation
+
+- [`README.md`](README.md) (this file) — what the product does today.
+- [`docs/HOW_TO.md`](docs/HOW_TO.md) — step-by-step instructions for every flow.
+- [`docs/ROADMAP.md`](docs/ROADMAP.md) — what is not finished yet.
+- [`docs/MOBILE_PARITY.md`](docs/MOBILE_PARITY.md) — mobile vs. web surface coverage.
+- [`docs/DOWNLOADS.md`](docs/DOWNLOADS.md) — hosting and shipping the build artifacts.
+- [`TODO.md`](TODO.md) — engineering debt and next steps.
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md), [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md), and [SECURITY.md](SECURITY.md).
