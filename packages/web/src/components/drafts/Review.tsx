@@ -844,7 +844,7 @@ export default function Review() {
 
   return (
     <div className="app-page space-y-5 pb-10 sm:space-y-6 sm:pb-12">
-      <input ref={imageInputRef} type="file" accept=".png,image/png" title="Attach PNG image" className="hidden" />
+      <input ref={imageInputRef} type="file" accept=".png,image/png" aria-label="Attach PNG image" className="hidden" />
       <ReviewHero
         metadata={draft.metadata}
         assetCountLabel={assetCountLabel}

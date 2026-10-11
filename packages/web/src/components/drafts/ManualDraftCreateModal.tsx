@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import type { Template } from '@char-gen/shared';
 import type { CreateDraftRequest } from '@/lib/api';
 import ModalOverlay from '../common/ModalOverlay';
+import Tooltip from '../common/Tooltip';
 
 interface ManualDraftCreateModalProps {
   templates: Template[];
@@ -87,15 +88,17 @@ export default function ManualDraftCreateModal({
                 Start a saved draft from a seed and template, then fill the asset slots manually or with AI in review.
               </p>
             </div>
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isSubmitting}
-              title="Close"
-              className="text-muted-foreground hover:text-foreground disabled:opacity-50"
-            >
-              <X className="h-5 w-5" />
-            </button>
+            <Tooltip label="Close">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={isSubmitting}
+                aria-label="Close"
+                className="text-muted-foreground hover:text-foreground disabled:opacity-50"
+              >
+                <X className="h-5 w-5" aria-hidden="true" />
+              </button>
+            </Tooltip>
           </div>
         </div>
 

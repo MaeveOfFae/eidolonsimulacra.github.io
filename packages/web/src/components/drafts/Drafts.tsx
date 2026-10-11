@@ -509,7 +509,7 @@ export default function Drafts() {
                 ref={importInputRef}
                 type="file"
                 accept="application/json,.json,text/markdown,.md,text/plain,.txt"
-                title="Upload draft files"
+                aria-label="Upload draft files"
                 className="hidden"
               />
               <button

@@ -63,7 +63,7 @@ export default function A1111TagLintPanel({ content, onApplyFixes, isSaving = fa
                 : `${errorCount} error${errorCount === 1 ? '' : 's'} · ${warningCount} warning${warningCount === 1 ? '' : 's'}`}
           </span>
           {lintQuery.data?.tier && (
-            <span className="app-pill app-pill-muted" title="Which Danbooru index tier produced these findings">
+            <span className="app-pill app-pill-muted">
               {lintQuery.data.tier === 'full' ? 'full index' : 'bundled core index'}
             </span>
           )}

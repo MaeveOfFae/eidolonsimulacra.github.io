@@ -49,7 +49,7 @@ export default function HoverHelpPopover({
       <div
         role="tooltip"
         className={cn(
-          'pointer-events-none invisible absolute top-full z-30 mt-3 w-[22rem] max-w-[min(22rem,calc(100vw-2rem))] translate-y-1 rounded-2xl border border-border/70 bg-card/98 p-4 opacity-0 shadow-2xl backdrop-blur-md transition-[opacity,transform,visibility] duration-200 ease-out group-hover:pointer-events-auto group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100',
+          'pointer-events-none invisible absolute top-full z-30 mt-3 w-[22rem] max-w-[min(22rem,calc(100vw-2rem))] translate-y-1 rounded-2xl border border-border/70 bg-card/95 p-4 opacity-0 shadow-2xl backdrop-blur-md transition-[opacity,transform,visibility] duration-200 ease-out group-hover:pointer-events-auto group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100',
           align === 'end' ? 'right-0' : 'left-0',
         )}
       >

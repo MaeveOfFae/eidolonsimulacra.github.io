@@ -31,6 +31,7 @@ import {
 } from '../lib/navigation/workspace-modes';
 import HoverHelpPopover from './common/HoverHelpPopover';
 import QuickActionsPalette from './common/QuickActionsPalette';
+import Tooltip from './common/Tooltip';
 import WorkspaceModeSwitcher from './common/WorkspaceModeSwitcher';
 
 interface LayoutProps {
@@ -373,22 +374,23 @@ export default function Layout({ children }: LayoutProps) {
                 />
 
                 {/* Quick-actions trigger. The palette itself opens from ⌘K anywhere. */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSidebarOpen(false);
-                    setPaletteOpen(true);
-                  }}
-                  aria-keyshortcuts={PALETTE_SHORTCUT_ARIA}
-                  title={`Quick actions (${QUICK_ACTIONS_SHORTCUT})`}
-                  className="mb-2 flex w-full items-center gap-2.5 rounded-lg border border-border/60 bg-background/40 px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
-                >
-                  <Search className="h-4 w-4 shrink-0" aria-hidden="true" />
-                  <span className="flex-1 truncate text-left">Quick actions</span>
-                  <kbd className="shrink-0 rounded border border-border/70 bg-background/60 px-1.5 py-0.5 font-mono text-[10px]">
-                    {QUICK_ACTIONS_SHORTCUT}
-                  </kbd>
-                </button>
+                <Tooltip label={`Quick actions (${QUICK_ACTIONS_SHORTCUT})`} wrapperClassName="mb-2 w-full">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSidebarOpen(false);
+                      setPaletteOpen(true);
+                    }}
+                    aria-keyshortcuts={PALETTE_SHORTCUT_ARIA}
+                    className="flex w-full items-center gap-2.5 rounded-lg border border-border/60 bg-background/40 px-3 py-2 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+                  >
+                    <Search className="h-4 w-4 shrink-0" aria-hidden="true" />
+                    <span className="flex-1 truncate text-left">Quick actions</span>
+                    <kbd className="shrink-0 rounded border border-border/70 bg-background/60 px-1.5 py-0.5 font-mono text-[10px]">
+                      {QUICK_ACTIONS_SHORTCUT}
+                    </kbd>
+                  </button>
+                </Tooltip>
 
                 {/* Collapsible sections (Characters, Worlds) come from the catalog. */}
                 {navSubmenuGroups.map((group) => (
@@ -483,16 +485,17 @@ export default function Layout({ children }: LayoutProps) {
                   Eidolon Simulacra
                 </span>
                 {pageHelp && (
-                  <button
-                    type="button"
-                    onClick={() => setHelpOpen(true)}
-                    aria-keyshortcuts={HELP_SHORTCUT_ARIA}
-                    title="Help for this page (?)"
-                    className="ml-auto inline-flex items-center gap-2 rounded-lg border border-border/60 bg-background/50 px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:border-primary/40 hover:text-primary"
-                  >
-                    <CircleHelp className="h-3.5 w-3.5" />
-                    Help
-                  </button>
+                  <Tooltip label="Help for this page (?)" wrapperClassName="ml-auto">
+                    <button
+                      type="button"
+                      onClick={() => setHelpOpen(true)}
+                      aria-keyshortcuts={HELP_SHORTCUT_ARIA}
+                      className="inline-flex items-center gap-2 rounded-lg border border-border/60 bg-background/50 px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:border-primary/40 hover:text-primary"
+                    >
+                      <CircleHelp className="h-3.5 w-3.5" aria-hidden="true" />
+                      Help
+                    </button>
+                  </Tooltip>
                 )}
               </header>
 
@@ -510,14 +513,15 @@ export default function Layout({ children }: LayoutProps) {
                         {desktopRuntime ? 'Native shell' : 'Web runtime'}
                       </span>
                       {ActiveModeIcon && activeMode ? (
-                        <Link
-                          to={activeMode.defaultRoute}
-                          title={`Go to the ${activeMode.label} workspace`}
-                          className="inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary transition-colors hover:border-primary/50 hover:bg-primary/15"
-                        >
-                          <ActiveModeIcon className="h-3 w-3" aria-hidden="true" />
-                          {activeMode.label}
-                        </Link>
+                        <Tooltip label={`Go to the ${activeMode.label} workspace`}>
+                          <Link
+                            to={activeMode.defaultRoute}
+                            className="inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary transition-colors hover:border-primary/50 hover:bg-primary/15"
+                          >
+                            <ActiveModeIcon className="h-3 w-3" aria-hidden="true" />
+                            {activeMode.label}
+                          </Link>
+                        </Tooltip>
                       ) : null}
                     </div>
                     <h1

@@ -18,6 +18,7 @@ import type { Blueprint } from '@char-gen/shared';
 import { api } from '@/lib/api';
 import CollapsibleSection from '../common/CollapsibleSection';
 import ModalOverlay from '../common/ModalOverlay';
+import Tooltip from '../common/Tooltip';
 import { useAssistantScreenContext } from '../common/useAssistantContext';
 import BlueprintLintPanel from './BlueprintLintPanel';
 import BlueprintSandboxPanel from './BlueprintSandboxPanel';
@@ -331,24 +332,28 @@ export default function Blueprints() {
                               </p>
                             </Link>
                             <div className="flex items-center gap-1">
-                              <Link
-                                to={editorPath}
-                                className="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
-                                title="Edit"
-                              >
-                                <Edit3 className="h-4 w-4" />
-                              </Link>
-                              <div className="relative">
-                                <button
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                    setActionMenuOpen(actionMenuOpen === blueprint.path ? null : blueprint.path);
-                                  }}
+                              <Tooltip label={`Edit ${blueprint.name}`}>
+                                <Link
+                                  to={editorPath}
+                                  aria-label={`Edit ${blueprint.name}`}
                                   className="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
-                                  title="More actions"
                                 >
-                                  <MoreVertical className="h-4 w-4" />
-                                </button>
+                                  <Edit3 className="h-4 w-4" aria-hidden="true" />
+                                </Link>
+                              </Tooltip>
+                              <div className="relative">
+                                <Tooltip label="More actions">
+                                  <button
+                                    aria-label={`More actions for ${blueprint.name}`}
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      setActionMenuOpen(actionMenuOpen === blueprint.path ? null : blueprint.path);
+                                    }}
+                                    className="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+                                  >
+                                    <MoreVertical className="h-4 w-4" aria-hidden="true" />
+                                  </button>
+                                </Tooltip>
                                 {actionMenuOpen === blueprint.path && (
                                   <>
                                     <div className="fixed inset-0 z-10" onClick={() => setActionMenuOpen(null)} />

@@ -13,6 +13,7 @@ import {
 } from '../../lib/services/generation-session.js';
 import { inferCharacterDisplayNameForTemplate } from '../../lib/templates/browser.js';
 import { loadReferenceSuites, normalizeConnectedReferenceIds } from '../../lib/prompting/reference-context.js';
+import Tooltip from '../common/Tooltip';
 
 interface GenerationProgressProps {
   seed: string;
@@ -795,18 +796,22 @@ export default function GenerationProgress({
 
           if (canRestartFrom) {
             return (
-              <button
+              <Tooltip
                 key={asset.name}
-                type="button"
-                onClick={() => void handleRestartFrom(asset.name)}
-                title={`Discard this asset and everything after it, then regenerate from ${asset.name}`}
-                aria-label={`Restart from ${asset.name}`}
-                className={`${chipClass} w-full text-left transition-colors hover:border-primary/60`}
+                label={`Discard this asset and everything after it, then regenerate from ${asset.name}`}
+                wrapperClassName="w-full"
               >
-                {getAssetIcon(asset.status)}
-                <span className="truncate">{asset.name}</span>
-                <RotateCcw className="ml-auto h-3 w-3 shrink-0 text-muted-foreground" />
-              </button>
+                <button
+                  type="button"
+                  onClick={() => void handleRestartFrom(asset.name)}
+                  aria-label={`Restart from ${asset.name}`}
+                  className={`${chipClass} w-full text-left transition-colors hover:border-primary/60`}
+                >
+                  {getAssetIcon(asset.status)}
+                  <span className="truncate">{asset.name}</span>
+                  <RotateCcw className="ml-auto h-3 w-3 shrink-0 text-muted-foreground" aria-hidden="true" />
+                </button>
+              </Tooltip>
             );
           }
 

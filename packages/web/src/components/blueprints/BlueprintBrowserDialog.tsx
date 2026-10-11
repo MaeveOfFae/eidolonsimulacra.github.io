@@ -20,6 +20,7 @@ import remarkGfm from 'remark-gfm';
 import { markdownComponents } from '../common/markdownComponents';
 import { cn } from '../../utils/cn';
 import ModalOverlay from '../common/ModalOverlay';
+import Tooltip from '../common/Tooltip';
 
 interface BlueprintBrowserDialogProps {
   open: boolean;
@@ -145,33 +146,37 @@ export default function BlueprintBrowserDialog({
       const isExisting = isExistingAsset(node.blueprint);
 
       return (
-        <button
+        <Tooltip
           key={node.id}
-          type="button"
-          onClick={() => handleSelect(node.blueprint!)}
-          onDoubleClick={() => {
-            if (!isExisting) {
-              handleSelect(node.blueprint!);
-              handleConfirm();
-            }
-          }}
-          className={cn(
-            'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent/50',
-            isSelected && 'bg-primary/20 text-primary',
-            isExisting && 'cursor-not-allowed opacity-50',
-          )}
-          style={{ paddingLeft: `${(depth + 1) * 1.15}rem` }}
-          title={isExisting ? 'This blueprint is already in use' : node.blueprint.description}
+          label={isExisting ? 'This blueprint is already in use' : node.blueprint.description || node.name}
+          wrapperClassName="w-full"
         >
-          {isExisting ? (
-            <X className="h-3 w-3 text-muted-foreground" />
-          ) : isSelected ? (
-            <Check className="h-3 w-3 text-primary" />
-          ) : (
-            <FileText className="h-3 w-3 text-muted-foreground" />
-          )}
-          <span className={cn('truncate', isExisting && 'line-through')}>{node.name}</span>
-        </button>
+          <button
+            type="button"
+            onClick={() => handleSelect(node.blueprint!)}
+            onDoubleClick={() => {
+              if (!isExisting) {
+                handleSelect(node.blueprint!);
+                handleConfirm();
+              }
+            }}
+            className={cn(
+              'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent/50',
+              isSelected && 'bg-primary/20 text-primary',
+              isExisting && 'cursor-not-allowed opacity-50',
+            )}
+            style={{ paddingLeft: `${(depth + 1) * 1.15}rem` }}
+          >
+            {isExisting ? (
+              <X className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
+            ) : isSelected ? (
+              <Check className="h-3 w-3 text-primary" aria-hidden="true" />
+            ) : (
+              <FileText className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
+            )}
+            <span className={cn('truncate', isExisting && 'line-through')}>{node.name}</span>
+          </button>
+        </Tooltip>
       );
     }
 

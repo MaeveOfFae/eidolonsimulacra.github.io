@@ -15,6 +15,7 @@ import {
   type Template,
 } from '@char-gen/shared';
 import { api } from '@/lib/api';
+import Tooltip from '../common/Tooltip';
 import type { Blueprint } from '@char-gen/shared';
 import {
   SCENARIO_PRESETS_CHANGED_EVENT,
@@ -828,14 +829,15 @@ export default function Generation() {
                           key={preset.id}
                           className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs"
                         >
-                          <button
-                            type="button"
-                            onClick={() => applyPreset(preset)}
-                            title={preset.description || preset.name}
-                            className="max-w-40 truncate text-foreground transition-colors hover:text-primary"
-                          >
-                            {preset.name}
-                          </button>
+                          <Tooltip label={preset.description || preset.name}>
+                            <button
+                              type="button"
+                              onClick={() => applyPreset(preset)}
+                              className="max-w-40 truncate text-foreground transition-colors hover:text-primary"
+                            >
+                              {preset.name}
+                            </button>
+                          </Tooltip>
                           <button
                             type="button"
                             aria-label={`Delete preset ${preset.name}`}
@@ -876,19 +878,19 @@ export default function Generation() {
                             {category.options.map((option) => {
                               const selected = (constraintSelections[category.id] ?? []).includes(option.id);
                               return (
-                                <button
-                                  key={option.id}
-                                  type="button"
-                                  title={option.instruction}
-                                  onClick={() => toggleConstraint(category.id, option.id)}
-                                  className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
-                                    selected
-                                      ? 'border-primary bg-primary/10 text-primary'
-                                      : 'border-border text-muted-foreground hover:border-primary/40 hover:text-foreground'
-                                  }`}
-                                >
-                                  {option.label}
-                                </button>
+                                <Tooltip key={option.id} label={option.instruction}>
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleConstraint(category.id, option.id)}
+                                    className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
+                                      selected
+                                        ? 'border-primary bg-primary/10 text-primary'
+                                        : 'border-border text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                                    }`}
+                                  >
+                                    {option.label}
+                                  </button>
+                                </Tooltip>
                               );
                             })}
                           </div>

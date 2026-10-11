@@ -4,6 +4,7 @@ import type { ImportedCharacter, Template } from '@char-gen/shared';
 import { detectAndParseCharacter, formatSourceLabel } from '@char-gen/shared';
 import { pickFile } from '../../utils/download';
 import ModalOverlay from './ModalOverlay';
+import Tooltip from './Tooltip';
 
 interface ImportCharacterModalProps {
   onClose: () => void;
@@ -121,9 +122,11 @@ export default function ImportCharacterModal({ onClose, onImport, template }: Im
         <div className="shrink-0 border-b border-border p-4">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-lg font-semibold">Import Character</h2>
-            <button onClick={onClose} title="Close" className="text-muted-foreground hover:text-foreground">
-              <X className="h-5 w-5" />
-            </button>
+            <Tooltip label="Close">
+              <button onClick={onClose} aria-label="Close" className="text-muted-foreground hover:text-foreground">
+                <X className="h-5 w-5" aria-hidden="true" />
+              </button>
+            </Tooltip>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
             Import a character card to rehash it through the generation workflow.

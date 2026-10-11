@@ -662,6 +662,15 @@ body.modal-open [data-global-assistant-root='true'] {
   .blueprint-code-editor .token.operator {
     color: var(--tok_at_sign);
   }
+
+  /* One short line describing a single control, shown by `Tooltip` on hover and on
+     focus. It deliberately accepts the pointer (`pointer-events: auto`) so that moving
+     onto it does not dismiss it — WCAG 1.4.13, "hoverable" — and it never holds
+     interactive content: anything with links in it is the Help menu or the
+     contextual-help drawer, not a tooltip. */
+  .app-tooltip {
+    @apply pointer-events-auto absolute z-50 w-max max-w-[min(18rem,calc(100vw-2rem))] rounded-lg border border-border/70 bg-card/95 px-2.5 py-1.5 text-xs leading-5 text-foreground shadow-xl backdrop-blur-md;
+  }
 }
 
 @keyframes home-float {

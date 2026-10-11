@@ -1,6 +1,7 @@
 import { Gauge } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { WORKSPACE_MODES, type WorkspaceModeId } from '@/lib/navigation/workspace-modes';
+import Tooltip from './Tooltip';
 
 interface WorkspaceModeSwitcherProps {
   /** The stored choice, or null when the mode follows whatever screen you are on. */
@@ -32,31 +33,32 @@ export default function WorkspaceModeSwitcher({ explicitModeId, activeModeId, on
         Workspace mode
       </p>
       <div className="grid gap-1">
-        <button
-          type="button"
-          onClick={() => onSelect(null)}
-          aria-pressed={explicitModeId === null}
-          title="Follow whichever screen you are on; the sidebar keeps its order"
-          className={buttonClass(explicitModeId === null)}
-        >
-          <Gauge className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-          <span className="truncate">Auto</span>
-        </button>
+        <Tooltip label="Follow whichever screen you are on; the sidebar keeps its order" wrapperClassName="w-full">
+          <button
+            type="button"
+            onClick={() => onSelect(null)}
+            aria-pressed={explicitModeId === null}
+            className={buttonClass(explicitModeId === null)}
+          >
+            <Gauge className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <span className="truncate">Auto</span>
+          </button>
+        </Tooltip>
         {WORKSPACE_MODES.map((mode) => {
           const ModeIcon = mode.icon;
 
           return (
-            <button
-              key={mode.id}
-              type="button"
-              onClick={() => onSelect(mode.id)}
-              aria-pressed={explicitModeId === mode.id}
-              title={mode.description}
-              className={buttonClass(explicitModeId === mode.id)}
-            >
-              <ModeIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-              <span className="truncate">{mode.label}</span>
-            </button>
+            <Tooltip key={mode.id} label={mode.description} wrapperClassName="w-full">
+              <button
+                type="button"
+                onClick={() => onSelect(mode.id)}
+                aria-pressed={explicitModeId === mode.id}
+                className={buttonClass(explicitModeId === mode.id)}
+              >
+                <ModeIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                <span className="truncate">{mode.label}</span>
+              </button>
+            </Tooltip>
           );
         })}
       </div>

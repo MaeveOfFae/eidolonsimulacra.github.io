@@ -17,6 +17,7 @@ import {
 import type { Blueprint } from '@char-gen/shared';
 import { api } from '@/lib/api';
 import ModalOverlay from '../common/ModalOverlay';
+import Tooltip from '../common/Tooltip';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import Editor from 'react-simple-code-editor';
@@ -456,35 +457,37 @@ export default function BlueprintEditor() {
         </div>
         <div className="flex items-center gap-2">
           {hasOverride && originalContent && (
-            <button
-              onClick={() => setShowDiff(true)}
-              className="app-button app-button-secondary"
-              title="Compare with original"
-            >
-              <GitCompare className="h-4 w-4" />
-              Diff
-            </button>
+            <Tooltip label="Compare with original">
+              <button onClick={() => setShowDiff(true)} className="app-button app-button-secondary">
+                <GitCompare className="h-4 w-4" aria-hidden="true" />
+                Diff
+              </button>
+            </Tooltip>
           )}
           <button onClick={() => setShowPreview(!showPreview)} className="app-button app-button-secondary">
             {showPreview ? <Edit3 className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             {showPreview ? 'Hide Preview' : 'Show Preview'}
           </button>
-          <button
-            onClick={() => void handleDuplicate()}
-            disabled={isProcessing}
-            className="app-button app-button-secondary"
-            title="Duplicate blueprint"
-          >
-            <Copy className="h-4 w-4" />
-          </button>
-          {hasOverride && (
+          <Tooltip label="Duplicate blueprint">
             <button
-              onClick={() => setShowConfirmDialog('reset')}
+              onClick={() => void handleDuplicate()}
+              disabled={isProcessing}
+              aria-label="Duplicate blueprint"
               className="app-button app-button-secondary"
-              title="Reset to original"
             >
-              <RotateCcw className="h-4 w-4" />
+              <Copy className="h-4 w-4" aria-hidden="true" />
             </button>
+          </Tooltip>
+          {hasOverride && (
+            <Tooltip label="Reset to original">
+              <button
+                onClick={() => setShowConfirmDialog('reset')}
+                aria-label="Reset to original"
+                className="app-button app-button-secondary"
+              >
+                <RotateCcw className="h-4 w-4" aria-hidden="true" />
+              </button>
+            </Tooltip>
           )}
           <button onClick={handleSave} disabled={!modified || isSaving} className="app-button app-button-primary">
             <Save className="h-4 w-4" />
@@ -642,14 +645,16 @@ export default function BlueprintEditor() {
           <div className="relative bg-card border border-border rounded-lg shadow-xl w-full max-w-6xl mx-4 max-h-[85vh] flex flex-col">
             <div className="flex items-center justify-between p-4 border-b border-border">
               <h2 className="text-lg font-semibold">Compare: Original vs Current</h2>
-              <button
-                type="button"
-                onClick={() => setShowDiff(false)}
-                className="text-muted-foreground hover:text-foreground"
-                title="Close"
-              >
-                <X className="h-5 w-5" />
-              </button>
+              <Tooltip label="Close">
+                <button
+                  type="button"
+                  onClick={() => setShowDiff(false)}
+                  aria-label="Close"
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-5 w-5" aria-hidden="true" />
+                </button>
+              </Tooltip>
             </div>
             <div className="flex-1 overflow-auto p-4">
               <div className="grid grid-cols-2 gap-4">

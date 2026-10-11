@@ -6,6 +6,7 @@
 import { Cloud, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { isDesktopRuntime } from '@/lib/runtime';
+import Tooltip from './Tooltip';
 
 interface SyncControlsProps {
   dataType: 'drafts' | 'themes' | 'templates' | 'seeds' | 'config';
@@ -21,14 +22,18 @@ export default function SyncControls({ dataType, label, compact = false }: SyncC
   const targetLabel = desktopRuntime ? 'Device Link' : 'Data Manager';
 
   if (compact) {
+    const compactLabel = `Open ${targetLabel.toLowerCase()} tools for ${label || dataType}`;
+
     return (
-      <Link
-        to={targetPath}
-        className="inline-flex items-center gap-1 rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent"
-        title={`Open ${targetLabel.toLowerCase()} tools for ${label || dataType}`}
-      >
-        <Cloud className="h-4 w-4" />
-      </Link>
+      <Tooltip label={compactLabel}>
+        <Link
+          to={targetPath}
+          aria-label={compactLabel}
+          className="inline-flex items-center gap-1 rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent"
+        >
+          <Cloud className="h-4 w-4" aria-hidden="true" />
+        </Link>
+      </Tooltip>
     );
   }
 

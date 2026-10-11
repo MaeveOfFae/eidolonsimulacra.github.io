@@ -2,6 +2,7 @@ import { X } from 'lucide-react';
 import type { HelpTopic, PageHelpEntry } from '../../lib/help';
 import HelpEntryBody from './HelpEntryBody';
 import ModalOverlay from './ModalOverlay';
+import Tooltip from './Tooltip';
 
 interface ContextualHelpPanelProps {
   entry: PageHelpEntry;
@@ -17,21 +18,23 @@ export default function ContextualHelpPanel({ entry, topics, isOpen, onClose }: 
 
   return (
     <ModalOverlay onClose={onClose} label="Contextual help" className="z-40">
-      <aside className="fixed right-0 top-0 z-40 flex h-dvh w-full max-w-[24rem] flex-col border-l border-border bg-card/96 shadow-2xl backdrop-blur-md transition-transform duration-300 ease-out translate-x-0">
+      <aside className="fixed right-0 top-0 z-40 flex h-dvh w-full max-w-[24rem] flex-col border-l border-border bg-card/95 shadow-2xl backdrop-blur-md transition-transform duration-300 ease-out translate-x-0">
         <div className="flex items-start justify-between gap-4 border-b border-border/60 p-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Contextual Help</p>
             <h2 className="mt-2 text-lg font-semibold text-foreground">{entry.title}</h2>
             <p className="mt-2 text-sm leading-6 text-muted-foreground">{entry.summary}</p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            title="Close help panel"
-            className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <Tooltip label="Close help panel">
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close help panel"
+              className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              <X className="h-4 w-4" aria-hidden="true" />
+            </button>
+          </Tooltip>
         </div>
 
         <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4">

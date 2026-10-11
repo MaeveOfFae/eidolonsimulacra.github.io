@@ -3,6 +3,7 @@ import { X, Check, FolderOpen, Edit3, Plus } from 'lucide-react';
 import { type AssetDefinition, type Blueprint } from '@char-gen/shared';
 import BlueprintBrowserDialog from '../blueprints/BlueprintBrowserDialog';
 import ModalOverlay from '../common/ModalOverlay';
+import Tooltip from '../common/Tooltip';
 import { cn } from '../../utils/cn';
 
 interface AssetDesignerDialogProps {
@@ -376,21 +377,21 @@ export default function AssetDesignerDialog({
                         const selected = currentImportAliases.includes(alias);
 
                         return (
-                          <button
-                            key={alias}
-                            type="button"
-                            onClick={() => addImportAlias(alias)}
-                            disabled={selected}
-                            className={cn(
-                              'rounded-full border px-2.5 py-1 text-[11px] font-mono transition-colors',
-                              selected
-                                ? 'border-primary/40 bg-primary/10 text-primary'
-                                : 'border-border bg-background text-muted-foreground hover:border-primary/35 hover:text-foreground',
-                            )}
-                            title={selected ? 'Already added' : `Add ${alias}`}
-                          >
-                            {alias}
-                          </button>
+                          <Tooltip key={alias} label={selected ? 'Already added' : `Add ${alias}`}>
+                            <button
+                              type="button"
+                              onClick={() => addImportAlias(alias)}
+                              disabled={selected}
+                              className={cn(
+                                'rounded-full border px-2.5 py-1 text-[11px] font-mono transition-colors',
+                                selected
+                                  ? 'border-primary/40 bg-primary/10 text-primary'
+                                  : 'border-border bg-background text-muted-foreground hover:border-primary/35 hover:text-foreground',
+                              )}
+                            >
+                              {alias}
+                            </button>
+                          </Tooltip>
                         );
                       })}
                     </div>

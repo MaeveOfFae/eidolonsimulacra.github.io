@@ -24,6 +24,7 @@ import {
   type SavedSearchRecord,
   type WorldCharacterDraftLinkRecord,
 } from '@char-gen/shared';
+import Tooltip from '../common/Tooltip';
 import { api } from '@/lib/api';
 import type { BulkDraftMetadataPatch } from '@/lib/storage/draft-db';
 import {
@@ -289,14 +290,16 @@ export function DraftListSidebar({
                 key={record.id}
                 className="inline-flex items-center gap-1 rounded-full border border-border px-2 py-0.5 text-xs"
               >
-                <button
-                  type="button"
-                  onClick={() => applySavedSearch(record)}
-                  title={`Apply "${record.name}"`}
-                  className="text-muted-foreground transition-colors hover:text-primary"
-                >
-                  <Bookmark className="h-3 w-3" />
-                </button>
+                <Tooltip label={`Apply "${record.name}"`}>
+                  <button
+                    type="button"
+                    onClick={() => applySavedSearch(record)}
+                    aria-label={`Apply "${record.name}"`}
+                    className="text-muted-foreground transition-colors hover:text-primary"
+                  >
+                    <Bookmark className="h-3 w-3" aria-hidden="true" />
+                  </button>
+                </Tooltip>
                 <button
                   type="button"
                   onClick={() => applySavedSearch(record)}
@@ -355,25 +358,26 @@ export function DraftListSidebar({
             aria-label="Sort by"
             value={sortField}
             onChange={(e) => setSortField(e.target.value as SortField)}
-            title="Sort by"
             className="max-w-full rounded-md border border-input bg-background px-2 py-1 text-xs focus:border-primary focus:outline-none"
           >
             <option value="modified">Modified</option>
             <option value="created">Created</option>
             <option value="name">Name</option>
           </select>
-          <button
-            type="button"
-            onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-            className="rounded-md border border-input p-1 hover:bg-accent/50"
-            title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
-          >
-            {sortOrder === 'asc' ? (
-              <SortAsc className="h-3.5 w-3.5 text-muted-foreground" />
-            ) : (
-              <SortDesc className="h-3.5 w-3.5 text-muted-foreground" />
-            )}
-          </button>
+          <Tooltip label={sortOrder === 'asc' ? 'Ascending' : 'Descending'}>
+            <button
+              type="button"
+              onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+              aria-label={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
+              className="rounded-md border border-input p-1 hover:bg-accent/50"
+            >
+              {sortOrder === 'asc' ? (
+                <SortAsc className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+              ) : (
+                <SortDesc className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+              )}
+            </button>
+          </Tooltip>
         </div>
       </div>
 
@@ -421,7 +425,6 @@ export function DraftListSidebar({
               <select
                 value={selectedMergeStrategy}
                 onChange={(e) => setSelectedMergeStrategy(e.target.value as MergeStrategyFilter)}
-                title="Filter by merge strategy"
                 className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs"
               >
                 <option value="">All merge strategies</option>
@@ -437,7 +440,6 @@ export function DraftListSidebar({
               <select
                 value={selectedMode}
                 onChange={(e) => setSelectedMode(e.target.value)}
-                title="Filter by mode"
                 className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs"
               >
                 <option value="">All modes</option>
@@ -456,7 +458,6 @@ export function DraftListSidebar({
               <select
                 value={selectedGenre}
                 onChange={(e) => setSelectedGenre(e.target.value)}
-                title="Filter by genre"
                 className="w-full rounded-md border border-input bg-background px-2 py-1 text-xs"
               >
                 <option value="">All genres</option>

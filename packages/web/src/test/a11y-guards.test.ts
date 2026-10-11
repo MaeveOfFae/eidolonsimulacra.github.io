@@ -145,6 +145,13 @@ export function findHandRolledModalBackdrops(sources: Record<string, string>): s
  * `findUnnamedTabStops` in the per-screen tab-order sweep, which renders the screen
  * and reads the real sequence. That is how the three settings key toggles and the
  * chat send button were found.
+ *
+ * `title` used to be accepted here as a name, and that allowance was load-bearing in
+ * the worst way: it is how six close buttons, two file inputs, the panel's dismiss
+ * control and a row of icon-only blueprint actions passed while their *only*
+ * accessible name was a native tooltip — announced inconsistently by screen readers,
+ * invisible on focus, invisible on touch. They now carry `aria-label` with a
+ * `Tooltip` for the visual hint, so the allowance is gone.
  */
 export function findUnnamedIconButtons(sources: Record<string, string>): string[] {
   const violations: string[] = [];
@@ -160,7 +167,7 @@ export function findUnnamedIconButtons(sources: Record<string, string>): string[
       const attrs = match[1];
       const body = match[2];
 
-      if (/aria-label=|aria-labelledby=|\btitle=/.test(attrs)) {
+      if (/aria-label=|aria-labelledby=/.test(attrs)) {
         continue;
       }
 
@@ -174,6 +181,46 @@ export function findUnnamedIconButtons(sources: Record<string, string>): string[
 
       const line = text.slice(0, match.index).split('\n').length;
       violations.push(`${key.replace('../', '')}:${line}`);
+    }
+  }
+
+  return violations;
+}
+
+/**
+ * Interactive elements still carrying a native `title` tooltip.
+ *
+ * The app now has exactly one tooltip — `common/Tooltip` — and it exists because the
+ * native attribute cannot do what a tooltip has to: it reveals on hover but never on
+ * keyboard focus, it cannot be dismissed, it arrives after roughly a second, and it is
+ * drawn by the operating system rather than by the app's theme. This pins the
+ * migration off it, so the next `title="Edit"` is a failing test rather than a new
+ * inconsistency.
+ *
+ * Scoped to the elements where a native tooltip is what the user actually sees.
+ * `iframe` is deliberately out of scope: its `title` is the accessible name of the
+ * frame, a requirement rather than a tooltip. `<abbr>` and other non-interactive uses
+ * are out of scope for the same reason — removing that `title` would remove
+ * information with nothing to replace it.
+ */
+export function findNativeTitleTooltips(sources: Record<string, string>): string[] {
+  const violations: string[] = [];
+
+  for (const [key, raw] of Object.entries(sources)) {
+    if (key.includes('.test.')) {
+      continue;
+    }
+
+    const text = blankOutNonCode(raw);
+
+    for (const match of text.matchAll(/<(button|a|Link)\b/g)) {
+      const tag = openingTag(text, match.index);
+      if (!tag || !/\stitle=/.test(tag)) {
+        continue;
+      }
+
+      const line = text.slice(0, match.index).split('\n').length;
+      violations.push(`${key.replace('../', '')}:${line} <${match[1]}> title`);
     }
   }
 
@@ -199,6 +246,10 @@ describe('a11y source guards', () => {
 
   it('finds no icon-only button without an accessible name', () => {
     expect(findUnnamedIconButtons(componentSources)).toEqual([]);
+  });
+
+  it('finds no native title tooltip on an interactive element', () => {
+    expect(findNativeTitleTooltips(componentSources)).toEqual([]);
   });
 });
 
@@ -253,10 +304,12 @@ describe('a11y guard self-checks', () => {
     expect(findHandRolledModalBackdrops(sources)).toEqual(['OldDialog.tsx:1']);
   });
 
-  it('catches an icon-only button and spares ones that can render a name', () => {
+  it('catches a nameless icon-only button, including one named only by a title', () => {
     const sources = {
       Nameless: '<button type="button"><Star className="h-4 w-4" /></button>',
       Labelled: '<button aria-label="Favourite"><Star className="h-4 w-4" /></button>',
+      // A `title` is a last-resort name at best — and it was the defect class the
+      // tooltip migration removed — so it no longer rescues an icon-only button.
       Titled: '<button title="Favourite"><Star className="h-4 w-4" /></button>',
       Text: '<button>Favourite</button>',
       // The JSX-expression case that made the first audit report 16 false positives.
@@ -268,6 +321,21 @@ describe('a11y guard self-checks', () => {
       ConditionalText: '<button>{copied ? <>Copied</> : <>Copy</>}</button>',
     };
 
-    expect(findUnnamedIconButtons(sources)).toEqual(['Nameless:1']);
+    expect(findUnnamedIconButtons(sources)).toEqual(['Nameless:1', 'Titled:1']);
+  });
+
+  it('catches a native title tooltip on an interactive element and spares required titles', () => {
+    const sources = {
+      'Native.tsx': '<button title="Archive">Archive</button>',
+      'MultiLine.tsx': '<Link\n  to="/drafts"\n  title="Open the library"\n  className="x"\n>\n  Library\n</Link>',
+      // The replacement: the description is the Tooltip's, and the name is the
+      // element's own label.
+      'Ours.tsx': '<Tooltip label="Archive">\n  <button aria-label="Archive">\n    <Star />\n  </button>\n</Tooltip>',
+      // Required for a11y, and not a tooltip: a frame must be named.
+      'Frame.tsx': '<iframe title="Embedded player" />',
+      'Abbr.tsx': '<abbr title="Eidolon Simulacra">ES</abbr>',
+    };
+
+    expect(findNativeTitleTooltips(sources)).toEqual(['Native.tsx:1 <button> title', 'MultiLine.tsx:1 <Link> title']);
   });
 });

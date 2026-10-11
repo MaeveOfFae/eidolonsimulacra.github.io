@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { CheckCircle2, Download, RotateCcw, Upload, XCircle, Shield, Save } from 'lucide-react';
 import type { ThemeOverride, ThemePreset } from '@char-gen/shared';
 import { useThemePreview } from '../common/useThemePreview';
+import Tooltip from '../common/Tooltip';
 import { EDITABLE_THEME_SECTIONS, resolveThemeColors } from '../../theme/theme';
 import { api } from '../../lib/api.js';
 import { pickFile, saveBlobDownload } from '../../utils/download';
@@ -231,18 +232,19 @@ export default function ThemeSelection({ sectionFilter = 'all' }: ThemeSelection
         >
           <Shield className={`h-4 w-4 flex-shrink-0 ${error ? 'text-destructive' : 'text-primary'}`} />
           {error || notice}
-          <button
-            type="button"
-            onClick={() => {
-              setError(null);
-              setNotice(null);
-            }}
-            className="ml-auto p-1 rounded hover:bg-black/10 transition-colors"
-            title="Dismiss"
-            aria-label="Dismiss notification"
-          >
-            <XCircle className="h-4 w-4" />
-          </button>
+          <Tooltip label="Dismiss notification">
+            <button
+              type="button"
+              onClick={() => {
+                setError(null);
+                setNotice(null);
+              }}
+              className="ml-auto p-1 rounded hover:bg-black/10 transition-colors"
+              aria-label="Dismiss notification"
+            >
+              <XCircle className="h-4 w-4" aria-hidden="true" />
+            </button>
+          </Tooltip>
         </div>
       )}
 
@@ -329,7 +331,6 @@ export default function ThemeSelection({ sectionFilter = 'all' }: ThemeSelection
               type="file"
               accept="application/json"
               className="hidden"
-              title="Import theme file"
               aria-label="Import theme file"
             />
           </div>
@@ -420,7 +421,6 @@ export default function ThemeSelection({ sectionFilter = 'all' }: ThemeSelection
                     <div className="flex gap-2">
                       <input
                         type="color"
-                        title={field.label}
                         value={
                           getThemeOverrideValue(field.section, field.key) ||
                           resolvedTheme?.[field.colorKey] ||

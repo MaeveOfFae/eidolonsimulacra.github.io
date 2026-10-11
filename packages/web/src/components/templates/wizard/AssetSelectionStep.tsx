@@ -5,6 +5,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, Plus, Trash2, FileText, Star } from 'lucide-react';
 import { type AssetDefinition } from '@char-gen/shared';
 import AssetDesignerDialog from '../AssetDesignerDialog';
+import Tooltip from '../../common/Tooltip';
 import { cn } from '../../../utils/cn';
 
 interface AssetSelectionStepProps {
@@ -71,20 +72,24 @@ function SortableAsset({
 
       {/* Actions */}
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button
-          onClick={() => onEdit(asset)}
-          className="p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground"
-          title="Edit asset"
-        >
-          <FileText className="h-4 w-4" />
-        </button>
-        <button
-          onClick={onRemove}
-          className="p-1.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
-          title="Remove asset"
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
+        <Tooltip label="Edit asset">
+          <button
+            onClick={() => onEdit(asset)}
+            aria-label="Edit asset"
+            className="p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground"
+          >
+            <FileText className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </Tooltip>
+        <Tooltip label="Remove asset">
+          <button
+            onClick={onRemove}
+            aria-label="Remove asset"
+            className="p-1.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+          >
+            <Trash2 className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </Tooltip>
       </div>
     </div>
   );
