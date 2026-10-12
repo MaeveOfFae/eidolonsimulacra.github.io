@@ -3,13 +3,14 @@
  * Handles configuration persistence in local device storage with API key management
  */
 
-import type { ApiKeys, Config, FeatureBlueprintDefaults, HelpState } from '@char-gen/shared';
+import type { ApiKeys, Config, DashboardState, FeatureBlueprintDefaults, HelpState } from '@char-gen/shared';
 import {
   createDefaultChubConfig,
   createDefaultComfyUIConfig,
   type ChubConfig,
   type ComfyUIConfig,
 } from '@char-gen/shared';
+import { createDefaultDashboard, normalizeDashboard } from '../dashboard.js';
 import { readPersistedString, removePersistedValues, writePersistedString } from '../persistence/storage.js';
 import { DEFAULT_FEATURE_BLUEPRINT_PATHS } from '@/lib/blueprints/defaults';
 
@@ -162,6 +163,9 @@ export class ConfigManager {
         ...(config.batch ?? {}),
       },
       help: config.help ? { ...defaults.help, ...config.help } : defaults.help,
+      // Normalized rather than spread: a stored layout outlives the registry that wrote
+      // it, so the reader decides what is valid (see `lib/dashboard.ts`).
+      dashboard: normalizeDashboard(config.dashboard),
       feature_blueprints: {
         ...defaults.feature_blueprints,
         ...(normalizeFeatureBlueprintDefaults(config.feature_blueprints) ?? {}),
@@ -247,6 +251,7 @@ export class ConfigManager {
         rate_limit_delay: 1,
       },
       help: createDefaultHelpState(),
+      dashboard: createDefaultDashboard(),
       feature_blueprints: {
         ...DEFAULT_FEATURE_BLUEPRINT_PATHS,
       },
@@ -486,6 +491,24 @@ export class ConfigManager {
 
   resetHelpState(): void {
     this.updateConfig({ help: createDefaultHelpState() });
+  }
+
+  getDashboard(): DashboardState {
+    return normalizeDashboard(this.config.dashboard);
+  }
+
+  /**
+   * Replaces the Home dashboard layout.
+   *
+   * Normalized on the way in as well as on the way out, so a caller cannot persist a
+   * shape that the renderer would then have to defend against.
+   */
+  updateDashboard(state: DashboardState): void {
+    this.updateConfig({ dashboard: normalizeDashboard(state) });
+  }
+
+  resetDashboard(): void {
+    this.updateConfig({ dashboard: createDefaultDashboard() });
   }
 
   /**

@@ -21,6 +21,9 @@ import CollapsibleSection from './common/CollapsibleSection';
 import GettingStartedGuide from './common/GettingStartedGuide';
 import { useGuidedTour } from './common/GuidedTourContext';
 import { useAssistantScreenContext } from './common/useAssistantContext';
+import HomeDashboard from './home/HomeDashboard';
+import InFlightPanel from './home/InFlightPanel';
+import SavedSearchesPanel from './home/SavedSearchesPanel';
 
 const RECENT_DRAFT_LIMIT = 6;
 
@@ -340,142 +343,151 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
-        <div className="space-y-6">
-          {!starterGuideComplete && <GettingStartedGuide templateName={starterTemplateName} />}
-          <div className="rounded-[1.75rem] border border-border/60 p-6 sm:p-7">
-            <div className="mb-6">
-              <h2
-                className="text-2xl font-semibold text-foreground"
-                style={{ fontFamily: '"Space Grotesk", sans-serif' }}
-              >
-                {recentDrafts.length > 0 ? 'Continue working' : 'Start here'}
-              </h2>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {recentDrafts.length > 0
-                  ? 'Jump back into the latest draft without scanning the full library.'
-                  : 'Use the shortest path from setup to a first saved draft.'}
-              </p>
-            </div>
+      <HomeDashboard
+        panels={{
+          'in-flight': <InFlightPanel />,
+          'getting-started': starterGuideComplete ? null : <GettingStartedGuide templateName={starterTemplateName} />,
+          'recent-drafts': (
+            <div className="rounded-[1.75rem] border border-border/60 p-6 sm:p-7">
+              <div className="mb-6">
+                <h2
+                  className="text-2xl font-semibold text-foreground"
+                  style={{ fontFamily: '"Space Grotesk", sans-serif' }}
+                >
+                  {recentDrafts.length > 0 ? 'Continue working' : 'Start here'}
+                </h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {recentDrafts.length > 0
+                    ? 'Jump back into the latest draft without scanning the full library.'
+                    : 'Use the shortest path from setup to a first saved draft.'}
+                </p>
+              </div>
 
-            {recentDrafts.length > 0 ? (
-              <div className="grid gap-2">
-                {recentDrafts.map((draft: DraftMetadata) => (
-                  <RecentDraftCard
-                    key={draft.review_id}
-                    to={`/drafts/${encodeURIComponent(draft.review_id)}`}
-                    name={draft.character_name || draft.seed}
-                    meta={`${draft.template_name || 'V2/V3'} • ${draft.mode || 'SFW'}`}
-                  />
+              {recentDrafts.length > 0 ? (
+                <div className="grid gap-2">
+                  {recentDrafts.map((draft: DraftMetadata) => (
+                    <RecentDraftCard
+                      key={draft.review_id}
+                      to={`/drafts/${encodeURIComponent(draft.review_id)}`}
+                      name={draft.character_name || draft.seed}
+                      meta={`${draft.template_name || 'V2/V3'} • ${draft.mode || 'SFW'}`}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-3 rounded-[1.5rem] border border-dashed border-border/70 bg-background/40 p-4">
+                  {gettingStartedSteps.slice(0, 4).map((step) => (
+                    <GettingStartedRow key={step.id} to={step.to} title={step.title} description={step.description} />
+                  ))}
+                </div>
+              )}
+
+              <div className="mt-6 flex flex-wrap gap-3">
+                <Link
+                  to="/drafts"
+                  className="inline-flex items-center gap-2 rounded-2xl border border-border/60 bg-background/55 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary/35 hover:text-primary"
+                >
+                  View full library
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </div>
+          ),
+
+          'supporting-tools': (
+            <CollapsibleSection
+              title="Supporting tools"
+              subtitle="Keep these nearby without giving them the same weight as the main workflow"
+              preview={EXPLORATION_ACTIONS.map((action) => action.label)
+                .slice(0, 3)
+                .join(' • ')}
+              className="rounded-[1.75rem]"
+            >
+              <div className="grid gap-3 md:grid-cols-2">
+                {EXPLORATION_ACTIONS.map((action) => (
+                  <ToolLink key={action.to} {...action} />
                 ))}
               </div>
-            ) : (
-              <div className="space-y-3 rounded-[1.5rem] border border-dashed border-border/70 bg-background/40 p-4">
-                {gettingStartedSteps.slice(0, 4).map((step) => (
-                  <GettingStartedRow key={step.id} to={step.to} title={step.title} description={step.description} />
+            </CollapsibleSection>
+          ),
+
+          'next-steps': (
+            <CollapsibleSection
+              title="Next steps"
+              subtitle="Keep one path visible from setup through review"
+              preview={WORKFLOW_LANES.map((lane) => lane.eyebrow).join(' • ')}
+              defaultExpanded
+              className="rounded-[1.75rem]"
+            >
+              <div className="space-y-2">
+                {WORKFLOW_LANES.map((lane) => (
+                  <WorkflowStepRow key={lane.to} {...lane} />
                 ))}
               </div>
-            )}
+            </CollapsibleSection>
+          ),
 
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Link
-                to="/drafts"
-                className="inline-flex items-center gap-2 rounded-2xl border border-border/60 bg-background/55 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary/35 hover:text-primary"
-              >
-                View full library
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </div>
-          </div>
+          'guided-help': (
+            <CollapsibleSection
+              title="Guided help"
+              subtitle={
+                activeTour && activeTourStep
+                  ? `Next stop: ${activeTourStep.title}`
+                  : nextIncompleteTour
+                    ? `${completedTours}/${guidedTours.length} tours completed`
+                    : 'All guided tours are complete.'
+              }
+              preview={
+                activeTour ? 'Resume active tour' : nextIncompleteTour ? nextIncompleteTour.title : 'All tours complete'
+              }
+              defaultExpanded={Boolean(activeTour)}
+              className="rounded-[1.75rem]"
+            >
+              <div className="flex flex-wrap gap-2">
+                {activeTour ? (
+                  <button
+                    type="button"
+                    onClick={goToCurrentStep}
+                    className="inline-flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+                  >
+                    <PlayCircle className="h-4 w-4" />
+                    Resume
+                  </button>
+                ) : nextIncompleteTour ? (
+                  <button
+                    type="button"
+                    onClick={() => startTour(nextIncompleteTour.id)}
+                    className="inline-flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+                  >
+                    <PlayCircle className="h-4 w-4" />
+                    Start
+                  </button>
+                ) : null}
 
-          <CollapsibleSection
-            title="Supporting tools"
-            subtitle="Keep these nearby without giving them the same weight as the main workflow"
-            preview={EXPLORATION_ACTIONS.map((action) => action.label)
-              .slice(0, 3)
-              .join(' • ')}
-            className="rounded-[1.75rem]"
-          >
-            <div className="grid gap-3 md:grid-cols-2">
-              {EXPLORATION_ACTIONS.map((action) => (
-                <ToolLink key={action.to} {...action} />
-              ))}
-            </div>
-          </CollapsibleSection>
-        </div>
-
-        <aside className="space-y-6">
-          <CollapsibleSection
-            title="Next steps"
-            subtitle="Keep one path visible from setup through review"
-            preview={WORKFLOW_LANES.map((lane) => lane.eyebrow).join(' • ')}
-            defaultExpanded
-            className="rounded-[1.75rem]"
-          >
-            <div className="space-y-2">
-              {WORKFLOW_LANES.map((lane) => (
-                <WorkflowStepRow key={lane.to} {...lane} />
-              ))}
-            </div>
-          </CollapsibleSection>
-
-          <CollapsibleSection
-            title="Guided help"
-            subtitle={
-              activeTour && activeTourStep
-                ? `Next stop: ${activeTourStep.title}`
-                : nextIncompleteTour
-                  ? `${completedTours}/${guidedTours.length} tours completed`
-                  : 'All guided tours are complete.'
-            }
-            preview={
-              activeTour ? 'Resume active tour' : nextIncompleteTour ? nextIncompleteTour.title : 'All tours complete'
-            }
-            defaultExpanded={Boolean(activeTour)}
-            className="rounded-[1.75rem]"
-          >
-            <div className="flex flex-wrap gap-2">
-              {activeTour ? (
-                <button
-                  type="button"
-                  onClick={goToCurrentStep}
-                  className="inline-flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+                {nextIncompleteTour ? (
+                  <button
+                    type="button"
+                    onClick={() => restartTour(nextIncompleteTour.id)}
+                    className="inline-flex items-center gap-2 rounded-2xl border border-border/60 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary/35"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    Restart
+                  </button>
+                ) : null}
+                <Link
+                  to="/help"
+                  className="inline-flex items-center gap-2 rounded-2xl border border-border/60 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary/35 hover:text-primary"
                 >
                   <PlayCircle className="h-4 w-4" />
-                  Resume
-                </button>
-              ) : nextIncompleteTour ? (
-                <button
-                  type="button"
-                  onClick={() => startTour(nextIncompleteTour.id)}
-                  className="inline-flex items-center gap-2 rounded-2xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
-                >
-                  <PlayCircle className="h-4 w-4" />
-                  Start
-                </button>
-              ) : null}
+                  Open help center
+                </Link>
+              </div>
+            </CollapsibleSection>
+          ),
 
-              {nextIncompleteTour ? (
-                <button
-                  type="button"
-                  onClick={() => restartTour(nextIncompleteTour.id)}
-                  className="inline-flex items-center gap-2 rounded-2xl border border-border/60 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary/35"
-                >
-                  <RotateCcw className="h-3.5 w-3.5" />
-                  Restart
-                </button>
-              ) : null}
-              <Link
-                to="/help"
-                className="inline-flex items-center gap-2 rounded-2xl border border-border/60 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-primary/35 hover:text-primary"
-              >
-                <PlayCircle className="h-4 w-4" />
-                Open help center
-              </Link>
-            </div>
-          </CollapsibleSection>
-        </aside>
-      </section>
+          'saved-searches': <SavedSearchesPanel drafts={recentDrafts} />,
+        }}
+      />
     </div>
   );
 }

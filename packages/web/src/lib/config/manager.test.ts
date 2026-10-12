@@ -1,5 +1,87 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import {
+  DASHBOARD_PANELS,
+  createDefaultDashboard,
+  isDashboardDefault,
+  setPanelVisibility,
+  swapPanels,
+} from '../dashboard';
 import { ConfigManager } from './manager';
+
+describe('ConfigManager dashboard layout', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it('ships the default layout and reports it back unchanged', () => {
+    const manager = new ConfigManager();
+
+    expect(manager.getDashboard()).toEqual(createDefaultDashboard());
+    expect(isDashboardDefault(manager.getDashboard())).toBe(true);
+  });
+
+  it('persists a reordered layout across reloads', () => {
+    const manager = new ConfigManager();
+    const swapped = swapPanels(manager.getDashboard(), 'supporting-tools', 'guided-help');
+
+    manager.updateDashboard(swapped);
+
+    expect(new ConfigManager().getDashboard()).toEqual(swapped);
+  });
+
+  it('persists a hidden panel across reloads', () => {
+    const manager = new ConfigManager();
+    manager.updateDashboard(setPanelVisibility(manager.getDashboard(), 'saved-searches', false));
+
+    const reloaded = new ConfigManager().getDashboard();
+    expect(reloaded.panels.find((panel) => panel.id === 'saved-searches')?.visible).toBe(false);
+  });
+
+  it('normalizes what it is handed, so a bad shape never reaches storage', () => {
+    const manager = new ConfigManager();
+    manager.updateDashboard({ panels: [{ id: 'not-a-panel', visible: true }] });
+
+    expect(isDashboardDefault(manager.getDashboard())).toBe(true);
+    expect(manager.getConfig().dashboard?.panels.some((panel) => panel.id === 'not-a-panel')).toBe(false);
+  });
+
+  it('drops a panel id written by an older build when reading it back', () => {
+    localStorage.setItem(
+      'eidolon.web.config',
+      JSON.stringify({ dashboard: { panels: [{ id: 'ghost-panel', visible: true }] } }),
+    );
+
+    const loaded = new ConfigManager().getDashboard();
+
+    expect(loaded.panels.map((panel) => panel.id)).toEqual(DASHBOARD_PANELS.map((panel) => panel.id));
+    expect(isDashboardDefault(loaded)).toBe(true);
+  });
+
+  it('resets to the default layout, and resetting again changes nothing', () => {
+    const manager = new ConfigManager();
+    manager.updateDashboard(swapPanels(manager.getDashboard(), 'recent-drafts', 'in-flight'));
+    expect(isDashboardDefault(manager.getDashboard())).toBe(false);
+
+    manager.resetDashboard();
+    expect(isDashboardDefault(manager.getDashboard())).toBe(true);
+
+    manager.resetDashboard();
+    expect(isDashboardDefault(manager.getDashboard())).toBe(true);
+  });
+
+  it('hands out copies, so a caller cannot mutate the shared default', () => {
+    const manager = new ConfigManager();
+
+    manager.getDashboard().panels.forEach((panel) => {
+      panel.visible = false;
+    });
+    manager.getConfig().dashboard?.panels.forEach((panel) => {
+      panel.visible = false;
+    });
+
+    expect(isDashboardDefault(new ConfigManager().getDashboard())).toBe(true);
+  });
+});
 
 describe('ConfigManager feature blueprint persistence', () => {
   beforeEach(() => {

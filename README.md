@@ -71,6 +71,7 @@ The web app currently exposes the main workflows directly in the browser:
 - Browse and edit templates and blueprint source
 - Run offspring and similarity workflows
 - Manage themes, browser-stored data, and app settings
+- Arrange your own dashboard on the web Home screen: panels for recent drafts, saved searches, work still in flight, next steps, guided help and supporting tools can be reordered, hidden and reset, and the layout is remembered per profile
 - Move around without the mouse: ⌘K / Ctrl-K opens the command palette over every route and recent draft, `?` opens the Help menu (this page's help, every guided tour, the keyboard-shortcut list, and links to the Help Center, What's new and About), every icon-only control carries a tooltip that appears on hover *and* on keyboard focus, Escape and Tab behave the same in all 14 dialogs, and the tab order is covered by a test on every route
 - Read release notes, the Help Center, and the info/legal documents, all rendered from `packages/shared` — the current release's longer write-up and the suggested text for its git tag live in [`docs/RELEASE_NOTES.md`](docs/RELEASE_NOTES.md)
 - Reach the `/download` page, which offers the desktop installers and the Android APK with their file names, sizes, requirements and caveats — the visitor-facing view of the same shared data the mobile app renders (build-from-source steps stay in this README and `docs/DOWNLOADS.md`)

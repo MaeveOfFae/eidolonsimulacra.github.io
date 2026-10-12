@@ -81,8 +81,12 @@ Conventions used below:
 
 1. Install dependencies: `pnpm install` (Node 20+, pnpm 10+).
 2. Start the surface you want: `pnpm dev:web`, `pnpm dev:desktop`, or `pnpm dev:mobile`.
-3. Open the app. **Home** shows the starter checklist and a next-steps panel; the
-   checklist is the safest first-run path.
+3. Open the app. **Home** is a dashboard: a starter checklist until you finish it,
+   panels for recent drafts, saved searches and anything still in flight, then the
+   next-steps and guided-help panels.
+4. Press **Customize** on Home to reorder those panels or hide the ones you do not
+   want, and **Reset layout** to put them back. This changes the dashboard only —
+   every screen stays reachable from the sidebar and the palette.
 4. Open **Settings** and stay on the **Setup** tab (the default).
 5. In the **Access** column, tick **Save API keys to browser storage** (or
    **…desktop app data** on desktop) if you want keys persisted between sessions.

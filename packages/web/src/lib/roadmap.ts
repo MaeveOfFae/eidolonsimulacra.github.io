@@ -208,8 +208,6 @@ export const roadmapGroups: RoadmapGroup[] = [
     items: [
       'Desktop-native drag-and-drop import/export flows',
       'Responsive split-pane editor optimized for wide and narrow displays',
-      'Pinned dashboard widgets for recent drafts, saved searches, and active queues',
-      'Customizable home screen tailored to the most common workflow',
     ],
   },
   {

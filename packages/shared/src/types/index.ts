@@ -182,6 +182,25 @@ export interface HelpState {
   completed_tours: string[];
 }
 
+/**
+ * One Home panel, as the user has ordered or hidden it.
+ *
+ * `id` is a plain string rather than a union of the panel ids the web app knows, and
+ * that is deliberate: this is *persisted* data. A stored preference that names a panel
+ * which no longer exists — or one that does not exist yet — is an ordinary state of the
+ * world, not an error, so the registry and its normalization belong to the surface that
+ * renders it rather than to the shared type.
+ */
+export interface DashboardPanelPreference {
+  id: string;
+  visible: boolean;
+}
+
+export interface DashboardState {
+  /** Panel order, first to last. Never empty in practice; normalization fills it. */
+  panels: DashboardPanelPreference[];
+}
+
 export interface Config {
   engine: EngineType;
   engine_mode: EngineMode;
@@ -196,6 +215,7 @@ export interface Config {
   theme_name?: string;
   theme?: ThemeOverride;
   help?: HelpState;
+  dashboard?: DashboardState;
   feature_blueprints?: FeatureBlueprintDefaults;
   comfyui?: ComfyUIConfig;
   chub?: ChubConfig;

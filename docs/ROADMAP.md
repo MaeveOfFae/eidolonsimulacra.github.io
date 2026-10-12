@@ -97,9 +97,9 @@ Nothing shipped. Outstanding: collaborative review notes; shared workspaces; com
 
 ### UX and Platform Surfaces — `partial`
 
-Shipped: responsive web layout, native mobile navigation, desktop shell, help center, guided tours, the Help menu (per-page help, every tour, the keyboard-shortcut sheet) with focus- and hover-tooltips on every icon-only control, mobile per-screen page help with a screen index in its Help Center, the quick-actions palette, workspace modes (solo drafting / review / bulk), keyboard-first navigation with a focus and accessibility audit, and mobile-first review/approval.
+Shipped: responsive web layout, native mobile navigation, desktop shell, help center, guided tours, the Help menu (per-page help, every tour, the keyboard-shortcut sheet) with focus- and hover-tooltips on every icon-only control, mobile per-screen page help with a screen index in its Help Center, a dashboard-style Home screen whose panels — recent drafts, saved searches, in-flight runs, next steps, guided help, supporting tools — can be reordered, hidden and reset per profile, the quick-actions palette, workspace modes (solo drafting / review / bulk), keyboard-first navigation with a focus and accessibility audit, and mobile-first review/approval.
 
-Outstanding: desktop drag-and-drop import/export; responsive split-pane editor; pinned dashboard widgets; customizable home screen.
+Outstanding: desktop drag-and-drop import/export; responsive split-pane editor.
 
 ### Assistant and Automation — `partial`
 
