@@ -12,6 +12,7 @@ import {
 } from '@char-gen/shared';
 import { createDefaultDashboard, normalizeDashboard } from '../dashboard.js';
 import { readPersistedString, removePersistedValues, writePersistedString } from '../persistence/storage.js';
+import { normalizePaneWidths } from '../split-pane.js';
 import { DEFAULT_FEATURE_BLUEPRINT_PATHS } from '@/lib/blueprints/defaults';
 
 // The legacy `bpui.*` fallbacks are gone: `migrateLegacyStorageKeys` moves any
@@ -166,6 +167,10 @@ export class ConfigManager {
       // Normalized rather than spread: a stored layout outlives the registry that wrote
       // it, so the reader decides what is valid (see `lib/dashboard.ts`).
       dashboard: normalizeDashboard(config.dashboard),
+      // Same reasoning for pane widths: a stored pixel value is only meaningful against
+      // the container it was dragged inside, so it is validated here and clamped again at
+      // render time (see `lib/split-pane.ts`).
+      pane_widths: normalizePaneWidths(config.pane_widths),
       feature_blueprints: {
         ...defaults.feature_blueprints,
         ...(normalizeFeatureBlueprintDefaults(config.feature_blueprints) ?? {}),
@@ -252,6 +257,7 @@ export class ConfigManager {
       },
       help: createDefaultHelpState(),
       dashboard: createDefaultDashboard(),
+      pane_widths: {},
       feature_blueprints: {
         ...DEFAULT_FEATURE_BLUEPRINT_PATHS,
       },
@@ -509,6 +515,23 @@ export class ConfigManager {
 
   resetDashboard(): void {
     this.updateConfig({ dashboard: createDefaultDashboard() });
+  }
+
+  getPaneWidths(): Record<string, number> {
+    return normalizePaneWidths(this.config.pane_widths);
+  }
+
+  /** `undefined` when this pane has never been dragged, so callers can apply their own default. */
+  getPaneWidth(paneId: string): number | undefined {
+    return this.getPaneWidths()[paneId];
+  }
+
+  /**
+   * Remembers a pane width, normalized on the way in as well as on the way out — a caller
+   * cannot persist a value the renderer would then have to defend against.
+   */
+  updatePaneWidth(paneId: string, width: number): void {
+    this.updateConfig({ pane_widths: normalizePaneWidths({ ...this.getPaneWidths(), [paneId]: width }) });
   }
 
   /**

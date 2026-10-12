@@ -216,6 +216,15 @@ export interface Config {
   theme?: ThemeOverride;
   help?: HelpState;
   dashboard?: DashboardState;
+  /**
+   * Pixel width per resizable pane, keyed by pane id.
+   *
+   * Stored in pixels and clamped against the live container on read rather than being
+   * stored as a fraction: the width a person dragged to is the width they meant, and a
+   * window that has since been narrowed is handled at render time. Unknown keys are
+   * dropped and out-of-range values are pulled into range by `lib/split-pane`.
+   */
+  pane_widths?: Record<string, number>;
   feature_blueprints?: FeatureBlueprintDefaults;
   comfyui?: ComfyUIConfig;
   chub?: ChubConfig;

@@ -531,6 +531,12 @@ The **Library** (`/drafts`) has three visible tabs — **Drafts**, **Seeds**,
 4. **Scan for duplicates** by seed, character name, and similarity score.
 5. Open a draft to move into review.
 6. Toggle favourites to keep the library manageable as it grows.
+7. Drag the divider between the list and the details pane to give one side more
+   room. It is a real control: focus it and **←** / **→** resize, **Home** and
+   **End** jump to the limits, and a double-click puts it back to the default. The
+   width is remembered, and narrowed windows pull it in rather than pushing the
+   details pane off screen. Below the `xl` breakpoint the two panes stack and there
+   is no divider to drag.
 
 **Gotchas**
 

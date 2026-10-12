@@ -205,10 +205,7 @@ export const roadmapGroups: RoadmapGroup[] = [
       'packages/web/src/components/Home.tsx',
       'packages/mobile/src/screens',
     ],
-    items: [
-      'Desktop-native drag-and-drop import/export flows',
-      'Responsive split-pane editor optimized for wide and narrow displays',
-    ],
+    items: ['Desktop-native drag-and-drop import/export flows'],
   },
   {
     id: 'assistant-and-automation',
