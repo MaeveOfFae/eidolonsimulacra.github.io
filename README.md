@@ -69,6 +69,7 @@ The web app currently exposes the main workflows directly in the browser:
 - Generate seed ideas and carry them into the main generation flow
 - Review, edit, validate, compare, and export drafts, with asset-by-asset approval decisions that flag edits as stale and gate export readiness
 - Resize the library's draft list against the details pane: drag the divider, or focus it and use the arrow keys, Home and End; the width is remembered per profile and clamped to the window
+- Drop an import file anywhere in the app: a character card, a draft backup, a theme or a template is recognised and routed to the screen that imports it, and a file the app cannot place is answered by name instead of being guessed at
 - Browse and edit templates and blueprint source
 - Run offspring and similarity workflows
 - Manage themes, browser-stored data, and app settings

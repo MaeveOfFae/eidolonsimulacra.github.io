@@ -537,6 +537,10 @@ The **Library** (`/drafts`) has three visible tabs — **Drafts**, **Seeds**,
    width is remembered, and narrowed windows pull it in rather than pushing the
    details pane off screen. Below the `xl` breakpoint the two panes stack and there
    is no divider to drag.
+8. **Drop a backup on the window** instead of navigating to the import button: a
+   dropped `json` export is imported straight into the library. The same drop works
+   for a character card (it opens the importer on Generate), a theme, or a template
+   — the app works out which from the file, and says so plainly when it cannot.
 
 **Gotchas**
 

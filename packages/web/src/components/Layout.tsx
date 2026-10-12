@@ -1,5 +1,5 @@
-import { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ChevronDown, ChevronRight, Heart, Menu, Search, Sparkles, X } from 'lucide-react';
 import { PROJECT_SUPPORT_URL } from '@char-gen/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -12,6 +12,9 @@ import ContextualHelpPanel from './common/ContextualHelpPanel';
 import GuidedTourOverlay from './common/GuidedTourOverlay';
 import { GuidedTourProvider } from './common/GuidedTourContext';
 import { isDesktopRuntime } from '../lib/runtime';
+import { classifyDroppedFile, inspectDroppedFile } from '../lib/desktop/file-drop';
+import { setPendingDrop } from '../lib/desktop/pending-drop';
+import { useDesktopFileDrop } from '../lib/desktop/useDesktopFileDrop';
 import {
   isNavPathActive,
   navSubmenuGroups,
@@ -29,6 +32,7 @@ import {
   writeStoredWorkspaceMode,
   type WorkspaceModeId,
 } from '../lib/navigation/workspace-modes';
+import DropTarget from './common/DropTarget';
 import HelpMenu from './common/HelpMenu';
 import QuickActionsPalette from './common/QuickActionsPalette';
 import Tooltip from './common/Tooltip';
@@ -174,11 +178,13 @@ function CollapsibleSubmenu({
 
 export default function Layout({ children }: LayoutProps) {
   const location = useLocation();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const desktopRuntime = isDesktopRuntime();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
   const [helpMenuOpen, setHelpMenuOpen] = useState(false);
+  const [dropNotice, setDropNotice] = useState<string | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const sidebarCloseButtonRef = useRef<HTMLButtonElement>(null);
   // The explicit choice is null until the user picks a mode, in which case the
@@ -300,6 +306,44 @@ export default function Layout({ children }: LayoutProps) {
       window.removeEventListener('keydown', handleShortcuts);
     };
   }, []);
+
+  /**
+   * A dropped file either lands on a screen that can import it, or the app says where it
+   * belongs. Both platform paths converge here: the browser hands over `File` objects, and
+   * the desktop shell hands over paths that `useDesktopFileDrop` turns into the same thing.
+   */
+  const handleDroppedFiles = useCallback(
+    (files: File[]) => {
+      void (async () => {
+        const inspected = await Promise.all(
+          files.map(async (file) => ({ file, classification: classifyDroppedFile(await inspectDroppedFile(file)) })),
+        );
+        const chosen = inspected.find((entry) => entry.classification.kind !== 'unknown');
+
+        if (!chosen) {
+          const reason = inspected[0]?.classification.reason;
+          setDropNotice(
+            reason
+              ? `Could not import “${files[0]?.name ?? 'that file'}” — ${reason}.`
+              : 'Nothing in that drop is a file this app imports.',
+          );
+          return;
+        }
+
+        setDropNotice(null);
+        // A dropped file cannot be put in a URL, so it waits here for the screen that takes it.
+        setPendingDrop({ kind: chosen.classification.kind, file: chosen.file, fileName: chosen.file.name });
+
+        const destination = chosen.classification.destination;
+        if (destination && destination !== location.pathname) {
+          navigate(destination);
+        }
+      })();
+    },
+    [location.pathname, navigate],
+  );
+
+  useDesktopFileDrop(handleDroppedFiles);
 
   return (
     <AssistantContextProvider>
@@ -564,6 +608,29 @@ export default function Layout({ children }: LayoutProps) {
             modeId={activeModeId}
           />
           <GuidedTourOverlay />
+          <DropTarget
+            onFiles={handleDroppedFiles}
+            label="Drop a file to import it — a character card, a draft backup, a theme or a template"
+          />
+
+          {dropNotice ? (
+            <div
+              role="status"
+              className="fixed bottom-4 left-1/2 z-[95] w-[min(32rem,calc(100vw-2rem))] -translate-x-1/2 rounded-2xl border border-warning/40 bg-card/95 px-4 py-3 shadow-2xl backdrop-blur-md"
+            >
+              <div className="flex items-start gap-3">
+                <p className="min-w-0 flex-1 text-sm leading-6 text-foreground">{dropNotice}</p>
+                <button
+                  type="button"
+                  onClick={() => setDropNotice(null)}
+                  aria-label="Dismiss drop notice"
+                  className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                >
+                  <X className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </div>
+            </div>
+          ) : null}
         </div>
       </GuidedTourProvider>
     </AssistantContextProvider>

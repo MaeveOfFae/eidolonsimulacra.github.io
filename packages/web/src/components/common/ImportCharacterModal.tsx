@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 import { X, Upload, FileText, AlertCircle, CheckCircle2, ChevronDown, ChevronRight } from 'lucide-react';
 import type { ImportedCharacter, Template } from '@char-gen/shared';
 import { detectAndParseCharacter, formatSourceLabel } from '@char-gen/shared';
@@ -10,13 +10,15 @@ interface ImportCharacterModalProps {
   onClose: () => void;
   onImport: (character: ImportedCharacter) => void;
   template?: Pick<Template, 'name' | 'assets'>;
+  /** A file that arrived by being dropped elsewhere in the app, so it opens ready to import. */
+  initialFile?: File | null;
 }
 
 type ImportStep = 'upload' | 'preview' | 'done';
 
 const ACCEPTED_EXTENSIONS = ['.json', '.png', '.txt', '.md'];
 
-export default function ImportCharacterModal({ onClose, onImport, template }: ImportCharacterModalProps) {
+export default function ImportCharacterModal({ onClose, onImport, template, initialFile }: ImportCharacterModalProps) {
   const [step, setStep] = useState<ImportStep>('upload');
   const [parseError, setParseError] = useState<string | null>(null);
   const [importedCharacter, setImportedCharacter] = useState<ImportedCharacter | null>(null);
@@ -78,6 +80,14 @@ export default function ImportCharacterModal({ onClose, onImport, template }: Im
     },
     [handleFileSelect],
   );
+
+  // A dropped file opens the modal already parsed, instead of asking the user to find the
+  // same file again through a file picker.
+  useEffect(() => {
+    if (initialFile) {
+      void processFile(initialFile);
+    }
+  }, [initialFile, processFile]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();

@@ -97,9 +97,9 @@ Nothing shipped. Outstanding: collaborative review notes; shared workspaces; com
 
 ### UX and Platform Surfaces — `partial`
 
-Shipped: responsive web layout, native mobile navigation, desktop shell, help center, guided tours, the Help menu (per-page help, every tour, the keyboard-shortcut sheet) with focus- and hover-tooltips on every icon-only control, mobile per-screen page help with a screen index in its Help Center, a dashboard-style Home screen whose panels — recent drafts, saved searches, in-flight runs, next steps, guided help, supporting tools — can be reordered, hidden and reset per profile, a resizable split-pane library (drag the divider or resize it from the keyboard, with the width remembered and clamped to the window), the quick-actions palette, workspace modes (solo drafting / review / bulk), keyboard-first navigation with a focus and accessibility audit, and mobile-first review/approval.
+Shipped: responsive web layout, native mobile navigation, desktop shell, help center, guided tours, the Help menu (per-page help, every tour, the keyboard-shortcut sheet) with focus- and hover-tooltips on every icon-only control, mobile per-screen page help with a screen index in its Help Center, a dashboard-style Home screen whose panels — recent drafts, saved searches, in-flight runs, next steps, guided help, supporting tools — can be reordered, hidden and reset per profile, a resizable split-pane library (drag the divider or resize it from the keyboard, with the width remembered and clamped to the window), drag-and-drop import (a character card, draft backup, theme or template dropped anywhere in the app is classified and routed to the screen that imports it — the browser via HTML5 drop, the desktop shell via the native Tauri event — with anything unrecognised answered by name rather than by guessing), the quick-actions palette, workspace modes (solo drafting / review / bulk), keyboard-first navigation with a focus and accessibility audit, and mobile-first review/approval.
 
-Outstanding: desktop drag-and-drop import/export.
+Outstanding: in-app drop targets that move assets and renders between surfaces.
 
 ### Assistant and Automation — `partial`
 

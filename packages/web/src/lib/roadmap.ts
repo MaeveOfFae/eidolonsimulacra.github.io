@@ -205,7 +205,7 @@ export const roadmapGroups: RoadmapGroup[] = [
       'packages/web/src/components/Home.tsx',
       'packages/mobile/src/screens',
     ],
-    items: ['Desktop-native drag-and-drop import/export flows'],
+    items: ['In-app drop targets for moving assets and renders between surfaces'],
   },
   {
     id: 'assistant-and-automation',

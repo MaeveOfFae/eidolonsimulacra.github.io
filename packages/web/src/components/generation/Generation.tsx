@@ -42,6 +42,7 @@ import {
   normalizeAssetSelection,
 } from '@/lib/generation/generation-helpers';
 import ImportCharacterModal from '../common/ImportCharacterModal';
+import { usePendingDropFile } from '../common/usePendingDropFile';
 import { normalizeConnectedReferenceIds } from '@/lib/prompting/reference-context';
 
 type TabId = 'generate' | 'refine' | 'assets';
@@ -84,6 +85,15 @@ export default function Generation() {
   const [blueprintOverrides, setBlueprintOverrides] = useState<Partial<Record<FeatureCategory, string>>>({});
   const [availableBlueprints, setAvailableBlueprints] = useState<Array<{ name: string; label: string }>>([]);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [pendingImportFile, setPendingImportFile] = useState<File | null>(null);
+
+  // A character card dropped anywhere in the app opens this screen's importer on that file.
+  // The hook covers both a navigation to this screen and a drop that landed while it was
+  // already open.
+  usePendingDropFile('character-card', (file) => {
+    setPendingImportFile(file);
+    setShowImportModal(true);
+  });
   const [selectedTemplateAssets, setSelectedTemplateAssets] = useState<string[]>([]);
   const [presets, setPresets] = useState<ScenarioPresetRecord[]>(() => getScenarioPresets());
   const [presetName, setPresetName] = useState('');
@@ -982,9 +992,14 @@ export default function Generation() {
       {/* Import Character Modal */}
       {showImportModal && (
         <ImportCharacterModal
-          onClose={() => setShowImportModal(false)}
+          onClose={() => {
+            setShowImportModal(false);
+            // Otherwise re-opening the modal would re-parse the drop all over again.
+            setPendingImportFile(null);
+          }}
           onImport={handleImportCharacter}
           template={selectedTemplate}
+          initialFile={pendingImportFile}
         />
       )}
     </div>

@@ -25,6 +25,7 @@ import {
 } from '@/lib/seed-generator';
 import { pickFile } from '@/utils/download';
 import LibraryArchiveTab from './LibraryArchiveTab';
+import { usePendingDropFile } from '../common/usePendingDropFile';
 import LibraryDraftsTab from './LibraryDraftsTab';
 import LibrarySeedsTab from './LibrarySeedsTab';
 import LibraryWorkbenchTab from './LibraryWorkbenchTab';
@@ -71,6 +72,15 @@ export default function Drafts() {
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const { isTourCompleted, restartTour, startTour } = useGuidedTour();
   const queryClient = useQueryClient();
+
+  // A draft backup dropped anywhere in the app arrives here, because this is the screen that
+  // imports it — whether the drop navigated here or landed while it was already open. Declared
+  // with the other hooks, above the screen's early returns: a hook after a conditional return
+  // changes the hook order between renders.
+  usePendingDropFile('draft-backup', (file) => {
+    void handleImportDraftsFile(file);
+  });
+
   const requestedTab = searchParams.get('tab');
   const activeTab: LibraryTab = isLibraryTab(requestedTab) ? requestedTab : 'drafts';
 

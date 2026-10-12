@@ -24,7 +24,8 @@
         "center": true,
         "resizable": true,
         "fullscreen": false,
-        "maximizable": true
+        "maximizable": true,
+        "dragDropEnabled": true
       }
     ]
   },
