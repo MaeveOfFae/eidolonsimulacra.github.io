@@ -1,0 +1,49 @@
+[template]
+name = "Fate Core"
+version = "1.0"
+description = "Fate Core character template: concept and aspects, a legal skill and stunt build, backstory, and an in-fiction opening scene."
+
+[[assets]]
+name = "fate_character_sheet"
+required = true
+depends_on = []
+description = "Concept, aspects, and personality"
+blueprint_file = "blueprints/templates/fate_core/assets/fate_character_sheet.md"
+
+[[assets]]
+name = "fate_stat_block"
+required = true
+depends_on = [
+    "fate_character_sheet",
+]
+description = "Skill pyramid, stunts, stress tracks, and refresh"
+blueprint_file = "blueprints/templates/fate_core/assets/fate_stat_block.md"
+
+[[assets]]
+name = "fate_backstory"
+required = true
+depends_on = [
+    "fate_character_sheet",
+]
+description = "Backstory, ties, and playable hooks"
+blueprint_file = "blueprints/templates/fate_core/assets/fate_backstory.md"
+
+[[assets]]
+name = "fate_intro_scene"
+required = true
+depends_on = [
+    "fate_character_sheet",
+    "fate_stat_block",
+    "fate_backstory",
+]
+description = "In-fiction opening scene"
+blueprint_file = "blueprints/templates/fate_core/assets/fate_intro_scene.md"
+
+[[assets]]
+name = "a1111"
+required = false
+depends_on = [
+    "fate_character_sheet",
+]
+description = "Stable Diffusion image generation prompt"
+blueprint_file = "blueprints/system/a1111.md"

@@ -1,0 +1,49 @@
+[template]
+name = "GURPS 4e"
+version = "1.0"
+description = "GURPS 4th Edition character template: concept sheet, rules-valid point build, backstory, and an in-fiction opening scene."
+
+[[assets]]
+name = "gurps_character_sheet"
+required = true
+depends_on = []
+description = "Character concept, tech level, and personality"
+blueprint_file = "blueprints/templates/gurps/assets/gurps_character_sheet.md"
+
+[[assets]]
+name = "gurps_stat_block"
+required = true
+depends_on = [
+    "gurps_character_sheet",
+]
+description = "Rules-valid point build (attributes, traits, skills, damage)"
+blueprint_file = "blueprints/templates/gurps/assets/gurps_stat_block.md"
+
+[[assets]]
+name = "gurps_backstory"
+required = true
+depends_on = [
+    "gurps_character_sheet",
+]
+description = "Backstory, ties, and playable hooks"
+blueprint_file = "blueprints/templates/gurps/assets/gurps_backstory.md"
+
+[[assets]]
+name = "gurps_intro_scene"
+required = true
+depends_on = [
+    "gurps_character_sheet",
+    "gurps_stat_block",
+    "gurps_backstory",
+]
+description = "In-fiction opening scene"
+blueprint_file = "blueprints/templates/gurps/assets/gurps_intro_scene.md"
+
+[[assets]]
+name = "a1111"
+required = false
+depends_on = [
+    "gurps_character_sheet",
+]
+description = "Stable Diffusion image generation prompt"
+blueprint_file = "blueprints/system/a1111.md"

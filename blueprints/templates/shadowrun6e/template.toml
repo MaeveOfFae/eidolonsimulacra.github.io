@@ -1,0 +1,49 @@
+[template]
+name = "Shadowrun 6e"
+version = "1.0"
+description = "Shadowrun Sixth Edition character template: identity sheet, rules-valid stat block, backstory, and an in-fiction opening scene."
+
+[[assets]]
+name = "sr_character_sheet"
+required = true
+depends_on = []
+description = "Runner identity, metatype, role, and personality"
+blueprint_file = "blueprints/templates/shadowrun6e/assets/sr_character_sheet.md"
+
+[[assets]]
+name = "sr_stat_block"
+required = true
+depends_on = [
+    "sr_character_sheet",
+]
+description = "Rules-valid Sixth Edition stat block (attributes, pools, conditions, gear)"
+blueprint_file = "blueprints/templates/shadowrun6e/assets/sr_stat_block.md"
+
+[[assets]]
+name = "sr_backstory"
+required = true
+depends_on = [
+    "sr_character_sheet",
+]
+description = "Backstory, contacts, and playable hooks"
+blueprint_file = "blueprints/templates/shadowrun6e/assets/sr_backstory.md"
+
+[[assets]]
+name = "sr_intro_scene"
+required = true
+depends_on = [
+    "sr_character_sheet",
+    "sr_stat_block",
+    "sr_backstory",
+]
+description = "In-fiction opening scene"
+blueprint_file = "blueprints/templates/shadowrun6e/assets/sr_intro_scene.md"
+
+[[assets]]
+name = "a1111"
+required = false
+depends_on = [
+    "sr_character_sheet",
+]
+description = "Stable Diffusion image generation prompt"
+blueprint_file = "blueprints/system/a1111.md"

@@ -1,0 +1,49 @@
+[template]
+name = "D&D 5e"
+version = "1.0"
+description = "Dungeons & Dragons 5th edition character template: identity sheet, rules-valid stat block, backstory, and an in-fiction opening scene."
+
+[[assets]]
+name = "dnd_character_sheet"
+required = true
+depends_on = []
+description = "Character identity, personality, and appearance"
+blueprint_file = "blueprints/templates/dnd5e/assets/dnd_character_sheet.md"
+
+[[assets]]
+name = "dnd_stat_block"
+required = true
+depends_on = [
+    "dnd_character_sheet",
+]
+description = "Rules-valid 5e stat block (abilities, defenses, attacks, spells)"
+blueprint_file = "blueprints/templates/dnd5e/assets/dnd_stat_block.md"
+
+[[assets]]
+name = "dnd_backstory"
+required = true
+depends_on = [
+    "dnd_character_sheet",
+]
+description = "Backstory, ties, and playable plot hooks"
+blueprint_file = "blueprints/templates/dnd5e/assets/dnd_backstory.md"
+
+[[assets]]
+name = "dnd_intro_scene"
+required = true
+depends_on = [
+    "dnd_character_sheet",
+    "dnd_stat_block",
+    "dnd_backstory",
+]
+description = "In-fiction opening scene"
+blueprint_file = "blueprints/templates/dnd5e/assets/dnd_intro_scene.md"
+
+[[assets]]
+name = "a1111"
+required = false
+depends_on = [
+    "dnd_character_sheet",
+]
+description = "Stable Diffusion image generation prompt"
+blueprint_file = "blueprints/system/a1111.md"

@@ -1,0 +1,49 @@
+[template]
+name = "Changeling: The Dreaming 20th"
+version = "1.0"
+description = "Changeling: The Dreaming 20th Anniversary character template: concept sheet, rules-valid stat block, backstory, and an in-fiction opening scene."
+
+[[assets]]
+name = "ctd_character_sheet"
+required = true
+depends_on = []
+description = "Kith, seeming, court, and personality"
+blueprint_file = "blueprints/templates/changeling_the_dreaming/assets/ctd_character_sheet.md"
+
+[[assets]]
+name = "ctd_stat_block"
+required = true
+depends_on = [
+    "ctd_character_sheet",
+]
+description = "Rules-valid stat block (Arts, Realms, Glamour, Banality)"
+blueprint_file = "blueprints/templates/changeling_the_dreaming/assets/ctd_stat_block.md"
+
+[[assets]]
+name = "ctd_backstory"
+required = true
+depends_on = [
+    "ctd_character_sheet",
+]
+description = "Backstory, ties, and playable hooks"
+blueprint_file = "blueprints/templates/changeling_the_dreaming/assets/ctd_backstory.md"
+
+[[assets]]
+name = "ctd_intro_scene"
+required = true
+depends_on = [
+    "ctd_character_sheet",
+    "ctd_stat_block",
+    "ctd_backstory",
+]
+description = "In-fiction opening scene"
+blueprint_file = "blueprints/templates/changeling_the_dreaming/assets/ctd_intro_scene.md"
+
+[[assets]]
+name = "a1111"
+required = false
+depends_on = [
+    "ctd_character_sheet",
+]
+description = "Stable Diffusion image generation prompt"
+blueprint_file = "blueprints/system/a1111.md"

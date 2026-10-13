@@ -18,6 +18,7 @@ import { bundledBlueprintContents, bundledTemplateManifestContents } from '../ge
 
 const CUSTOM_TEMPLATES_STORAGE_KEY = 'eidolon.mobile.templates.custom';
 const BLUEPRINT_OVERRIDES_STORAGE_KEY = 'eidolon.mobile.blueprints.overrides';
+const OFFICIAL_TEMPLATE_MANIFEST_PATH = 'blueprints/templates/official_v2v3/template.toml';
 
 type StorageLike = Pick<Storage, 'getItem' | 'removeItem' | 'setItem'>;
 const blueprintContentMap = bundledBlueprintContents as Record<string, string>;
@@ -133,28 +134,31 @@ function resolveBundledBlueprintContent(path: string): string | undefined {
 }
 
 function getBuiltInTemplateRecords(): StoredTemplateRecord[] {
-  return Object.entries(templateManifestMap).reduce<StoredTemplateRecord[]>(
-    (records, [manifestPath, content], index) => {
-      const template = parseTemplateManifest(content);
-      if (!template) {
-        return records;
-      }
+  const manifestEntries = Object.entries(templateManifestMap);
+  // The default generation template must stay the official V2/V3 card even as more
+  // manifests are added. The bundle is keyed in alphabetical path order, so pinning
+  // "first entry" would promote whichever directory sorts first (e.g. `dnd5e` before
+  // `official_v2v3`) into the fallback slot instead.
+  const officialIndex = manifestEntries.findIndex(([manifestPath]) => manifestPath === OFFICIAL_TEMPLATE_MANIFEST_PATH);
+  const defaultIndex = officialIndex >= 0 ? officialIndex : 0;
 
-      template.is_default = index === 0;
-      const templateRoot = manifestPath.includes('/')
-        ? manifestPath.slice(0, manifestPath.lastIndexOf('/'))
-        : undefined;
-
-      records.push({
-        template,
-        blueprint_contents: {},
-        template_root: templateRoot,
-      });
-
+  return manifestEntries.reduce<StoredTemplateRecord[]>((records, [manifestPath, content], index) => {
+    const template = parseTemplateManifest(content);
+    if (!template) {
       return records;
-    },
-    [],
-  );
+    }
+
+    template.is_default = index === defaultIndex;
+    const templateRoot = manifestPath.includes('/') ? manifestPath.slice(0, manifestPath.lastIndexOf('/')) : undefined;
+
+    records.push({
+      template,
+      blueprint_contents: {},
+      template_root: templateRoot,
+    });
+
+    return records;
+  }, []);
 }
 
 function readStoredTemplateRecords(): StoredTemplateRecord[] {

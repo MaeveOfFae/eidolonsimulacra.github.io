@@ -1,0 +1,49 @@
+[template]
+name = "Warhammer Fantasy Roleplay 4e"
+version = "1.0"
+description = "Warhammer Fantasy Roleplay 4th Edition character template: concept sheet, rules-valid stat block, backstory, and an in-fiction opening scene."
+
+[[assets]]
+name = "wfrp_character_sheet"
+required = true
+depends_on = []
+description = "Species, class, career, and personality"
+blueprint_file = "blueprints/templates/warhammer_fantasy_roleplay/assets/wfrp_character_sheet.md"
+
+[[assets]]
+name = "wfrp_stat_block"
+required = true
+depends_on = [
+    "wfrp_character_sheet",
+]
+description = "Rules-valid stat block (characteristics, skills, wounds, armour)"
+blueprint_file = "blueprints/templates/warhammer_fantasy_roleplay/assets/wfrp_stat_block.md"
+
+[[assets]]
+name = "wfrp_backstory"
+required = true
+depends_on = [
+    "wfrp_character_sheet",
+]
+description = "Backstory, ties, and playable hooks"
+blueprint_file = "blueprints/templates/warhammer_fantasy_roleplay/assets/wfrp_backstory.md"
+
+[[assets]]
+name = "wfrp_intro_scene"
+required = true
+depends_on = [
+    "wfrp_character_sheet",
+    "wfrp_stat_block",
+    "wfrp_backstory",
+]
+description = "In-fiction opening scene"
+blueprint_file = "blueprints/templates/warhammer_fantasy_roleplay/assets/wfrp_intro_scene.md"
+
+[[assets]]
+name = "a1111"
+required = false
+depends_on = [
+    "wfrp_character_sheet",
+]
+description = "Stable Diffusion image generation prompt"
+blueprint_file = "blueprints/system/a1111.md"

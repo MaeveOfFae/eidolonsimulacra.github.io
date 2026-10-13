@@ -24,8 +24,33 @@ The repo is centered on a strict blueprint contract: start from one seed, genera
 - Worldbook: the world editor's **Worldbook** tab projects the world's canon — its own details, characters, factions, locations, timelines, canon locks, and canon-library entries — into portable setting entries. Two exports: the `[[LOREBOOK_PACKET]]` plaintext the app's own lorebook importer reads back, and a SillyTavern-style world-info JSON. The projection is a pure function (`buildWorldbook`), so the preview and the exported files cannot drift.
 - Event calendar: `/events` is a date-aware view across every world's timeline events. `buildEventCalendar` treats `YYYY` / `YYYY-MM` / `YYYY-MM-DD` as real-world dates and sorts them numerically, keeps anything else ("1204 AF") as an in-world label in its recorded order, and lists undated events last rather than dropping them. Events are still authored inside a world's timeline; this screen only reads them, filtering by world.
 - Universe notes: the world editor's **Universe notes** tab holds free-form canon context — whatever framing the author keeps re-explaining (tone, continuity reminders, how magic feels). Notes are pinned or not; pinned notes lead the list and the context block. They ride the same `CANON CONTEXT` section as the canon library for drafts linked to the world, and the tab shows the exact block generation receives.
-- One built-in runtime template is currently loaded from `blueprints/templates/`:
-  - `V2/V3 Card` with `system_prompt`, `post_history`, `character_sheet`, `intro_scene`, `creator_notes`, and `a1111`
+- Built-in runtime templates are loaded from `blueprints/templates/`:
+  - `V2/V3 Card` (default) with `system_prompt`, `post_history`, `character_sheet`, `intro_scene`, `creator_notes`, and `a1111`
+  - `Cosmere` with `cosmere_character_sheet`, `cosmere_investiture`, `cosmere_backstory`, `cosmere_intro_scene`, and an optional `a1111`
+  - `D&D 5e` with `dnd_character_sheet`, `dnd_stat_block`, `dnd_backstory`, `dnd_intro_scene`, and an optional `a1111`
+  - `D&D 2024` with `dnd_character_sheet`, `dnd_stat_block`, `dnd_backstory`, `dnd_intro_scene`, and an optional `a1111`
+  - `Pathfinder 2e` with `pf_character_sheet`, `pf_stat_block`, `pf_backstory`, `pf_intro_scene`, and an optional `a1111`
+  - `Pathfinder 1e` with `pf_character_sheet`, `pf_stat_block`, `pf_backstory`, `pf_intro_scene`, and an optional `a1111`
+  - `Shadowrun 6e` with `sr_character_sheet`, `sr_stat_block`, `sr_backstory`, `sr_intro_scene`, and an optional `a1111`
+  - `Shadowrun 5e` with `sr_character_sheet`, `sr_stat_block`, `sr_backstory`, `sr_intro_scene`, and an optional `a1111`
+  - `Side Characters` with `npc_profile`, `npc_voice`, `npc_scene_hook`, and an optional `a1111`
+  - `Call of Cthulhu 7e` with `coc_character_sheet`, `coc_stat_block`, `coc_backstory`, `coc_intro_scene`, and an optional `a1111`
+  - `Cyberpunk RED` with `cpr_character_sheet`, `cpr_stat_block`, `cpr_backstory`, `cpr_intro_scene`, and an optional `a1111`
+  - `Vampire: The Masquerade 5e` with `vtm_character_sheet`, `vtm_stat_block`, `vtm_backstory`, `vtm_intro_scene`, and an optional `a1111`
+  - `Fate Core` with `fate_character_sheet`, `fate_stat_block`, `fate_backstory`, `fate_intro_scene`, and an optional `a1111`
+  - `GURPS 4e` with `gurps_character_sheet`, `gurps_stat_block`, `gurps_backstory`, `gurps_intro_scene`, and an optional `a1111`
+  - `Avatar Legends` with `avatar_character_sheet`, `avatar_stat_block`, `avatar_backstory`, `avatar_intro_scene`, and an optional `a1111`
+  - `Alien RPG` with `alien_character_sheet`, `alien_stat_block`, `alien_backstory`, `alien_intro_scene`, and an optional `a1111`
+  - `Warhammer Fantasy Roleplay 4e` with `wfrp_character_sheet`, `wfrp_stat_block`, `wfrp_backstory`, `wfrp_intro_scene`, and an optional `a1111`
+  - `Wrath & Glory` with `wg_character_sheet`, `wg_stat_block`, `wg_backstory`, `wg_intro_scene`, and an optional `a1111`
+  - `Imperium Maledictum` with `im_character_sheet`, `im_stat_block`, `im_backstory`, `im_intro_scene`, and an optional `a1111`
+  - `Tales from the Loop` with `tftl_character_sheet`, `tftl_stat_block`, `tftl_backstory`, `tftl_intro_scene`, and an optional `a1111`
+  - `Dragon Age RPG` with `da_character_sheet`, `da_stat_block`, `da_backstory`, `da_intro_scene`, and an optional `a1111`
+  - `Werewolf: The Apocalypse 5e` with `wta_character_sheet`, `wta_stat_block`, `wta_backstory`, `wta_intro_scene`, and an optional `a1111`
+  - `Hunter: The Reckoning 5e` with `htr_character_sheet`, `htr_stat_block`, `htr_backstory`, `htr_intro_scene`, and an optional `a1111`
+  - `Mage: The Ascension 20th` with `mta_character_sheet`, `mta_stat_block`, `mta_backstory`, `mta_intro_scene`, and an optional `a1111`
+  - `Wraith: The Oblivion 20th` with `wto_character_sheet`, `wto_stat_block`, `wto_backstory`, `wto_intro_scene`, and an optional `a1111`
+  - `Changeling: The Dreaming 20th` with `ctd_character_sheet`, `ctd_stat_block`, `ctd_backstory`, `ctd_intro_scene`, and an optional `a1111`
 - Aksho reference material is checked in under `dev/official_aksho/`, but it is not currently loaded as a built-in browser template manifest. (`dev/` is git-ignored, so it only exists in checkouts that have it locally.)
 - Shared parser and validator utilities for fenced-codeblock generation output.
 - Export helpers and preset definitions for raw asset packs and platform-specific formats.

@@ -402,8 +402,18 @@ You can also press **Validate** directly in the review header.
 - Start with the built-in **V2/V3 Card** template
   (`system_prompt`, `post_history`, `character_sheet`, `intro_scene`,
   `creator_notes`, `a1111`) so you learn the baseline.
-- The built-in runtime catalog currently ships one template family under
-  `blueprints/templates/official_v2v3/`.
+- The built-in runtime catalog ships twenty-six templates under
+  `blueprints/templates/`, from the **V2/V3 Card** default through tabletop
+  families such as **D&D 5e**, **D&D 2024**, **Pathfinder 1e**, **Pathfinder 2e**,
+  **Shadowrun 5e**, **Shadowrun 6e**, **Call of Cthulhu 7e**, **Cyberpunk RED**,
+  **Vampire: The Masquerade 5e**, **Werewolf: The Apocalypse 5e**,
+  **Hunter: The Reckoning 5e**, **Mage: The Ascension 20th**,
+  **Wraith: The Oblivion 20th**, **Changeling: The Dreaming 20th**,
+  **Warhammer Fantasy Roleplay 4e**, **Wrath & Glory**, **Imperium Maledictum**,
+  **Fate Core**, **GURPS 4e**, **Avatar Legends**, **Alien RPG**,
+  **Tales from the Loop**, **Dragon Age RPG**, **Cosmere**, and the lean
+  **Side Characters** family. See `blueprints/README.md` for each family's asset
+  set.
 
 ## 21. Browse and edit blueprints
 

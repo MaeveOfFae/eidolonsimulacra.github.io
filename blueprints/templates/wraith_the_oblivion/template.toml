@@ -1,0 +1,49 @@
+[template]
+name = "Wraith: The Oblivion 20th"
+version = "1.0"
+description = "Wraith: The Oblivion 20th Anniversary character template: concept sheet, rules-valid stat block, backstory, and an in-fiction opening scene."
+
+[[assets]]
+name = "wto_character_sheet"
+required = true
+depends_on = []
+description = "Guild, death, and personality, including the Shadow"
+blueprint_file = "blueprints/templates/wraith_the_oblivion/assets/wto_character_sheet.md"
+
+[[assets]]
+name = "wto_stat_block"
+required = true
+depends_on = [
+    "wto_character_sheet",
+]
+description = "Rules-valid stat block (Arcanoi, Pathos, Corpus, the Shadow)"
+blueprint_file = "blueprints/templates/wraith_the_oblivion/assets/wto_stat_block.md"
+
+[[assets]]
+name = "wto_backstory"
+required = true
+depends_on = [
+    "wto_character_sheet",
+]
+description = "Backstory, ties, and playable hooks"
+blueprint_file = "blueprints/templates/wraith_the_oblivion/assets/wto_backstory.md"
+
+[[assets]]
+name = "wto_intro_scene"
+required = true
+depends_on = [
+    "wto_character_sheet",
+    "wto_stat_block",
+    "wto_backstory",
+]
+description = "In-fiction opening scene"
+blueprint_file = "blueprints/templates/wraith_the_oblivion/assets/wto_intro_scene.md"
+
+[[assets]]
+name = "a1111"
+required = false
+depends_on = [
+    "wto_character_sheet",
+]
+description = "Stable Diffusion image generation prompt"
+blueprint_file = "blueprints/system/a1111.md"

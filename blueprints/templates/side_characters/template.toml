@@ -1,0 +1,39 @@
+[template]
+name = "Side Characters"
+version = "1.0"
+description = "Lightweight supporting-cast NPC template: a compact profile, an in-scene voice, and a ready-to-play scene hook."
+
+[[assets]]
+name = "npc_profile"
+required = true
+depends_on = []
+description = "Compact NPC identity, role, and pressure"
+blueprint_file = "blueprints/templates/side_characters/assets/npc_profile.md"
+
+[[assets]]
+name = "npc_voice"
+required = true
+depends_on = [
+    "npc_profile",
+]
+description = "Speech, mannerisms, and behavioural tells"
+blueprint_file = "blueprints/templates/side_characters/assets/npc_voice.md"
+
+[[assets]]
+name = "npc_scene_hook"
+required = true
+depends_on = [
+    "npc_profile",
+    "npc_voice",
+]
+description = "Short in-scene situation, stakes, and open loop"
+blueprint_file = "blueprints/templates/side_characters/assets/npc_scene_hook.md"
+
+[[assets]]
+name = "a1111"
+required = false
+depends_on = [
+    "npc_profile",
+]
+description = "Stable Diffusion image generation prompt"
+blueprint_file = "blueprints/system/a1111.md"

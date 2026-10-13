@@ -1,0 +1,49 @@
+[template]
+name = "Dragon Age RPG"
+version = "1.0"
+description = "Dragon Age RPG character template: concept sheet, rules-valid stat block, backstory, and an in-fiction opening scene."
+
+[[assets]]
+name = "da_character_sheet"
+required = true
+depends_on = []
+description = "Origin, class, and personality"
+blueprint_file = "blueprints/templates/dragon_age/assets/da_character_sheet.md"
+
+[[assets]]
+name = "da_stat_block"
+required = true
+depends_on = [
+    "da_character_sheet",
+]
+description = "Rules-valid stat block (abilities, focuses, health, stunts)"
+blueprint_file = "blueprints/templates/dragon_age/assets/da_stat_block.md"
+
+[[assets]]
+name = "da_backstory"
+required = true
+depends_on = [
+    "da_character_sheet",
+]
+description = "Backstory, ties, and playable hooks"
+blueprint_file = "blueprints/templates/dragon_age/assets/da_backstory.md"
+
+[[assets]]
+name = "da_intro_scene"
+required = true
+depends_on = [
+    "da_character_sheet",
+    "da_stat_block",
+    "da_backstory",
+]
+description = "In-fiction opening scene"
+blueprint_file = "blueprints/templates/dragon_age/assets/da_intro_scene.md"
+
+[[assets]]
+name = "a1111"
+required = false
+depends_on = [
+    "da_character_sheet",
+]
+description = "Stable Diffusion image generation prompt"
+blueprint_file = "blueprints/system/a1111.md"

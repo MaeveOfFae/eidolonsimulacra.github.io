@@ -1,0 +1,49 @@
+[template]
+name = "Cosmere"
+version = "1.0"
+description = "Cosmere character template grounded in canon: identity sheet, Invested art, backstory, and an in-fiction opening scene."
+
+[[assets]]
+name = "cosmere_character_sheet"
+required = true
+depends_on = []
+description = "Identity, world placement, and personality"
+blueprint_file = "blueprints/templates/cosmere/assets/cosmere_character_sheet.md"
+
+[[assets]]
+name = "cosmere_investiture"
+required = true
+depends_on = [
+    "cosmere_character_sheet",
+]
+description = "Invested art, access, costs, and limits"
+blueprint_file = "blueprints/templates/cosmere/assets/cosmere_investiture.md"
+
+[[assets]]
+name = "cosmere_backstory"
+required = true
+depends_on = [
+    "cosmere_character_sheet",
+]
+description = "Backstory, ties, and playable story hooks"
+blueprint_file = "blueprints/templates/cosmere/assets/cosmere_backstory.md"
+
+[[assets]]
+name = "cosmere_intro_scene"
+required = true
+depends_on = [
+    "cosmere_character_sheet",
+    "cosmere_investiture",
+    "cosmere_backstory",
+]
+description = "In-fiction opening scene"
+blueprint_file = "blueprints/templates/cosmere/assets/cosmere_intro_scene.md"
+
+[[assets]]
+name = "a1111"
+required = false
+depends_on = [
+    "cosmere_character_sheet",
+]
+description = "Stable Diffusion image generation prompt"
+blueprint_file = "blueprints/system/a1111.md"

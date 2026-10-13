@@ -1,0 +1,49 @@
+[template]
+name = "Mage: The Ascension 20th"
+version = "1.0"
+description = "Mage: The Ascension 20th Anniversary character template: concept sheet, rules-valid stat block, backstory, and an in-fiction opening scene."
+
+[[assets]]
+name = "mta_character_sheet"
+required = true
+depends_on = []
+description = "Tradition, paradigm, and personality"
+blueprint_file = "blueprints/templates/mage_the_ascension/assets/mta_character_sheet.md"
+
+[[assets]]
+name = "mta_stat_block"
+required = true
+depends_on = [
+    "mta_character_sheet",
+]
+description = "Rules-valid stat block (Arete, Spheres, Quintessence, Paradox)"
+blueprint_file = "blueprints/templates/mage_the_ascension/assets/mta_stat_block.md"
+
+[[assets]]
+name = "mta_backstory"
+required = true
+depends_on = [
+    "mta_character_sheet",
+]
+description = "Backstory, ties, and playable hooks"
+blueprint_file = "blueprints/templates/mage_the_ascension/assets/mta_backstory.md"
+
+[[assets]]
+name = "mta_intro_scene"
+required = true
+depends_on = [
+    "mta_character_sheet",
+    "mta_stat_block",
+    "mta_backstory",
+]
+description = "In-fiction opening scene"
+blueprint_file = "blueprints/templates/mage_the_ascension/assets/mta_intro_scene.md"
+
+[[assets]]
+name = "a1111"
+required = false
+depends_on = [
+    "mta_character_sheet",
+]
+description = "Stable Diffusion image generation prompt"
+blueprint_file = "blueprints/system/a1111.md"

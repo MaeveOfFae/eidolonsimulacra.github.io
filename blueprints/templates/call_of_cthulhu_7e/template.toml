@@ -1,0 +1,49 @@
+[template]
+name = "Call of Cthulhu 7e"
+version = "1.0"
+description = "Call of Cthulhu 7th Edition investigator template: identity sheet, rules-valid stat block, backstory, and an in-fiction opening scene."
+
+[[assets]]
+name = "coc_character_sheet"
+required = true
+depends_on = []
+description = "Investigator identity, era, occupation, and personality"
+blueprint_file = "blueprints/templates/call_of_cthulhu_7e/assets/coc_character_sheet.md"
+
+[[assets]]
+name = "coc_stat_block"
+required = true
+depends_on = [
+    "coc_character_sheet",
+]
+description = "Rules-valid 7th Edition stat block (characteristics, skills, sanity)"
+blueprint_file = "blueprints/templates/call_of_cthulhu_7e/assets/coc_stat_block.md"
+
+[[assets]]
+name = "coc_backstory"
+required = true
+depends_on = [
+    "coc_character_sheet",
+]
+description = "Backstory, ties, and playable hooks"
+blueprint_file = "blueprints/templates/call_of_cthulhu_7e/assets/coc_backstory.md"
+
+[[assets]]
+name = "coc_intro_scene"
+required = true
+depends_on = [
+    "coc_character_sheet",
+    "coc_stat_block",
+    "coc_backstory",
+]
+description = "In-fiction opening scene"
+blueprint_file = "blueprints/templates/call_of_cthulhu_7e/assets/coc_intro_scene.md"
+
+[[assets]]
+name = "a1111"
+required = false
+depends_on = [
+    "coc_character_sheet",
+]
+description = "Stable Diffusion image generation prompt"
+blueprint_file = "blueprints/system/a1111.md"

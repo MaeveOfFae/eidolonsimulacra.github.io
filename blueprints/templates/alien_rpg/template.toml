@@ -1,0 +1,49 @@
+[template]
+name = "Alien RPG"
+version = "1.0"
+description = "Alien RPG character template: crew concept sheet, rules-valid stat block, backstory, and an in-fiction opening scene."
+
+[[assets]]
+name = "alien_character_sheet"
+required = true
+depends_on = []
+description = "Crew identity, career, and personality"
+blueprint_file = "blueprints/templates/alien_rpg/assets/alien_character_sheet.md"
+
+[[assets]]
+name = "alien_stat_block"
+required = true
+depends_on = [
+    "alien_character_sheet",
+]
+description = "Rules-valid stat block (attributes, skills, Health, Stress)"
+blueprint_file = "blueprints/templates/alien_rpg/assets/alien_stat_block.md"
+
+[[assets]]
+name = "alien_backstory"
+required = true
+depends_on = [
+    "alien_character_sheet",
+]
+description = "Backstory, ties, and playable hooks"
+blueprint_file = "blueprints/templates/alien_rpg/assets/alien_backstory.md"
+
+[[assets]]
+name = "alien_intro_scene"
+required = true
+depends_on = [
+    "alien_character_sheet",
+    "alien_stat_block",
+    "alien_backstory",
+]
+description = "In-fiction opening scene"
+blueprint_file = "blueprints/templates/alien_rpg/assets/alien_intro_scene.md"
+
+[[assets]]
+name = "a1111"
+required = false
+depends_on = [
+    "alien_character_sheet",
+]
+description = "Stable Diffusion image generation prompt"
+blueprint_file = "blueprints/system/a1111.md"

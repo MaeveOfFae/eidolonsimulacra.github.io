@@ -1,0 +1,49 @@
+[template]
+name = "Hunter: The Reckoning 5e"
+version = "1.0"
+description = "Hunter: The Reckoning 5th Edition character template: concept sheet, rules-valid stat block, backstory, and an in-fiction opening scene."
+
+[[assets]]
+name = "htr_character_sheet"
+required = true
+depends_on = []
+description = "Creed, drive, and personality"
+blueprint_file = "blueprints/templates/hunter_the_reckoning/assets/htr_character_sheet.md"
+
+[[assets]]
+name = "htr_stat_block"
+required = true
+depends_on = [
+    "htr_character_sheet",
+]
+description = "Rules-valid stat block (attributes, Edge, Desperation)"
+blueprint_file = "blueprints/templates/hunter_the_reckoning/assets/htr_stat_block.md"
+
+[[assets]]
+name = "htr_backstory"
+required = true
+depends_on = [
+    "htr_character_sheet",
+]
+description = "Backstory, ties, and playable hooks"
+blueprint_file = "blueprints/templates/hunter_the_reckoning/assets/htr_backstory.md"
+
+[[assets]]
+name = "htr_intro_scene"
+required = true
+depends_on = [
+    "htr_character_sheet",
+    "htr_stat_block",
+    "htr_backstory",
+]
+description = "In-fiction opening scene"
+blueprint_file = "blueprints/templates/hunter_the_reckoning/assets/htr_intro_scene.md"
+
+[[assets]]
+name = "a1111"
+required = false
+depends_on = [
+    "htr_character_sheet",
+]
+description = "Stable Diffusion image generation prompt"
+blueprint_file = "blueprints/system/a1111.md"

@@ -1,0 +1,49 @@
+[template]
+name = "Werewolf: The Apocalypse 5e"
+version = "1.0"
+description = "Werewolf: The Apocalypse 5th Edition character template: concept sheet, rules-valid stat block, backstory, and an in-fiction opening scene."
+
+[[assets]]
+name = "wta_character_sheet"
+required = true
+depends_on = []
+description = "Auspice, tribe, and personality"
+blueprint_file = "blueprints/templates/werewolf_the_apocalypse/assets/wta_character_sheet.md"
+
+[[assets]]
+name = "wta_stat_block"
+required = true
+depends_on = [
+    "wta_character_sheet",
+]
+description = "Rules-valid stat block (attributes, Gifts, Rage, Harmony)"
+blueprint_file = "blueprints/templates/werewolf_the_apocalypse/assets/wta_stat_block.md"
+
+[[assets]]
+name = "wta_backstory"
+required = true
+depends_on = [
+    "wta_character_sheet",
+]
+description = "Backstory, ties, and playable hooks"
+blueprint_file = "blueprints/templates/werewolf_the_apocalypse/assets/wta_backstory.md"
+
+[[assets]]
+name = "wta_intro_scene"
+required = true
+depends_on = [
+    "wta_character_sheet",
+    "wta_stat_block",
+    "wta_backstory",
+]
+description = "In-fiction opening scene"
+blueprint_file = "blueprints/templates/werewolf_the_apocalypse/assets/wta_intro_scene.md"
+
+[[assets]]
+name = "a1111"
+required = false
+depends_on = [
+    "wta_character_sheet",
+]
+description = "Stable Diffusion image generation prompt"
+blueprint_file = "blueprints/system/a1111.md"

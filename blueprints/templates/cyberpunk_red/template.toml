@@ -1,0 +1,49 @@
+[template]
+name = "Cyberpunk RED"
+version = "1.0"
+description = "Cyberpunk RED character template: identity sheet, rules-valid stat block, backstory, and an in-fiction opening scene."
+
+[[assets]]
+name = "cpr_character_sheet"
+required = true
+depends_on = []
+description = "Edgerunner identity, role, and personality"
+blueprint_file = "blueprints/templates/cyberpunk_red/assets/cpr_character_sheet.md"
+
+[[assets]]
+name = "cpr_stat_block"
+required = true
+depends_on = [
+    "cpr_character_sheet",
+]
+description = "Rules-valid stat block (STATs, HP, Humanity, armour, skills)"
+blueprint_file = "blueprints/templates/cyberpunk_red/assets/cpr_stat_block.md"
+
+[[assets]]
+name = "cpr_backstory"
+required = true
+depends_on = [
+    "cpr_character_sheet",
+]
+description = "Backstory, ties, and playable hooks"
+blueprint_file = "blueprints/templates/cyberpunk_red/assets/cpr_backstory.md"
+
+[[assets]]
+name = "cpr_intro_scene"
+required = true
+depends_on = [
+    "cpr_character_sheet",
+    "cpr_stat_block",
+    "cpr_backstory",
+]
+description = "In-fiction opening scene"
+blueprint_file = "blueprints/templates/cyberpunk_red/assets/cpr_intro_scene.md"
+
+[[assets]]
+name = "a1111"
+required = false
+depends_on = [
+    "cpr_character_sheet",
+]
+description = "Stable Diffusion image generation prompt"
+blueprint_file = "blueprints/system/a1111.md"

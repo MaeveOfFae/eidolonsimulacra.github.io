@@ -1,0 +1,49 @@
+[template]
+name = "Pathfinder 2e"
+version = "1.0"
+description = "Pathfinder Second Edition character template: identity sheet, rules-valid stat block, backstory, and an in-fiction opening scene."
+
+[[assets]]
+name = "pf_character_sheet"
+required = true
+depends_on = []
+description = "Character identity, edicts, and appearance"
+blueprint_file = "blueprints/templates/pathfinder2e/assets/pf_character_sheet.md"
+
+[[assets]]
+name = "pf_stat_block"
+required = true
+depends_on = [
+    "pf_character_sheet",
+]
+description = "Rules-valid Second Edition stat block (modifiers, defenses, Strikes, spells)"
+blueprint_file = "blueprints/templates/pathfinder2e/assets/pf_stat_block.md"
+
+[[assets]]
+name = "pf_backstory"
+required = true
+depends_on = [
+    "pf_character_sheet",
+]
+description = "Backstory, ties, and playable story hooks"
+blueprint_file = "blueprints/templates/pathfinder2e/assets/pf_backstory.md"
+
+[[assets]]
+name = "pf_intro_scene"
+required = true
+depends_on = [
+    "pf_character_sheet",
+    "pf_stat_block",
+    "pf_backstory",
+]
+description = "In-fiction opening scene"
+blueprint_file = "blueprints/templates/pathfinder2e/assets/pf_intro_scene.md"
+
+[[assets]]
+name = "a1111"
+required = false
+depends_on = [
+    "pf_character_sheet",
+]
+description = "Stable Diffusion image generation prompt"
+blueprint_file = "blueprints/system/a1111.md"

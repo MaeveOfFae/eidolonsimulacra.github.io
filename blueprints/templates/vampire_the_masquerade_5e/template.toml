@@ -1,0 +1,49 @@
+[template]
+name = "Vampire: The Masquerade 5e"
+version = "1.0"
+description = "Vampire: The Masquerade 5th Edition character template: identity sheet, rules-valid stat block, backstory, and an in-fiction opening scene."
+
+[[assets]]
+name = "vtm_character_sheet"
+required = true
+depends_on = []
+description = "Kindred identity, clan, and personality"
+blueprint_file = "blueprints/templates/vampire_the_masquerade_5e/assets/vtm_character_sheet.md"
+
+[[assets]]
+name = "vtm_stat_block"
+required = true
+depends_on = [
+    "vtm_character_sheet",
+]
+description = "Rules-valid stat block (attributes, Disciplines, Humanity, Hunger)"
+blueprint_file = "blueprints/templates/vampire_the_masquerade_5e/assets/vtm_stat_block.md"
+
+[[assets]]
+name = "vtm_backstory"
+required = true
+depends_on = [
+    "vtm_character_sheet",
+]
+description = "Backstory, ties, and playable hooks"
+blueprint_file = "blueprints/templates/vampire_the_masquerade_5e/assets/vtm_backstory.md"
+
+[[assets]]
+name = "vtm_intro_scene"
+required = true
+depends_on = [
+    "vtm_character_sheet",
+    "vtm_stat_block",
+    "vtm_backstory",
+]
+description = "In-fiction opening scene"
+blueprint_file = "blueprints/templates/vampire_the_masquerade_5e/assets/vtm_intro_scene.md"
+
+[[assets]]
+name = "a1111"
+required = false
+depends_on = [
+    "vtm_character_sheet",
+]
+description = "Stable Diffusion image generation prompt"
+blueprint_file = "blueprints/system/a1111.md"
