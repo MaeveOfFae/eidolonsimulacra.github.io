@@ -145,6 +145,11 @@ export function isLoopbackUrl(value: string | undefined): boolean {
   return /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(?::|\/|$)/i.test(value ?? '');
 }
 
+/** True for Ollama Cloud's own hosts, as opposed to a self-hosted server. */
+export function isOllamaCloudUrl(value: string | undefined): boolean {
+  return /^https?:\/\/(www\.)?ollama\.com(?::|\/|$)/i.test(value ?? '');
+}
+
 /**
  * Resolve whatever Ollama base URL a user typed (or an older build stored) to the
  * OpenAI-compatible path this app calls: a bare host (`http://localhost:11434`,
@@ -186,17 +191,21 @@ export function resolveProviderBaseUrlOverride(provider: LLMProvider, baseUrl: s
 }
 
 /**
- * Whether a provider needs an API key before a call is worth attempting. Custom
- * endpoints and a loopback Ollama (a local server) answer keyless; Ollama Cloud
- * and every hosted provider need one.
+ * Whether a provider needs an API key before a call is worth attempting.
+ *
+ * `configuredBaseUrl` is the override held in config (blank/undefined means the
+ * provider's own default endpoint). Custom endpoints and any *configured* Ollama
+ * endpoint answer keyless — a local server, a WSL2/LAN address, or a self-hosted
+ * relay — while Ollama Cloud (no override, so the request goes to ollama.com) and
+ * every hosted provider need their key.
  */
-export function providerRequiresApiKey(provider: LLMProvider, baseUrl: string): boolean {
+export function providerRequiresApiKey(provider: LLMProvider, configuredBaseUrl: string | undefined): boolean {
   if (provider === 'custom') {
     return false;
   }
 
   if (provider === 'ollama') {
-    return !isLoopbackUrl(baseUrl);
+    return !configuredBaseUrl?.trim();
   }
 
   return true;

@@ -15,7 +15,7 @@ import type {
   LLMProvider,
 } from './types';
 import { ProviderEndpoints } from './types';
-import { isLoopbackUrl } from './types';
+import { isLoopbackUrl, isOllamaCloudUrl } from './types';
 import { isInvalidApiKeyValue, normalizeApiKeyValue } from './api-key';
 import { buildProviderHeaders } from './headers';
 import { getRuntimeLLMFetch, isRuntimeLLMStreamingSupported } from './transport';
@@ -580,13 +580,7 @@ export class OpenAICompatEngine implements LLMEngine {
       const networkish = /fetch|network|econnrefused|failed/i.test(raw);
       let error = raw;
       if (networkish) {
-        error = this.isLocalEndpoint()
-          ? `Could not reach the local model server at ${this.config.baseUrl}. Is it running (e.g. \`ollama serve\`), and does OLLAMA_ORIGINS=* allow this app's origin?`
-          : this.config.provider === 'ollama'
-            ? // ollama.com never answers a browser: it sends no CORS headers, so this
-              // is a policy block rather than the user's network or privacy shield.
-              `Could not reach ${this.config.baseUrl}. Browsers cannot call Ollama Cloud directly — ollama.com sends no CORS headers, so use the desktop app, a relay behind the Custom provider, or a locally signed-in server. Otherwise check your network and browser privacy shields.`
-            : `Could not reach ${this.config.baseUrl}. Check your network — browser privacy shields commonly block provider requests.`;
+        error = this.describeNetworkFailure();
       }
       return {
         success: false,
@@ -596,6 +590,31 @@ export class OpenAICompatEngine implements LLMEngine {
         },
       };
     }
+  }
+
+  /**
+   * Transport failures get cause-specific advice, because the fix differs per
+   * endpoint: a loopback server needs origin permission (a browser) or a running
+   * process, ollama.com never answers a browser at all, a self-hosted non-loopback
+   * server (WSL2, Docker, another machine) only answers once it listens beyond
+   * 127.0.0.1, and every other host keeps the generic privacy-shield note.
+   */
+  private describeNetworkFailure(): string {
+    const endpoint = this.config.baseUrl;
+
+    if (this.isLocalEndpoint()) {
+      return `Could not reach the local model server at ${endpoint}. Is it running (e.g. \`ollama serve\`), and does OLLAMA_ORIGINS=* allow this app's origin?`;
+    }
+
+    if (isOllamaCloudUrl(endpoint)) {
+      return `Could not reach ${endpoint}. Browsers cannot call Ollama Cloud directly — ollama.com sends no CORS headers, so use the desktop app, a relay behind the Custom provider, or a locally signed-in server. Otherwise check your network and browser privacy shields.`;
+    }
+
+    if (this.config.provider === 'ollama') {
+      return `Could not reach ${endpoint}. Is Ollama running there, and bound beyond 127.0.0.1? A server inside WSL2, Docker or another machine answers only once it listens on 0.0.0.0 — start it with OLLAMA_HOST=0.0.0.0:11434 (and, from a browser, list this app's origin in OLLAMA_ORIGINS).`;
+    }
+
+    return `Could not reach ${endpoint}. Check your network — browser privacy shields commonly block provider requests.`;
   }
 
   private buildHeaders(): Record<string, string> {

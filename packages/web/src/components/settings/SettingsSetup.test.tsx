@@ -258,6 +258,57 @@ describe('Settings setup runtime column', () => {
     expect(await screen.findByRole('button', { name: 'Test access' })).toBeEnabled();
   });
 
+  it('also unlocks a WSL2 or LAN Ollama address without a key', async () => {
+    // The Windows host reaches a WSL2 server by IP, which is not loopback.
+    configManager.updateConfig({ base_url: 'http://172.24.0.5:11434/v1' });
+    renderSetupSettings();
+
+    expect(await screen.findByRole('button', { name: 'Test access' })).toBeEnabled();
+  });
+
+  it('detects a local Ollama server and adopts its /v1 base URL', async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ data: [{ id: 'gemma4:latest' }] }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    try {
+      renderSetupSettings();
+
+      fireEvent.click(await screen.findByRole('button', { name: /Advanced transport/ }));
+      fireEvent.click(screen.getByRole('button', { name: 'Detect local Ollama' }));
+
+      await waitFor(() => expect(screen.getByLabelText('Base URL')).toHaveValue('http://localhost:11434/v1'));
+      const [probeUrl] = fetchMock.mock.calls[0] as unknown as [string];
+      expect(probeUrl).toBe('http://localhost:11434/v1/models');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('explains how to start a local Ollama when detection finds nothing', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new TypeError('Failed to fetch');
+      }),
+    );
+    try {
+      renderSetupSettings();
+
+      fireEvent.click(await screen.findByRole('button', { name: /Advanced transport/ }));
+      fireEvent.click(screen.getByRole('button', { name: 'Detect local Ollama' }));
+
+      expect(await screen.findByText(/No Ollama answered at/)).toBeInTheDocument();
+      expect(screen.getByText(/OLLAMA_HOST=0.0.0.0:11434/)).toBeInTheDocument();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('keeps the Ollama Cloud access test gated behind the key', async () => {
     renderSetupSettings();
 

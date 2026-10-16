@@ -37,6 +37,8 @@ interface SettingsRuntimeSectionProps {
   onMaxTokensChange: (value: number) => void;
   baseUrl: string;
   onBaseUrlChange: (url: string) => void;
+  /** Probe the usual local Ollama addresses and adopt the first that answers. */
+  onDetectLocalOllama: () => void;
   apiProxyKey: string;
   onProxyKeyChange: (key: string) => void;
   showProxyKey: boolean;
@@ -61,6 +63,7 @@ export default function SettingsRuntimeSection({
   onMaxTokensChange,
   baseUrl,
   onBaseUrlChange,
+  onDetectLocalOllama,
   apiProxyKey,
   onProxyKeyChange,
   showProxyKey,
@@ -258,7 +261,16 @@ export default function SettingsRuntimeSection({
 
           {selectedProvider === 'ollama' && (
             <div className="space-y-2">
-              <label className="text-sm font-medium">API Base URL (optional)</label>
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium">API Base URL (optional)</label>
+                <button
+                  type="button"
+                  onClick={onDetectLocalOllama}
+                  className="rounded-md border border-border px-2 py-1 text-xs transition-colors hover:bg-accent"
+                >
+                  Detect local Ollama
+                </button>
+              </div>
               <input
                 type="text"
                 aria-label="Base URL"

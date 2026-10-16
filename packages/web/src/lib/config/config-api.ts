@@ -14,6 +14,7 @@ import {
   detectProviderFromModel,
   fetchProviderModels as fetchSharedProviderModels,
   getFallbackModels,
+  isOllamaCloudUrl,
   providerRequiresApiKey,
   resolveProviderBaseUrlOverride,
   type ApiKeys,
@@ -25,7 +26,6 @@ import {
 } from '@char-gen/shared';
 import { MODEL_SUGGESTIONS, createEngine, getDefaultBaseUrl } from '../llm/factory.js';
 import { toAppConnectionTestResult } from '../llm/connection-result.js';
-import { isDesktopRuntime } from '../runtime.js';
 import { configManager } from './manager.js';
 
 const MODEL_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -136,16 +136,19 @@ export async function testConnection(request: ConnectionTestRequest): Promise<Co
   const config = configManager.getConfig();
   const provider = request.provider as LLMProvider;
   const apiKey = configManager.getApiKeys()[request.provider];
+  // The *configured* override decides whether a key is needed (blank = Ollama
+  // Cloud); the resolved URL is what the engine is called with.
+  const configuredBaseUrl = request.base_url ?? config.base_url;
   // Custom and Ollama own the base-URL override; the caller may pass one for a
   // one-off test, and Ollama's value is normalized to the `/v1` path it is called with.
   const baseUrl =
     provider === 'ollama'
-      ? resolveProviderBaseUrlOverride('ollama', request.base_url ?? config.base_url) || ''
+      ? resolveProviderBaseUrlOverride('ollama', configuredBaseUrl) || ''
       : request.base_url?.trim() || (provider === 'custom' ? resolveProviderBaseUrl('custom', config) : '');
 
-  // Custom runs keyless (local servers) and so does a loopback Ollama; Ollama
-  // Cloud needs its OLLAMA_API_KEY before a test is meaningful.
-  if (providerRequiresApiKey(provider, baseUrl) && !apiKey) {
+  // Custom runs keyless (local servers) and so does any configured Ollama endpoint
+  // (local, WSL2/LAN, relay); Ollama Cloud needs its key before a test is meaningful.
+  if (providerRequiresApiKey(provider, configuredBaseUrl) && !apiKey) {
     return {
       success: false,
       error:
@@ -238,10 +241,12 @@ export async function loadProviderModels(provider: string, refresh: boolean = fa
     const message = isNetworkError
       ? isLocalTarget
         ? `Could not reach the local model server at ${baseUrl}: either it is not running, or it blocked this app's origin — start Ollama with OLLAMA_ORIGINS=* to allow it. The built-in suggestions are shown below.`
-        : typedProvider === 'ollama' && !isDesktopRuntime()
-          ? // ollama.com answers no browser at all, so this is a policy block, not
-            // the user's network or privacy shield.
-            `ollama.com sends no CORS headers, so a browser cannot list Ollama Cloud models — use the desktop app, or point the Custom provider at a relay that forwards to https://ollama.com/v1. The built-in suggestions are shown below.`
+        : typedProvider === 'ollama'
+          ? isOllamaCloudUrl(baseUrl)
+            ? // ollama.com answers no browser at all, so this is a policy block, not
+              // the user's network or privacy shield.
+              `ollama.com sends no CORS headers, so a browser cannot list Ollama Cloud models — use the desktop app, or point the Custom provider at a relay that forwards to https://ollama.com/v1. The built-in suggestions are shown below.`
+            : `Could not reach ${baseUrl}. Is Ollama running there, and bound beyond 127.0.0.1? A server inside WSL2, Docker or another machine answers only once it listens on 0.0.0.0 — start it with OLLAMA_HOST=0.0.0.0:11434 (and, from a browser, list this app's origin in OLLAMA_ORIGINS). The built-in suggestions are shown below.`
           : 'Network request blocked. This may be due to browser privacy settings (common in EU), ad blockers, or firewall restrictions. Try disabling tracking protection for this site or using a different network.'
       : error instanceof Error
         ? error.message

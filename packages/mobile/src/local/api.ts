@@ -130,8 +130,9 @@ export class MobileLocalAPI {
       : config.api_keys[provider] || getFallbackApiKey(config.api_keys);
     const baseUrl = request.base_url || getConfiguredBaseUrl(config, provider);
 
-    // Custom and a loopback Ollama run keyless; Ollama Cloud needs its key.
-    if (providerRequiresApiKey(provider, baseUrl) && !apiKey) {
+    // Custom and any configured Ollama endpoint (local, WSL2/LAN, relay) run
+    // keyless; Ollama Cloud (no override) needs its key.
+    if (providerRequiresApiKey(provider, request.base_url || config.base_url) && !apiKey) {
       return { success: false, error: `No API key configured for ${request.provider}` };
     }
 

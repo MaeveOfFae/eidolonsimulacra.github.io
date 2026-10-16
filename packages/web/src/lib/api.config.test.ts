@@ -224,6 +224,50 @@ describe('browser api: config', () => {
     }
   });
 
+  it('treats any configured Ollama endpoint as a keyless self-hosted server', async () => {
+    // A WSL2/LAN address is not loopback, but it is still the user's own server.
+    configManager.updateConfig({ base_url: 'http://172.24.0.5:11434/v1' });
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ data: [{ id: 'qwen3:8b' }] }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    try {
+      const response = await api.getModels('ollama');
+
+      const [listUrl] = fetchMock.mock.calls[0] as unknown as [string];
+      expect(listUrl).toBe('http://172.24.0.5:11434/v1/models');
+      expect(response.models.map((model) => model.id)).toEqual(['qwen3:8b']);
+
+      const result = await api.testConnection({ provider: 'ollama' });
+      expect(result.success).toBe(true);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('names the host-binding fix when a self-hosted Ollama cannot be reached', async () => {
+    // A distinct host: the listing cache is keyed per provider|baseUrl|auth-shape.
+    configManager.updateConfig({ base_url: 'http://172.24.0.9:11434/v1' });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new TypeError('Failed to fetch');
+      }),
+    );
+    try {
+      const response = await api.getModels('ollama');
+
+      expect(response.error).toContain('bound beyond 127.0.0.1');
+      expect(response.error).toContain('OLLAMA_HOST=0.0.0.0:11434');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('still demands a key before testing Ollama Cloud', async () => {
     const result = await api.testConnection({ provider: 'ollama' });
 

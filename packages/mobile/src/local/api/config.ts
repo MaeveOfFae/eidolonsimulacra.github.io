@@ -152,9 +152,9 @@ export function createConfiguredEngine(config: Config = getStoredDeviceConfig())
 
   const baseUrl = getConfiguredBaseUrl(config, provider);
 
-  // Custom runs keyless (local servers) and so does a loopback Ollama; Ollama
-  // Cloud needs its own OLLAMA_API_KEY.
-  if (providerRequiresApiKey(provider, baseUrl) && (!apiKey || apiKey.trim().length === 0)) {
+  // Custom runs keyless (local servers) and so does any configured Ollama endpoint
+  // (local, WSL2/LAN, relay); Ollama Cloud (no override) needs its own OLLAMA_API_KEY.
+  if (providerRequiresApiKey(provider, config.base_url) && (!apiKey || apiKey.trim().length === 0)) {
     throw new APIError(400, `No API key configured for ${provider}`);
   }
 

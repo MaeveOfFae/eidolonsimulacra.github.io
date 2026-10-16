@@ -239,7 +239,7 @@ export default function Settings() {
           ? resolveProviderBaseUrlOverride(provider as Provider, localConfig.base_url) || undefined
           : undefined;
 
-      if (providerRequiresApiKey(provider as Provider, providerBaseUrl ?? '') && !apiKey) {
+      if (providerRequiresApiKey(provider as Provider, localConfig.base_url) && !apiKey) {
         setTestResult({
           provider,
           success: false,
@@ -363,6 +363,41 @@ export default function Settings() {
     }));
   };
 
+  /**
+   * Probe the usual local Ollama addresses and adopt the first that answers, so a
+   * local — or WSL2-hosted — server does not have to be typed in by hand. Both
+   * spellings are tried because `localhost` can resolve to `::1`, where a server
+   * bound to `127.0.0.1` never answers.
+   */
+  const handleDetectLocalOllama = async () => {
+    const candidates = ['http://localhost:11434/v1', 'http://127.0.0.1:11434/v1'];
+    setThemeNotice(null);
+    setThemeError(null);
+
+    for (const candidate of candidates) {
+      try {
+        const response = await Promise.race([
+          getRuntimeLLMFetch()(`${candidate}/models`, { method: 'GET' }),
+          new Promise<never>((_resolve, reject) => {
+            setTimeout(() => reject(new Error('probe timeout')), 3000);
+          }),
+        ]);
+
+        if (response.ok) {
+          handleBaseUrlChange(candidate);
+          setThemeNotice(`Local Ollama detected at ${candidate} — saved as the Ollama base URL.`);
+          return;
+        }
+      } catch {
+        // Try the next spelling; the message below covers both.
+      }
+    }
+
+    setThemeError(
+      `No Ollama answered at ${candidates.join(' or ')} — start it (in WSL2: OLLAMA_HOST=0.0.0.0:11434 ollama serve); from a browser it also needs this app's origin in OLLAMA_ORIGINS.`,
+    );
+  };
+
   const handleTemperatureChange = (value: number) => {
     setLocalConfig((previous) => ({ ...previous, temperature: value }));
   };
@@ -445,7 +480,7 @@ export default function Settings() {
   // Custom and a loopback Ollama (a local server) answer keyless, so their test
   // button stays enabled without one; Ollama Cloud and the rest need the key first.
   const canTestConnection =
-    Boolean(activeProviderKey) || !providerRequiresApiKey(selectedProvider, localConfig.base_url ?? '');
+    Boolean(activeProviderKey) || !providerRequiresApiKey(selectedProvider, localConfig.base_url);
   const configuredProviderCount = ALL_PROVIDERS.filter((provider) => Boolean(localConfig.api_keys?.[provider])).length;
   const handleBatchChange = (key: 'max_concurrent' | 'rate_limit_delay', value: number) => {
     setLocalConfig((previous) => ({
@@ -602,6 +637,7 @@ export default function Settings() {
             showProxyKey={Boolean(showKeys.proxy)}
             onToggleShowKey={toggleShowKey}
             onTestApiConnection={handleTestApiConnection}
+            onDetectLocalOllama={handleDetectLocalOllama}
           />
 
           <SettingsAccessSection

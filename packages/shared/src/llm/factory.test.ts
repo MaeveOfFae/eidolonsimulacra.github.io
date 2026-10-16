@@ -11,7 +11,13 @@ import {
 } from './factory';
 import { GoogleEngine } from './google';
 import { OpenAICompatEngine } from './openai-compat';
-import { ProviderEndpoints } from './types';
+import {
+  ProviderEndpoints,
+  isLoopbackUrl,
+  isOllamaCloudUrl,
+  normalizeOllamaBaseUrl,
+  providerRequiresApiKey,
+} from './types';
 
 const ALL_PROVIDERS = [
   'openai',
@@ -76,6 +82,29 @@ describe('llm engine factory', () => {
     for (const provider of ALL_PROVIDERS) {
       expect(ProviderEndpoints[provider]).toBe(getDefaultBaseUrl(provider));
     }
+  });
+
+  it('gates API keys on the configured override, not the resolved host', () => {
+    // Ollama Cloud (no override) needs OLLAMA_API_KEY; any configured server —
+    // localhost, a WSL2/LAN address, or a relay — is the user's own and keyless.
+    expect(providerRequiresApiKey('ollama', undefined)).toBe(true);
+    expect(providerRequiresApiKey('ollama', '   ')).toBe(true);
+    expect(providerRequiresApiKey('ollama', 'http://localhost:11434/v1')).toBe(false);
+    expect(providerRequiresApiKey('ollama', 'http://172.24.0.5:11434/v1')).toBe(false);
+    expect(providerRequiresApiKey('custom', undefined)).toBe(false);
+    expect(providerRequiresApiKey('openai', 'http://localhost:1/v1')).toBe(true);
+  });
+
+  it('classifies endpoints and resolves the Ollama surface', () => {
+    expect(isLoopbackUrl('http://localhost:11434/v1')).toBe(true);
+    expect(isLoopbackUrl('http://172.24.0.5:11434/v1')).toBe(false);
+    expect(isOllamaCloudUrl('https://ollama.com/v1')).toBe(true);
+    expect(isOllamaCloudUrl('http://172.24.0.5:11434/v1')).toBe(false);
+
+    expect(normalizeOllamaBaseUrl(undefined)).toBe('https://ollama.com/v1');
+    expect(normalizeOllamaBaseUrl('http://localhost:11434')).toBe('http://localhost:11434/v1');
+    expect(normalizeOllamaBaseUrl('http://localhost:11434/api')).toBe('http://localhost:11434/v1');
+    expect(normalizeOllamaBaseUrl('https://relay.example/proxy')).toBe('https://relay.example/proxy');
   });
 
   it('requires a base URL for the Custom provider', () => {
