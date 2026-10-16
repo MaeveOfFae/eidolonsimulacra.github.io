@@ -858,7 +858,7 @@ export default function SettingsScreen({ navigation, route }: SettingsScreenProp
                 ? 'Stored locally on this device. Leave blank to remove.'
                 : editorMode === 'model'
                   ? 'Default model ID for this device.'
-                  : 'Base URL for the Custom and Ollama providers. Leave blank for the provider default (Ollama: Cloud) — a local server takes http://localhost:11434/api and needs no key.'}
+                  : 'Base URL for the Custom and Ollama providers. Leave blank for the provider default (Ollama: Cloud) — a local server takes http://localhost:11434/v1 and needs no key.'}
             </Text>
 
             <TextInput

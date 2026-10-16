@@ -245,14 +245,14 @@ describe('Settings setup runtime column', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: /Advanced transport/ }));
 
-    const input = screen.getByPlaceholderText('Blank = https://ollama.com/api (Ollama Cloud)');
+    const input = screen.getByPlaceholderText('Blank = https://ollama.com/v1 (Ollama Cloud)');
     fireEvent.change(input, { target: { value: 'http://localhost:11434' } });
 
     expect(input).toHaveValue('http://localhost:11434');
   });
 
   it('unlocks the access test keylessly once Ollama targets a local server', async () => {
-    configManager.updateConfig({ base_url: 'http://localhost:11434/api' });
+    configManager.updateConfig({ base_url: 'http://localhost:11434/v1' });
     renderSetupSettings();
 
     expect(await screen.findByRole('button', { name: 'Test access' })).toBeEnabled();

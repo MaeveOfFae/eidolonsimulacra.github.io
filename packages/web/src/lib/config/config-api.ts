@@ -15,6 +15,7 @@ import {
   fetchProviderModels as fetchSharedProviderModels,
   getFallbackModels,
   providerRequiresApiKey,
+  resolveProviderBaseUrlOverride,
   type ApiKeys,
   type Config,
   type ConnectionTestRequest,
@@ -74,12 +75,12 @@ function resolveProviderApiKey(provider: string, apiKeys: ApiKeys): string | und
 /**
  * The endpoint a provider will actually call. Custom and Ollama own the config
  * base URL — Ollama is Cloud by default and a local server (or relay) once one is
- * set (`config.base_url`); every other provider keeps its documented host so a
- * leftover URL can never hijack it.
+ * set, resolved to the OpenAI-compatible `/v1` path it needs; every other provider
+ * keeps its documented host so a leftover URL can never hijack it.
  */
 export function resolveProviderBaseUrl(provider: LLMProvider, config: Config): string {
   if (provider === 'custom' || provider === 'ollama') {
-    const configured = config.base_url?.trim();
+    const configured = resolveProviderBaseUrlOverride(provider, config.base_url);
     if (configured) {
       return configured;
     }
@@ -135,8 +136,12 @@ export async function testConnection(request: ConnectionTestRequest): Promise<Co
   const config = configManager.getConfig();
   const provider = request.provider as LLMProvider;
   const apiKey = configManager.getApiKeys()[request.provider];
+  // Custom and Ollama own the base-URL override; the caller may pass one for a
+  // one-off test, and Ollama's value is normalized to the `/v1` path it is called with.
   const baseUrl =
-    request.base_url?.trim() || (provider === 'custom' || provider === 'ollama' ? config.base_url?.trim() || '' : '');
+    provider === 'ollama'
+      ? resolveProviderBaseUrlOverride('ollama', request.base_url ?? config.base_url) || ''
+      : request.base_url?.trim() || (provider === 'custom' ? resolveProviderBaseUrl('custom', config) : '');
 
   // Custom runs keyless (local servers) and so does a loopback Ollama; Ollama
   // Cloud needs its OLLAMA_API_KEY before a test is meaningful.
@@ -199,9 +204,9 @@ export async function loadProviderModels(provider: string, refresh: boolean = fa
 
   const fallbackModels = getFallbackModels(typedProvider);
   // Every provider supports remote listing (Anthropic via /v1/models, Google via
-  // its models[] payload, Ollama via its catalog). Ollama's `GET /api/tags` is a
-  // public catalog that answers without a key (verified live), so only the
-  // remaining providers require one before the fetch.
+  // its models[] payload, Ollama via the public catalog). Ollama's
+  // `GET /v1/models` answers without a key (verified live), so only the remaining
+  // providers require one before the fetch.
   const needsKey = provider !== 'custom' && provider !== 'ollama';
 
   if (needsKey && !apiKey) {

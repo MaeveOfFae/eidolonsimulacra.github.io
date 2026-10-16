@@ -247,12 +247,11 @@ export default function SettingsRuntimeSection({
 
           {selectedProvider === 'ollama' && (
             <div className="rounded-lg border border-info/20 bg-info/10 p-3 text-sm text-info">
-              Ollama Cloud is the default:{' '}
-              <code className="rounded bg-info/20 px-1 py-0.5">https://ollama.com/api</code> with your OLLAMA_API_KEY
-              from Providers. For a <strong>local server</strong>, set the base URL below to{' '}
-              <code className="rounded bg-info/20 px-1 py-0.5">http://localhost:11434/api</code> — it needs no key, and
-              a browser must also be allowed by it: Ollama permits localhost on any port, but a deployed or LAN origin
-              has to be listed in <code className="rounded bg-info/20 px-1 py-0.5">OLLAMA_ORIGINS</code> (set it to{' '}
+              Ollama Cloud is the default: <code className="rounded bg-info/20 px-1 py-0.5">https://ollama.com/v1</code>{' '}
+              with your OLLAMA_API_KEY from Providers. For a <strong>local server</strong>, set the base URL below to{' '}
+              <code className="rounded bg-info/20 px-1 py-0.5">http://localhost:11434/v1</code> — it needs no key, and a
+              browser must also be allowed by it: Ollama permits localhost on any port, but a deployed or LAN origin has
+              to be listed in <code className="rounded bg-info/20 px-1 py-0.5">OLLAMA_ORIGINS</code> (set it to{' '}
               <code>*</code> to allow any) before restarting Ollama.
             </div>
           )}
@@ -265,12 +264,12 @@ export default function SettingsRuntimeSection({
                 aria-label="Base URL"
                 value={baseUrl || ''}
                 onChange={(e) => onBaseUrlChange(e.target.value)}
-                placeholder="Blank = https://ollama.com/api (Ollama Cloud)"
+                placeholder="Blank = https://ollama.com/v1 (Ollama Cloud)"
                 className="w-full rounded-lg border border-border bg-background/50 px-4 py-2.5 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
               <p className="text-xs text-muted-foreground">
-                A bare host (<code>http://localhost:11434</code>) or an older <code>/v1</code> value is normalized to
-                the native <code>/api</code> path.
+                A bare host (<code>http://localhost:11434</code>) or the native <code>/api</code> path resolves to the
+                OpenAI-compatible <code>/v1</code> endpoint this app calls.
               </p>
             </div>
           )}

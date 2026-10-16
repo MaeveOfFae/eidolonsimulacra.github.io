@@ -24,7 +24,6 @@ export * from './llm/transport';
 export * from './llm/base';
 export * from './llm/google';
 export * from './llm/anthropic';
-export * from './llm/ollama';
 export { OpenAICompatEngine, OpenAICompatConfig } from './llm/openai-compat';
 
 // ============================================================================

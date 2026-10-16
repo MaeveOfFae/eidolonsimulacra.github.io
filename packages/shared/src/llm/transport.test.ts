@@ -24,11 +24,11 @@ describe('runtime llm fetch', () => {
     const runtimeFetch = jsonOnce({ data: [{ id: 'local-a' }] });
     setRuntimeLLMFetch(runtimeFetch as unknown as LLMFetch);
 
-    const response = await fetchProviderModels('ollama', '', 'http://localhost:11434/api');
+    const response = await fetchProviderModels('ollama', '', 'http://localhost:11434/v1');
 
     expect(runtimeFetch).toHaveBeenCalledTimes(1);
     const [url] = runtimeFetch.mock.calls[0] as unknown as [RequestInfo | URL];
-    expect(String(url)).toBe('http://localhost:11434/api/tags');
+    expect(String(url)).toBe('http://localhost:11434/v1/models');
     expect(response.models.map((model) => model.id)).toEqual(['local-a']);
   });
 

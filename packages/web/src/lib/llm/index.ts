@@ -7,5 +7,4 @@ export * from './base.js';
 export * from './openai-compat.js';
 export * from './google.js';
 export * from './anthropic.js';
-export * from './ollama.js';
 export * from './factory.js';

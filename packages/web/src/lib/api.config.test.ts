@@ -155,10 +155,10 @@ describe('browser api: config', () => {
     }
   });
 
-  it('lists the Ollama catalog keylessly, since /api/tags is public', async () => {
+  it('lists the Ollama catalog keylessly, since /v1/models is public', async () => {
     const fetchMock = vi.fn(
       async () =>
-        new Response(JSON.stringify({ models: [{ name: 'gemma4:31b' }, { name: 'glm-5.3' }] }), {
+        new Response(JSON.stringify({ data: [{ id: 'gemma4:31b' }, { id: 'glm-5.3' }] }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
         }),
@@ -169,7 +169,7 @@ describe('browser api: config', () => {
 
       expect(fetchMock).toHaveBeenCalledTimes(1);
       const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
-      expect(url).toBe('https://ollama.com/api/tags');
+      expect(url).toBe('https://ollama.com/v1/models');
       // No key configured, so no Authorization header is invented for the public catalog.
       expect((init.headers as Record<string, string>).Authorization).toBeUndefined();
       expect(response.models.map((model) => model.id)).toEqual(['gemma4:31b', 'glm-5.3']);
@@ -197,10 +197,11 @@ describe('browser api: config', () => {
   });
 
   it('points Ollama at a configured local server, keyless, and lists its catalog', async () => {
+    // The native `/api` value is accepted and resolved to the `/v1` path the engine calls.
     configManager.updateConfig({ base_url: 'http://localhost:11434/api' });
     const fetchMock = vi.fn(
       async () =>
-        new Response(JSON.stringify({ models: [{ name: 'gemma4:latest' }] }), {
+        new Response(JSON.stringify({ data: [{ id: 'gemma4:latest' }] }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
         }),
@@ -210,14 +211,14 @@ describe('browser api: config', () => {
       const response = await api.getModels('ollama');
 
       const [listUrl] = fetchMock.mock.calls[0] as unknown as [string];
-      expect(listUrl).toBe('http://localhost:11434/api/tags');
+      expect(listUrl).toBe('http://localhost:11434/v1/models');
       expect(response.models.map((model) => model.id)).toEqual(['gemma4:latest']);
 
       // A loopback target is keyless all the way through the connection test.
       const result = await api.testConnection({ provider: 'ollama' });
       const [connectUrl] = fetchMock.mock.calls[1] as unknown as [string];
       expect(result.success).toBe(true);
-      expect(connectUrl).toBe('http://localhost:11434/api/chat');
+      expect(connectUrl).toBe('http://localhost:11434/v1/chat/completions');
     } finally {
       vi.unstubAllGlobals();
     }

@@ -11,7 +11,6 @@ import {
 } from './factory';
 import { GoogleEngine } from './google';
 import { OpenAICompatEngine } from './openai-compat';
-import { OllamaEngine } from './ollama';
 import { ProviderEndpoints } from './types';
 
 const ALL_PROVIDERS = [
@@ -35,7 +34,8 @@ describe('llm engine factory', () => {
     expect(createEngine({ provider: 'deepseek', model: 'deepseek-chat' })).toBeInstanceOf(OpenAICompatEngine);
     expect(createEngine({ provider: 'zai', model: 'glm-4' })).toBeInstanceOf(OpenAICompatEngine);
     expect(createEngine({ provider: 'moonshot', model: 'moonshot-v1-8k' })).toBeInstanceOf(OpenAICompatEngine);
-    expect(createEngine({ provider: 'ollama', model: 'llama3.2' })).toBeInstanceOf(OllamaEngine);
+    // Ollama rides the OpenAI-compatible engine (its Cloud `/v1` surface).
+    expect(createEngine({ provider: 'ollama', model: 'llama3.2' })).toBeInstanceOf(OpenAICompatEngine);
     expect(createEngine({ provider: 'google', model: 'gemini-1.5-pro' })).toBeInstanceOf(GoogleEngine);
     expect(createEngine({ provider: 'anthropic', model: 'claude-3.5-sonnet' })).toBeInstanceOf(AnthropicEngine);
   });
@@ -64,8 +64,9 @@ describe('llm engine factory', () => {
     expect(getDefaultBaseUrl('deepseek')).toBe('https://api.deepseek.com/v1');
     expect(getDefaultBaseUrl('zai')).toBe('https://api.z.ai/api/paas/v4');
     expect(getDefaultBaseUrl('moonshot')).toBe('https://api.moonshot.ai/v1');
-    // Ollama's provider is Ollama Cloud's native API; local servers use Custom.
-    expect(getDefaultBaseUrl('ollama')).toBe('https://ollama.com/api');
+    // Ollama's provider is Ollama Cloud's OpenAI-compatible surface; local
+    // servers use the same provider with a /v1 base URL.
+    expect(getDefaultBaseUrl('ollama')).toBe('https://ollama.com/v1');
     expect(getDefaultBaseUrl('custom')).toBe('');
   });
 
@@ -117,7 +118,7 @@ describe('llm engine factory', () => {
   it('reports the real engine class per provider', () => {
     expect(getEngineType('gemini-3.8-flash')).toBe('GoogleEngine (google)');
     expect(getEngineType('claude-opus-5-5')).toBe('AnthropicEngine (anthropic)');
-    expect(getEngineType('gemma4')).toBe('OllamaEngine (ollama)');
+    expect(getEngineType('gemma4:31b')).toBe('OpenAICompatEngine (ollama)');
     expect(getEngineType('gpt-6-astra')).toBe('OpenAICompatEngine (openai)');
     expect(getEngineType('anything')).toBe('OpenAICompatEngine (openrouter)');
   });
@@ -207,8 +208,7 @@ describe('ollama authentication', () => {
   it('sends the Ollama key as Bearer on generate, and no auth without one', async () => {
     const fetchMock = vi.fn(
       async () =>
-        // Ollama's native /chat reply, not the OpenAI-compatible choices[] one.
-        new Response(JSON.stringify({ message: { role: 'assistant', content: 'hi' }, done: true }), {
+        new Response(JSON.stringify({ choices: [{ message: { content: 'hi' } }] }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
         }),

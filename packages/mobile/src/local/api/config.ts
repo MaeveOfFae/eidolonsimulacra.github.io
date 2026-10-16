@@ -8,6 +8,7 @@ import {
   createEngine,
   detectProviderFromModel,
   getDefaultBaseUrl,
+  normalizeOllamaBaseUrl,
   providerRequiresApiKey,
   canonicalizeLegacyAssetName,
   stripReasoningArtifacts,
@@ -128,11 +129,12 @@ export function getFallbackApiKey(apiKeys: ApiKeys): string | undefined {
 export function getConfiguredBaseUrl(config: Config, provider: LLMProvider): string {
   // Custom and Ollama own the base-URL override; named providers always use their
   // documented endpoint so a leftover config URL can never hijack them. Ollama is
-  // Cloud by default and a local server (`http://localhost:11434/api`) when set.
+  // Cloud by default and a local server (`http://localhost:11434/v1`) when set,
+  // resolved to the OpenAI-compatible path the engine calls.
   if (provider === 'custom' || provider === 'ollama') {
     const configured = config.base_url?.trim();
     if (configured) {
-      return configured;
+      return provider === 'ollama' ? normalizeOllamaBaseUrl(configured) : configured;
     }
   }
 

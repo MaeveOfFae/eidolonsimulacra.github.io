@@ -104,7 +104,7 @@ const DEFAULT_SYNC_CONFIG_BASE = {
   engine: 'openai_compatible',
   engine_mode: 'auto',
   // Default model, kept in sync with the web ConfigManager and the mobile
-  // DEFAULT_DEVICE_CONFIG (`gemma4:31b` → Ollama Cloud at https://ollama.com/api).
+  // DEFAULT_DEVICE_CONFIG (`gemma4:31b` → Ollama Cloud at https://ollama.com/v1).
   model: 'gemma4',
   temperature: 0.7,
   max_tokens: 4096,

@@ -10,15 +10,15 @@ afterEach(() => {
 });
 
 describe('providerModelsUrl', () => {
-  it('appends /v1/models for Anthropic, /tags for Ollama and /models everywhere else', () => {
+  it('appends /v1/models for Anthropic and /models everywhere else', () => {
     expect(providerModelsUrl('anthropic', 'https://api.anthropic.com')).toBe('https://api.anthropic.com/v1/models');
     expect(providerModelsUrl('anthropic', 'https://api.anthropic.com/v1')).toBe('https://api.anthropic.com/v1/models');
     expect(providerModelsUrl('openai', 'https://api.openai.com/v1/')).toBe('https://api.openai.com/v1/models');
     expect(providerModelsUrl('google', 'https://generativelanguage.googleapis.com/v1beta')).toBe(
       'https://generativelanguage.googleapis.com/v1beta/models',
     );
-    // Ollama's native catalog lives at /api/tags, not the OpenAI-compatible /v1/models.
-    expect(providerModelsUrl('ollama', 'https://ollama.com/api')).toBe('https://ollama.com/api/tags');
+    // Ollama Cloud and its local servers both serve the OpenAI-compatible catalog.
+    expect(providerModelsUrl('ollama', 'https://ollama.com/v1')).toBe('https://ollama.com/v1/models');
     expect(providerModelsUrl('custom', 'http://localhost:11434/v1')).toBe('http://localhost:11434/v1/models');
   });
 });
@@ -60,16 +60,6 @@ describe('normalizeModelsPayload', () => {
       { id: 'gemini-3.8-flash', name: 'Gemini 3.8 Flash', context_length: 1048576 },
       { id: 'embedding-001', name: 'Embedding' },
     ]);
-  });
-
-  it("reads Ollama's /api/tags shape", () => {
-    const entries = normalizeModelsPayload({
-      models: [
-        { name: 'gemma4:31b', model: 'gemma4:31b', details: { family: 'gemma', parameter_size: '31B' } },
-        { name: 'qwen3.5', model: 'qwen3.5' },
-      ],
-    });
-    expect(entries).toEqual([{ id: 'gemma4:31b' }, { id: 'qwen3.5' }]);
   });
 
   it('returns nothing for unusable payloads', () => {

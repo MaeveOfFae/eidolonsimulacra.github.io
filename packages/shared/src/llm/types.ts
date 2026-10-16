@@ -116,10 +116,12 @@ export interface LLMEngineConstructor {
  * `factory.ts` (docs-verified hosts: api.z.ai per docs.z.ai, api.moonshot.ai
  * per platform.kimi.ai).
  *
- * `ollama` is Ollama Cloud's native API (`/api/chat`, `/api/tags`) rather than
- * its OpenAI-compatible `/v1` surface; local Ollama servers are addressed
- * through the `custom` provider (no default — it requires a base URL from
- * config).
+ * `ollama` is Ollama Cloud's OpenAI-compatible surface (`/v1/chat/completions`,
+ * `/v1/models`) — its native API on the same host (`/api/chat`, `/api/tags`) keeps
+ * a different body, reply and listing shape, and nothing in the app speaks it.
+ * Local Ollama servers ride the same provider with a `http://localhost:11434/v1`
+ * base URL; `custom` (no default — it requires a base URL from config) covers any
+ * other OpenAI-compatible endpoint.
  */
 export const ProviderEndpoints: Record<LLMProvider, string> = {
   openai: 'https://api.openai.com/v1',
@@ -129,7 +131,7 @@ export const ProviderEndpoints: Record<LLMProvider, string> = {
   deepseek: 'https://api.deepseek.com/v1',
   zai: 'https://api.z.ai/api/paas/v4',
   moonshot: 'https://api.moonshot.ai/v1',
-  ollama: 'https://ollama.com/api',
+  ollama: 'https://ollama.com/v1',
   custom: '',
 } as const;
 
@@ -141,6 +143,46 @@ export const ProviderEndpoints: Record<LLMProvider, string> = {
  */
 export function isLoopbackUrl(value: string | undefined): boolean {
   return /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(?::|\/|$)/i.test(value ?? '');
+}
+
+/**
+ * Resolve whatever Ollama base URL a user typed (or an older build stored) to the
+ * OpenAI-compatible path this app calls: a bare host (`http://localhost:11434`,
+ * `https://ollama.com`), the native `/api` path, or an explicit `/v1`. A gateway
+ * mounted on any other path is left untouched, so a relay is never mangled.
+ *
+ * `undefined`/blank resolves to the provider default (Ollama Cloud).
+ */
+export function normalizeOllamaBaseUrl(value: string | undefined): string {
+  const trimmed = (value?.trim() || ProviderEndpoints.ollama).replace(/\/+$/, '');
+
+  if (trimmed.endsWith('/v1')) {
+    return trimmed;
+  }
+
+  // `/api` is Ollama's native surface: same host, different protocol.
+  if (trimmed.endsWith('/api')) {
+    return `${trimmed.slice(0, -'/api'.length)}/v1`;
+  }
+
+  const withoutScheme = trimmed.replace(/^[a-z][a-z0-9+.-]*:\/\//i, '');
+  return withoutScheme.includes('/') ? trimmed : `${trimmed}/v1`;
+}
+
+/**
+ * Resolve whichever base URL a caller holds for a provider: Ollama's value is
+ * normalized to the OpenAI-compatible `/v1` path it is called with, every other
+ * provider's override is used verbatim, and a blank/undefined value keeps the
+ * provider's documented default. Shared so the listing, connection-test and
+ * generation paths cannot disagree about the endpoint (they did: one normalized
+ * the local `/api` value and the others did not).
+ */
+export function resolveProviderBaseUrlOverride(provider: LLMProvider, baseUrl: string | undefined): string | undefined {
+  if (!baseUrl?.trim()) {
+    return undefined;
+  }
+
+  return provider === 'ollama' ? normalizeOllamaBaseUrl(baseUrl) : baseUrl.trim();
 }
 
 /**
@@ -161,7 +203,7 @@ export function providerRequiresApiKey(provider: LLMProvider, baseUrl: string): 
 }
 
 /**
- * Provider-specific header keys. Ollama Cloud (https://ollama.com/api) accepts
+ * Provider-specific header keys. Ollama Cloud (https://ollama.com/v1) accepts
  * `Authorization: Bearer OLLAMA_API_KEY`; `custom` endpoints take Bearer when
  * a key is configured and no auth header at all keyless (local servers).
  */

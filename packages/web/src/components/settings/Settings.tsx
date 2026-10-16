@@ -3,7 +3,12 @@ import { useQuery } from '@tanstack/react-query';
 import { Save, XCircle, Shield, Server } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import type { Config, FeatureCategory, ModelInfo } from '@char-gen/shared';
-import { createDefaultChubConfig, createDefaultComfyUIConfig, detectProviderFromModel } from '@char-gen/shared';
+import {
+  createDefaultChubConfig,
+  createDefaultComfyUIConfig,
+  detectProviderFromModel,
+  resolveProviderBaseUrlOverride,
+} from '@char-gen/shared';
 import { api } from '../../lib/api.js';
 import {
   CONFIG_MANAGER_CHANGED_EVENT,
@@ -228,9 +233,11 @@ export default function Settings() {
     try {
       const apiKey = localConfig.api_keys?.[provider];
       // Custom and a loopback Ollama own the base-URL override; only those may run
-      // without a key (Ollama Cloud at https://ollama.com/api needs OLLAMA_API_KEY).
+      // without a key (Ollama Cloud at https://ollama.com/v1 needs OLLAMA_API_KEY).
       const providerBaseUrl =
-        provider === 'custom' || provider === 'ollama' ? localConfig.base_url?.trim() || undefined : undefined;
+        provider === 'custom' || provider === 'ollama'
+          ? resolveProviderBaseUrlOverride(provider as Provider, localConfig.base_url) || undefined
+          : undefined;
 
       if (providerRequiresApiKey(provider as Provider, providerBaseUrl ?? '') && !apiKey) {
         setTestResult({

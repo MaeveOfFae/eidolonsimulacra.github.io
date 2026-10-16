@@ -201,7 +201,7 @@ export default function SettingsProvidersSection({
             {selectedProvider === 'openai' &&
               'Use a proxy or switch to OpenRouter when you want browser-direct generation without CORS issues.'}
             {selectedProvider === 'ollama' &&
-              'Ollama Cloud (https://ollama.com/api) uses your OLLAMA_API_KEY here. Running a local server? Set its base URL in Runtime (http://localhost:11434/api) — it needs no key.'}
+              'Ollama Cloud (https://ollama.com/v1) uses your OLLAMA_API_KEY here. Running a local server? Set its base URL in Runtime (http://localhost:11434/v1) — it needs no key.'}
             {selectedProvider === 'custom' &&
               'Any OpenAI-compatible endpoint: local Ollama, LM Studio, vLLM, or a proxy. Set the API base URL in Runtime; a key is only needed if the endpoint requires one.'}
             {selectedProvider !== 'openrouter' &&

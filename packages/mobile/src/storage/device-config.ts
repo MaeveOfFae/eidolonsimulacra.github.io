@@ -52,7 +52,7 @@ export const DEFAULT_DEVICE_CONFIG: Config = {
   engine: 'openai_compatible',
   engine_mode: 'auto',
   // Default model, kept in sync with the web ConfigManager: Ollama Cloud ids must
-  // match GET https://ollama.com/api/tags exactly, so the default carries the tag
+  // match GET https://ollama.com/v1/models exactly, so the default carries the tag
   // (`gemma4:31b`, not `gemma4`). For a keyless local server, switch to Custom and
   // set http://localhost:11434/v1.
   model: 'gemma4:31b',

@@ -7,7 +7,7 @@
  * touched instance state, so they read better as functions.
  */
 import type { ApiKeys, Config, LLMProvider } from '@char-gen/shared';
-import { detectProviderFromModel } from '@char-gen/shared';
+import { detectProviderFromModel, resolveProviderBaseUrlOverride } from '@char-gen/shared';
 import { configManager } from '../../config/manager.js';
 import { stripReasoningArtifacts, unwrapSingleCodeFence } from '../../content-format.js';
 import { createEngine } from '../../llm/factory.js';
@@ -85,9 +85,13 @@ export function createConfiguredEngine(override?: { model: string }) {
     apiKeys,
     provider,
     // Custom and Ollama own the base-URL override (Ollama: Cloud by default, a
-    // local server or relay when one is configured); named providers use their
-    // documented endpoint so a leftover config URL can never hijack them.
-    baseUrl: provider === 'custom' || provider === 'ollama' ? config.base_url : undefined,
+    // local server or relay when one is configured, resolved to its /v1 path);
+    // every other provider keeps its documented endpoint, so a leftover config URL
+    // can never hijack it.
+    baseUrl:
+      provider === 'custom' || provider === 'ollama'
+        ? resolveProviderBaseUrlOverride(provider, config.base_url)
+        : undefined,
     proxyKey: provider === 'custom' ? config.api_proxy_key : undefined,
     temperature: config.temperature,
     maxTokens: resolveGenerationMaxTokens(config),

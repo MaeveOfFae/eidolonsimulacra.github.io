@@ -244,9 +244,9 @@ export class ConfigManager {
     return {
       engine: 'openai_compatible',
       engine_mode: 'auto',
-      // Ollama Cloud ids must match GET https://ollama.com/api/tags exactly, so the
+      // Ollama Cloud ids must match GET https://ollama.com/v1/models exactly, so the
       // default carries the tag (`gemma4:31b`, not `gemma4`). Keyless local servers
-      // use the Custom provider with http://localhost:11434/v1 in Settings → Runtime.
+      // use the same provider with http://localhost:11434/v1 in Settings → Runtime.
       model: 'gemma4:31b',
       temperature: 0.7,
       max_tokens: 4096,

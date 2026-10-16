@@ -582,7 +582,11 @@ export class OpenAICompatEngine implements LLMEngine {
       if (networkish) {
         error = this.isLocalEndpoint()
           ? `Could not reach the local model server at ${this.config.baseUrl}. Is it running (e.g. \`ollama serve\`), and does OLLAMA_ORIGINS=* allow this app's origin?`
-          : `Could not reach ${this.config.baseUrl}. Check your network — browser privacy shields commonly block provider requests.`;
+          : this.config.provider === 'ollama'
+            ? // ollama.com never answers a browser: it sends no CORS headers, so this
+              // is a policy block rather than the user's network or privacy shield.
+              `Could not reach ${this.config.baseUrl}. Browsers cannot call Ollama Cloud directly — ollama.com sends no CORS headers, so use the desktop app, a relay behind the Custom provider, or a locally signed-in server. Otherwise check your network and browser privacy shields.`
+            : `Could not reach ${this.config.baseUrl}. Check your network — browser privacy shields commonly block provider requests.`;
       }
       return {
         success: false,
@@ -691,16 +695,14 @@ export class OpenAICompatEngine implements LLMEngine {
 
 /**
  * The models URL for a provider. Anthropic's Models API is `/v1/models` on a
- * base URL of `https://api.anthropic.com` (no `/v1`), Ollama's native model
- * catalog is `${base}/tags`, and every other provider serves `${base}/models`.
+ * base URL of `https://api.anthropic.com` (no `/v1`); every other provider —
+ * Ollama Cloud, its local servers, and Custom gateways alike — serves
+ * `${base}/models`.
  */
 export function providerModelsUrl(provider: LLMProvider, baseUrl: string): string {
   const trimmed = baseUrl.replace(/\/+$/, '');
   if (provider === 'anthropic' && !trimmed.endsWith('/v1')) {
     return `${trimmed}/v1/models`;
-  }
-  if (provider === 'ollama') {
-    return `${trimmed}/tags`;
   }
   return `${trimmed}/models`;
 }

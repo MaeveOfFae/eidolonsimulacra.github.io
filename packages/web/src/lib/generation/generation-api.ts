@@ -34,6 +34,7 @@ import {
 } from '@char-gen/shared';
 import { APIError } from '../api-error.js';
 import { getFallbackApiKey, resolveConfiguredProvider } from '../config/config-api.js';
+import { resolveProviderBaseUrlOverride } from '@char-gen/shared';
 import { configManager } from '../config/manager.js';
 import { getDraft } from '../drafts/draft-api.js';
 import { createEngine } from '../llm/factory.js';
@@ -54,8 +55,13 @@ async function generateWithCurrentConfig(
     apiKeys,
     provider,
     // Custom and Ollama own the base-URL override (Ollama: Cloud by default, a
-    // local server or relay when one is configured).
-    baseUrl: provider === 'custom' || provider === 'ollama' ? config.base_url : undefined,
+    // local server or relay when one is configured, resolved to its /v1 path);
+    // every other provider keeps its documented endpoint, so a leftover config URL
+    // can never hijack it.
+    baseUrl:
+      provider === 'custom' || provider === 'ollama'
+        ? resolveProviderBaseUrlOverride(provider, config.base_url)
+        : undefined,
     temperature: config.temperature,
     maxTokens: config.max_tokens,
   });

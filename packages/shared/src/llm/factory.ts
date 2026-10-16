@@ -8,7 +8,6 @@ import { detectProviderFromModel } from './types';
 import { listModels as listModelsFromProvider, OpenAICompatEngine } from './openai-compat';
 import { GoogleEngine } from './google';
 import { AnthropicEngine } from './anthropic';
-import { OllamaEngine } from './ollama';
 
 // Header/auth shaping moved to `headers.ts` so `openai-compat.ts` can share it
 // without importing this factory (which imports `openai-compat`).
@@ -76,12 +75,12 @@ export function getDefaultBaseUrl(provider: LLMProvider): string {
     // (api.moonshot.cn is the China-specific deployment).
     case 'moonshot':
       return 'https://api.moonshot.ai/v1';
-    // Ollama Cloud is the default Ollama surface: its native API (needs an
-    // OLLAMA_API_KEY) chat endpoint lives at /api/chat and its catalog at
-    // /api/tags. Local servers are addressed through the `custom` provider with
-    // an explicit base URL (http://localhost:11434/v1).
+    // Ollama Cloud is the default Ollama surface, and the app talks to its
+    // OpenAI-compatible endpoint (needs an OLLAMA_API_KEY); a local server rides
+    // the same provider with an explicit http://localhost:11434/v1 base URL, and
+    // the rest of Ollama's own API is not used by this app.
     case 'ollama':
-      return 'https://ollama.com/api';
+      return 'https://ollama.com/v1';
     // Custom endpoints have no default — the caller must supply a base URL.
     case 'custom':
       return '';
@@ -150,12 +149,7 @@ export function createEngine(options: CreateEngineOptions): LLMEngine {
     case 'deepseek':
     case 'zai':
     case 'moonshot':
-      return new OpenAICompatEngine(config);
-
-    // Ollama speaks its own API (`/api/chat`, `/api/tags`), not OpenAI's.
     case 'ollama':
-      return new OllamaEngine(config);
-
     default:
       return new OpenAICompatEngine(config);
   }
@@ -172,8 +166,6 @@ export function getEngineType(model: string, provider?: LLMProvider): string {
       return `GoogleEngine (${detected})`;
     case 'anthropic':
       return `AnthropicEngine (${detected})`;
-    case 'ollama':
-      return `OllamaEngine (${detected})`;
     default:
       return `OpenAICompatEngine (${detected})`;
   }
@@ -207,10 +199,10 @@ export const MODEL_SUGGESTIONS: Record<LLMProvider, string[]> = {
   deepseek: ['deepseek-flash', 'deepseek-v4-pro'],
   zai: ['glm-5.3', 'glm-5.3-flash', 'glm-5.2', 'glm-4.7'],
   moonshot: ['kimi-k3', 'kimi-k2.7-code', 'kimi-k2.6'],
-  // Ollama Cloud ids come from GET https://ollama.com/api/tags, and a direct
-  // olama.com request must use the exact catalog name (docs.ollama.com/cloud), so a
-  // bare `gemma4` is not a cloud id. Only a signed-in *local* server resolves the
-  // untagged/`-cloud` aliases (`gemma4:cloud`).
+  // Ollama Cloud ids, as listed by GET https://ollama.com/v1/models (the same
+  // catalog its native /api/tags serves), so a bare `gemma4` is not a cloud id.
+  // Only a signed-in *local* server resolves the untagged/`-cloud` aliases
+  // (`gemma4:cloud`).
   ollama: ['gemma4:31b', 'glm-5.3', 'kimi-k3', 'deepseek-v4.1-flash', 'gpt-oss:120b'],
   custom: [],
 };
