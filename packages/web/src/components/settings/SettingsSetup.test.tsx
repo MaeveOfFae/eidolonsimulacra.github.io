@@ -29,7 +29,7 @@ vi.mock('../../lib/llm/factory.js', () => ({
     deepseek: ['deepseek/chat'],
     zai: ['zai/glm'],
     moonshot: ['moonshot/kimi'],
-    ollama: ['gemma4', 'llama3.1'],
+    ollama: ['gemma4:31b', 'glm-5.3'],
   },
   createEngine: vi.fn(() => ({
     testConnection: vi.fn(async () => ({ success: true })),
@@ -108,7 +108,7 @@ describe('Settings setup access column', () => {
   it('edits the selected provider key and saves it through the parent draft', async () => {
     renderSetupSettings();
 
-    // The default model `gemma4` resolves to the Ollama Cloud provider, so the
+    // The default model `gemma4:31b` resolves to the Ollama Cloud provider, so the
     // card opens there; OpenRouter holds a key and is one click away.
     expect(await screen.findByRole('heading', { name: 'Ollama Cloud access' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /^OpenRouter/ }));
@@ -152,10 +152,10 @@ describe('Settings setup runtime column', () => {
     expect(screen.getByRole('button', { name: 'Auto' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Explicit' })).toBeInTheDocument();
 
-    // The default model `gemma4` resolves to the Ollama provider by pattern.
+    // The default model `gemma4:31b` resolves to the Ollama provider by pattern.
     expect(screen.getByLabelText('Provider')).toHaveValue('ollama');
     // Target the custom-model field by its accessible name; the placeholder is copy.
-    expect(screen.getByLabelText('Custom model ID')).toHaveValue('gemma4');
+    expect(screen.getByLabelText('Custom model ID')).toHaveValue('gemma4:31b');
     expect(screen.getByText('Showing built-in suggestions.')).toBeInTheDocument();
 
     expect(screen.getByLabelText('Temperature')).toHaveValue(0.7);
@@ -168,7 +168,7 @@ describe('Settings setup runtime column', () => {
 
   it('warns when the current model is missing from the loaded provider list', async () => {
     // The panel first resolves the default provider (openrouter) and then infers
-    // ollama from `gemma4`, calling getModels twice — answer per provider.
+    // ollama from `gemma4:31b`, calling getModels twice — answer per provider.
     vi.mocked(api.getModels).mockImplementation(async (provider) =>
       provider === 'ollama'
         ? {

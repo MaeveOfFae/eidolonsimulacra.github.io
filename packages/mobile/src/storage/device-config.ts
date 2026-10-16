@@ -51,10 +51,11 @@ export const DEFAULT_HELP_STATE: HelpState = {
 export const DEFAULT_DEVICE_CONFIG: Config = {
   engine: 'openai_compatible',
   engine_mode: 'auto',
-  // Default model, kept in sync with the web ConfigManager: `gemma4` resolves to
-  // the Ollama Cloud provider (https://ollama.com/api, needs OLLAMA_API_KEY).
-  // For a keyless local server, switch to Custom and set http://localhost:11434/v1.
-  model: 'gemma4',
+  // Default model, kept in sync with the web ConfigManager: Ollama Cloud ids must
+  // match GET https://ollama.com/api/tags exactly, so the default carries the tag
+  // (`gemma4:31b`, not `gemma4`). For a keyless local server, switch to Custom and
+  // set http://localhost:11434/v1.
+  model: 'gemma4:31b',
   temperature: 0.7,
   max_tokens: 4096,
   api_keys: {},

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createEngine } from './factory';
+import { createEngine, getDefaultBaseUrl } from './factory';
 import { OllamaEngine } from './ollama';
 import { setRuntimeLLMStreamingSupported } from './transport';
 import type { LLMChatMessage, LLMConfig, StreamChunk } from './types';
@@ -135,6 +135,17 @@ describe('ollama engine request shaping', () => {
     expect(result.usage).toBeUndefined();
   });
 
+  it('keeps its built-in base URL in sync with the factory default', async () => {
+    const calls = stubFetch(jsonResponse(REPLY));
+
+    // No baseUrl in the config: the engine falls back to its own constant, which
+    // must be the native /api host (the /v1 host takes OpenAI-shaped bodies).
+    await ollamaEngine({ baseUrl: undefined }).generate(MESSAGES);
+
+    expect(getDefaultBaseUrl('ollama')).toBe('https://ollama.com/api');
+    expect(calls[0]?.url).toBe(`${getDefaultBaseUrl('ollama')}/chat`);
+  });
+
   it('keeps a local base URL override and trims its trailing slash', async () => {
     const calls = stubFetch(jsonResponse(REPLY));
 
@@ -161,6 +172,30 @@ describe('ollama engine request shaping', () => {
     stubFetch(jsonResponse({ error: "model 'gemma4' not found, try pulling it first" }, 404));
 
     await expect(ollamaEngine().generate(MESSAGES)).rejects.toThrow(/try pulling it first/);
+  });
+
+  it('pins an unknown cloud model to the /api/tags catalog names', async () => {
+    stubFetch(jsonResponse({ error: "model 'gemma4' not found" }, 404));
+
+    await expect(ollamaEngine().generate(MESSAGES)).rejects.toThrow(
+      /must match a name from GET https:\/\/ollama\.com\/api\/tags exactly/,
+    );
+  });
+
+  it('tells a local server to pull the model instead of naming catalog ids', async () => {
+    stubFetch(jsonResponse({ error: "model 'gemma4' not found, try pulling it first" }, 404));
+
+    await expect(ollamaEngine({ baseUrl: 'http://localhost:11434/api' }).generate(MESSAGES)).rejects.toThrow(
+      /check `ollama list` or pull it first/,
+    );
+  });
+
+  it('explains the cloud rate limit and unreachable-model statuses', async () => {
+    stubFetch(jsonResponse({ error: 'too many requests' }, 429));
+    await expect(ollamaEngine().generate(MESSAGES)).rejects.toThrow(/rate limit or plan quota/);
+
+    stubFetch(jsonResponse({ error: 'the model failed to generate a response' }, 502));
+    await expect(ollamaEngine().generate(MESSAGES)).rejects.toThrow(/could not reach the model/);
   });
 
   it('explains a blocked fetch on generate instead of leaking a bare TypeError', async () => {

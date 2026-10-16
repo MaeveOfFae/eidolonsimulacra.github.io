@@ -207,7 +207,11 @@ export const MODEL_SUGGESTIONS: Record<LLMProvider, string[]> = {
   deepseek: ['deepseek-flash', 'deepseek-v4-pro'],
   zai: ['glm-5.3', 'glm-5.3-flash', 'glm-5.2', 'glm-4.7'],
   moonshot: ['kimi-k3', 'kimi-k2.7-code', 'kimi-k2.6'],
-  ollama: ['gemma4', 'qwen3.5', 'llama3.1', 'qwen3', 'gpt-oss'],
+  // Ollama Cloud ids come from GET https://ollama.com/api/tags, and a direct
+  // olama.com request must use the exact catalog name (docs.ollama.com/cloud), so a
+  // bare `gemma4` is not a cloud id. Only a signed-in *local* server resolves the
+  // untagged/`-cloud` aliases (`gemma4:cloud`).
+  ollama: ['gemma4:31b', 'glm-5.3', 'kimi-k3', 'deepseek-v4.1-flash', 'gpt-oss:120b'],
   custom: [],
 };
 

@@ -180,9 +180,9 @@ export class MobileLocalAPI {
     }
 
     const fallbackModels = getFallbackModels(typedProvider);
-    // Custom (local servers, gateways) lists keyless; every other provider
-    // needs its key (Ollama Cloud included).
-    if (!apiKey && typedProvider !== 'custom') {
+    // Custom (local servers, gateways) and Ollama list keyless: GET /api/tags is a
+    // public catalog on ollama.com and a local server needs no auth.
+    if (!apiKey && typedProvider !== 'custom' && typedProvider !== 'ollama') {
       return {
         provider,
         models: fallbackModels,

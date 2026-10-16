@@ -143,6 +143,30 @@ describe('browser api: config', () => {
     }
   });
 
+  it('lists the Ollama catalog keylessly, since /api/tags is public', async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ models: [{ name: 'gemma4:31b' }, { name: 'glm-5.3' }] }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    try {
+      const response = await api.getModels('ollama');
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+      expect(url).toBe('https://ollama.com/api/tags');
+      // No key configured, so no Authorization header is invented for the public catalog.
+      expect((init.headers as Record<string, string>).Authorization).toBeUndefined();
+      expect(response.models.map((model) => model.id)).toEqual(['gemma4:31b', 'glm-5.3']);
+      expect(response.error).toBeUndefined();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('recognises a Firefox-style network error as a transport failure', async () => {
     configManager.updateConfig({ base_url: 'http://localhost:19999/v1' });
     vi.stubGlobal(

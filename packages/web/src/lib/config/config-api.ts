@@ -162,10 +162,10 @@ export async function loadProviderModels(provider: string, refresh: boolean = fa
 
   const fallbackModels = getFallbackModels(typedProvider);
   // Every provider supports remote listing (Anthropic via /v1/models, Google via
-  // its models[] payload, Ollama Cloud with its key). Only a missing key skips
-  // the fetch — Custom (local servers, gateways) is the one provider that
-  // legitimately runs without one.
-  const needsKey = provider !== 'custom';
+  // its models[] payload, Ollama via its catalog). Ollama's `GET /api/tags` is a
+  // public catalog that answers without a key (verified live), so only the
+  // remaining providers require one before the fetch.
+  const needsKey = provider !== 'custom' && provider !== 'ollama';
 
   if (needsKey && !apiKey) {
     const response = {

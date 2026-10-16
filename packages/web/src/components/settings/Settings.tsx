@@ -124,7 +124,7 @@ export default function Settings() {
     }
 
     // The shared detector owns model -> provider (slash prefixes, bare ids like
-    // `gemma4` / `glm-5.3` / `kimi-k3`, OpenRouter as the default) — the exact
+    // `gemma4:31b` / `glm-5.3` / `kimi-k3`, OpenRouter as the default) — the exact
     // rules engine creation applies — so the panel always shows the provider
     // that will actually answer for this model. Key-only writes never reach
     // here (the signature guard above), so a key edit can't bounce the panel.

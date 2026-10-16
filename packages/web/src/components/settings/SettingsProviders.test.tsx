@@ -26,7 +26,7 @@ vi.mock('../../lib/llm/factory.js', () => ({
     deepseek: ['deepseek/chat'],
     zai: ['zai/glm'],
     moonshot: ['moonshot/kimi'],
-    ollama: ['gemma4', 'llama3.1'],
+    ollama: ['gemma4:31b', 'glm-5.3'],
   },
   createEngine: vi.fn(() => ({
     testConnection: vi.fn(async () => ({ success: true })),
@@ -84,7 +84,7 @@ describe('Settings providers section', () => {
   it('links the selected provider to its official API docs', () => {
     renderProviderSettings();
 
-    // The default `gemma4` model opens the editor on Ollama.
+    // The default `gemma4:31b` model opens the editor on Ollama.
     const link = screen.getByRole('link', { name: /API docs/ });
     expect(link).toHaveAttribute('href', PROVIDER_DOCS.ollama);
     expect(link).toHaveAttribute('target', '_blank');
@@ -95,7 +95,7 @@ describe('Settings providers section', () => {
 
     renderProviderSettings();
 
-    // The default model `gemma4` names Ollama Cloud, whose key is required
+    // The default model `gemma4:31b` names Ollama Cloud, whose key is required
     // before the connection can be tested.
     expect(await screen.findByRole('heading', { name: 'Ollama Cloud' })).toBeInTheDocument();
     expect(screen.getByPlaceholderText('Your OLLAMA_API_KEY (required for Ollama Cloud)')).toBeInTheDocument();
@@ -122,7 +122,7 @@ describe('Settings providers section', () => {
 
     renderProviderSettings();
 
-    // The default `gemma4` model opens the editor on Ollama; move to OpenRouter.
+    // The default `gemma4:31b` model opens the editor on Ollama; move to OpenRouter.
     fireEvent.click(await screen.findByRole('button', { name: /^OpenRouter/ }));
     expect(await screen.findByRole('heading', { name: 'OpenRouter' })).toBeInTheDocument();
     expect(screen.getByPlaceholderText('Enter your openrouter API key')).toHaveValue('sk-test');

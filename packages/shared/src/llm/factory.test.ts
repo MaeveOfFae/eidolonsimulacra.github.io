@@ -12,6 +12,7 @@ import {
 import { GoogleEngine } from './google';
 import { OpenAICompatEngine } from './openai-compat';
 import { OllamaEngine } from './ollama';
+import { ProviderEndpoints } from './types';
 
 const ALL_PROVIDERS = [
   'openai',
@@ -66,6 +67,14 @@ describe('llm engine factory', () => {
     // Ollama's provider is Ollama Cloud's native API; local servers use Custom.
     expect(getDefaultBaseUrl('ollama')).toBe('https://ollama.com/api');
     expect(getDefaultBaseUrl('custom')).toBe('');
+  });
+
+  it('keeps ProviderEndpoints in sync with the factory defaults', () => {
+    // Two tables describe the same hosts; a divergence silently sends native
+    // engine traffic to an OpenAI-compatible path (it happened to Ollama once).
+    for (const provider of ALL_PROVIDERS) {
+      expect(ProviderEndpoints[provider]).toBe(getDefaultBaseUrl(provider));
+    }
   });
 
   it('requires a base URL for the Custom provider', () => {

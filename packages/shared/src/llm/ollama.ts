@@ -3,9 +3,9 @@
  *
  * Talks to Ollama's own REST API — `POST {base}/chat`, `GET {base}/tags` —
  * instead of its OpenAI-compatible `/v1` surface. Ollama Cloud serves the native
- * API from https://ollama.com/v1 with `Authorization: Bearer OLLAMA_API_KEY`
+ * API from https://ollama.com/api with `Authorization: Bearer OLLAMA_API_KEY`
  * (docs.ollama.com/api/introduction), and a local server serves the identical
- * API from http://localhost:11434/v1.
+ * API from http://localhost:11434/api.
  *
  * The native envelopes differ from OpenAI's: generation limits ride in an
  * `options` object (`num_predict`, not `max_tokens`), the answer arrives as
@@ -16,6 +16,7 @@
 import { BaseLLMEngine } from './base';
 import { buildProviderHeaders } from './factory';
 import { isRuntimeLLMStreamingSupported } from './transport';
+import { ProviderEndpoints } from './types';
 import type {
   GenerateOptions,
   GenerateResult,
@@ -38,8 +39,14 @@ interface OllamaChatResponse {
   error?: unknown;
 }
 
-/** Ollama Cloud; a local server uses http://localhost:11434/v1. */
-const DEFAULT_OLLAMA_BASE_URL = 'https://ollama.com/v1';
+/**
+ * Ollama Cloud's native API. Read from `ProviderEndpoints` rather than a second
+ * literal so the factory default, the endpoint table, and this engine's own
+ * fallback cannot drift apart (they did once: a stray edit left this constant on
+ * the OpenAI-compatible `/v1` host, which serves a different body shape entirely).
+ * A local server serves the same native API from http://localhost:11434/api.
+ */
+const DEFAULT_OLLAMA_BASE_URL = ProviderEndpoints.ollama;
 
 export class OllamaEngine extends BaseLLMEngine {
   private baseUrl: string;
@@ -298,14 +305,34 @@ export class OllamaEngine extends BaseLLMEngine {
       // Keep the HTTP status fallback.
     }
 
-    if (response.status !== 401 && response.status !== 403) {
-      return message;
+    const remedy = this.remedyFor(response.status);
+    return remedy ? `${message} (HTTP ${response.status}) — provider "ollama": ${remedy}.` : message;
+  }
+
+  /**
+   * Status guidance from docs.ollama.com/api/errors (400 bad request, 404 unknown
+   * model, 429 rate limit, 500/502 server-or-cloud-model failures). Only the codes
+   * the user can act on get a suffix; the rest keep the provider's own message.
+   * Ollama API keys never expire (docs.ollama.com/api/authentication), so a
+   * rejected key is invalid or revoked.
+   */
+  private remedyFor(status: number): string | undefined {
+    switch (status) {
+      case 401:
+      case 403:
+        return this.config.apiKey
+          ? 'the configured OLLAMA_API_KEY was rejected (invalid or revoked) — re-enter it in Settings'
+          : 'no OLLAMA_API_KEY is configured — add one in Settings';
+      case 404:
+        return this.isLocalEndpoint()
+          ? 'the model is not installed on this server — check `ollama list` or pull it first'
+          : `the model must match a name from GET ${this.baseUrl}/tags exactly (e.g. "gemma4:31b", not "gemma4")`;
+      case 429:
+        return 'Ollama Cloud rate limit or plan quota reached — wait and retry, or use a smaller model';
+      case 502:
+        return 'Ollama Cloud could not reach the model — retry, or choose another model';
+      default:
+        return undefined;
     }
-
-    const remedy = this.config.apiKey
-      ? 'the configured OLLAMA_API_KEY was rejected (invalid, expired, or revoked) — re-enter it in Settings'
-      : 'no OLLAMA_API_KEY is configured — add one in Settings';
-
-    return `${message} (HTTP ${response.status}) — provider "ollama": ${remedy}.`;
   }
 }
