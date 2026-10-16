@@ -239,4 +239,28 @@ describe('Settings setup runtime column', () => {
     // Local: the user's own server has to allowlist a deployed or LAN origin.
     expect(screen.getByText('OLLAMA_ORIGINS')).toBeInTheDocument();
   });
+
+  it('lets the Ollama provider be pointed at a local server', async () => {
+    renderSetupSettings();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Advanced transport/ }));
+
+    const input = screen.getByPlaceholderText('Blank = https://ollama.com/api (Ollama Cloud)');
+    fireEvent.change(input, { target: { value: 'http://localhost:11434' } });
+
+    expect(input).toHaveValue('http://localhost:11434');
+  });
+
+  it('unlocks the access test keylessly once Ollama targets a local server', async () => {
+    configManager.updateConfig({ base_url: 'http://localhost:11434/api' });
+    renderSetupSettings();
+
+    expect(await screen.findByRole('button', { name: 'Test access' })).toBeEnabled();
+  });
+
+  it('keeps the Ollama Cloud access test gated behind the key', async () => {
+    renderSetupSettings();
+
+    expect(await screen.findByRole('button', { name: 'Test access' })).toBeDisabled();
+  });
 });

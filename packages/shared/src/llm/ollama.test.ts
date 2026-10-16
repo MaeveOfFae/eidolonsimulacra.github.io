@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createEngine, getDefaultBaseUrl } from './factory';
+import { fetchProviderModels } from './models';
 import { OllamaEngine } from './ollama';
 import { setRuntimeLLMStreamingSupported } from './transport';
 import type { LLMChatMessage, LLMConfig, StreamChunk } from './types';
@@ -213,6 +214,47 @@ describe('ollama engine request shaping', () => {
     stubFetch(jsonResponse({ error: 'unauthorized' }, 401));
 
     await expect(ollamaEngine().generate(MESSAGES)).rejects.toThrow(/OLLAMA_API_KEY was rejected/);
+  });
+});
+
+describe('ollama engine base URL resolution', () => {
+  // The native API lives under /api, so the engine accepts the shapes users type
+  // and the ones older builds stored.
+  const cases: Array<[string | undefined, string]> = [
+    [undefined, 'https://ollama.com/api'],
+    ['https://ollama.com/', 'https://ollama.com/api'],
+    ['https://ollama.com/api', 'https://ollama.com/api'],
+    ['http://localhost:11434', 'http://localhost:11434/api'],
+    ['http://localhost:11434/v1', 'http://localhost:11434/api'],
+    ['http://localhost:11434/api/', 'http://localhost:11434/api'],
+    ['https://relay.example/proxy', 'https://relay.example/proxy'],
+  ];
+
+  for (const [baseUrl, expected] of cases) {
+    it(`resolves ${baseUrl ?? '(default)'} to ${expected}`, async () => {
+      const calls = stubFetch(jsonResponse(REPLY));
+
+      await ollamaEngine({ baseUrl }).generate(MESSAGES);
+
+      expect(calls[0]?.url).toBe(`${expected}/chat`);
+    });
+  }
+
+  it('sends no auth header to a keyless local server', async () => {
+    const calls = stubFetch(jsonResponse(REPLY));
+
+    await ollamaEngine({ apiKey: undefined, baseUrl: 'http://localhost:11434' }).generate(MESSAGES);
+
+    expect(calls[0]?.url).toBe('http://localhost:11434/api/chat');
+    expect(headersOf(calls[0]!).Authorization).toBeUndefined();
+  });
+
+  it('lists a local server catalog from its own host', async () => {
+    const calls = stubFetch(jsonResponse({ models: [{ name: 'gemma4:latest', model: 'gemma4:latest' }] }));
+
+    await fetchProviderModels('ollama', '', 'http://localhost:11434/api');
+
+    expect(calls[0]?.url).toBe('http://localhost:11434/api/tags');
   });
 });
 

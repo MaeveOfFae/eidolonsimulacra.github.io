@@ -84,9 +84,10 @@ export function createConfiguredEngine(override?: { model: string }) {
     apiKey: provider ? apiKeys[provider] : getFallbackApiKey(apiKeys),
     apiKeys,
     provider,
-    // Custom owns the base-URL override; named providers use their documented
-    // endpoint so a leftover config URL can never hijack them.
-    baseUrl: provider === 'custom' ? config.base_url : undefined,
+    // Custom and Ollama own the base-URL override (Ollama: Cloud by default, a
+    // local server or relay when one is configured); named providers use their
+    // documented endpoint so a leftover config URL can never hijack them.
+    baseUrl: provider === 'custom' || provider === 'ollama' ? config.base_url : undefined,
     proxyKey: provider === 'custom' ? config.api_proxy_key : undefined,
     temperature: config.temperature,
     maxTokens: resolveGenerationMaxTokens(config),

@@ -102,7 +102,7 @@ export default function SettingsScreen({ navigation, route }: SettingsScreenProp
           )}
         </View>
         <Text style={styles.statusDescription}>
-          {usingCustomApiUrl ? 'Custom endpoint active.' : 'Using default endpoint.'}
+          {usingCustomApiUrl ? 'Custom base URL active.' : 'Using the provider default endpoint.'}
         </Text>
         <Text style={styles.connectionUrl}>{runtimeEndpoint}</Text>
       </View>
@@ -809,7 +809,7 @@ export default function SettingsScreen({ navigation, route }: SettingsScreenProp
         subtitle="App info and endpoint details"
         preview={
           <Text style={styles.trayPreviewText}>
-            v2.0.0 • {usingCustomApiUrl ? 'custom endpoint' : 'default endpoint'}
+            v2.0.0 • {usingCustomApiUrl ? 'custom base URL' : 'default endpoint'}
           </Text>
         }
       >
@@ -858,7 +858,7 @@ export default function SettingsScreen({ navigation, route }: SettingsScreenProp
                 ? 'Stored locally on this device. Leave blank to remove.'
                 : editorMode === 'model'
                   ? 'Default model ID for this device.'
-                  : 'Custom endpoint for this device. Leave blank for the provider default.'}
+                  : 'Base URL for the Custom and Ollama providers. Leave blank for the provider default (Ollama: Cloud) — a local server takes http://localhost:11434/api and needs no key.'}
             </Text>
 
             <TextInput

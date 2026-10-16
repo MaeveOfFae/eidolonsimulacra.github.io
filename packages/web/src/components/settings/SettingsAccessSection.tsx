@@ -26,6 +26,8 @@ interface SettingsAccessSectionProps {
   onToggleShowKey: (provider: Provider) => void;
   testResult: { provider: string; success: boolean; message: string } | null;
   onTest: (provider: Provider) => void;
+  /** False when the provider still needs a credential (Ollama Cloud, hosted APIs). */
+  canTestConnection: boolean;
 }
 
 export default function SettingsAccessSection({
@@ -42,6 +44,7 @@ export default function SettingsAccessSection({
   onToggleShowKey,
   testResult,
   onTest,
+  canTestConnection,
 }: SettingsAccessSectionProps) {
   return (
     <section data-tour-anchor="settings-api-keys" className="order-1 app-panel p-6 xl:order-1">
@@ -124,7 +127,7 @@ export default function SettingsAccessSection({
               <h3 className="text-base font-semibold text-foreground">{PROVIDER_LABELS[selectedProvider]} access</h3>
               <p className="mt-1 text-sm text-muted-foreground">
                 {selectedProvider === 'ollama'
-                  ? 'Ollama Cloud takes an OLLAMA_API_KEY; local servers use the Custom provider.'
+                  ? 'Ollama Cloud takes an OLLAMA_API_KEY; a local server (set its base URL in Runtime) needs none.'
                   : selectedProvider === 'custom'
                     ? 'Custom endpoints only use their own key — and only if the endpoint requires one.'
                     : `Store or update the ${PROVIDER_LABELS[selectedProvider]} key used by the current runtime.`}
@@ -144,7 +147,7 @@ export default function SettingsAccessSection({
             <button
               type="button"
               onClick={() => onTest(selectedProvider)}
-              disabled={selectedProvider !== 'custom' && !activeProviderKey}
+              disabled={!canTestConnection}
               className="rounded-lg border border-border/60 bg-background/60 px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:border-primary/35 hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
             >
               {testResult?.provider === selectedProvider
@@ -163,7 +166,7 @@ export default function SettingsAccessSection({
               onChange={(e) => onApiKeyChange(selectedProvider, e.target.value)}
               placeholder={
                 selectedProvider === 'ollama'
-                  ? 'Your OLLAMA_API_KEY (required for Ollama Cloud)'
+                  ? 'Your OLLAMA_API_KEY (required for Ollama Cloud, optional for a local server)'
                   : selectedProvider === 'custom'
                     ? 'Optional — only if your endpoint requires a key'
                     : `Enter your ${selectedProvider} API key`

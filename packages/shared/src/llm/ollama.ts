@@ -1,22 +1,25 @@
 /**
- * Ollama (native API) LLM engine.
+ * Ollama engine (native API) — covers **both** Ollama deployments:
  *
- * Talks to Ollama's own REST API — `POST {base}/chat`, `GET {base}/tags` —
- * instead of its OpenAI-compatible `/v1` surface. Ollama Cloud serves the native
- * API from https://ollama.com/api with `Authorization: Bearer OLLAMA_API_KEY`
- * (docs.ollama.com/api/introduction), and a local server serves the identical
- * API from http://localhost:11434/api.
+ *  - **Ollama Cloud** (default): https://ollama.com/api with
+ *    `Authorization: Bearer OLLAMA_API_KEY` (docs.ollama.com/cloud).
+ *  - **A local server**: set the base URL to http://localhost:11434/api (a bare
+ *    `http://localhost:11434` or the older `/v1` value is normalized). Local
+ *    servers are keyless, and a browser reaches one only when its origin is
+ *    allowed (`OLLAMA_ORIGINS`).
  *
- * The native envelopes differ from OpenAI's: generation limits ride in an
- * `options` object (`num_predict`, not `max_tokens`), the answer arrives as
- * `message.content`, usage is `prompt_eval_count`/`eval_count`, and streaming is
- * newline-delimited JSON rather than SSE `data:` events.
+ * Talks to Ollama's own REST API — `POST {base}/chat`, `GET {base}/tags` — instead
+ * of its OpenAI-compatible `/v1` surface (which keeps a different body, reply, and
+ * model-listing shape). The native envelopes differ from OpenAI's too: generation
+ * limits ride in an `options` object (`num_predict`, not `max_tokens`), the answer
+ * arrives as `message.content`, usage is `prompt_eval_count`/`eval_count`, and
+ * streaming is newline-delimited JSON rather than SSE `data:` events.
  */
 
 import { BaseLLMEngine } from './base';
 import { buildProviderHeaders } from './factory';
 import { isRuntimeLLMStreamingSupported } from './transport';
-import { ProviderEndpoints } from './types';
+import { ProviderEndpoints, isLoopbackUrl } from './types';
 import type {
   GenerateOptions,
   GenerateResult,
@@ -48,13 +51,40 @@ interface OllamaChatResponse {
  */
 const DEFAULT_OLLAMA_BASE_URL = ProviderEndpoints.ollama;
 
+/**
+ * The native API lives under `/api`, so accept the shapes users type and the ones
+ * older builds stored:
+ *  - a bare host — `http://localhost:11434` (the Ollama server root serves its web
+ *    UI, not the API) or `https://ollama.com`;
+ *  - the OpenAI-compatible `/v1` path, which was this app's local Ollama default
+ *    before the engine spoke the native API (same server, different surface);
+ *  - an explicit `/api`.
+ * Anything else — a relay mounted on another path — is left untouched.
+ */
+function normalizeOllamaBaseUrl(value: string | undefined): string {
+  const trimmed = (value?.trim() || DEFAULT_OLLAMA_BASE_URL).replace(/\/+$/, '');
+
+  if (trimmed.endsWith('/api')) {
+    return trimmed;
+  }
+
+  if (trimmed.endsWith('/v1')) {
+    return `${trimmed.slice(0, -'/v1'.length)}/api`;
+  }
+
+  // A bare host carries no path of its own; anything with one is a deliberate gateway.
+  const withoutScheme = trimmed.replace(/^[a-z][a-z0-9+.-]*:\/\//i, '');
+  return withoutScheme.includes('/') ? trimmed : `${trimmed}/api`;
+}
+
 export class OllamaEngine extends BaseLLMEngine {
   private baseUrl: string;
 
   constructor(config: LLMConfig) {
     super(config);
-    // A trailing slash would double up in `${baseUrl}/chat`.
-    this.baseUrl = (config.baseUrl || DEFAULT_OLLAMA_BASE_URL).replace(/\/+$/, '');
+    // Accepts the cloud default, a local server (`http://localhost:11434`), the
+    // older `/v1` value, or a relay — see `normalizeOllamaBaseUrl`.
+    this.baseUrl = normalizeOllamaBaseUrl(config.baseUrl);
   }
 
   private getHeaders(): Record<string, string> {
@@ -261,7 +291,7 @@ export class OllamaEngine extends BaseLLMEngine {
 
   /** True when the configured base URL targets a loopback server (local Ollama). */
   private isLocalEndpoint(): boolean {
-    return /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(?::|\/|$)/i.test(this.baseUrl);
+    return isLoopbackUrl(this.baseUrl);
   }
 
   /**
@@ -277,7 +307,7 @@ export class OllamaEngine extends BaseLLMEngine {
       return raw;
     }
 
-    return this.isLocalEndpoint()
+    return isLoopbackUrl(this.baseUrl)
       ? `Could not reach the local model server at ${this.baseUrl}. Is it running (e.g. \`ollama serve\`), and does OLLAMA_ORIGINS=* allow this app's origin?`
       : `Could not reach ${this.baseUrl}. Browsers cannot call Ollama Cloud directly — ollama.com sends no CORS headers, so use the desktop app, a relay behind the Custom provider, or a locally signed-in server. Otherwise check your network and browser privacy shields.`;
   }

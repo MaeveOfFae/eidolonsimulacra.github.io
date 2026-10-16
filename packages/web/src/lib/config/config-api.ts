@@ -14,6 +14,7 @@ import {
   detectProviderFromModel,
   fetchProviderModels as fetchSharedProviderModels,
   getFallbackModels,
+  providerRequiresApiKey,
   type ApiKeys,
   type Config,
   type ConnectionTestRequest,
@@ -71,6 +72,31 @@ function resolveProviderApiKey(provider: string, apiKeys: ApiKeys): string | und
 }
 
 /**
+ * The endpoint a provider will actually call. Custom and Ollama own the config
+ * base URL — Ollama is Cloud by default and a local server (or relay) once one is
+ * set (`config.base_url`); every other provider keeps its documented host so a
+ * leftover URL can never hijack it.
+ */
+export function resolveProviderBaseUrl(provider: LLMProvider, config: Config): string {
+  if (provider === 'custom' || provider === 'ollama') {
+    const configured = config.base_url?.trim();
+    if (configured) {
+      return configured;
+    }
+  }
+
+  return getDefaultBaseUrl(provider);
+}
+
+/**
+ * Whether a provider needs an API key before a call is worth attempting. Custom
+ * endpoints and a loopback Ollama (a local server) answer keyless; Ollama Cloud
+ * and every other provider need one. Re-exported from `@char-gen/shared` for the
+ * settings screens that already read this module.
+ */
+export { providerRequiresApiKey } from '@char-gen/shared';
+
+/**
  * A refused or CORS-blocked request reaches us as a bare `TypeError` whose
  * message is engine-specific: "Failed to fetch" (Chromium), "NetworkError when
  * attempting to fetch resource." (Firefox), "Load failed" (Safari), "Network
@@ -106,23 +132,33 @@ export async function updateConfig(config: Partial<Config>): Promise<Config> {
 }
 
 export async function testConnection(request: ConnectionTestRequest): Promise<ConnectionTestResult> {
+  const config = configManager.getConfig();
+  const provider = request.provider as LLMProvider;
   const apiKey = configManager.getApiKeys()[request.provider];
-  // Only Custom runs keyless (local servers); Ollama Cloud needs its key too.
-  if (!apiKey && request.provider !== 'custom') {
-    return { success: false, error: `No API key configured for ${request.provider}` };
+  const baseUrl =
+    request.base_url?.trim() || (provider === 'custom' || provider === 'ollama' ? config.base_url?.trim() || '' : '');
+
+  // Custom runs keyless (local servers) and so does a loopback Ollama; Ollama
+  // Cloud needs its OLLAMA_API_KEY before a test is meaningful.
+  if (providerRequiresApiKey(provider, baseUrl) && !apiKey) {
+    return {
+      success: false,
+      error:
+        provider === 'ollama'
+          ? 'No API key configured for ollama — add an OLLAMA_API_KEY for Ollama Cloud, or set a local server base URL in Settings → Runtime'
+          : `No API key configured for ${request.provider}`,
+    };
   }
 
   const model =
-    request.model ||
-    MODEL_SUGGESTIONS[request.provider as keyof typeof MODEL_SUGGESTIONS]?.[0] ||
-    getBrowserConfig().model;
+    request.model || MODEL_SUGGESTIONS[request.provider as keyof typeof MODEL_SUGGESTIONS]?.[0] || config.model;
   try {
     const engine = createEngine({
       model,
       apiKey,
       provider: request.provider as never,
-      // Custom falls back to the configured base URL (Settings → Runtime).
-      baseUrl: request.base_url ?? (request.provider === 'custom' ? configManager.getConfig().base_url : undefined),
+      // Custom and Ollama fall back to the configured base URL (Settings → Runtime).
+      baseUrl: provider === 'custom' || provider === 'ollama' ? baseUrl : undefined,
     });
     const result = await engine.testConnection();
     return toAppConnectionTestResult(result);
@@ -137,9 +173,10 @@ export async function loadProviderModels(provider: string, refresh: boolean = fa
   const apiKeys = configManager.getApiKeys();
   const config = configManager.getConfig();
   const typedProvider = provider as LLMProvider;
-  // Custom owns the base-URL override; every other provider lists from its
+  // Custom and Ollama own the base-URL override (Ollama: Cloud by default, a local
+  // server or relay when one is configured); every other provider lists from its
   // documented endpoint.
-  const baseUrl = typedProvider === 'custom' ? config.base_url?.trim() || '' : getDefaultBaseUrl(typedProvider);
+  const baseUrl = resolveProviderBaseUrl(typedProvider, config);
   const apiKey = resolveProviderApiKey(provider, apiKeys);
   const cacheKey = `${provider}|${baseUrl}|${apiKey ? 'auth' : 'anon'}`;
   const cachedEntry = modelsCache.get(cacheKey);

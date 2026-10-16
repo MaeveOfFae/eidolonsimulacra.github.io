@@ -45,10 +45,22 @@ describe('browser api: config', () => {
   it('does not demand a key for Custom', async () => {
     configManager.updateConfig({ base_url: 'http://localhost:11434/v1' });
     // A local endpoint answers without auth; the request may fail (no server
-    // here) but it must never be rejected as "No API key configured".
-    const result = await api.testConnection({ provider: 'custom' });
+    // here) but it must never be rejected as "No API key configured". Stub the
+    // refusal so the test never waits on a real Ollama on this machine.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new TypeError('Failed to fetch');
+      }),
+    );
+    try {
+      const result = await api.testConnection({ provider: 'custom' });
 
-    expect(result.error ?? '').not.toContain('No API key configured');
+      expect(result.error ?? '').not.toContain('No API key configured');
+      expect(result.error).toContain('localhost:11434/v1');
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('lists Custom models keylessly against the configured base URL', async () => {
@@ -182,6 +194,40 @@ describe('browser api: config', () => {
     } finally {
       vi.unstubAllGlobals();
     }
+  });
+
+  it('points Ollama at a configured local server, keyless, and lists its catalog', async () => {
+    configManager.updateConfig({ base_url: 'http://localhost:11434/api' });
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(JSON.stringify({ models: [{ name: 'gemma4:latest' }] }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    try {
+      const response = await api.getModels('ollama');
+
+      const [listUrl] = fetchMock.mock.calls[0] as unknown as [string];
+      expect(listUrl).toBe('http://localhost:11434/api/tags');
+      expect(response.models.map((model) => model.id)).toEqual(['gemma4:latest']);
+
+      // A loopback target is keyless all the way through the connection test.
+      const result = await api.testConnection({ provider: 'ollama' });
+      const [connectUrl] = fetchMock.mock.calls[1] as unknown as [string];
+      expect(result.success).toBe(true);
+      expect(connectUrl).toBe('http://localhost:11434/api/chat');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('still demands a key before testing Ollama Cloud', async () => {
+    const result = await api.testConnection({ provider: 'ollama' });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('No API key configured for ollama');
   });
 
   it('does not sync from a server in browser-only mode', async () => {

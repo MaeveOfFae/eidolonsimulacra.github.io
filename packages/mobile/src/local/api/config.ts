@@ -8,6 +8,7 @@ import {
   createEngine,
   detectProviderFromModel,
   getDefaultBaseUrl,
+  providerRequiresApiKey,
   canonicalizeLegacyAssetName,
   stripReasoningArtifacts,
   unwrapSingleCodeFence,
@@ -125,11 +126,16 @@ export function getFallbackApiKey(apiKeys: ApiKeys): string | undefined {
 }
 
 export function getConfiguredBaseUrl(config: Config, provider: LLMProvider): string {
-  // Custom owns the base-URL override; named providers always use their
-  // documented endpoint so a leftover config URL can never hijack them.
-  if (provider === 'custom') {
-    return config.base_url?.trim() ?? '';
+  // Custom and Ollama own the base-URL override; named providers always use their
+  // documented endpoint so a leftover config URL can never hijack them. Ollama is
+  // Cloud by default and a local server (`http://localhost:11434/api`) when set.
+  if (provider === 'custom' || provider === 'ollama') {
+    const configured = config.base_url?.trim();
+    if (configured) {
+      return configured;
+    }
   }
+
   return getDefaultBaseUrl(provider);
 }
 
@@ -142,12 +148,14 @@ export function createConfiguredEngine(config: Config = getStoredDeviceConfig())
     ? config.api_keys[provider]
     : config.api_keys[provider] || getFallbackApiKey(config.api_keys);
 
-  // Only Custom runs keyless (local servers); Ollama Cloud needs its key too.
-  if (provider !== 'custom' && (!apiKey || apiKey.trim().length === 0)) {
+  const baseUrl = getConfiguredBaseUrl(config, provider);
+
+  // Custom runs keyless (local servers) and so does a loopback Ollama; Ollama
+  // Cloud needs its own OLLAMA_API_KEY.
+  if (providerRequiresApiKey(provider, baseUrl) && (!apiKey || apiKey.trim().length === 0)) {
     throw new APIError(400, `No API key configured for ${provider}`);
   }
 
-  const baseUrl = getConfiguredBaseUrl(config, provider);
   if (provider === 'custom' && !baseUrl) {
     throw new APIError(
       400,

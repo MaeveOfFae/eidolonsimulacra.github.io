@@ -15,6 +15,7 @@ import type {
   LLMProvider,
 } from './types';
 import { ProviderEndpoints } from './types';
+import { isLoopbackUrl } from './types';
 import { isInvalidApiKeyValue, normalizeApiKeyValue } from './api-key';
 import { buildProviderHeaders } from './headers';
 import { getRuntimeLLMFetch, isRuntimeLLMStreamingSupported } from './transport';
@@ -634,7 +635,7 @@ export class OpenAICompatEngine implements LLMEngine {
 
   /** True when the configured base URL targets a loopback server (local Ollama etc.). */
   private isLocalEndpoint(): boolean {
-    return /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(?::|\/|$)/i.test(this.config.baseUrl || '');
+    return isLoopbackUrl(this.config.baseUrl || '');
   }
 
   private async parseErrorResponse(response: Response): Promise<string> {

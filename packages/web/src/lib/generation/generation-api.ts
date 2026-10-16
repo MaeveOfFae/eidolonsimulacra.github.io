@@ -53,8 +53,9 @@ async function generateWithCurrentConfig(
     apiKey: provider ? apiKeys[provider] : getFallbackApiKey(apiKeys),
     apiKeys,
     provider,
-    // Custom owns the base-URL override.
-    baseUrl: provider === 'custom' ? config.base_url : undefined,
+    // Custom and Ollama own the base-URL override (Ollama: Cloud by default, a
+    // local server or relay when one is configured).
+    baseUrl: provider === 'custom' || provider === 'ollama' ? config.base_url : undefined,
     temperature: config.temperature,
     maxTokens: config.max_tokens,
   });

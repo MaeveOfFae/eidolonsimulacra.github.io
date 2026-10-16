@@ -12,6 +12,7 @@ import {
   createEngine,
   fetchProviderModels,
   getFallbackModels,
+  providerRequiresApiKey,
   inferCharacterDisplayNameFromAssets,
   unwrapSingleCodeFence,
   validateDraftAssets,
@@ -127,9 +128,10 @@ export class MobileLocalAPI {
     const apiKey = ownKeyOnly
       ? config.api_keys[provider]
       : config.api_keys[provider] || getFallbackApiKey(config.api_keys);
+    const baseUrl = request.base_url || getConfiguredBaseUrl(config, provider);
 
-    // Only Custom runs keyless (local servers); Ollama Cloud needs its key too.
-    if (provider !== 'custom' && !apiKey) {
+    // Custom and a loopback Ollama run keyless; Ollama Cloud needs its key.
+    if (providerRequiresApiKey(provider, baseUrl) && !apiKey) {
       return { success: false, error: `No API key configured for ${request.provider}` };
     }
 
@@ -138,7 +140,7 @@ export class MobileLocalAPI {
       model: request.model || config.model,
       apiKey,
       apiKeys: config.api_keys as Record<string, string>,
-      baseUrl: request.base_url || getConfiguredBaseUrl(config, provider),
+      baseUrl,
       temperature: config.temperature,
       maxTokens: config.max_tokens,
     });

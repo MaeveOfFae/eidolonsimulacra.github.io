@@ -11,6 +11,7 @@ import {
   isInvalidApiKeyValue,
   normalizeApiKeyValue,
 } from '../../lib/config/manager.js';
+import { providerRequiresApiKey } from '../../lib/config/config-api.js';
 import { isDesktopRuntime } from '../../lib/runtime.js';
 import { createEngine, getRuntimeLLMFetch, MODEL_SUGGESTIONS } from '../../lib/llm/factory.js';
 import { ALL_PROVIDERS, PROVIDER_LABELS, type Provider } from '../../lib/llm/providers.js';
@@ -226,13 +227,19 @@ export default function Settings() {
 
     try {
       const apiKey = localConfig.api_keys?.[provider];
+      // Custom and a loopback Ollama own the base-URL override; only those may run
+      // without a key (Ollama Cloud at https://ollama.com/api needs OLLAMA_API_KEY).
+      const providerBaseUrl =
+        provider === 'custom' || provider === 'ollama' ? localConfig.base_url?.trim() || undefined : undefined;
 
-      // Only Custom runs keyless (local servers); Ollama Cloud needs its key too.
-      if (!apiKey && provider !== 'custom') {
+      if (providerRequiresApiKey(provider as Provider, providerBaseUrl ?? '') && !apiKey) {
         setTestResult({
           provider,
           success: false,
-          message: 'No API key configured',
+          message:
+            provider === 'ollama'
+              ? 'Add an OLLAMA_API_KEY for Ollama Cloud, or set a local server base URL in Runtime'
+              : 'No API key configured',
         });
         return;
       }
@@ -245,9 +252,7 @@ export default function Settings() {
         model,
         apiKey,
         provider: provider as Provider,
-        // Custom owns the base-URL override; named providers always use their
-        // documented endpoint.
-        baseUrl: provider === 'custom' ? localConfig.base_url || undefined : undefined,
+        baseUrl: providerBaseUrl,
         proxyKey: provider === 'custom' ? localConfig.api_proxy_key || undefined : undefined,
       });
 
@@ -430,6 +435,10 @@ export default function Settings() {
     ? currentModel.split('/').filter(Boolean).slice(-1)[0] || currentModel
     : 'Unset';
   const activeProviderKey = localConfig.api_keys?.[selectedProvider] || '';
+  // Custom and a loopback Ollama (a local server) answer keyless, so their test
+  // button stays enabled without one; Ollama Cloud and the rest need the key first.
+  const canTestConnection =
+    Boolean(activeProviderKey) || !providerRequiresApiKey(selectedProvider, localConfig.base_url ?? '');
   const configuredProviderCount = ALL_PROVIDERS.filter((provider) => Boolean(localConfig.api_keys?.[provider])).length;
   const handleBatchChange = (key: 'max_concurrent' | 'rate_limit_delay', value: number) => {
     setLocalConfig((previous) => ({
@@ -602,6 +611,7 @@ export default function Settings() {
             onToggleShowKey={toggleShowKey}
             testResult={testResult}
             onTest={handleTest}
+            canTestConnection={canTestConnection}
           />
         </div>
       )}
@@ -620,6 +630,7 @@ export default function Settings() {
           onToggleShowKey={toggleShowKey}
           testResult={testResult}
           onTest={handleTest}
+          canTestConnection={canTestConnection}
         />
       )}
 

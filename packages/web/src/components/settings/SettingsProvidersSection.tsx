@@ -31,6 +31,8 @@ interface SettingsProvidersSectionProps {
   onToggleShowKey: (provider: Provider) => void;
   testResult: { provider: string; success: boolean; message: string } | null;
   onTest: (provider: Provider) => void;
+  /** False when the provider still needs a credential (Ollama Cloud, hosted APIs). */
+  canTestConnection: boolean;
 }
 
 export default function SettingsProvidersSection({
@@ -46,6 +48,7 @@ export default function SettingsProvidersSection({
   onToggleShowKey,
   testResult,
   onTest,
+  canTestConnection,
 }: SettingsProvidersSectionProps) {
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(280px,0.8fr)_minmax(0,1.2fr)]">
@@ -138,7 +141,7 @@ export default function SettingsProvidersSection({
               onChange={(e) => onApiKeyChange(selectedProvider, e.target.value)}
               placeholder={
                 selectedProvider === 'ollama'
-                  ? 'Your OLLAMA_API_KEY (required for Ollama Cloud)'
+                  ? 'Your OLLAMA_API_KEY (required for Ollama Cloud, optional for a local server)'
                   : selectedProvider === 'custom'
                     ? 'Optional — only if your endpoint requires a key'
                     : `Enter your ${selectedProvider} API key`
@@ -163,7 +166,7 @@ export default function SettingsProvidersSection({
             <button
               type="button"
               onClick={() => onTest(selectedProvider)}
-              disabled={selectedProvider !== 'custom' && !activeProviderKey}
+              disabled={!canTestConnection}
               className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Zap className="h-4 w-4" />
@@ -198,7 +201,7 @@ export default function SettingsProvidersSection({
             {selectedProvider === 'openai' &&
               'Use a proxy or switch to OpenRouter when you want browser-direct generation without CORS issues.'}
             {selectedProvider === 'ollama' &&
-              'Ollama Cloud (https://ollama.com/api) uses your OLLAMA_API_KEY here. Running a local server? Use the Custom provider with http://localhost:11434/v1 instead.'}
+              'Ollama Cloud (https://ollama.com/api) uses your OLLAMA_API_KEY here. Running a local server? Set its base URL in Runtime (http://localhost:11434/api) — it needs no key.'}
             {selectedProvider === 'custom' &&
               'Any OpenAI-compatible endpoint: local Ollama, LM Studio, vLLM, or a proxy. Set the API base URL in Runtime; a key is only needed if the endpoint requires one.'}
             {selectedProvider !== 'openrouter' &&

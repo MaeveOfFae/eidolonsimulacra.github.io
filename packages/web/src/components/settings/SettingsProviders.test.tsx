@@ -98,7 +98,9 @@ describe('Settings providers section', () => {
     // The default model `gemma4:31b` names Ollama Cloud, whose key is required
     // before the connection can be tested.
     expect(await screen.findByRole('heading', { name: 'Ollama Cloud' })).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('Your OLLAMA_API_KEY (required for Ollama Cloud)')).toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText('Your OLLAMA_API_KEY (required for Ollama Cloud, optional for a local server)'),
+    ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Test connection' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Clear key' })).toBeDisabled();
 

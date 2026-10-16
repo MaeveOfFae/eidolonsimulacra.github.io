@@ -134,6 +134,33 @@ export const ProviderEndpoints: Record<LLMProvider, string> = {
 } as const;
 
 /**
+ * True when a base URL targets a loopback server — a local Ollama/LM Studio, or a
+ * dev relay. Loopback endpoints are keyless, and a browser reaches them only when
+ * the server itself allows the app's origin (Ollama: `OLLAMA_ORIGINS`), which is
+ * why the engines and the settings screens special-case them.
+ */
+export function isLoopbackUrl(value: string | undefined): boolean {
+  return /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(?::|\/|$)/i.test(value ?? '');
+}
+
+/**
+ * Whether a provider needs an API key before a call is worth attempting. Custom
+ * endpoints and a loopback Ollama (a local server) answer keyless; Ollama Cloud
+ * and every hosted provider need one.
+ */
+export function providerRequiresApiKey(provider: LLMProvider, baseUrl: string): boolean {
+  if (provider === 'custom') {
+    return false;
+  }
+
+  if (provider === 'ollama') {
+    return !isLoopbackUrl(baseUrl);
+  }
+
+  return true;
+}
+
+/**
  * Provider-specific header keys. Ollama Cloud (https://ollama.com/api) accepts
  * `Authorization: Bearer OLLAMA_API_KEY`; `custom` endpoints take Bearer when
  * a key is configured and no auth header at all keyless (local servers).
