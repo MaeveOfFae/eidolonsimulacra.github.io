@@ -163,6 +163,17 @@ describe('ollama engine request shaping', () => {
     await expect(ollamaEngine().generate(MESSAGES)).rejects.toThrow(/try pulling it first/);
   });
 
+  it('explains a blocked fetch on generate instead of leaking a bare TypeError', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new TypeError('Failed to fetch');
+      }),
+    );
+
+    await expect(ollamaEngine().generate(MESSAGES)).rejects.toThrow(/no CORS headers/);
+  });
+
   it('names the key and the remedy when auth is rejected', async () => {
     stubFetch(jsonResponse({ error: 'unauthorized' }, 401));
 
@@ -249,6 +260,7 @@ describe('ollama engine connection checks', () => {
 
     expect(result.success).toBe(false);
     expect(result.error).toContain('Could not reach https://ollama.com/api');
+    expect(result.error).toContain('no CORS headers');
   });
 
   it('gives the serve/origins checklist for an unreachable local server', async () => {

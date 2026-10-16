@@ -23,6 +23,7 @@ import {
 } from '@char-gen/shared';
 import { MODEL_SUGGESTIONS, createEngine, getDefaultBaseUrl } from '../llm/factory.js';
 import { toAppConnectionTestResult } from '../llm/connection-result.js';
+import { isDesktopRuntime } from '../runtime.js';
 import { configManager } from './manager.js';
 
 const MODEL_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -67,6 +68,19 @@ function resolveProviderApiKey(provider: string, apiKeys: ApiKeys): string | und
   }
 
   return getFallbackApiKey(apiKeys);
+}
+
+/**
+ * A refused or CORS-blocked request reaches us as a bare `TypeError` whose
+ * message is engine-specific: "Failed to fetch" (Chromium), "NetworkError when
+ * attempting to fetch resource." (Firefox), "Load failed" (Safari), "Network
+ * request failed" (React Native). Matching one spelling would misreport the
+ * others as a server-side error and drop the origin-fix guidance.
+ */
+function isTransportFailure(error: unknown): boolean {
+  return (
+    error instanceof TypeError && /failed to fetch|networkerror|load failed|network request failed/i.test(error.message)
+  );
 }
 
 export async function getConfig(): Promise<Config> {
@@ -174,7 +188,7 @@ export async function loadProviderModels(provider: string, refresh: boolean = fa
     });
     return response;
   } catch (error) {
-    const isNetworkError = error instanceof TypeError && error.message === 'Failed to fetch';
+    const isNetworkError = isTransportFailure(error);
     // The local-first default targets localhost; a refused connection there is
     // either "Ollama isn't running" or "Ollama is blocking this app's origin"
     // (the desktop app and non-localhost origins get a 403 without OLLAMA_ORIGINS).
@@ -182,7 +196,11 @@ export async function loadProviderModels(provider: string, refresh: boolean = fa
     const message = isNetworkError
       ? isLocalTarget
         ? `Could not reach the local model server at ${baseUrl}: either it is not running, or it blocked this app's origin — start Ollama with OLLAMA_ORIGINS=* to allow it. The built-in suggestions are shown below.`
-        : 'Network request blocked. This may be due to browser privacy settings (common in EU), ad blockers, or firewall restrictions. Try disabling tracking protection for this site or using a different network.'
+        : typedProvider === 'ollama' && !isDesktopRuntime()
+          ? // ollama.com answers no browser at all, so this is a policy block, not
+            // the user's network or privacy shield.
+            `ollama.com sends no CORS headers, so a browser cannot list Ollama Cloud models — use the desktop app, or point the Custom provider at a relay that forwards to https://ollama.com/v1. The built-in suggestions are shown below.`
+          : 'Network request blocked. This may be due to browser privacy settings (common in EU), ad blockers, or firewall restrictions. Try disabling tracking protection for this site or using a different network.'
       : error instanceof Error
         ? error.message
         : 'Failed to load models';

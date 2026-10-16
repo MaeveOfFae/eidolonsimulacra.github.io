@@ -102,15 +102,28 @@ export class OllamaEngine extends BaseLLMEngine {
     return 'Ollama returned no displayable text. Try a different model or increase max tokens.';
   }
 
+  /**
+   * `POST /chat` with the native body, turning transport failures into the
+   * guidance below: a bare `Failed to fetch` names neither the endpoint nor the
+   * cause, and in a browser that failure is usually ollama.com's missing CORS
+   * headers rather than a broken network.
+   */
+  private async postChat(body: Record<string, unknown>, signal?: AbortSignal): Promise<Response> {
+    try {
+      return await this.performFetch(`${this.baseUrl}/chat`, {
+        ...this.getFetchOptions(signal),
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify(body),
+      });
+    } catch (error) {
+      throw new Error(this.describeRequestFailure(error));
+    }
+  }
+
   async generate(messages: LLMChatMessage[], options?: GenerateOptions): Promise<GenerateResult> {
     const opts = this.mergeOptions(options);
-
-    const response = await this.performFetch(`${this.baseUrl}/chat`, {
-      ...this.getFetchOptions(options?.signal),
-      method: 'POST',
-      headers: this.getHeaders(),
-      body: JSON.stringify(this.buildBody(messages, opts, false)),
-    });
+    const response = await this.postChat(this.buildBody(messages, opts, false), options?.signal);
 
     if (!response.ok) {
       throw new Error(await this.parseError(response));
@@ -138,12 +151,7 @@ export class OllamaEngine extends BaseLLMEngine {
     const opts = this.mergeOptions(options);
     const timeoutMs = this.getRequestTimeoutMs();
 
-    const response = await this.performFetch(`${this.baseUrl}/chat`, {
-      ...this.getFetchOptions(options?.signal),
-      method: 'POST',
-      headers: this.getHeaders(),
-      body: JSON.stringify(this.buildBody(messages, opts, true)),
-    });
+    const response = await this.postChat(this.buildBody(messages, opts, true), options?.signal);
 
     if (!response.ok) {
       throw new Error(await this.parseError(response));
@@ -213,16 +221,11 @@ export class OllamaEngine extends BaseLLMEngine {
     const startTime = performance.now();
 
     try {
-      const response = await this.performFetch(`${this.baseUrl}/chat`, {
-        ...this.getFetchOptions(),
-        method: 'POST',
-        headers: this.getHeaders(),
-        body: JSON.stringify({
-          model: this.config.model,
-          messages: [{ role: 'user', content: 'test' }],
-          stream: false,
-          options: { num_predict: 1 },
-        }),
+      const response = await this.postChat({
+        model: this.config.model,
+        messages: [{ role: 'user', content: 'test' }],
+        stream: false,
+        options: { num_predict: 1 },
       });
 
       const latencyMs = performance.now() - startTime;
@@ -243,7 +246,8 @@ export class OllamaEngine extends BaseLLMEngine {
     } catch (error) {
       return {
         success: false,
-        error: this.describeRequestFailure(error),
+        // `postChat` already replaced bare transport errors with the guidance.
+        error: error instanceof Error ? error.message : 'Unknown error',
       };
     }
   }
@@ -255,8 +259,10 @@ export class OllamaEngine extends BaseLLMEngine {
 
   /**
    * A blocked or offline request surfaces as a bare `Failed to fetch`; name the
-   * endpoint and the remedy instead. Local servers additionally need their app
-   * origin allowlisted (Ollama refuses unknown origins with a bare 403).
+   * endpoint and the cause instead. A local server normally refuses the app
+   * origin (a bare 403 without `OLLAMA_ORIGINS`), while ollama.com never answers
+   * a browser at all: it sends no CORS headers, so it is only reachable through
+   * the desktop app's native transport, a relay, or a locally signed-in server.
    */
   private describeRequestFailure(error: unknown): string {
     const raw = error instanceof Error ? error.message : 'Unknown error';
@@ -266,7 +272,7 @@ export class OllamaEngine extends BaseLLMEngine {
 
     return this.isLocalEndpoint()
       ? `Could not reach the local model server at ${this.baseUrl}. Is it running (e.g. \`ollama serve\`), and does OLLAMA_ORIGINS=* allow this app's origin?`
-      : `Could not reach ${this.baseUrl}. Check your network — browser privacy shields commonly block provider requests.`;
+      : `Could not reach ${this.baseUrl}. Browsers cannot call Ollama Cloud directly — ollama.com sends no CORS headers, so use the desktop app, a relay behind the Custom provider, or a locally signed-in server. Otherwise check your network and browser privacy shields.`;
   }
 
   private async parseError(response: Response): Promise<string> {

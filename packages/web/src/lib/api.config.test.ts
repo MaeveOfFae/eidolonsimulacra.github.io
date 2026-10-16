@@ -123,6 +123,43 @@ describe('browser api: config', () => {
     }
   });
 
+  it('explains the Ollama Cloud CORS limit instead of blaming privacy shields', async () => {
+    configManager.setApiKey('ollama', 'ollama_test');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new TypeError('Failed to fetch');
+      }),
+    );
+    try {
+      const response = await api.getModels('ollama');
+
+      expect(response.error).toContain('no CORS headers');
+      expect(response.error).not.toContain('privacy settings');
+      // The static suggestions still populate the picker.
+      expect(response.models.length).toBeGreaterThan(0);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('recognises a Firefox-style network error as a transport failure', async () => {
+    configManager.updateConfig({ base_url: 'http://localhost:19999/v1' });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new TypeError('NetworkError when attempting to fetch resource.');
+      }),
+    );
+    try {
+      const response = await api.getModels('custom');
+
+      expect(response.error).toContain('OLLAMA_ORIGINS');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('does not sync from a server in browser-only mode', async () => {
     expect(await api.syncConfigFromServer()).toBe(false);
   });
