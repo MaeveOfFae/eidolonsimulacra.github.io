@@ -3,9 +3,9 @@
  *
  * Talks to Ollama's own REST API — `POST {base}/chat`, `GET {base}/tags` —
  * instead of its OpenAI-compatible `/v1` surface. Ollama Cloud serves the native
- * API from https://ollama.com/api with `Authorization: Bearer OLLAMA_API_KEY`
+ * API from https://ollama.com/v1 with `Authorization: Bearer OLLAMA_API_KEY`
  * (docs.ollama.com/api/introduction), and a local server serves the identical
- * API from http://localhost:11434/api.
+ * API from http://localhost:11434/v1.
  *
  * The native envelopes differ from OpenAI's: generation limits ride in an
  * `options` object (`num_predict`, not `max_tokens`), the answer arrives as
@@ -38,8 +38,8 @@ interface OllamaChatResponse {
   error?: unknown;
 }
 
-/** Ollama Cloud; a local server uses http://localhost:11434/api. */
-const DEFAULT_OLLAMA_BASE_URL = 'https://ollama.com/api';
+/** Ollama Cloud; a local server uses http://localhost:11434/v1. */
+const DEFAULT_OLLAMA_BASE_URL = 'https://ollama.com/v1';
 
 export class OllamaEngine extends BaseLLMEngine {
   private baseUrl: string;
