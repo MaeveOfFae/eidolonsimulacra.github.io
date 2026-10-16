@@ -227,4 +227,16 @@ describe('Settings setup runtime column', () => {
     // Same as above: the proxy key label is not tied to its input, so use the placeholder.
     expect(screen.getByPlaceholderText('Enter proxy API key if required')).toBeInTheDocument();
   });
+
+  it('explains the browser CORS limits for Ollama Cloud and local servers', async () => {
+    renderSetupSettings();
+
+    fireEvent.click(await screen.findByRole('button', { name: /Advanced transport/ }));
+
+    // Cloud: unreadable from a browser at all, so name the ways out.
+    expect(screen.getByText(/ollama\.com sends no CORS headers/)).toBeInTheDocument();
+    expect(screen.getByText(/forwards to/)).toBeInTheDocument();
+    // Local: the user's own server has to allowlist a deployed or LAN origin.
+    expect(screen.getByText('OLLAMA_ORIGINS')).toBeInTheDocument();
+  });
 });

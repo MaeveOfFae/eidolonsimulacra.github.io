@@ -233,11 +233,26 @@ export default function SettingsRuntimeSection({
           )}
 
           {selectedProvider === 'ollama' && (
+            <div className="rounded-lg border border-warning/20 bg-warning/10 p-3 text-sm text-warning">
+              Browsers cannot call Ollama Cloud directly: ollama.com sends no CORS headers, and Ollama&apos;s docs say
+              to keep API keys out of browser code. Use the desktop app (native HTTP, no origin), point the{' '}
+              <strong>Custom</strong> provider at a relay that forwards to{' '}
+              <code className="rounded bg-warning/20 px-1 py-0.5">https://ollama.com/v1</code>, or run a cloud model
+              through your own signed-in server (
+              <code className="rounded bg-warning/20 px-1 py-0.5">ollama signin</code>, then{' '}
+              <code className="rounded bg-warning/20 px-1 py-0.5">gemma4:cloud</code>).
+            </div>
+          )}
+
+          {selectedProvider === 'ollama' && (
             <div className="rounded-lg border border-info/20 bg-info/10 p-3 text-sm text-info">
-              Ollama Cloud defaults to <code className="rounded bg-info/20 px-1 py-0.5">https://ollama.com/api</code> and
-              uses your OLLAMA_API_KEY from Providers. Running a local server instead? Choose the{' '}
+              Ollama Cloud defaults to <code className="rounded bg-info/20 px-1 py-0.5">https://ollama.com/api</code>{' '}
+              and uses your OLLAMA_API_KEY from Providers. Running a local server instead? Choose the{' '}
               <strong>Custom</strong> provider and set{' '}
-              <code className="rounded bg-info/20 px-1 py-0.5">http://localhost:11434/v1</code> below.
+              <code className="rounded bg-info/20 px-1 py-0.5">http://localhost:11434/v1</code> below — Ollama allows
+              localhost on any port, but a deployed or LAN origin must be listed in{' '}
+              <code className="rounded bg-info/20 px-1 py-0.5">OLLAMA_ORIGINS</code> (set it to <code>*</code> to allow
+              any) before restarting Ollama.
             </div>
           )}
 
