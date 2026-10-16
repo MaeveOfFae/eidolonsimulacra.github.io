@@ -152,11 +152,12 @@ describe('openai-compatible engine request shaping', () => {
     expect(headersOf(calls[0]!).Authorization).toBe('Bearer sk-provider');
   });
 
-  it('sends no auth header for ollama', async () => {
-    const calls = stubFetch(jsonResponse(COMPLETION));
+  it('posts to Ollama native /chat and sends no auth header without a key', async () => {
+    const calls = stubFetch(jsonResponse({ message: { role: 'assistant', content: 'hi' }, done: true }));
 
     await createEngine({ provider: 'ollama', model: 'llama3.2' }).generate(MESSAGES);
 
+    expect(calls[0]?.url).toBe('https://ollama.com/api/chat');
     expect(headersOf(calls[0]!).Authorization).toBeUndefined();
   });
 
@@ -323,7 +324,7 @@ describe('openai-compatible engine streaming usage', () => {
       const result = await createEngine({ provider: 'ollama', model: 'gemma4' }).testConnection();
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain('Could not reach https://ollama.com/v1');
+      expect(result.error).toContain('Could not reach https://ollama.com/api');
     });
 
     it('passes a missing model through with the provider message', async () => {

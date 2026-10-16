@@ -203,6 +203,7 @@ export class GoogleEngine extends BaseLLMEngine {
     }
 
     const opts = this.mergeOptions(options);
+    const timeoutMs = this.getRequestTimeoutMs();
 
     const response = await this.callEndpoint(
       `/models/${this.config.model}:streamGenerateContent`,
@@ -241,7 +242,10 @@ export class GoogleEngine extends BaseLLMEngine {
 
     try {
       while (true) {
-        const { done, value } = await reader.read();
+        // An inactivity deadline: the request deadline above only covers the
+        // response headers, so a stream that stops delivering bytes would
+        // otherwise leave the generator pending forever with no output.
+        const { done, value } = await this.readStreamChunk(reader, timeoutMs);
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });

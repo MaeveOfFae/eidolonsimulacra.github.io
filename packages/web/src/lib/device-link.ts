@@ -103,8 +103,8 @@ export interface DesktopCompanionSyncPreview {
 const DEFAULT_SYNC_CONFIG_BASE = {
   engine: 'openai_compatible',
   engine_mode: 'auto',
-  // Local-first default, kept in sync with the web ConfigManager and the
-  // mobile DEFAULT_DEVICE_CONFIG (Ollama at http://localhost:11434/v1).
+  // Default model, kept in sync with the web ConfigManager and the mobile
+  // DEFAULT_DEVICE_CONFIG (`gemma4` → Ollama Cloud at https://ollama.com/api).
   model: 'gemma4',
   temperature: 0.7,
   max_tokens: 4096,

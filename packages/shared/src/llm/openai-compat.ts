@@ -690,13 +690,16 @@ export class OpenAICompatEngine implements LLMEngine {
 
 /**
  * The models URL for a provider. Anthropic's Models API is `/v1/models` on a
- * base URL of `https://api.anthropic.com` (no `/v1`); every other provider
- * serves `${base}/models`.
+ * base URL of `https://api.anthropic.com` (no `/v1`), Ollama's native model
+ * catalog is `${base}/tags`, and every other provider serves `${base}/models`.
  */
 export function providerModelsUrl(provider: LLMProvider, baseUrl: string): string {
   const trimmed = baseUrl.replace(/\/+$/, '');
   if (provider === 'anthropic' && !trimmed.endsWith('/v1')) {
     return `${trimmed}/v1/models`;
+  }
+  if (provider === 'ollama') {
+    return `${trimmed}/tags`;
   }
   return `${trimmed}/models`;
 }

@@ -8,6 +8,7 @@ import { detectProviderFromModel } from './types';
 import { listModels as listModelsFromProvider, OpenAICompatEngine } from './openai-compat';
 import { GoogleEngine } from './google';
 import { AnthropicEngine } from './anthropic';
+import { OllamaEngine } from './ollama';
 
 // Header/auth shaping moved to `headers.ts` so `openai-compat.ts` can share it
 // without importing this factory (which imports `openai-compat`).
@@ -75,11 +76,12 @@ export function getDefaultBaseUrl(provider: LLMProvider): string {
     // (api.moonshot.cn is the China-specific deployment).
     case 'moonshot':
       return 'https://api.moonshot.ai/v1';
-    // Ollama Cloud is the default Ollama surface (OpenAI-compatible, needs
-    // OLLAMA_API_KEY). Local servers are addressed through the `custom`
-    // provider with an explicit base URL (http://localhost:11434/v1).
+    // Ollama Cloud is the default Ollama surface: its native API (needs an
+    // OLLAMA_API_KEY) chat endpoint lives at /api/chat and its catalog at
+    // /api/tags. Local servers are addressed through the `custom` provider with
+    // an explicit base URL (http://localhost:11434/v1).
     case 'ollama':
-      return 'https://ollama.com/v1';
+      return 'https://ollama.com/api';
     // Custom endpoints have no default — the caller must supply a base URL.
     case 'custom':
       return '';
@@ -148,7 +150,12 @@ export function createEngine(options: CreateEngineOptions): LLMEngine {
     case 'deepseek':
     case 'zai':
     case 'moonshot':
+      return new OpenAICompatEngine(config);
+
+    // Ollama speaks its own API (`/api/chat`, `/api/tags`), not OpenAI's.
     case 'ollama':
+      return new OllamaEngine(config);
+
     default:
       return new OpenAICompatEngine(config);
   }
@@ -165,6 +172,8 @@ export function getEngineType(model: string, provider?: LLMProvider): string {
       return `GoogleEngine (${detected})`;
     case 'anthropic':
       return `AnthropicEngine (${detected})`;
+    case 'ollama':
+      return `OllamaEngine (${detected})`;
     default:
       return `OpenAICompatEngine (${detected})`;
   }

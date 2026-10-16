@@ -234,7 +234,7 @@ export default function SettingsRuntimeSection({
 
           {selectedProvider === 'ollama' && (
             <div className="rounded-lg border border-info/20 bg-info/10 p-3 text-sm text-info">
-              Ollama Cloud defaults to <code className="rounded bg-info/20 px-1 py-0.5">https://ollama.com/v1</code> and
+              Ollama Cloud defaults to <code className="rounded bg-info/20 px-1 py-0.5">https://ollama.com/api</code> and
               uses your OLLAMA_API_KEY from Providers. Running a local server instead? Choose the{' '}
               <strong>Custom</strong> provider and set{' '}
               <code className="rounded bg-info/20 px-1 py-0.5">http://localhost:11434/v1</code> below.

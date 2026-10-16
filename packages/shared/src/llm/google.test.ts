@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GoogleEngine } from './google';
+import { setRuntimeLLMFetch, setRuntimeLLMStreamingSupported } from './transport';
 import type { LLMChatMessage, StreamChunk } from './types';
 
 const MESSAGES: LLMChatMessage[] = [
@@ -57,6 +58,27 @@ function googleEngine() {
   return new GoogleEngine({ provider: 'google', model: 'gemini-2.0-flash', apiKey: 'g-test' });
 }
 
+/** A body that never sends a byte and never closes: what a silent provider looks like. */
+function stalledSseResponse(): Response {
+  return new Response(new ReadableStream<Uint8Array>({ start: () => undefined }), {
+    status: 200,
+    headers: { 'Content-Type': 'text/event-stream' },
+  });
+}
+
+/** A transport that accepts the request and never settles, ignoring the abort signal. */
+function stubAbortIgnoringTransport(): void {
+  setRuntimeLLMFetch(() => new Promise<Response>(() => undefined));
+}
+
+async function drainStream(engine: GoogleEngine): Promise<StreamChunk[]> {
+  const chunks: StreamChunk[] = [];
+  for await (const chunk of engine.generateStream(MESSAGES)) {
+    chunks.push(chunk);
+  }
+  return chunks;
+}
+
 const RESPONSE = {
   candidates: [{ content: { parts: [{ text: 'Hello' }] }, finishReason: 'STOP' }],
   usageMetadata: { promptTokenCount: 9, candidatesTokenCount: 4, totalTokenCount: 13 },
@@ -64,6 +86,8 @@ const RESPONSE = {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  setRuntimeLLMFetch(undefined);
+  setRuntimeLLMStreamingSupported(true);
 });
 
 describe('google engine request shaping', () => {
@@ -123,4 +147,27 @@ describe('google engine streaming', () => {
       },
     ]);
   });
+});
+
+describe('google engine deadline guards', () => {
+  function engineWithShortDeadline() {
+    return new GoogleEngine({
+      provider: 'google',
+      model: 'gemini-2.0-flash',
+      apiKey: 'g-test',
+      timeout: 1000,
+    });
+  }
+
+  it('rejects at the deadline when the transport ignores the abort signal', async () => {
+    stubAbortIgnoringTransport();
+
+    await expect(engineWithShortDeadline().generate(MESSAGES)).rejects.toThrow(/timed out after 1s/i);
+  }, 4000);
+
+  it('rejects instead of stalling when the stream stops delivering bytes', async () => {
+    stubFetch(() => stalledSseResponse());
+
+    await expect(drainStream(engineWithShortDeadline())).rejects.toThrow(/no streamed output/i);
+  }, 4000);
 });

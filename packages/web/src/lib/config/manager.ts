@@ -244,9 +244,9 @@ export class ConfigManager {
     return {
       engine: 'openai_compatible',
       engine_mode: 'auto',
-      // Local-first default: the Ollama provider resolves to
-      // http://localhost:11434/v1 and needs no API key, so a fresh install works
-      // out of the box when Ollama is running (switch providers in Settings).
+      // `gemma4` resolves to the Ollama Cloud provider (https://ollama.com/api,
+      // which needs an OLLAMA_API_KEY). For a keyless local server, switch to the
+      // Custom provider and set http://localhost:11434/v1 in Settings → Runtime.
       model: 'gemma4',
       temperature: 0.7,
       max_tokens: 4096,

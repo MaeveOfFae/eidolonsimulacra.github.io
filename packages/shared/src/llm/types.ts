@@ -116,9 +116,10 @@ export interface LLMEngineConstructor {
  * `factory.ts` (docs-verified hosts: api.z.ai per docs.z.ai, api.moonshot.ai
  * per platform.kimi.ai).
  *
- * `ollama` is Ollama Cloud's OpenAI-compatible surface; local Ollama servers
- * are addressed through the `custom` provider (no default — it requires a
- * base URL from config).
+ * `ollama` is Ollama Cloud's native API (`/api/chat`, `/api/tags`) rather than
+ * its OpenAI-compatible `/v1` surface; local Ollama servers are addressed
+ * through the `custom` provider (no default — it requires a base URL from
+ * config).
  */
 export const ProviderEndpoints: Record<LLMProvider, string> = {
   openai: 'https://api.openai.com/v1',
@@ -128,12 +129,12 @@ export const ProviderEndpoints: Record<LLMProvider, string> = {
   deepseek: 'https://api.deepseek.com/v1',
   zai: 'https://api.z.ai/api/paas/v4',
   moonshot: 'https://api.moonshot.ai/v1',
-  ollama: 'https://ollama.com/v1',
+  ollama: 'https://ollama.com/api',
   custom: '',
 } as const;
 
 /**
- * Provider-specific header keys. Ollama Cloud (https://ollama.com/v1) accepts
+ * Provider-specific header keys. Ollama Cloud (https://ollama.com/api) accepts
  * `Authorization: Bearer OLLAMA_API_KEY`; `custom` endpoints take Bearer when
  * a key is configured and no auth header at all keyless (local servers).
  */
