@@ -32,6 +32,11 @@ env/
 *~
 .DS_Store
 
+# Local scratch output from agent / device-debug sessions (logcat dumps, adb
+# excerpts, crash logs). Never part of the product and large enough — one logcat
+# dump was ~60 MB — that committing it bloats every clone permanently.
+.copilot-tmp/
+
 # AI Assistant Configuration (not needed to use bpui)
 .clinerules/
 .claude/
@@ -39,7 +44,6 @@ env/
 .github/PULL_REQUEST_TEMPLATE.md
 .github/prompts/
 .github/copilot-instructions.md
-.github/dependabot.yml
 
 # Testing
 .pytest_cache/

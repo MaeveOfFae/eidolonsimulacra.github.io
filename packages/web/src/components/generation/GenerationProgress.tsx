@@ -300,6 +300,11 @@ export default function GenerationProgress({
     },
     [
       activeAssetOrder,
+      // `additionalInstructions` is a prop this callback forwards to every asset
+      // request; without it here the memoized callback kept the array from the
+      // render that created it, so instructions added mid-session were silently
+      // not sent to the model.
+      additionalInstructions,
       canonSourceDraftIds,
       importedSourceContext,
       loadConnectedReferenceSuites,

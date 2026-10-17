@@ -21,6 +21,7 @@ export * from './llm/types';
 export * from './llm/factory';
 export * from './llm/models';
 export * from './llm/transport';
+export { isInvalidApiKeyValue, normalizeApiKeyValue } from './llm/api-key';
 export * from './llm/base';
 export * from './llm/google';
 export * from './llm/anthropic';

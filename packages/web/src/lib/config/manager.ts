@@ -7,6 +7,8 @@ import type { ApiKeys, Config, DashboardState, FeatureBlueprintDefaults, HelpSta
 import {
   createDefaultChubConfig,
   createDefaultComfyUIConfig,
+  isInvalidApiKeyValue,
+  normalizeApiKeyValue,
   type ChubConfig,
   type ComfyUIConfig,
 } from '@char-gen/shared';
@@ -38,36 +40,12 @@ const LEGACY_FEATURE_BLUEPRINT_PATHS: Record<string, string> = {
   intro_scene: 'blueprints/system/intro_scene.md',
 };
 
-const CORRUPTED_API_KEY_PATTERNS = [
-  /^window\.fetch:/i,
-  /cannot convert value in record<bytestring/i,
-  /^bearer\s+window\.fetch:/i,
-];
-
-export function normalizeApiKeyValue(value: string): string {
-  return value
-    .replace(/[\u2018\u2019]/g, "'")
-    .replace(/[\u201C\u201D]/g, '"')
-    .replace(/[\u200B-\u200D\uFEFF]/g, '')
-    .trim()
-    .replace(/^['"]+|['"]+$/g, '');
-}
-
-export function isInvalidApiKeyValue(value: string): boolean {
-  if (!value) {
-    return true;
-  }
-
-  if (/[^\x20-\x7E]/.test(value)) {
-    return true;
-  }
-
-  if (/\r|\n/.test(value)) {
-    return true;
-  }
-
-  return CORRUPTED_API_KEY_PATTERNS.some((pattern) => pattern.test(value));
-}
+// Key normalization and corruption detection live in `@char-gen/shared` so this
+// module and the engine factory cannot drift apart — they were byte-identical
+// copies, and the corrupted-key patterns are exactly the kind of list that gets
+// fixed in one place and forgotten in the other. Re-exported here because the
+// Settings screens import them from this module.
+export { isInvalidApiKeyValue, normalizeApiKeyValue };
 
 function readStoredValue(keys: readonly string[]): { value: string; sourceKey: string } | null {
   return readPersistedString(keys);
@@ -590,31 +568,3 @@ export const CONFIG_MANAGER_CHANGED_EVENT = CONFIG_CHANGED_EVENT;
 
 // Global instance
 export const configManager = new ConfigManager();
-
-/**
- * Get API keys for use in API headers (base64 encoded)
- */
-export function getApiKeysHeader(): Record<string, string> | undefined {
-  const keys = configManager.getApiKeys();
-  if (Object.keys(keys).length === 0) {
-    return undefined;
-  }
-
-  // Encode as base64 for safe transmission
-  const encoded = btoa(JSON.stringify(keys));
-  return {
-    'X-BPUI-API-KEYS': encoded,
-  };
-}
-
-/**
- * Parse API keys from header value
- */
-export function parseApiKeysHeader(header: string): ApiKeys {
-  try {
-    const decoded = atob(header);
-    return JSON.parse(decoded) as ApiKeys;
-  } catch {
-    return {};
-  }
-}

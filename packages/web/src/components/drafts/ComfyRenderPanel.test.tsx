@@ -219,4 +219,40 @@ describe('ComfyRenderPanel', () => {
     expect(await screen.findByAltText('Saved render render_1')).toBeInTheDocument();
     expect(screen.getByText(/saved to draft/)).toBeInTheDocument();
   });
+
+  it('revokes the finished render blobs when the panel unmounts', async () => {
+    mockedBatch.mockResolvedValue({ results: [SINGLE_RESULT], errors: [] });
+
+    const { unmount } = renderPanel(true);
+    fireEvent.click(screen.getByRole('button', { name: /send to comfyui/i }));
+
+    await waitFor(() => expect(screen.getByRole('img', { name: 'ComfyUI render 42-1' })).toBeInTheDocument());
+    // Still on screen, so the panel still owns it.
+    expect(URL.revokeObjectURL).not.toHaveBeenCalledWith('blob:render-1');
+
+    unmount();
+
+    // The previous cleanup read component state captured on the first render
+    // (`idle`), so `state.phase === 'done'` was never true and no finished render
+    // was ever released.
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:render-1');
+  });
+
+  it('revokes the previous batch when a new render replaces it', async () => {
+    mockedBatch.mockResolvedValueOnce({ results: [SINGLE_RESULT], errors: [] });
+    mockedBatch.mockResolvedValueOnce({
+      results: [{ ...SINGLE_RESULT, promptId: 'prompt-87654321', seed: 43, objectUrls: ['blob:render-2'] }],
+      errors: [],
+    });
+
+    renderPanel(true);
+    fireEvent.click(screen.getByRole('button', { name: /send to comfyui/i }));
+    await waitFor(() => expect(screen.getByRole('img', { name: 'ComfyUI render 42-1' })).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: /render again/i }));
+    await waitFor(() => expect(screen.getByRole('img', { name: 'ComfyUI render 43-1' })).toBeInTheDocument());
+
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:render-1');
+    expect(URL.revokeObjectURL).not.toHaveBeenCalledWith('blob:render-2');
+  });
 });

@@ -45,6 +45,26 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
     css: true,
+    // The suite runs many files in parallel and each Dexie/`fake-indexeddb` storage
+    // test does 1.5-4s of real work; under a saturated worker pool they were
+    // tripping the 5s default and reddening the build with no code change (a full
+    // run produced 4 failures, the next 2, and every one passed in isolation).
+    // 20s keeps a genuine hang visible without reporting machine load as a failure.
+    testTimeout: 20_000,
+    hookTimeout: 20_000,
+    environmentOptions: {
+      happyDOM: {
+        settings: {
+          // The About page embeds the Ko-fi panel in an iframe. happy-dom would
+          // otherwise issue a real request to ko-fi.com for it and reject the fetch
+          // when the window tears down, which surfaced as stray `NetworkError` /
+          // `AbortError` noise — and a live network dependency — in every test that
+          // renders About or Home. happy-dom then logs one `NotSupportedError` per
+          // skipped load; that single line is expected and not a failure.
+          disableIframePageLoading: true,
+        },
+      },
+    },
     server: {
       deps: {
         // `@tanstack/react-query` and `react-router-dom` must be transformed by Vite

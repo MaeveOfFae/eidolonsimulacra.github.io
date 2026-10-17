@@ -365,4 +365,70 @@ describe('GenerationProgress', () => {
 
     expect(signal?.aborted).toBe(false);
   });
+
+  it('sends the current additional instructions to the next asset', async () => {
+    vi.mocked(GenerationService.generateAsset).mockImplementation(async function* () {
+      yield {
+        type: 'asset',
+        asset: 'system_prompt',
+        content: 'System prompt content',
+      };
+    });
+
+    const templates = [
+      {
+        name: 'Test Template',
+        assets: [
+          { name: 'system_prompt', required: true, depends_on: [] },
+          { name: 'a1111', required: true, depends_on: ['system_prompt'] },
+        ],
+      } as never,
+    ];
+
+    const { rerender } = render(
+      <GenerationProgress
+        seed="test seed"
+        mode="SFW"
+        template="Test Template"
+        templates={templates}
+        additionalInstructions={['keep it terse']}
+        onComplete={vi.fn()}
+        onError={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(GenerationService.generateAsset).toHaveBeenCalledTimes(1);
+    });
+    expect(vi.mocked(GenerationService.generateAsset).mock.calls[0]?.[0]).toMatchObject({
+      additional_instructions: ['keep it terse'],
+    });
+
+    // The instructions changed while the first asset was under review.
+    rerender(
+      <GenerationProgress
+        seed="test seed"
+        mode="SFW"
+        template="Test Template"
+        templates={templates}
+        additionalInstructions={['keep it terse', 'no pet names']}
+        onComplete={vi.fn()}
+        onError={vi.fn()}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Approve and Continue' }));
+
+    await waitFor(() => {
+      expect(GenerationService.generateAsset).toHaveBeenCalledTimes(2);
+    });
+    // The callback used to omit `additionalInstructions` from its dependency list, so
+    // it kept the array from the render that created it and the new line was silently
+    // dropped from every later asset request.
+    expect(vi.mocked(GenerationService.generateAsset).mock.calls[1]?.[0]).toMatchObject({
+      additional_instructions: ['keep it terse', 'no pet names'],
+    });
+  });
 });

@@ -610,8 +610,27 @@ fn matches_pair_code(request: &HttpRequest, expected_pair_code: &str) -> bool {
     .headers
     .iter()
     .find(|(name, _)| name == "x-eidolon-pair-code")
-    .map(|(_, value)| value.trim() == expected_pair_code)
+    .map(|(_, value)| constant_time_eq(value.trim().as_bytes(), expected_pair_code.as_bytes()))
     .unwrap_or(false)
+}
+
+/// Compare two byte strings without returning at the first difference.
+///
+/// The pair code is the only thing standing between the LAN and the published
+/// workspace bundle. A plain `==` on `&str` short-circuits, which leaks how many
+/// leading bytes matched; that is not remotely exploitable against a 48-bit code on
+/// a local network, but the comparison costs nothing to get right.
+fn constant_time_eq(left: &[u8], right: &[u8]) -> bool {
+  if left.len() != right.len() {
+    return false;
+  }
+
+  let mut difference = 0u8;
+  for (left_byte, right_byte) in left.iter().zip(right.iter()) {
+    difference |= left_byte ^ right_byte;
+  }
+
+  difference == 0
 }
 
 fn write_json_response<T: Serialize>(stream: &mut TcpStream, status_code: u16, body: &T) {
@@ -820,8 +839,18 @@ fn is_probably_virtual_interface_name(name: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-  use super::{format_local_url, select_best_local_ip, LocalIpCandidate};
+  use super::{constant_time_eq, format_local_url, select_best_local_ip, LocalIpCandidate};
   use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+
+  #[test]
+  fn compares_pair_codes_without_short_circuiting() {
+    assert!(constant_time_eq(b"ABCD1234", b"ABCD1234"));
+    assert!(constant_time_eq(b"", b""));
+    assert!(!constant_time_eq(b"ABCD1234", b"ABCD1235"));
+    assert!(!constant_time_eq(b"ABCD1234", b"abcd1234"));
+    assert!(!constant_time_eq(b"ABCD1234", b"ABCD12345"));
+    assert!(!constant_time_eq(b"", b"A"));
+  }
 
   #[test]
   fn prefers_private_non_virtual_ipv4_addresses() {

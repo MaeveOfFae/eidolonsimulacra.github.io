@@ -22,7 +22,7 @@ without prior written permission from the copyright holder.
 3. You may modify the software for your own private use, but you must not
 misrepresent the original work or claim authorship of the original project.
 
-4. This license applies only to the software and documentation provided by the0
+4. This license applies only to the software and documentation provided by the
 original project and does not grant rights to use third-party trademarks, branding,
 or assets except as separately permitted.
 
@@ -45,8 +45,8 @@ export const securityDocumentText = `# Security Policy
 
 | Version | Supported |
 | ------- | --------- |
-| 3.1.x   | ✅ Yes    |
-| < 3.1   | ❌ No     |
+| 5.3.x   | ✅ Yes    |
+| < 5.3   | ❌ No     |
 
 ## Reporting a Vulnerability
 

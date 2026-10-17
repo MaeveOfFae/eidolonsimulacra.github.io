@@ -60,6 +60,21 @@ async function blobToPngDataUrl(blob: Blob): Promise<string | null> {
   });
 }
 
+/**
+ * Release every tracked render object URL and clear the list.
+ *
+ * A finished render is shown as `<img src="blob:…">`, so its URLs have to outlive
+ * the state that points at them. The panel keeps the live set in a ref and releases
+ * it when the next batch replaces it or the panel unmounts — reading a ref (rather
+ * than component state) is what makes the unmount cleanup see the current set.
+ */
+function releaseTrackedObjectUrls(store: { current: string[] }): void {
+  for (const url of store.current) {
+    URL.revokeObjectURL(url);
+  }
+  store.current = [];
+}
+
 export default function ComfyRenderPanel({ content, approved, referenceImageDataUrl }: ComfyRenderPanelProps) {
   const { id: reviewId } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
@@ -70,6 +85,10 @@ export default function ComfyRenderPanel({ content, approved, referenceImageData
   const [cardImageNotice, setCardImageNotice] = useState<string | null>(null);
   const [promotingPromptId, setPromotingPromptId] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  // Object URLs for the batch currently on screen. Held in a ref so the unmount
+  // cleanup can release whatever is live at that moment instead of whatever was
+  // live on the first render.
+  const objectUrlsRef = useRef<string[]>([]);
 
   const draftQuery = useQuery({
     queryKey: ['draft', reviewId],
@@ -87,15 +106,12 @@ export default function ComfyRenderPanel({ content, approved, referenceImageData
   useEffect(() => {
     return () => {
       abortRef.current?.abort();
-      if (state.phase === 'done') {
-        for (const result of state.results) {
-          for (const url of result.objectUrls) {
-            URL.revokeObjectURL(url);
-          }
-        }
-      }
+      // The renders on screen are blob URLs; nothing else owns them, so unmounting
+      // without this leaks a blob per image for the life of the tab. Read through the
+      // ref: an `[]`-deps closure over `state` captured the mount-time `idle` phase,
+      // so the old `state.phase === 'done'` test could never be true.
+      releaseTrackedObjectUrls(objectUrlsRef);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSend = async () => {
@@ -122,6 +138,7 @@ export default function ComfyRenderPanel({ content, approved, referenceImageData
     setProgress(null);
 
     if (controller.signal.aborted) {
+      releaseTrackedObjectUrls(objectUrlsRef);
       for (const result of batch.results) {
         for (const url of result.objectUrls) {
           URL.revokeObjectURL(url);
@@ -131,6 +148,8 @@ export default function ComfyRenderPanel({ content, approved, referenceImageData
       return;
     }
     if (batch.results.length === 0) {
+      // A failed batch also takes the previous renders off the screen.
+      releaseTrackedObjectUrls(objectUrlsRef);
       setState({ phase: 'error', message: batch.errors[0] ?? 'Rendering failed.' });
       return;
     }
@@ -138,6 +157,10 @@ export default function ComfyRenderPanel({ content, approved, referenceImageData
     // Surface the first used seed so "Render again" iterates reproducibly; clearing
     // the field returns to random seeds (pinned seeds ladder across the batch).
     setSeedInput(String(batch.results[0].seed));
+    // "Render again" replaces the finished batch, so the outgoing blobs are released
+    // here and the incoming set becomes what the unmount cleanup releases later.
+    releaseTrackedObjectUrls(objectUrlsRef);
+    objectUrlsRef.current = batch.results.flatMap((result) => result.objectUrls);
     setState({ phase: 'done', results: batch.results, warnings: batch.errors });
 
     if (reviewId) {

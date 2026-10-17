@@ -108,6 +108,11 @@ describe('Generation', () => {
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'New Draft' })).toBeInTheDocument();
+      // The template `<select>` is `disabled` until the templates query resolves, and
+      // a disabled control is not a tab stop — snapshotting the sequence while it was
+      // still loading dropped the "Template" anchor below and failed the check under a
+      // loaded worker pool, even though the markup was correct.
+      expect(screen.getByLabelText('Template')).toBeEnabled();
     });
 
     const sequence = formatTabStops();

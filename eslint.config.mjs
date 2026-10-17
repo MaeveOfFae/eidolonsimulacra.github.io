@@ -79,15 +79,4 @@ export default [
       ...reactHooks.configs.recommended.rules,
     },
   },
-  {
-    files: ['packages/web/public/sw.js'],
-    languageOptions: {
-      ecmaVersion: 'latest',
-      sourceType: 'script',
-      globals: {
-        ...globals.browser,
-        ...globals.serviceworker,
-      },
-    },
-  },
 ];
