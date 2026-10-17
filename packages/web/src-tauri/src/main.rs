@@ -801,3 +801,32 @@ fn main() {
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }
+
+#[cfg(test)]
+mod desktop_security_tests {
+  use tauri::utils::config::Config;
+
+  fn config() -> Config {
+    serde_json::from_str(include_str!("../tauri.conf.json")).expect("tauri.conf.json must parse")
+  }
+
+  /// The CSP is the only thing between an injected script and this window's `fs`,
+  /// `sql` and `http` capabilities, so its shape is pinned here: dropping it back to
+  /// `null` or loosening `script-src` fails the build instead of shipping quietly.
+  /// The policy's *behaviour* still has to be smoke-tested (see docs/DESKTOP_SECURITY.md).
+  #[test]
+  fn ships_a_restrictive_content_security_policy() {
+    let config = config();
+    let csp = config.app.security.csp.expect("the desktop app must ship a CSP");
+    let rendered = csp.to_string();
+
+    assert!(rendered.contains("script-src 'self'"), "script-src must stay 'self': {rendered}");
+    assert!(!rendered.contains("'unsafe-eval'"), "eval must stay blocked: {rendered}");
+    assert!(rendered.contains("object-src 'none'"), "plugins must stay blocked: {rendered}");
+    assert!(rendered.contains("base-uri 'self'"), "base-uri must stay pinned: {rendered}");
+    assert!(
+      config.app.security.dev_csp.is_some(),
+      "development needs its own CSP: Vite serves an inline React-refresh preamble"
+    );
+  }
+}

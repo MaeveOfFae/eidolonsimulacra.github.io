@@ -298,6 +298,7 @@ If you are editing blueprints, start with `rules/60_blueprint_hard_rules.md` and
 - [`docs/ROADMAP.md`](docs/ROADMAP.md) — what is not finished yet.
 - [`docs/MOBILE_PARITY.md`](docs/MOBILE_PARITY.md) — mobile vs. web surface coverage.
 - [`docs/DOWNLOADS.md`](docs/DOWNLOADS.md) — hosting and shipping the build artifacts.
+- [`docs/DESKTOP_SECURITY.md`](docs/DESKTOP_SECURITY.md) — the desktop shell's CSP, capabilities, and what has to be smoke-tested by hand.
 - [`TODO.md`](TODO.md) — engineering debt and next steps.
 
 ## Contributing
